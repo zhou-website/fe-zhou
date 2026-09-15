@@ -13,22 +13,22 @@
 | Typography | Open Sans |
 | Icons | Font Awesome |
 | Current Phase | Design System Implementation → Front-End Slicing & Implementation |
-| Overall Progress | 40% `[██████░░░░░░░░░]` |
+| Overall Progress | 41% `[██████░░░░░░░░░]` |
 | Last Updated | 15 September 2026 |
 
 ---
 
 ## Progress Summary
 
-**Overall Progress:** `[████████░░░░░░░░░░░░]` **40%** (42/105 Tasks Completed)
+**Overall Progress:** `[████████░░░░░░░░░░░░]` **41%** (43/105 Tasks Completed)
 
 | Metric | Result |
 |---|---:|
-| Overall Progress | 40% |
+| Overall Progress | 41% |
 | Total Tasks | 105 |
-| Completed | 42 |
+| Completed | 43 |
 | In Progress | 0 |
-| Not Started | 63 |
+| Not Started | 62 |
 | Blocked | 0 |
 | Needs Verification | 0 |
 
@@ -39,7 +39,7 @@
 | Module | Completed | Total | Progress | Progress Bar | Status |
 |---|---:|---:|---:|:---:|---|
 | UI/UX Design & Handoff | 9 | 9 | 100% | `[██████████]` | COMPLETED |
-| Front-End Project Setup | 5 | 6 | 83% | `[████████░░]` | IN PROGRESS |
+| Front-End Project Setup | 6 | 6 | 100% | `[██████████]` | COMPLETED |
 | AI Agent Setup & Configuration | 6 | 6 | 100% | `[██████████]` | COMPLETED |
 | Front-End Slicing & Implementation | 8 | 22 | 36% | `[████░░░░░░]` | IN PROGRESS |
 | Design System Implementation | 14 | 18 | 78% | `[████████░░]` | IN PROGRESS |
@@ -86,7 +86,7 @@
 | M2-D4-T2 | Review font, color, spacing, and sizing | Design System Implementation | COMPLETED | Tinjauan komprehensif desain sistem selesai: Font Open Sans (400, 600, 700) terpasang 100% konsisten, palet warna korporat (Primary #0B1533, Dark #060D22, Light #E9EDF5, Silver #C5C8D0, Success #12B76A, Error #D92D20) bebas aksen emas, skala spacing kontainer 1200px dan py-16/py-20/py-28, serta sizing komponen h-8/h-10/h-12 dan ikon SVG tersertifikasi presisi. |
 | M2-D5-T1 | Review slicing against Figma | Front-End Slicing & Implementation | COMPLETED | Seluruh hasil slicing diverifikasi terhadap Figma Node 71:2: 100% konsisten pada tipografi Open Sans matriks, palet warna korporat (tanpa aksen emas), struktur navigasi & rute RBAC lengkap, serta isolasi ID semantik yang presisi. |
 | M2-D5-T2 | Use custom agent for initial code review | AI Agent Setup & Configuration | COMPLETED | Initial code review performed by agent; zero ESLint/TypeScript errors. |
-| M2-D5-T3 | Commit Week 2 progress | Front-End Project Setup | NOT STARTED | Scheduled per checklist order. |
+| M2-D5-T3 | Commit Week 2 progress | Front-End Project Setup | COMPLETED | Git commit 4208005 dibuat: feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2. |
 | M3-D1-T1 | Implement Open Sans globally | Design System Implementation | COMPLETED | Open Sans loaded via next/font/google in src/app/layout.tsx. |
 | M3-D1-T2 | Implement typography scale | Design System Implementation | COMPLETED | Full typography matrix scale added to tailwind.config.ts. |
 | M3-D1-T3 | Review font weight and line-height | Design System Implementation | COMPLETED | Line-heights and font-weights configured in Tailwind theme. |
@@ -263,9 +263,9 @@ Do not reintroduce gold.
 
 ### Next Task
 
-**Task:** M2-D5-T3: Commit Week 2 progress
+**Task:** M3-D5-T1: Continue Hero slicing
 
-**Module:** Front-End Project Setup
+**Module:** Front-End Slicing & Implementation
 
 **Status:** NOT STARTED
 

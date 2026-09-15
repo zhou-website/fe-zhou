@@ -10,11 +10,11 @@
   "lastUpdated": "15 September 2026",
   "currentPhase": "Design System Implementation → Front-End Slicing & Implementation",
   "nextTask": {
-    "id": "M2-D5-T3",
-    "task": "Commit Week 2 progress",
-    "module": "Front-End Project Setup",
+    "id": "M3-D5-T1",
+    "task": "Continue Hero slicing",
+    "module": "Front-End Slicing & Implementation",
     "status": "NOT STARTED",
-    "reason": "Slicing review against Figma Node 71:2 completed; proceed to committing Week 2 progress."
+    "reason": "Week 2 progress committed to git; proceed to Week 3 slicing continuation."
   },
   "landingPageSections": [
     {
@@ -288,8 +288,8 @@
       "week": "Week 2",
       "module": "Front-End Project Setup",
       "task": "Commit Week 2 progress",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Git commit 4208005 dibuat: feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2."
     },
     {
       "id": "M3-D1-T1",

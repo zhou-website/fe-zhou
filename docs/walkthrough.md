@@ -65,17 +65,17 @@ Sistem dokumentasi progress telah diperbarui secara otomatis melalui `npm run up
 ============================================================
 Zhou Consulting Front-End — Project Progress Updated
 ============================================================
-Overall Progress   : [████████░░░░░░░░░░░░] 40% (42/105)
+Overall Progress   : [████████░░░░░░░░░░░░] 41% (43/105)
 Total Tasks        : 105
-Completed          : 42 (40%)
+Completed          : 43 (41%)
 In Progress        : 0
-Not Started        : 63
+Not Started        : 62
 Blocked            : 0
 Needs Verification : 0
 ------------------------------------------------------------
 Module Breakdown:
   - UI/UX Design & Handoff               : [██████████] 100% (9/9)
-  - Front-End Project Setup              : [████████░░]  83% (5/6)
+  - Front-End Project Setup              : [██████████] 100% (6/6)
   - AI Agent Setup & Configuration       : [██████████] 100% (6/6)
   - Front-End Slicing & Implementation   : [████░░░░░░]  36% (8/22)
   - Design System Implementation         : [████████░░]  78% (14/18)
@@ -86,8 +86,8 @@ Module Breakdown:
   - API Integration                      : [░░░░░░░░░░]   0% (0/2)
   - UI/UX Design Revision & Iteration    : [░░░░░░░░░░]   0% (0/6)
 ------------------------------------------------------------
-Next Task          : M2-D5-T3: Commit Week 2 progress
-Module             : Front-End Project Setup
+Next Task          : M3-D5-T1: Continue Hero slicing
+Module             : Front-End Slicing & Implementation
 Output File        : docs/project-progress.md
 ============================================================
 ```
@@ -99,34 +99,14 @@ Output File        : docs/project-progress.md
 - **Task M2-D3-T1**: Status `COMPLETED` (*Continue Navbar/Header slicing*)
 - **Task M2-D3-T2**: Status `COMPLETED` (*Implement Hero layout*)
 - **Task M2-D4-T1**: Status `COMPLETED` (*Refine Header and Hero*)
-  - **Penyempurnaan Sticky Header / Navbar (`Navbar.tsx`)**:
-    - Penerapan efek transparan elegan `bg-primary/95 backdrop-blur-md border-b border-white/10`.
-    - Aksesibilitas keyboard: otomatis menutup dropdown dan drawer mobile saat tombol `Escape` ditekan.
-    - Focus ring halus dan transisi hover yang konsisten pada seluruh 7 tautan menu dan sub-layanan.
-  - **Penyempurnaan Komponen Hero (`Hero.tsx`)**:
-    - Background Deep Navy `#060D22` diperkaya tekstur grid pattern halus bertopeng radial gradient (tanpa warna emas/kuning).
-    - Badge regulasi Coretax DJP berlatar kontras tinggi (`bg-white/10 text-white border-white/20 backdrop-blur-sm`).
-    - Skala matriks tipografi Open Sans responsif: H1 (Desktop 32px / Tablet 30px / Mobile 28px Bold 700) dan deskripsi Body Large.
-    - Tombol CTA ganda dengan mikrointeraksi elevasi bayangan (`shadow-md hover:shadow-lg active:scale-[0.98]`).
-    - 4 kartu metrik kredibilitas berbingkai semi-transparan (`bg-white/[0.03] border border-white/10 hover:border-white/20`).
 - **Task M2-D4-T2**: Status `COMPLETED` (*Review font, color, spacing, and sizing*)
-  - **Font**: Memverifikasi pemuatan murni font **Open Sans** via `next/font/google` pada bobot `400` (Regular), `600` (Semi-bold), dan `700` (Bold) di seluruh halaman tanpa font sekunder.
-  - **Color**: Memvalidasi palet korporat resmi Figma Node 71:2 (`#0B1533`, `#060D22`, `#E9EDF5`, `#C5C8D0`, `#172033`, `#667085`, `#12B76A`, `#D92D20`) dan memastikan 100% bebas dari warna emas/kuning/oranye/ungu.
-  - **Spacing**: Memverifikasi standarisasi `container-custom` (max 1200px, padding horizontal responsif), vertikal section spacing `py-16 md:py-20 lg:py-28`, serta anchor ID offset `scroll-mt-20`.
-  - **Sizing**: Memverifikasi ukuran standar tombol (`h-8`, `h-10`, `h-12`), kontainer ikon (`w-10 h-10`), dan border radius terstandar (`rounded-md`, `rounded-lg`).
 - **Task M2-D5-T1**: Status `COMPLETED` (*Review slicing against Figma*)
-  - **Audit Hasil Slicing vs Figma Node 71:2 (`DesignRevisi-Zhou-Consulting`)**:
-    1. **Navbar & Brand**: Logo "Z", teks "ZHOU CONSULTING", 7 menu resmi (*Profil Perusahaan, Layanan, Peraturan, Edukasi, Karir, Kontak, Login*), dropdown interaktif untuk Konsultasi & Tax Service, serta drawer mobile ber-accordion (100% lolos).
-    2. **Hero Section**: Background Deep Navy `#060D22` dengan tekstur radial gradient korporat, badge resmi Coretax DJP, Page Heading matriks (Desktop 32px, Tablet 30px, Mobile 28px), dual CTA button, dan 4 kartu trust metrics (100% lolos).
-    3. **Profil Perusahaan (`#profil`)**: Visi kepatuhan Coretax, standar profesional bersertifikasi, dan tata kelola berkelanjutan dengan anchor scroll offset `scroll-mt-20` (100% lolos).
-    4. **Katalog Layanan (`#layanan`)**: Pengelompokan tegas antara **Konsultasi** (*Hukum, Business, Akuntansi*) dan **Tax Service Core** dilengkapi filter tab interaktif dan deep links ID `#layanan-hukum`, `#layanan-bisnis`, `#layanan-akuntansi`, `#layanan-pajak` (100% lolos).
-    5. **Regulasi & Kurs (`#peraturan`)**: Tabel kurs KMK valas mingguan terverifikasi, tautan eksternal DJP Online, dan modul unduh peraturan (100% lolos).
-    6. **Edukasi Pajak (`#edukasi`)**: Artikel literasi perpajakan terkini dengan modal pratinjau baca dan tombol aksi unduh PDF (100% lolos).
-    7. **Karir (`#karir`)**: Daftar lowongan aktif dengan formulir lamaran interaktif, modal apply, serta validasi upload berkas CV khusus format PDF maksimal 5MB (100% lolos).
-    8. **Kontak & WhatsApp (`#kontak`)**: Formulir pesan web interaktif dan tombol aksi cepat WhatsApp Business API dengan pesan pembuka otomatis (100% lolos).
-    9. **Footer**: Navigasi 5 kolom selaras Figma, metadata kantor resmi, hak cipta 2026, dan tautan kepatuhan (100% lolos).
-    10. **Kepatuhan Palet Warna & Tipografi**: Bebas 100% dari aksen emas/kuning/oranye/ungu, tipografi murni Open Sans pada seluruh teks dan elemen interaktif (100% lolos).
-- **Next Task Otomatis**: `M2-D5-T3: Commit Week 2 progress`
+- **Task M2-D5-T3**: Status `COMPLETED` (*Commit Week 2 progress*)
+  - Seluruh perubahan Week 2 telah distaging dan dicommit secara bersih ke Git:
+    - **Commit Hash**: `4208005`
+    - **Pesan Commit**: `feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2`
+    - **Statistik Berkas**: 36 files changed, 6714 insertions(+), 133 deletions(-).
+- **Next Task Otomatis**: `M3-D5-T1: Continue Hero slicing`
 
 ---
 
