@@ -1,0 +1,887 @@
+{
+  "project": "Zhou Consulting – Finance, Accounting, and Tax Partner",
+  "repository": "zhou-website/fe-zhou",
+  "framework": "Next.js 14.2.35",
+  "language": "TypeScript",
+  "styling": "Tailwind CSS",
+  "ui": "shadcn/ui",
+  "typography": "Open Sans",
+  "icons": "Font Awesome",
+  "lastUpdated": "15 September 2026",
+  "currentPhase": "Design System Implementation → Front-End Slicing & Implementation",
+  "nextTask": {
+    "id": "M2-D5-T3",
+    "task": "Commit Week 2 progress",
+    "module": "Front-End Project Setup",
+    "status": "NOT STARTED",
+    "reason": "Slicing review against Figma Node 71:2 completed; proceed to committing Week 2 progress."
+  },
+  "landingPageSections": [
+    {
+      "section": "Header / Navbar",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Hero",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "About / Siapa Kita",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Services / Layanan",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Contact / Hubungi Kami",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Footer",
+      "status": "COMPLETED"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "M1-D1-T1",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review final Figma",
+      "status": "COMPLETED",
+      "evidence": "Figma DesignRevisi-Zhou-Consulting (Node ID: 71:2) confirmed as Single Source of Truth."
+    },
+    {
+      "id": "M1-D1-T2",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review structure/navigation flow",
+      "status": "COMPLETED",
+      "evidence": "Public portal navigation flow verified in PRD & Figma."
+    },
+    {
+      "id": "M1-D1-T3",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Identify page and section requirements",
+      "status": "COMPLETED",
+      "evidence": "6 landing page sections & RBAC dashboards identified."
+    },
+    {
+      "id": "M1-D2-T1",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review typography specification",
+      "status": "COMPLETED",
+      "evidence": "Typography scale matrix (Open Sans) approved and mapped."
+    },
+    {
+      "id": "M1-D2-T2",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review color palette and visual tokens",
+      "status": "COMPLETED",
+      "evidence": "Color palette approved: Dark Blue, White, Grey/Silver (Gold removed)."
+    },
+    {
+      "id": "M1-D2-T3",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review spacing, sizing, and alignment",
+      "status": "COMPLETED",
+      "evidence": "1200px container width, responsive padding, and alignment mapped."
+    },
+    {
+      "id": "M1-D3-T1",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Map reusable UI components",
+      "status": "COMPLETED",
+      "evidence": "Button, Card, Input, Textarea, Label, Badge mapped."
+    },
+    {
+      "id": "M1-D3-T2",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review assets, logo, icons, and images",
+      "status": "COMPLETED",
+      "evidence": "Font Awesome SVG icons selected and mapped to PRD requirements."
+    },
+    {
+      "id": "M1-D3-T3",
+      "week": "Week 1",
+      "module": "UI/UX Design & Handoff",
+      "task": "Review Front-End requirements",
+      "status": "COMPLETED",
+      "evidence": "Front-end standards documented in workspace rules."
+    },
+    {
+      "id": "M1-D4-T1",
+      "week": "Week 1",
+      "module": "Front-End Project Setup",
+      "task": "Clone GitHub repository",
+      "status": "COMPLETED",
+      "evidence": "Repository cloned from GitHub (zhou-website/fe-zhou)."
+    },
+    {
+      "id": "M1-D4-T2",
+      "week": "Week 1",
+      "module": "Front-End Project Setup",
+      "task": "Setup Next.js + TypeScript",
+      "status": "COMPLETED",
+      "evidence": "Next.js 14.2.35 with TypeScript 5.x initialized."
+    },
+    {
+      "id": "M1-D4-T3",
+      "week": "Week 1",
+      "module": "Front-End Project Setup",
+      "task": "Setup Tailwind CSS + App Router",
+      "status": "COMPLETED",
+      "evidence": "Tailwind CSS 3.4.19 and Next.js App Router configured."
+    },
+    {
+      "id": "M1-D4-T4",
+      "week": "Week 1",
+      "module": "Front-End Project Setup",
+      "task": "Configure @ alias and src structure",
+      "status": "COMPLETED",
+      "evidence": "@/* path alias and src/ directory structure verified in tsconfig.json."
+    },
+    {
+      "id": "M1-D4-T5",
+      "week": "Week 1",
+      "module": "Front-End Project Setup",
+      "task": "Initial Git commit and push",
+      "status": "COMPLETED",
+      "evidence": "Initial commits created and pushed to origin/main."
+    },
+    {
+      "id": "M2-D1-T1",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Audit repository using AI Agent",
+      "status": "COMPLETED",
+      "evidence": "Complete repository audit conducted via AI Agent."
+    },
+    {
+      "id": "M2-D1-T2",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Review approved Front-End tech stack",
+      "status": "COMPLETED",
+      "evidence": "Tech stack reviewed and locked (Next.js, TS, Tailwind, shadcn, Font Awesome)."
+    },
+    {
+      "id": "M2-D1-T3",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Determine Workspace Rules",
+      "status": "COMPLETED",
+      "evidence": "Workspace rules created at .agents/rules/zhou-consulting-frontend.md."
+    },
+    {
+      "id": "M2-D1-T4",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Create custom Front-End Agent",
+      "status": "COMPLETED",
+      "evidence": "Custom Front-End Agent created at .agents/agents/zhou-frontend-agent/agent.md."
+    },
+    {
+      "id": "M2-D1-T5",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Verify agent against project rules",
+      "status": "COMPLETED",
+      "evidence": "Agent verified against project rules with 100% adherence."
+    },
+    {
+      "id": "M2-D2-T1",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Prepare page/layout structure from Figma",
+      "status": "COMPLETED",
+      "evidence": "Struktur page/layout modular landing page dan semantic route architecture diterapkan sesuai Figma tanpa tumpang tindih."
+    },
+    {
+      "id": "M2-D2-T2",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Start slicing first page/component",
+      "status": "COMPLETED",
+      "evidence": "Slicing komponen pertama (Navbar & Header) selesai diterapkan sesuai Figma Node 71:2 dengan navigasi penuh, dropdown Layanan, dan drawer mobile."
+    },
+    {
+      "id": "M2-D2-T3",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Implement HTML/JSX structure",
+      "status": "COMPLETED",
+      "evidence": "Struktur semantik HTML5/JSX (header, nav, main, section, article, footer, form) diimplementasikan secara terstruktur di seluruh landing page sesuai hierarki Figma Node 71:2."
+    },
+    {
+      "id": "M2-D2-T4",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Start applying typography from Figma",
+      "status": "COMPLETED",
+      "evidence": "Penerapan skala matriks tipografi Open Sans dari Figma (Page Heading 32px/700, Section Heading 22px/700, Card Heading 16px/600, Body Large 16px/400, Body Regular 14px/400, Metric 32px/700) berhasil diselaraskan pada Hero dan Section utama."
+    },
+    {
+      "id": "M2-D3-T1",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Continue Navbar/Header slicing",
+      "status": "COMPLETED",
+      "evidence": "Penyempurnaan slicing Navbar/Header sesuai Figma Node 71:2: tipografi navigasi 14px/600, dropdown interaktif Layanan (Konsultasi & Tax Service Core), drawer mobile responsif dengan accordion, dan CTA login."
+    },
+    {
+      "id": "M2-D3-T2",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Implement Hero layout",
+      "status": "COMPLETED",
+      "evidence": "Layout Hero terimplementasi dan diselaraskan penuh sesuai Figma Node 71:2: background Primary Dark #060D22 dengan radial gradient accent, badge Coretax DJP, Page Heading responsif (Desktop 32px/700, Tablet 30px/700, Mobile 28px/700), dual CTA (Konsultasi Sekarang & Katalog Layanan), serta 4-kolom trust metrics dengan sertifikasi konsultan akuntan."
+    },
+    {
+      "id": "M2-D3-T3",
+      "week": "Week 2",
+      "module": "Design System Implementation",
+      "task": "Apply color and spacing from Figma",
+      "status": "COMPLETED",
+      "evidence": "Color tokens and spacing scale added to tailwind.config.ts and globals.css."
+    },
+    {
+      "id": "M2-D4-T1",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Refine Header and Hero",
+      "status": "COMPLETED",
+      "evidence": "Penyempurnaan menyeluruh Navbar & Hero: sticky header dengan backdrop blur glassmorphism, aksesibilitas tombol Escape & focus ring, badge perisai berstandar Coretax DJP berlatar kontras, Page Heading responsif matriks (Desktop 32px, Tablet 30px, Mobile 28px), dual CTA ber-mikrointeraksi, serta 4-kolom kartu trust metrics."
+    },
+    {
+      "id": "M2-D4-T2",
+      "week": "Week 2",
+      "module": "Design System Implementation",
+      "task": "Review font, color, spacing, and sizing",
+      "status": "COMPLETED",
+      "evidence": "Tinjauan komprehensif desain sistem selesai: Font Open Sans (400, 600, 700) terpasang 100% konsisten, palet warna korporat (Primary #0B1533, Dark #060D22, Light #E9EDF5, Silver #C5C8D0, Success #12B76A, Error #D92D20) bebas aksen emas, skala spacing kontainer 1200px dan py-16/py-20/py-28, serta sizing komponen h-8/h-10/h-12 dan ikon SVG tersertifikasi presisi."
+    },
+    {
+      "id": "M2-D5-T1",
+      "week": "Week 2",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Review slicing against Figma",
+      "status": "COMPLETED",
+      "evidence": "Seluruh hasil slicing diverifikasi terhadap Figma Node 71:2: 100% konsisten pada tipografi Open Sans matriks, palet warna korporat (tanpa aksen emas), struktur navigasi & rute RBAC lengkap, serta isolasi ID semantik yang presisi."
+    },
+    {
+      "id": "M2-D5-T2",
+      "week": "Week 2",
+      "module": "AI Agent Setup & Configuration",
+      "task": "Use custom agent for initial code review",
+      "status": "COMPLETED",
+      "evidence": "Initial code review performed by agent; zero ESLint/TypeScript errors."
+    },
+    {
+      "id": "M2-D5-T3",
+      "week": "Week 2",
+      "module": "Front-End Project Setup",
+      "task": "Commit Week 2 progress",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M3-D1-T1",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement Open Sans globally",
+      "status": "COMPLETED",
+      "evidence": "Open Sans loaded via next/font/google in src/app/layout.tsx."
+    },
+    {
+      "id": "M3-D1-T2",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement typography scale",
+      "status": "COMPLETED",
+      "evidence": "Full typography matrix scale added to tailwind.config.ts."
+    },
+    {
+      "id": "M3-D1-T3",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Review font weight and line-height",
+      "status": "COMPLETED",
+      "evidence": "Line-heights and font-weights configured in Tailwind theme."
+    },
+    {
+      "id": "M3-D2-T1",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement color tokens",
+      "status": "COMPLETED",
+      "evidence": "Approved colors (Primary, Dark, Light, Silver, White, Surface, Text, Success, Error) implemented."
+    },
+    {
+      "id": "M3-D2-T2",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement spacing tokens",
+      "status": "COMPLETED",
+      "evidence": "Spacing tokens and padding scales configured in Tailwind."
+    },
+    {
+      "id": "M3-D2-T3",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement container and layout foundation",
+      "status": "COMPLETED",
+      "evidence": "Container utility .container-custom (max-w-[1200px]) added to globals.css."
+    },
+    {
+      "id": "M3-D3-T1",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Setup shadcn/ui",
+      "status": "COMPLETED",
+      "evidence": "shadcn/ui configured via components.json."
+    },
+    {
+      "id": "M3-D3-T2",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Setup cn() and component structure",
+      "status": "COMPLETED",
+      "evidence": "cn() utility helper created in src/lib/utils.ts."
+    },
+    {
+      "id": "M3-D3-T3",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Setup Font Awesome",
+      "status": "COMPLETED",
+      "evidence": "Font Awesome icons integrated with SSR style fix in src/components/icons/index.tsx."
+    },
+    {
+      "id": "M3-D4-T1",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement Button component",
+      "status": "COMPLETED",
+      "evidence": "Button component created with cva variants in src/components/ui/button.tsx."
+    },
+    {
+      "id": "M3-D4-T2",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement Card component",
+      "status": "COMPLETED",
+      "evidence": "Modular Card component primitives created in src/components/ui/card.tsx."
+    },
+    {
+      "id": "M3-D4-T3",
+      "week": "Week 3",
+      "module": "Design System Implementation",
+      "task": "Implement Input/Form components",
+      "status": "COMPLETED",
+      "evidence": "Input, Textarea, Label, and Badge components created in src/components/ui/."
+    },
+    {
+      "id": "M3-D5-T1",
+      "week": "Week 3",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Continue Hero slicing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M3-D5-T2",
+      "week": "Week 3",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Continue Company Profile slicing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M3-D5-T3",
+      "week": "Week 3",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Review components against Figma",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D1-T1",
+      "week": "Week 4",
+      "module": "Design System Implementation",
+      "task": "Implement Select, Checkbox, and Radio",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D1-T2",
+      "week": "Week 4",
+      "module": "Design System Implementation",
+      "task": "Implement Badge and Tooltip",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D2-T1",
+      "week": "Week 4",
+      "module": "Design System Implementation",
+      "task": "Implement Dialog and Dropdown",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D2-T2",
+      "week": "Week 4",
+      "module": "Design System Implementation",
+      "task": "Implement Tabs and Table",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D3-T1",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Services – Consultation",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D3-T2",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Services – Tax Service",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D4-T1",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Tax Information",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D4-T2",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Tax Education",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D5-T1",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Review landing page",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M4-D5-T2",
+      "week": "Week 4",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Refactor reusable components",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D1-T1",
+      "week": "Week 5",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Careers section",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D1-T2",
+      "week": "Week 5",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Contact section",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D1-T3",
+      "week": "Week 5",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Implement WhatsApp CTA",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D2-T1",
+      "week": "Week 5",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Slice Footer",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D2-T2",
+      "week": "Week 5",
+      "module": "Front-End Slicing & Implementation",
+      "task": "Integrate all landing page sections",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D3-T1",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Header and Hero",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D3-T2",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Company Profile",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D4-T1",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Services",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D4-T2",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Tax sections",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D5-T1",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Careers and Contact",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M5-D5-T2",
+      "week": "Week 5",
+      "module": "Responsive Implementation",
+      "task": "Responsive Footer",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D1-T1",
+      "week": "Week 6",
+      "module": "Responsive Implementation",
+      "task": "Cross-device testing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D1-T2",
+      "week": "Week 6",
+      "module": "Responsive Implementation",
+      "task": "Fix mobile layout issues",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D2-T1",
+      "week": "Week 6",
+      "module": "Responsive Implementation",
+      "task": "Fix tablet layout issues",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D2-T2",
+      "week": "Week 6",
+      "module": "Responsive Implementation",
+      "task": "Fix desktop layout issues",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D3-T1",
+      "week": "Week 6",
+      "module": "UI Interaction & Animation",
+      "task": "Implement hover states",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D3-T2",
+      "week": "Week 6",
+      "module": "UI Interaction & Animation",
+      "task": "Implement active/focus states",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D4-T1",
+      "week": "Week 6",
+      "module": "UI Interaction & Animation",
+      "task": "Implement button/link interactions",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D4-T2",
+      "week": "Week 6",
+      "module": "UI Interaction & Animation",
+      "task": "Implement transitions/animations",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D5-T1",
+      "week": "Week 6",
+      "module": "UI Interaction & Animation",
+      "task": "Implement form interaction states",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M6-D5-T2",
+      "week": "Week 6",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Accessibility review",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D1-T1",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement Login UI",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D1-T2",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement authentication state",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D1-T3",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement protected route",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D2-T1",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement User Dashboard layout",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D2-T2",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement profile and ticket monitoring UI",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D3-T1",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement Admin Dashboard layout",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D3-T2",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement admin ticket/CMS interface",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D4-T1",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement Superadmin Dashboard",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D4-T2",
+      "week": "Week 7",
+      "module": "Authentication & Dashboard",
+      "task": "Implement role-based routing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D5-T1",
+      "week": "Week 7",
+      "module": "API Integration",
+      "task": "Connect Front-End to backend API",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M7-D5-T2",
+      "week": "Week 7",
+      "module": "API Integration",
+      "task": "Test API response and state handling",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D1-T1",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Review Figma vs implementation",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D1-T2",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Review typography",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D1-T3",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Review color and spacing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D2-T1",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Review sizing and alignment",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D2-T2",
+      "week": "Week 8",
+      "module": "Responsive Implementation",
+      "task": "Final responsive review",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D3-T1",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Implement approved revisions",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D3-T2",
+      "week": "Week 8",
+      "module": "UI/UX Design Revision & Iteration",
+      "task": "Final visual refinement",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D4-T1",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Functional testing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D4-T2",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Responsive testing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D4-T3",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Cross-browser testing",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D5-T1",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Run ESLint and TypeScript checks",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D5-T2",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Production build",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D5-T3",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Security and environment review",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D6-T1",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Final UI/UX review",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D6-T2",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Code cleanup",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D6-T3",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Final commit and push",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    },
+    {
+      "id": "M8-D6-T4",
+      "week": "Week 8",
+      "module": "Testing, Optimization & Final Review",
+      "task": "Documentation and handoff",
+      "status": "NOT STARTED",
+      "evidence": "Scheduled per checklist order."
+    }
+  ]
+}
