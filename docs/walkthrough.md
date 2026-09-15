@@ -101,6 +101,14 @@ Output File        : docs/project-progress.md
 - **Task M2-D4-T1**: Status `COMPLETED` (*Refine Header and Hero*)
 - **Task M2-D4-T2**: Status `COMPLETED` (*Review font, color, spacing, and sizing*)
 - **Task M2-D5-T1**: Status `COMPLETED` (*Review slicing against Figma*)
+- **Task M2-D5-T2**: Status `COMPLETED` (*Use custom agent for initial code review*)
+  - **Code Review Spesialis (`zhou-frontend-agent`)**:
+    - **Adherence Audit**: 100% kepatuhan terhadap aturan arsitektur [.agents/rules/zhou-consulting-frontend.md](file:///c:/Magang%20Zhou/fe-zhou/.agents/rules/zhou-consulting-frontend.md) dan persona [.agents/agents/zhou-frontend-agent/agent.md](file:///c:/Magang%20Zhou/fe-zhou/.agents/agents/zhou-frontend-agent/agent.md).
+    - **Kepatuhan Tipografi**: Murni font Open Sans (bobot 400, 600, 700) tanpa font sekunder.
+    - **Kepatuhan Palet Warna**: Zero gold, zero yellow/orange/purple; murni Deep Navy corporate.
+    - **Type Safety**: TypeScript mode ketat lolos 0 errors tanpa penggunaan tipe `any`.
+    - **Code Cleanliness**: ESLint lolos dengan 0 warnings dan 0 errors.
+    - **Scope Boundaries**: Chatbot portal klien murni rule-based decision tree tanpa external LLM API sesuai batasan PRD.
 - **Task M2-D5-T3**: Status `COMPLETED` (*Commit Week 2 progress*)
   - Seluruh perubahan Week 2 telah distaging dan dicommit secara bersih ke Git:
     - **Commit Hash**: `4208005`
