@@ -297,7 +297,7 @@
       "module": "Design System Implementation",
       "task": "Implement Open Sans globally",
       "status": "COMPLETED",
-      "evidence": "Open Sans loaded via next/font/google in src/app/layout.tsx."
+      "evidence": "Open Sans dimuat secara global via next/font/google pada src/app/layout.tsx dengan bobot lengkap (400, 600, 700), dipetakan ke CSS variable --font-open-sans, serta diinjeksikan sebagai font-sans default pada globals.css dan tailwind.config.ts."
     },
     {
       "id": "M3-D1-T2",

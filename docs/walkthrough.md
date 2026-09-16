@@ -114,6 +114,10 @@ Output File        : docs/project-progress.md
     - **Commit Hash**: `4208005`
     - **Pesan Commit**: `feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2`
     - **Statistik Berkas**: 36 files changed, 6714 insertions(+), 133 deletions(-).
+- **Task M3-D1-T1**: Status `COMPLETED` (*Implement Open Sans globally*)
+  - Pemuatan murni font **Open Sans** via `next/font/google` di `src/app/layout.tsx` dengan bobot `400` (Regular), `600` (Semi-bold), dan `700` (Bold).
+  - Dipetakan ke CSS variable `--font-open-sans`, diatur sebagai default `font-sans` di `tailwind.config.ts`, serta disematkan pada selector `body` di `src/app/globals.css`.
+  - Berkas font bawaan (`GeistVF.woff` dan `GeistMonoVF.woff`) telah dihapus secara tuntas dari repositori.
 - **Next Task Otomatis**: `M3-D5-T1: Continue Hero slicing`
 
 ---
