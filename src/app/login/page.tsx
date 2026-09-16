@@ -170,13 +170,12 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="auth-password">Kata Sandi</Label>
-                <button
-                  type="button"
-                  onClick={() => alert("Silakan hubungi administrator kantor Zhou Consulting untuk reset password resmi.")}
+                <Link
+                  href="/login/forgot-password"
                   className="text-[11px] text-text-secondary hover:text-primary transition-colors"
                 >
                   Lupa kata sandi?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <Input
