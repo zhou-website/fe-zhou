@@ -2,11 +2,16 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { ArrowRightIcon, ShieldTaxIcon, CheckCircleIcon } from "@/components/icons";
 
 export function Hero() {
   return (
-    <section id="hero" className="relative bg-primary-dark text-white py-16 md:py-20 lg:py-28 overflow-hidden">
+    <section
+      id="hero"
+      aria-label="Hero Banner"
+      className="relative bg-primary-dark text-white py-16 md:py-20 lg:py-28 overflow-hidden"
+    >
       {/* Background Decorative Accent */}
       <div
         aria-hidden="true"
@@ -23,16 +28,16 @@ export function Hero() {
           {/* Badge indicator */}
           <Badge
             variant="silver"
-            className="inline-flex items-center gap-2 py-1.5 px-3.5 bg-white/10 text-white border-white/20 backdrop-blur-sm shadow-sm"
+            className="inline-flex items-center gap-2 py-1.5 px-3.5 bg-white/10 text-white border-white/20 backdrop-blur-sm shadow-sm hover:bg-white/15 transition-colors"
           >
             <ShieldTaxIcon className="text-xs text-silver" />
-            <span className="text-xs font-semibold text-white">
+            <span className="text-badge font-semibold text-white">
               Kepatuhan Berstandar Coretax DJP
             </span>
           </Badge>
 
           {/* Main Hero Headline */}
-          <h1 className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-page-heading font-bold tracking-tight text-white">
+          <h1 className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-page-heading font-bold tracking-tight text-white text-balance">
             Solusi Terintegrasi Akuntansi, Pajak &amp; Tata Kelola Finansial Bisnis
           </h1>
 
@@ -47,11 +52,11 @@ export function Hero() {
               variant="silver"
               size="lg"
               asChild
-              className="font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="group font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
             >
               <Link href="/#kontak" className="inline-flex items-center gap-2">
                 <span>Konsultasi Sekarang</span>
-                <ArrowRightIcon className="text-xs text-primary" />
+                <ArrowRightIcon className="text-xs text-primary transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </Button>
 
@@ -68,36 +73,39 @@ export function Hero() {
 
         {/* Hero Trust Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 pt-8 border-t border-white/10">
-          <div className="p-4 sm:p-5 rounded-lg bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all duration-200">
+          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
             <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
               150+
             </div>
             <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
               Entitas Klien Korporat
             </div>
-          </div>
-          <div className="p-4 sm:p-5 rounded-lg bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all duration-200">
+          </Card>
+
+          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
             <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
               99.8%
             </div>
             <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
               Akurasi Kepatuhan Pajak
             </div>
-          </div>
-          <div className="p-4 sm:p-5 rounded-lg bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all duration-200">
+          </Card>
+
+          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
             <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
               100%
             </div>
             <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
               Kesiapan Sistem Coretax
             </div>
-          </div>
-          <div className="p-4 sm:p-5 rounded-lg bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all duration-200 flex items-center gap-3">
-            <CheckCircleIcon className="text-2xl text-success flex-shrink-0" />
+          </Card>
+
+          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex items-center gap-3.5 transition-all duration-200">
+            <CheckCircleIcon className="text-2xl sm:text-3xl text-success flex-shrink-0" />
             <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver">
               Konsultan Pajak &amp; Akuntan Tersertifikasi
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </section>

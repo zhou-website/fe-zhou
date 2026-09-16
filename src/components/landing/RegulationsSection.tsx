@@ -1,100 +1,256 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  DownloadIcon,
+  ArrowRightIcon,
+  ShieldTaxIcon,
+  BookIcon,
+  CheckCircleIcon,
+} from "@/components/icons";
 
 export function RegulationsSection() {
   const taxRates = [
-    { currency: "USD", name: "US Dollar", rate: "Rp 15.825", change: "+0.15%" },
-    { currency: "EUR", name: "Euro", rate: "Rp 16.940", change: "-0.08%" },
-    { currency: "SGD", name: "Singapore Dollar", rate: "Rp 11.890", change: "+0.05%" },
-    { currency: "JPY", name: "Japanese Yen (100)", rate: "Rp 10.450", change: "-0.22%" },
-    { currency: "CNY", name: "Chinese Yuan", rate: "Rp 2.185", change: "+0.10%" },
+    {
+      currency: "USD",
+      name: "US Dollar",
+      rate: "Rp 15.825,00",
+      change: "+0.15%",
+      status: "up",
+    },
+    {
+      currency: "EUR",
+      name: "Euro",
+      rate: "Rp 16.940,00",
+      change: "-0.08%",
+      status: "down",
+    },
+    {
+      currency: "SGD",
+      name: "Singapore Dollar",
+      rate: "Rp 11.890,00",
+      change: "+0.05%",
+      status: "up",
+    },
+    {
+      currency: "CNY",
+      name: "Chinese Yuan",
+      rate: "Rp 2.185,00",
+      change: "+0.10%",
+      status: "up",
+    },
+    {
+      currency: "JPY",
+      name: "Japanese Yen (100)",
+      rate: "Rp 10.450,00",
+      change: "-0.22%",
+      status: "down",
+    },
+    {
+      currency: "GBP",
+      name: "British Pound",
+      rate: "Rp 20.150,00",
+      change: "+0.18%",
+      status: "up",
+    },
+    {
+      currency: "AUD",
+      name: "Australian Dollar",
+      rate: "Rp 10.320,00",
+      change: "-0.05%",
+      status: "down",
+    },
+  ];
+
+  const regulations = [
+    {
+      title: "UU No. 7 Tahun 2021 tentang HPP",
+      category: "Undang-Undang",
+      desc: "Harmonisasi Peraturan Perpajakan (PPh Badan, PPN 11%, NIK-NPWP).",
+      size: "2.4 MB",
+    },
+    {
+      title: "PMK No. 168/PMK.03/2023",
+      category: "Peraturan Menteri",
+      desc: "Petunjuk Teknis Pemotongan Pajak atas Penghasilan Pasal 21 (TER).",
+      size: "1.8 MB",
+    },
+    {
+      title: "Panduan Teknis Transisi Coretax DJP 2026",
+      category: "Panduan Resmi",
+      desc: "SOP Deposit Pajak, e-Bupot unifikasi, dan administrasi akun wajib pajak.",
+      size: "3.5 MB",
+    },
   ];
 
   return (
-    <section id="peraturan" className="py-20 bg-white border-b border-primary-light scroll-mt-20">
+    <section
+      id="peraturan"
+      aria-label="Portal Regulasi dan Kurs Pajak"
+      className="py-16 md:py-20 lg:py-24 bg-white border-b border-primary-light scroll-mt-20"
+    >
       <div className="container-custom space-y-12">
-        <div className="max-w-2xl space-y-3">
-          <Badge variant="silver" className="uppercase tracking-wider text-[11px] font-bold">
+        {/* Section Header */}
+        <div className="max-w-3xl space-y-3">
+          <Badge
+            variant="silver"
+            className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
+          >
             Portal Regulasi &amp; Kurs
           </Badge>
-          <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
+          <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
             Kurs Pajak Mingguan &amp; Referensi Regulasi DJP
           </h2>
-          <p className="text-text-secondary text-base leading-relaxed">
+          <p className="text-[15px] leading-[24px] sm:text-body-large text-text-secondary leading-relaxed">
             Data kurs konversi resmi Kementerian Keuangan untuk transaksi valas perpajakan serta arsip peraturan terbaru penunjang kepatuhan wajib pajak.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Table Container (2 cols) */}
-          <div className="lg:col-span-2 rounded-lg border border-primary-light bg-white overflow-hidden shadow-sm">
-            <div className="bg-surface px-6 py-4 border-b border-primary-light flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-primary">Kurs Menteri Keuangan (KMK) Periode Aktif</h3>
-                <span className="text-xs text-text-secondary">Berlaku untuk perhitungan PPh, PPN, dan Bea Masuk</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Table Container (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="rounded-lg border border-primary-light bg-white overflow-hidden shadow-sm">
+              <div className="bg-surface px-5 py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-primary">
+                      Kurs Menteri Keuangan (KMK)
+                    </h3>
+                    <Badge variant="success" size="sm" dot>
+                      KMK No. 38/KM.10/2026
+                    </Badge>
+                  </div>
+                  <span className="text-xs text-text-secondary mt-0.5 block">
+                    Periode Aktif: 10 September – 16 September 2026
+                  </span>
+                </div>
+                <Badge variant="silver" size="sm">
+                  Kemenkeu Terverifikasi
+                </Badge>
               </div>
-              <Badge variant="silver" className="text-[11px]">Terverifikasi</Badge>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-primary-light bg-surface/50 text-xs font-semibold text-text-secondary uppercase">
-                    <th className="py-3 px-6">Mata Uang</th>
-                    <th className="py-3 px-6">Nama Valuta</th>
-                    <th className="py-3 px-6 text-right">Nilai Kurs</th>
-                    <th className="py-3 px-6 text-right">Fluktuasi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-primary-light text-text">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="py-3 px-5">Mata Uang</TableHead>
+                    <TableHead className="py-3 px-5">Nama Valuta</TableHead>
+                    <TableHead className="py-3 px-5 text-right">Nilai Kurs (IDR)</TableHead>
+                    <TableHead className="py-3 px-5 text-right">Fluktuasi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {taxRates.map((item) => (
-                    <tr key={item.currency} className="hover:bg-surface/60 transition-colors">
-                      <td className="py-3.5 px-6 font-bold text-primary">{item.currency}</td>
-                      <td className="py-3.5 px-6 text-text-secondary text-xs">{item.name}</td>
-                      <td className="py-3.5 px-6 text-right font-semibold text-text">{item.rate}</td>
-                      <td className="py-3.5 px-6 text-right text-xs">
-                        <span className={item.change.startsWith("+") ? "text-success font-medium" : "text-text-secondary"}>
+                    <TableRow key={item.currency} className="hover:bg-surface/50">
+                      <TableCell className="py-3 px-5 font-bold text-primary">
+                        {item.currency}
+                      </TableCell>
+                      <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                        {item.name}
+                      </TableCell>
+                      <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                        {item.rate}
+                      </TableCell>
+                      <TableCell className="py-3 px-5 text-right text-xs">
+                        <span
+                          className={
+                            item.status === "up"
+                              ? "text-success font-semibold inline-flex items-center gap-1"
+                              : "text-text-secondary font-medium inline-flex items-center gap-1"
+                          }
+                        >
                           {item.change}
                         </span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
+
+            <p className="text-[11px] text-text-secondary leading-normal">
+              * Nilai kurs KMK digunakan sebagai dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN) Barang dan Jasa, serta Pajak Penghasilan (PPh) Pasal 22 Impor.
+            </p>
           </div>
 
-          {/* Regulation Quick Links & Downloads */}
-          <div className="rounded-lg border border-primary-light bg-surface p-6 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-primary">Pusat Regulasi &amp; Tautan DJP</h3>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                Akses langsung ke regulasi induk, undang-undang harmonisasi peraturan perpajakan, dan petunjuk teknis implementasi Coretax.
-              </p>
-
-              <div className="space-y-3 pt-2">
-                <a
-                  href="https://djponline.pajak.go.id"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-3 rounded-md bg-white border border-primary-light hover:border-primary text-xs font-semibold text-primary transition-colors"
-                >
-                  &bull; Portal Resmi DJP Online &rarr;
-                </a>
-                <div className="p-3 rounded-md bg-white border border-primary-light text-xs space-y-1">
-                  <div className="font-semibold text-primary">UU Harmonisasi Peraturan Perpajakan (HPP)</div>
-                  <div className="text-[11px] text-text-secondary">Ringkasan tarif dan penyesuaian regulasi PPh &amp; PPN</div>
-                </div>
-                <div className="p-3 rounded-md bg-white border border-primary-light text-xs space-y-1">
-                  <div className="font-semibold text-primary">Panduan Transisi Sistem Coretax</div>
-                  <div className="text-[11px] text-text-secondary">Langkah registrasi dan sinkronisasi data wajib pajak</div>
-                </div>
+          {/* Regulation Quick Links & Downloads (5 cols) */}
+          <div className="lg:col-span-5 rounded-lg border border-primary-light bg-surface p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <ShieldTaxIcon className="text-primary text-sm" />
+                <h3 className="text-card-heading font-semibold text-primary">
+                  Pusat Regulasi &amp; Tautan DJP
+                </h3>
               </div>
+              <p className="text-xs text-text-secondary leading-relaxed">
+                Akses langsung ke regulasi induk perpajakan nasional, harmonisasi UU HPP, dan petunjuk teknis implementasi Coretax.
+              </p>
             </div>
 
-            <Button variant="outline" size="sm" className="w-full text-xs font-semibold">
-              Unduh Arsip Regulasi Perpajakan (PDF)
+            {/* Official Portal Quick Link */}
+            <a
+              href="https://djponline.pajak.go.id"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-between p-3.5 rounded-lg bg-white border border-primary-light hover:border-primary hover:shadow-sm transition-all text-xs font-semibold text-primary"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-primary-light text-primary flex items-center justify-center text-xs">
+                  <CheckCircleIcon className="text-success" />
+                </div>
+                <span>Portal Resmi DJP Online (Kemenkeu)</span>
+              </div>
+              <ArrowRightIcon className="text-xs text-primary transition-transform group-hover:translate-x-1" />
+            </a>
+
+            {/* Regulation Documents List */}
+            <div className="space-y-2.5">
+              <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
+                Dokumen Regulasi Terkini
+              </span>
+              {regulations.map((reg, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-lg bg-white border border-primary-light flex items-start justify-between gap-3 text-xs hover:border-silver transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <BookIcon className="text-text-secondary text-[11px]" />
+                      <span className="font-semibold text-primary">
+                        {reg.title}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-text-secondary leading-normal">
+                      {reg.desc}
+                    </p>
+                  </div>
+                  <Badge variant="outline" size="sm" className="whitespace-nowrap flex-shrink-0">
+                    {reg.size}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="w-full text-xs font-semibold hover:border-primary justify-center gap-2"
+            >
+              <a
+                href="#kontak"
+                className="inline-flex items-center justify-center gap-2"
+              >
+                <DownloadIcon className="text-xs" />
+                <span>Unduh Kompilasi Regulasi Pajak (PDF)</span>
+              </a>
             </Button>
           </div>
         </div>
@@ -102,3 +258,4 @@ export function RegulationsSection() {
     </section>
   );
 }
+

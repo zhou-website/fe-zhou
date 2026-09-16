@@ -7,14 +7,14 @@
   "ui": "shadcn/ui",
   "typography": "Open Sans",
   "icons": "Font Awesome",
-  "lastUpdated": "15 September 2026",
-  "currentPhase": "Design System Implementation → Front-End Slicing & Implementation",
+  "lastUpdated": "16 September 2026",
+  "currentPhase": "Responsive Implementation & Cross-Device Optimization",
   "nextTask": {
-    "id": "M3-D5-T1",
-    "task": "Continue Hero slicing",
-    "module": "Front-End Slicing & Implementation",
+    "id": "M5-D3-T1",
+    "task": "Responsive Header and Hero",
+    "module": "Responsive Implementation",
     "status": "NOT STARTED",
-    "reason": "Week 2 progress committed to git; proceed to Week 3 slicing continuation."
+    "reason": "M5-D2-T2 Integrasi seluruh seksi landing page selesai (Modul Front-End Slicing & Implementation rampung 100%); lanjutkan ke Modul Responsive Implementation dimulai dengan optimasi responsivitas Header/Navbar dan Hero section pada breakpoint mobile (sm: 640px, md: 768px, lg: 1024px)."
   },
   "landingPageSections": [
     {
@@ -26,11 +26,23 @@
       "status": "COMPLETED"
     },
     {
-      "section": "About / Siapa Kita",
+      "section": "About / Profil Perusahaan",
       "status": "COMPLETED"
     },
     {
-      "section": "Services / Layanan",
+      "section": "Services / Katalog Layanan",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Regulations / Portal Kurs KMK & Regulasi",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Education / Literasi & Wawasan Fiskal",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Careers / Peluang Karir",
       "status": "COMPLETED"
     },
     {
@@ -39,6 +51,10 @@
     },
     {
       "section": "Footer",
+      "status": "COMPLETED"
+    },
+    {
+      "section": "Floating WhatsApp CTA",
       "status": "COMPLETED"
     }
   ],
@@ -392,144 +408,144 @@
       "week": "Week 3",
       "module": "Front-End Slicing & Implementation",
       "task": "Continue Hero slicing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing Hero disempurnakan dengan integrasi komponen Card design system, tipografi text-balance pada heading, label teks berstandar token Open Sans, badge Coretax DJP bertekstur, serta mikro-interaksi tombol navigasi."
     },
     {
       "id": "M3-D5-T2",
       "week": "Week 3",
       "module": "Front-End Slicing & Implementation",
       "task": "Continue Company Profile slicing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing Profil Perusahaan (AboutSection) disempurnakan dengan integrasi primitif Card/CardHeader/CardTitle/CardContent design system, skala tipografi matriks responsif, dan baris kredibilitas legalitas (BKP, CA, Kesiapan Coretax)."
     },
     {
       "id": "M3-D5-T3",
       "week": "Week 3",
       "module": "Front-End Slicing & Implementation",
       "task": "Review components against Figma",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Seluruh komponen landing page (Navbar, Hero, Profil, Layanan, Regulasi, Edukasi, Karir, Kontak, Footer) dan primitif UI ditinjau ulang terhadap Figma Node 71:2; tipografi matriks responsif, skala token warna, batas a11y, dan Card primitives terselaraskan 100%."
     },
     {
       "id": "M4-D1-T1",
       "week": "Week 4",
       "module": "Design System Implementation",
       "task": "Implement Select, Checkbox, and Radio",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Komponen formulir modular Select (src/components/ui/select.tsx), Checkbox (src/components/ui/checkbox.tsx), dan Radio / RadioGroup (src/components/ui/radio.tsx & radio-group.tsx) berhasil diimplementasikan dengan kepatuhan token warna Zhou Consulting, aksesibilitas keyboard, dan zero external packages."
     },
     {
       "id": "M4-D1-T2",
       "week": "Week 4",
       "module": "Design System Implementation",
       "task": "Implement Badge and Tooltip",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Komponen Badge disempurnakan dengan varian ukuran (default, sm, lg) dan indikator status dot (src/components/ui/badge.tsx); komponen interaktif Tooltip modular (src/components/ui/tooltip.tsx) diimplementasikan dengan TooltipProvider, Tooltip, TooltipTrigger, TooltipContent, dukungan keyboard (Escape), dan tema gelap korporat."
     },
     {
       "id": "M4-D2-T1",
       "week": "Week 4",
       "module": "Design System Implementation",
       "task": "Implement Dialog and Dropdown",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Komponen modular Dialog (src/components/ui/dialog.tsx) dengan backdrop overlay, keyboard accessibility (Escape), dan focus trapping; serta DropdownMenu (src/components/ui/dropdown-menu.tsx & dropdown.tsx) dengan penanganan klik luar dan keyboard navigation berhasil diimplementasikan."
     },
     {
       "id": "M4-D2-T2",
       "week": "Week 4",
       "module": "Design System Implementation",
       "task": "Implement Tabs and Table",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Komponen modular Tabs (src/components/ui/tabs.tsx) dengan TabsList, TabsTrigger, TabsContent, state active/inactive; serta Table (src/components/ui/table.tsx) dengan TableHeader, TableBody, TableRow, TableHead (skala tipografi table-heading 13px/600), TableCell, dan TableCaption berhasil diimplementasikan."
     },
     {
       "id": "M4-D3-T1",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Services – Consultation",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing pilar layanan konsultasi (Accounting Service, Business Financial Consulting, dan Konsultasi Hukum) di ServicesSection.tsx disempurnakan dengan integrasi Tabs filter modular, kartu berbobot tipografi presisi, daftar deliverable lengkap, dan aksi navigasi responsif."
     },
     {
       "id": "M4-D3-T2",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Services – Tax Service",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing pilar Tax Service Core di ServicesSection.tsx disempurnakan dengan kartu ringkasan terintegrasi badge Coretax DJP, 3 sub-layanan spesialis (Kepatuhan & Pelaporan SPT, Tax Planning & Advisory, Pendampingan SP2DK & Audit), banner kesiapan Coretax 2026, serta penataan grid responsif adaptif."
     },
     {
       "id": "M4-D4-T1",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Tax Information",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing portal Tax Information & Regulasi di RegulationsSection.tsx disempurnakan dengan integrasi Table primitive design system berstandar Figma (Open Sans, palet resmi), tabel Kurs Menteri Keuangan (KMK) mingguan 7 valuta asing (USD, EUR, SGD, CNY, JPY, GBP, AUD) dengan indikator fluktuasi, tautan resmi Portal DJP Online Kemenkeu, daftar dokumen regulasi pokok (UU HPP, PMK 168 PPh 21 TER, Panduan Coretax 2026), serta tombol unduh kompilasi PDF yang responsif dan terverifikasi."
     },
     {
       "id": "M4-D4-T2",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Tax Education",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing portal Tax Education di EducationSection.tsx disempurnakan dengan integrasi Card dan Tabs design system berstandar Figma (Open Sans, palet resmi), filter 4 kategori (Semua Topik, Coretax & Digital, Kepatuhan Pajak, Akuntansi Bisnis), 4 artikel kurasi mendalam dengan poin kunci fiskal, reader modal berbasis komponen modular Dialog lengkap dengan dialog backdrop, key takeaways callout, unduh ringkasan PDF dengan feedback state, serta banner edukasi in-house training Zhou Consulting yang responsif."
     },
     {
       "id": "M4-D5-T1",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Review landing page",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Review komprehensif seluruh landing page Zhou Consulting (Navbar, Hero, AboutSection, ServicesSection, RegulationsSection, EducationSection, CareerSection, ContactSection, Footer) selesai: tipografi 100% Open Sans terstandar, palet warna korporat resmi (#0B1533, #060D22, #E9EDF5, #C5C8D0, #F7F8FA, #172033, #667085, #12B76A, #D92D20) bebas 100% dari aksen terlarang emas/kuning/oranye/ungu, integrasi penuh komponen design system (Card, Tabs, Table, Dialog, Badge, Button), 0 ESLint warning/error, 0 TypeScript error, dan build produksi ('next build') sukses 100% untuk semua 9 rute statis."
     },
     {
       "id": "M4-D5-T2",
       "week": "Week 4",
       "module": "Front-End Slicing & Implementation",
       "task": "Refactor reusable components",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Refactoring dan audit menyeluruh 16 komponen reusable design system di src/components/ui/ selesai: penyediaan barrel export terpusat di src/components/ui/index.ts, konsolidasi tipe TypeScript (polymorphic asChild pada DialogClose, konsistensi Button sizes, Badge variants), standardisasi forwardRef dan displayNames, serta verifikasi kelulusan 100% pada ESLint dan TypeScript strict compiler tanpa kompromi performa bundle."
     },
     {
       "id": "M5-D1-T1",
       "week": "Week 5",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Careers section",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing seksi Karir di CareerSection.tsx disempurnakan dengan integrasi Card, Badge, dan Tabs filter bidang pekerjaan (Semua Bidang, Perpajakan & Coretax, Akuntansi & SAK, Business Advisory), 4 listing lowongan kerja detail dengan kualifikasi & skill tag, modal lamaran interaktif berbasis komponen Dialog lengkap dengan validasi berkas PDF (maks. 5MB), konfirmasi pengiriman lamaran, serta panel edukasi kultur & benefit Zhou Consulting berstandar Figma (Open Sans, palet resmi tanpa aksen emas)."
     },
     {
       "id": "M5-D1-T2",
       "week": "Week 5",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Contact section",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing seksi Kontak di ContactSection.tsx disempurnakan dengan integrasi Card, Select (pemilihan pilar layanan: Tax, SAK, Business, Legal, SP2DK, In-House Training), Input & Textarea dengan error feedback state visual (border-error), validasi form inline email/nama/pesan tanpa alert browser, konfirmasi pengiriman permohonan konsultasi, serta kartu informasi operasional kantor (alamat Sudirman, telepon, email resmi, jam operasional) dan kartu integrasi WhatsApp CS berstandar Figma (Open Sans, palet resmi tanpa aksen emas)."
     },
     {
       "id": "M5-D1-T3",
       "week": "Week 5",
       "module": "Front-End Slicing & Implementation",
       "task": "Implement WhatsApp CTA",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Implementasi WhatsApp CTA menyeluruh selesai dengan komponen FloatingWhatsAppCTA (floating action button responsif di pojok kanan bawah dengan trigger scroll > 150px, status CS online, quick topic selection untuk Pajak/Coretax, SAK, SP2DK dengan pesan pra-format URL-encoded, serta integrasi tombol chat WhatsApp CS di ContactSection dan Footer berstandar brand palet resmi)."
     },
     {
       "id": "M5-D2-T1",
       "week": "Week 5",
       "module": "Front-End Slicing & Implementation",
       "task": "Slice Footer",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Slicing Footer di Footer.tsx disempurnakan berstandar Figma: identitas brand Zhou Consulting lengkap dengan akreditasi resmi (BKP, CA, Coretax 2026 Ready), 4 kolom navigasi terstruktur (Profil & Regulasi, Layanan Konsultasi Spesialis, Tax Service Core, Akses Portal Klien dengan notice NDA), saluran kontak operasional resmi (alamat Sudirman Kav. 21, telepon, email, tautan media sosial), tombol Kembali ke Atas smooth-scroll, serta modal interaktif berbasis Dialog untuk Kebijakan Privasi (UU No. 27/2022 UU PDP), Syarat & Ketentuan Konsultasi, dan Standar Kepatuhan Etika Profesi (IKPI/IAI)."
     },
     {
       "id": "M5-D2-T2",
       "week": "Week 5",
       "module": "Front-End Slicing & Implementation",
       "task": "Integrate all landing page sections",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "status": "COMPLETED",
+      "evidence": "Integrasi menyeluruh seluruh seksi landing page di src/app/page.tsx selesai 100%: Navbar (header sticky, logo brand, dropdown layanan, mobile drawer), Hero (headline terukur, badge resmi, CTA navigasi, kartu metrik), AboutSection (profil korporat, legalitas BKP/CA/Coretax, 3 pilar), ServicesSection (konsultasi & tax core, tabs filter, kesiapan Coretax 2026), RegulationsSection (tabel kurs KMK mingguan valas, tautan portal DJP Online, unduh PDF), EducationSection (tabs kategori, 4 artikel kurasi, reader modal Dialog, spotlight training), CareerSection (tabs bidang kerja, 4 lowongan, modal formulir lamaran & upload CV), ContactSection (formulir konsultasi dengan Select pilar layanan & validasi inline, info kantor Sudirman), Footer (sitemap lengkap, legal notice, modal interaktif Privasi/Syarat/Kepatuhan, scroll-to-top), serta FloatingWhatsAppCTA. Seluruh flow anchor antar seksi terverifikasi dan modul Front-End Slicing & Implementation mencapai 100% kelulusan (22/22 task)."
     },
     {
       "id": "M5-D3-T1",

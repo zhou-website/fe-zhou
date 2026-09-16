@@ -9,6 +9,7 @@ import {
   CareerSection,
   ContactSection,
   Footer,
+  FloatingWhatsAppCTA,
 } from "@/components/landing";
 
 export default function Home() {
@@ -30,6 +31,9 @@ export default function Home() {
 
       {/* 3. Footer */}
       <Footer />
+
+      {/* 4. Floating WhatsApp CTA */}
+      <FloatingWhatsAppCTA />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-[18px] transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+  "inline-flex items-center rounded-full font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 select-none",
   {
     variants: {
       variant: {
@@ -14,20 +14,46 @@ const badgeVariants = cva(
         error: "bg-error/15 text-error border border-error/30",
         outline: "border border-silver text-text-secondary bg-transparent",
       },
+      size: {
+        default: "px-2.5 py-0.5 text-xs leading-[18px]",
+        sm: "px-2 py-0.25 text-[11px] leading-[16px]",
+        lg: "px-3 py-1 text-xs leading-[18px]",
+      },
     },
     defaultVariants: {
       variant: "primary",
+      size: "default",
     },
   }
 );
 
-export type BadgeProps = React.HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof badgeVariants>;
+export interface BadgeProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof badgeVariants> {
+  dot?: boolean;
+}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, size, dot = false, children, ...props }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div className={cn(badgeVariants({ variant, size }), className)} {...props}>
+      {dot && (
+        <span
+          className={cn(
+            "mr-1.5 h-1.5 w-1.5 rounded-full",
+            variant === "success" && "bg-success",
+            variant === "error" && "bg-error",
+            variant === "primary" && "bg-white",
+            variant === "secondary" && "bg-primary",
+            variant === "silver" && "bg-primary",
+            variant === "outline" && "bg-text-secondary"
+          )}
+          aria-hidden="true"
+        />
+      )}
+      {children}
+    </div>
   );
 }
 
 export { Badge, badgeVariants };
+

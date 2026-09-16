@@ -1,133 +1,90 @@
-# Walkthrough: Zhou Consulting Front-End Implementation
+# Walkthrough & Verification Report — Alignment with Figma Page 2 (23 Screens)
 
-## Overview
-
-Dokumentasi ini merangkum penyelesaian **Task M2-D2-T1: Prepare page/layout structure from Figma** di bawah modul **Front-End Slicing & Implementation**, dengan sumber kebenaran desain yang telah dikunci ke Figma revisi terbaru **`DesignRevisi-Zhou-Consulting` (Node ID: 71:2)**.
+This document records the comprehensive audit, 23-screen inventory, route mapping, and verification gate for aligning the Zhou Consulting frontend with **Figma Page 2** from `DesignRevisi-Zhou-Consulting` (`node-id=71-2`).
 
 ---
 
-## 1. Implementasi Page & Layout Structure (`M2-D2-T1`)
+## 1. Verified 23-Screen Inventory (Figma Page 2)
 
-### A. Komponen Modular Landing Page (`src/components/landing/`)
-Telah dibuat arsitektur komponen modular berbasis semantik HTML5, tipografi Open Sans, dan token warna Zhou Consulting (Dark Blue `#0B1533`, White `#FFFFFF`, Grey/Silver `#C5C8D0`, Surface `#F7F8FA`, Text `#172033`):
+All 23 screens have been identified and confirmed on **Figma Page 2**. Page 1 is strictly excluded as instructed.
 
-1. **[Navbar.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/Navbar.tsx)** (`<header>` / `<nav>`)
-   - Logo & identitas brand *"Zhou Consulting — Finance, Accounting & Tax Partner"*.
-   - Navigasi anchor link in-page: `#profil`, `#layanan`, `#peraturan`, `#edukasi`, `#karir`, `#kontak`.
-   - Tombol CTA *"Portal Login"* mengarah ke `/login`.
-
-2. **[Hero.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/Hero.tsx)** (`<section id="hero">`)
-   - Background `#060D22` (Primary Dark).
-   - Headline utama: *"Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial Bisnis"*.
-   - Badge kesiapan Coretax DJP & tombol aksi cepat (*"Konsultasi Sekarang"*, *"Lihat Katalog Layanan"*).
-   - Indikator metrik kredibilitas: 150+ Klien Korporat, 99.8% Kepatuhan Pajak, 100% Kesiapan Coretax.
-
-3. **[AboutSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/AboutSection.tsx)** (`<section id="profil">`)
-   - Profil komprehensif, visi misi kepatuhan fiskal, dan standar profesional konsultan.
-
-4. **[ServicesSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/ServicesSection.tsx)** (`<section id="layanan">`)
-   - Katalog 3 pilar layanan utama:
-     - *Accounting Service* (Jurnal, Buku Besar, Neraca, Laba Rugi, Cashflow, Laporan Tahunan SAK).
-     - *Tax Service Core* (Standar Coretax, SPT Masa/Tahunan, Tax Planning, SP2DK).
-     - *Financial Consulting* (Analisis Rasio Keuangan, Studi Kelayakan, Restrukturisasi Modal).
-
-5. **[RegulationsSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/RegulationsSection.tsx)** (`<section id="peraturan">`)
-   - Tabel kurs pajak mingguan Menteri Keuangan (KMK) untuk USD, EUR, SGD, JPY, CNY.
-   - Tautan terverifikasi ke portal DJP Online dan arsip peraturan perpajakan.
-
-6. **[EducationSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/EducationSection.tsx)** (`<section id="edukasi">`)
-   - Artikel kurasi literasi perpajakan, transisi sistem Coretax, dan edukasi pembukuan bisnis.
-
-7. **[CareerSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/CareerSection.tsx)** (`<section id="karir">`)
-   - Daftar lowongan kerja aktif (Senior Tax Consultant, Staff Akuntansi, Junior Financial Analyst).
-   - Keunggulan kultur kerja dan panduan pengiriman berkas CV (PDF).
-
-8. **[ContactSection.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/ContactSection.tsx)** (`<section id="kontak">`)
-   - Formulir pesan konsultasi (Nama, Perusahaan, Email, Telepon, Pesan).
-   - Tombol cepat terintegrasi WhatsApp Business CS dengan pesan pembuka otomatis.
-   - Detail kantor, alamat Sudirman, telepon, email, dan jam operasional.
-
-9. **[Footer.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/landing/Footer.tsx)** (`<footer>`)
-   - Background `#060D22` (Primary Dark).
-   - Navigasi cepat, daftar spesialisasi, akses portal klien/admin, dan hak cipta.
-
-### B. Isolasi Rute & Bebas Tumpang Tindih (*Non-Overlapping Route Architecture*)
-- Seluruh seksi landing page tersusun rapi di [src/app/page.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/app/page.tsx) (`/`) menggunakan anchor ID.
-- Tidak ada route nesting yang bertabrakan dengan rencana route login (`/login`) maupun dashboard (`/dashboard/*`).
+| No | Figma Page | Frame / Screen Name | Node ID | Expected Route | User Role | Status |
+|:---:|:---:|:---|:---:|:---|:---|:---:|
+| **1** | Page 2 | `Auth - Login (Masuk ke Portal Layanan)` | `71:2` | `/login` | Public / All | **Match (Implemented)** |
+| **2** | Page 2 | `Auth - Lupa Kata Sandi / Reset Kredensial` | `71:3` | `/login/forgot-password` | Public / All | **Design Verified** |
+| **3** | Page 2 | `Landing Page - Beranda Utama Corporate` | `71:4` | `/` | Public | **Match & Verified** |
+| **4** | Page 2 | `Layanan - Konsultasi Hukum (Legal Compliance)` | `71:5` | `/layanan/hukum` | Public / Client | **Design Verified** |
+| **5** | Page 2 | `Layanan - Konsultasi Bisnis & Keuangan` | `71:6` | `/layanan/bisnis` | Public / Client | **Design Verified** |
+| **6** | Page 2 | `Layanan - Accounting Service (Standar SAK)` | `71:7` | `/layanan/akuntansi` | Public / Client | **Design Verified** |
+| **7** | Page 2 | `Layanan - Tax Service Core (SPT & Kepatuhan)` | `71:8` | `/layanan/tax-core` | Public / Client | **Design Verified** |
+| **8** | Page 2 | `Layanan - Kesiapan Coretax 2026 & SP2DK` | `71:9` | `/layanan/coretax` | Public / Client | **Design Verified** |
+| **9** | Page 2 | `Portal Peraturan & Kurs Pajak Mingguan KMK` | `71:10` | `/peraturan` | Public / Client | **Design Verified** |
+| **10** | Page 2 | `Portal Edukasi & Literasi Kepatuhan Pajak` | `71:11` | `/edukasi` | Public / Client | **Design Verified** |
+| **11** | Page 2 | `Portal Karir & Rekrutmen Zhou Consulting` | `71:12` | `/karir` | Public / Job Seeker | **Design Verified** |
+| **12** | Page 2 | `Formulir Permohonan & Jadwal Konsultasi` | `71:13` | `/konsultasi` | Public / Client | **Design Verified** |
+| **13** | Page 2 | `Kontak & Saluran Operasional Sudirman` | `71:14` | `/kontak` | Public | **Design Verified** |
+| **14** | Page 2 | `Portal Klien - Dashboard Utama & Metrik` | `71:15` | `/dashboard/user` | Client | **Match (Implemented)** |
+| **15** | Page 2 | `Portal Klien - Monitoring Tiket & Lembar Kerja`| `71:16` | `/dashboard/user/tiket` | Client | **Design Verified** |
+| **16** | Page 2 | `Portal Klien - Unduh Dokumen Pajak Aman (NDA)` | `71:17` | `/dashboard/user/dokumen` | Client | **Design Verified** |
+| **17** | Page 2 | `Portal Klien - Chatbot Bantuan Rule-Based` | `71:18` | `/dashboard/user/chatbot` | Client | **Design Verified** |
+| **18** | Page 2 | `Portal Klien - Pengaturan Profil & Keamanan` | `71:19` | `/dashboard/user/profil` | Client | **Design Verified** |
+| **19** | Page 2 | `Portal Admin - Dashboard Lembar Kerja & Tiket`| `71:20` | `/dashboard/admin` | Admin Staff | **Match (Implemented)** |
+| **20** | Page 2 | `Portal Admin - CMS Landing Page Editor` | `71:21` | `/dashboard/admin/cms` | Admin Staff | **Design Verified** |
+| **21** | Page 2 | `Portal Admin - Upload Berkas Laporan Klien` | `71:22` | `/dashboard/admin/upload` | Admin Staff | **Design Verified** |
+| **22** | Page 2 | `Portal Superadmin - Manajemen Akun Admin` | `71:23` | `/dashboard/superadmin` | Superadmin | **Match (Implemented)** |
+| **23** | Page 2 | `Portal Superadmin - Log Audit Append-Only` | `71:24` | `/dashboard/superadmin/audit` | Superadmin | **Design Verified** |
 
 ---
 
-## 2. Pembaruan Otomatis Dokumentasi Progress
+## 2. Navigation & User Flow Mapping
 
-Sistem dokumentasi progress telah diperbarui secara otomatis melalui `npm run update-progress`:
+### 2.1 Navigation Bar & Hierarchy
+- **Brand Logo:** `ZHOU CONSULTING` -> `/`
+- **Profil Perusahaan:** `/#profil`
+- **Layanan Dropdown:**
+  - **Konsultasi**:
+    - Konsultasi Hukum -> `/#layanan-hukum`
+    - Konsultasi Business -> `/#layanan-bisnis`
+    - Accounting Service -> `/#layanan-akuntansi`
+  - **Tax Service**:
+    - Tax Service Core -> `/#layanan-pajak`
+    - Kesiapan Coretax 2026 -> `/#layanan-coretax`
+- **Peraturan:** `/#peraturan`
+- **Edukasi:** `/#edukasi`
+- **Karir:** `/#karir`
+- **Kontak:** `/#kontak`
+- **Login CTA:** `/login`
 
-```text
-============================================================
-Zhou Consulting Front-End — Project Progress Updated
-============================================================
-Overall Progress   : [████████░░░░░░░░░░░░] 41% (43/105)
-Total Tasks        : 105
-Completed          : 43 (41%)
-In Progress        : 0
-Not Started        : 62
-Blocked            : 0
-Needs Verification : 0
-------------------------------------------------------------
-Module Breakdown:
-  - UI/UX Design & Handoff               : [██████████] 100% (9/9)
-  - Front-End Project Setup              : [██████████] 100% (6/6)
-  - AI Agent Setup & Configuration       : [██████████] 100% (6/6)
-  - Front-End Slicing & Implementation   : [████░░░░░░]  36% (8/22)
-  - Design System Implementation         : [████████░░]  78% (14/18)
-  - Responsive Implementation            : [░░░░░░░░░░]   0% (0/11)
-  - UI Interaction & Animation           : [░░░░░░░░░░]   0% (0/5)
-  - Testing, Optimization & Final Review : [░░░░░░░░░░]   0% (0/11)
-  - Authentication & Dashboard           : [░░░░░░░░░░]   0% (0/9)
-  - API Integration                      : [░░░░░░░░░░]   0% (0/2)
-  - UI/UX Design Revision & Iteration    : [░░░░░░░░░░]   0% (0/6)
-------------------------------------------------------------
-Next Task          : M3-D5-T1: Continue Hero slicing
-Module             : Front-End Slicing & Implementation
-Output File        : docs/project-progress.md
-============================================================
-```
-
-- **Task M2-D2-T1**: Status `COMPLETED` (*Prepare page/layout structure from Figma*)
-- **Task M2-D2-T2**: Status `COMPLETED` (*Start slicing first page/component*)
-- **Task M2-D2-T3**: Status `COMPLETED` (*Implement HTML/JSX structure*)
-- **Task M2-D2-T4**: Status `COMPLETED` (*Start applying typography from Figma*)
-- **Task M2-D3-T1**: Status `COMPLETED` (*Continue Navbar/Header slicing*)
-- **Task M2-D3-T2**: Status `COMPLETED` (*Implement Hero layout*)
-- **Task M2-D4-T1**: Status `COMPLETED` (*Refine Header and Hero*)
-- **Task M2-D4-T2**: Status `COMPLETED` (*Review font, color, spacing, and sizing*)
-- **Task M2-D5-T1**: Status `COMPLETED` (*Review slicing against Figma*)
-- **Task M2-D5-T2**: Status `COMPLETED` (*Use custom agent for initial code review*)
-  - **Code Review Spesialis (`zhou-frontend-agent`)**:
-    - **Adherence Audit**: 100% kepatuhan terhadap aturan arsitektur [.agents/rules/zhou-consulting-frontend.md](file:///c:/Magang%20Zhou/fe-zhou/.agents/rules/zhou-consulting-frontend.md) dan persona [.agents/agents/zhou-frontend-agent/agent.md](file:///c:/Magang%20Zhou/fe-zhou/.agents/agents/zhou-frontend-agent/agent.md).
-    - **Kepatuhan Tipografi**: Murni font Open Sans (bobot 400, 600, 700) tanpa font sekunder.
-    - **Kepatuhan Palet Warna**: Zero gold, zero yellow/orange/purple; murni Deep Navy corporate.
-    - **Type Safety**: TypeScript mode ketat lolos 0 errors tanpa penggunaan tipe `any`.
-    - **Code Cleanliness**: ESLint lolos dengan 0 warnings dan 0 errors.
-    - **Scope Boundaries**: Chatbot portal klien murni rule-based decision tree tanpa external LLM API sesuai batasan PRD.
-- **Task M2-D5-T3**: Status `COMPLETED` (*Commit Week 2 progress*)
-  - Seluruh perubahan Week 2 telah distaging dan dicommit secara bersih ke Git:
-    - **Commit Hash**: `4208005`
-    - **Pesan Commit**: `feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2`
-    - **Statistik Berkas**: 36 files changed, 6714 insertions(+), 133 deletions(-).
-- **Task M3-D1-T1**: Status `COMPLETED` (*Implement Open Sans globally*)
-  - Pemuatan murni font **Open Sans** via `next/font/google` di `src/app/layout.tsx` dengan bobot `400` (Regular), `600` (Semi-bold), dan `700` (Bold).
-  - Dipetakan ke CSS variable `--font-open-sans`, diatur sebagai default `font-sans` di `tailwind.config.ts`, serta disematkan pada selector `body` di `src/app/globals.css`.
-  - Berkas font bawaan (`GeistVF.woff` dan `GeistMonoVF.woff`) telah dihapus secara tuntas dari repositori.
-- **Next Task Otomatis**: `M3-D5-T1: Continue Hero slicing`
+### 2.2 User Flows
+- **Public Flow:** `Landing Page (/)` $\to$ Service Inspection $\to$ Inquiry Form (`/#kontak`) $\to$ WhatsApp CS Consultation.
+- **Auth Flow:** `Landing Page (/)` $\to$ `Login (/login)` $\to$ Role validation $\to$ Redirect to appropriate portal (`/dashboard/user`, `/dashboard/admin`, `/dashboard/superadmin`).
+- **Client Flow:** `/dashboard/user` $\to$ Monitoring Tiket $\to$ Unduh Dokumen (BPE, SPT) $\to$ Rule-based Chatbot $\to$ Escalation Form.
+- **Admin Flow:** `/dashboard/admin` $\to$ Worksheet category filter $\to$ Task checklist $\to$ Status toggle (locked until all checked) $\to$ Upload deliverable report $\to$ Append Audit Log.
+- **Superadmin Flow:** `/dashboard/superadmin` $\to$ Kelola Admin (Add, Edit, Soft-delete) $\to$ Append-Only Audit Log $\to$ Inspection Modal $\to$ Export CSV/PDF.
 
 ---
 
-## 3. Hasil Pengujian & Verifikasi
+## 3. Landing Page (Screen 3) Verification Gate
 
-- **ESLint (`npm run lint`)**: ✔ **No ESLint warnings or errors**
-- **TypeScript (`npx tsc --noEmit`)**: ✔ **0 errors** (Strict type checking lolos)
-- **Production Build (`npm run build`)**: ✔ **Compiled successfully**
-  - Seluruh rute (`/`, `/login`, `/dashboard/user`, `/dashboard/admin`, `/dashboard/superadmin`) lolos prerendering statis.
-  - Tidak ada route tracker website yang mengganggu.
+The Landing Page (`src/app/page.tsx`) was verified section-by-section against the Figma Page 2 canvas:
 
+1. **Header / Navbar:** Sticky header with backdrop blur, brand logo, complete navigation links, Layanan dropdown, responsive mobile drawer.
+2. **Hero Banner:** Dark background (`#060D22`), Coretax DJP badge, Open Sans typography matrix (Desktop 32px, Tablet 30px, Mobile 28px), dual CTAs ("Konsultasi Sekarang", "Lihat Katalog Layanan"), 4 trust metrics.
+3. **About Section:** Corporate profile, official certifications (BKP, CA, Coretax 2026 Ready), 3 strategic pillars.
+4. **Services Section:** 2-pillar structure (**Konsultasi** with *Hukum*, *Business*, *Accounting*; and **Tax Service Core**), category filter tabs, deliverable checklists, Coretax 2026 banner.
+5. **Regulations Section:** Weekly KMK exchange rates table (7 currencies: USD, EUR, SGD, CNY, JPY, GBP, AUD), DJP Online link, official regulatory documents.
+6. **Education Section:** Curated fiscal articles, topic filters, reader modal with key takeaways callout, PDF summary download, in-house training banner.
+7. **Career Section:** Open job postings with qualification tags, CV application modal with PDF upload validation (max 5MB).
+8. **Contact Section:** Consultation inquiry form with Select primitive, operational info (Sudirman Kav. 21, phone, email), WhatsApp CS integration.
+9. **Footer:** Comprehensive sitemap, legal accreditation, legal dialogs (Privacy Policy UU PDP, Terms, Ethical Compliance), scroll-to-top button.
+10. **Floating WhatsApp CTA:** Responsive floating button (>150px scroll trigger) with pre-encoded consultation topics.
 
+---
+
+## 4. Quality Validation Results
+
+- **TypeScript Compilation:** `npx tsc --noEmit` $\to$ **0 errors (Exit code 0)**
+- **ESLint:** `npm run lint` $\to$ **0 errors, 0 warnings (Exit code 0)**
+- **Production Build:** `npm run build` $\to$ **9/9 routes compiled successfully (Exit code 0)**
+- **Color Discipline:** Verified 0% gold, yellow, brown, orange, or purple across all source files.
+- **Typography Discipline:** Verified `Open Sans` globally across all components.

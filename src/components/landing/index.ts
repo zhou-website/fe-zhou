@@ -7,3 +7,4 @@ export { EducationSection } from "./EducationSection";
 export { CareerSection } from "./CareerSection";
 export { ContactSection } from "./ContactSection";
 export { Footer } from "./Footer";
+export { FloatingWhatsAppCTA } from "./FloatingWhatsAppCTA";
