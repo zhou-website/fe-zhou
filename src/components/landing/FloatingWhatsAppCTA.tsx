@@ -61,7 +61,7 @@ export function FloatingWhatsAppCTA() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="text-silver hover:text-white p-1 focus:outline-none transition-colors"
+              className="text-silver hover:text-white p-1 focus:outline-none transition-colors cursor-pointer"
               aria-label="Tutup jendela chat"
             >
               <CloseIcon className="text-sm" />
@@ -112,7 +112,7 @@ export function FloatingWhatsAppCTA() {
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Buka WhatsApp Customer Service"
           aria-expanded={isOpen}
-          className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-success text-white shadow-xl hover:bg-success/90 hover:scale-105 active:scale-95 transition-all flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-success/30"
+          className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-success text-white shadow-xl hover:bg-success/90 hover:scale-105 active:scale-95 transition-all flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-success/30 cursor-pointer"
         >
           {isOpen ? (
             <CloseIcon className="text-xl" />

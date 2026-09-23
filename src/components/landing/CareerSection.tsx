@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,15 +29,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  BriefcaseIcon,
   CheckCircleIcon,
   DocumentIcon,
   LocationIcon,
   ClockIcon,
-  ShieldTaxIcon,
-  BuildingIcon,
-  ArrowRightIcon,
 } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface JobPosition {
   id: string;
@@ -102,8 +100,9 @@ const JOBS: JobPosition[] = [
 ];
 
 export function CareerSection() {
-  const [selectedJob, setSelectedJob] = useState<JobPosition | null>(null);
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [selectedJob, setSelectedJob] = useState<JobPosition | null>(null);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
   const [applicantName, setApplicantName] = useState<string>("");
   const [applicantEmail, setApplicantEmail] = useState<string>("");
@@ -114,18 +113,18 @@ export function CareerSection() {
   const filteredJobs =
     activeTab === "all"
       ? JOBS
-      : JOBS.filter((job) => job.deptKey === activeTab);
+      : JOBS.filter((j) => j.deptKey === activeTab);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== "application/pdf") {
-        setFileError("Hanya berkas berformat PDF yang diperbolehkan.");
+        setFileError("Hanya file PDF yang diizinkan.");
         setFileName("");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setFileError("Ukuran berkas maksimal 5 MB.");
+        setFileError("Ukuran file maksimal 5 MB.");
         setFileName("");
         return;
       }
@@ -137,10 +136,14 @@ export function CareerSection() {
   const handleApplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!applicantName || !applicantEmail || !applicantPhone || !fileName) {
-      setFileError("Mohon lengkapi seluruh kolom formulir dan lampirkan berkas CV PDF Anda.");
       return;
     }
     setFormSubmitted(true);
+    setApplicantName("");
+    setApplicantEmail("");
+    setApplicantPhone("");
+    setFileName("");
+    setFileError("");
   };
 
   const handleOpenModal = (job: JobPosition) => {
@@ -175,16 +178,15 @@ export function CareerSection() {
           <div className="max-w-3xl space-y-3">
             <Badge
               variant="silver"
-              className="uppercase tracking-wider text-badge font-semibold py-1 px-3 inline-flex items-center gap-1.5"
+              className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
             >
-              <BriefcaseIcon className="text-xs" />
-              <span>Informasi Karir</span>
+              <span>{t.career.badge}</span>
             </Badge>
             <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
-              Berkembang Bersama Tim Profesional Zhou Consulting
+              {t.career.headline}
             </h2>
             <p className="text-[15px] leading-[24px] sm:text-body-large text-text-secondary leading-relaxed">
-              Kami membuka kesempatan bagi talenta berdedikasi tinggi di bidang perpajakan, akuntansi, dan analisis keuangan untuk bergabung dalam kultur kerja yang kolaboratif dan berintegritas.
+              {t.career.subheading}
             </p>
           </div>
 
@@ -192,6 +194,7 @@ export function CareerSection() {
             <Badge variant="outline" className="text-xs font-semibold py-1.5 px-3">
               {JOBS.length} Posisi Terbuka
             </Badge>
+
           </div>
         </div>
 
@@ -219,11 +222,11 @@ export function CareerSection() {
           </Tabs>
         </div>
 
-        {/* Main Grid: Listings (8 cols) + Benefits (4 cols) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Main List: Listings */}
+        <div className="max-w-4xl mx-auto items-start">
           {/* Job Cards Column */}
-          <div className="lg:col-span-8 space-y-4">
-            {filteredJobs.map((job) => (
+          <div className="space-y-4">
+            {filteredJobs.slice(0, 2).map((job) => (
               <Card
                 key={job.id}
                 className="hover:border-primary hover:shadow-md transition-all duration-200 bg-white group"
@@ -278,76 +281,23 @@ export function CareerSection() {
                     variant="primary"
                     size="sm"
                     onClick={() => handleOpenModal(job)}
-                    className="text-xs font-semibold inline-flex items-center gap-1.5"
+                    className="text-xs font-semibold px-4"
                   >
                     <span>Lamar Posisi</span>
-                    <ArrowRightIcon className="text-[10px]" />
                   </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
 
-          {/* Culture & Benefits Sidebar */}
-          <div className="lg:col-span-4 rounded-lg border border-primary-light bg-surface p-6 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-primary font-bold text-sm">
-                <BuildingIcon className="text-primary text-sm" />
-                <h3>Mengapa Berkarir di Zhou?</h3>
-              </div>
-              <p className="text-xs text-text-secondary leading-relaxed">
-                Kami membina talenta dengan standar kepatuhan tinggi, etika profesional, dan kompensasi yang kompetitif.
-              </p>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              <div className="flex items-start gap-3">
-                <CheckCircleIcon className="text-success text-sm shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <div className="font-semibold text-primary">Sertifikasi &amp; Continuing Education</div>
-                  <div className="text-text-secondary leading-relaxed">
-                    Dukungan pembiayaan ujian sertifikasi Brevet Pajak AB/C, USKP, serta workshop reguler Coretax DJP.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircleIcon className="text-success text-sm shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <div className="font-semibold text-primary">Eksposur Proyek Korporat Nyata</div>
-                  <div className="text-text-secondary leading-relaxed">
-                    Menangani studi kasus langsung entitas multi-sektor: manufaktur, jasa, ekspor-impor, dan holding group.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <CheckCircleIcon className="text-success text-sm shrink-0 mt-0.5" />
-                <div className="space-y-0.5">
-                  <div className="font-semibold text-primary">Kultur Kerja Terstruktur &amp; Hibrida</div>
-                  <div className="text-text-secondary leading-relaxed">
-                    SOP digital terdokumentasi rapi, fleksibilitas kerja hybrid, dan apresiasi berbasis meritokrasi kinerja.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-white border border-primary-light space-y-2 text-xs">
-              <div className="flex items-center gap-1.5 font-bold text-primary">
-                <ShieldTaxIcon className="text-xs text-primary" />
-                <span>Pengiriman CV Terbuka (General)</span>
-              </div>
-              <p className="text-text-secondary text-[11px] leading-relaxed">
-                Tidak menemukan posisi yang sesuai? Kirimkan resume PDF Anda ke tim People &amp; Culture kami:
-              </p>
-              <a
-                href="mailto:career@zhouconsulting.id"
-                className="font-bold text-primary hover:underline block text-xs"
-              >
-                career@zhouconsulting.id
-              </a>
-            </div>
+          <div className="mt-6 flex justify-center">
+            <Button variant="outline" asChild className="text-xs font-bold shadow-sm border-primary/20 text-primary hover:bg-primary/5 hover:text-primary transition-all">
+              <Link href="/login">
+                Lainnya
+              </Link>
+            </Button>
           </div>
+
         </div>
       </div>
 

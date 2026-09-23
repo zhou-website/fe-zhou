@@ -1,21 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 import {
-  LogoutIcon,
-  UserIcon,
   CloseIcon,
   PlusIcon,
   SearchIcon,
   ExportIcon,
   EyeIcon,
   TrashIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  ShieldTaxIcon,
+  DocumentIcon,
+  LockIcon,
 } from "@/components/icons";
 
 interface AdminUser {
@@ -42,8 +46,7 @@ interface AuditLog {
 }
 
 export default function SuperadminDashboard() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"admins" | "audit">("admins");
+  const [activeTab, setActiveTab] = useState<"admins" | "audit">("audit");
 
   // Admin Management State
   const [admins, setAdmins] = useState<AdminUser[]>([
@@ -85,8 +88,63 @@ export default function SuperadminDashboard() {
     initialPassword: "",
   });
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
   // Audit Logs State (Append-Only Mutlak)
   const [auditLogs] = useState<AuditLog[]>([
+    {
+      id: "LOG-9925",
+      timestamp: "18 Sep 2026, 10:15:20 WIB",
+      adminName: "Linda David, S.Ak., BKP",
+      adminId: "ADM-001",
+      clientId: "CL-88219 (PT Maju Makmur)",
+      ticketId: "TK-2026-089",
+      statusBefore: "In Review",
+      statusAfter: "Completed",
+      relatedFile: "Laporan_Rekonsiliasi_Fiskal_2025_Final.pdf",
+      notes: "Kertas kerja rekonsiliasi fiskal dan faktur billing INV-2026-089 diterbitkan ke Vault klien.",
+    },
+    {
+      id: "LOG-9924",
+      timestamp: "17 Sep 2026, 15:40:12 WIB",
+      adminName: "Budi Santoso, SE., Ak., CA",
+      adminId: "ADM-004",
+      clientId: "CL-62910 (PT Solusi Niaga)",
+      ticketId: "TK-2026-077",
+      statusBefore: "In Progress",
+      statusAfter: "Completed",
+      relatedFile: "Studi_Kelayakan_Investasi_Ekspansi_2026.pdf",
+      notes: "Analisis kelayakan investasi disetujui direksi klien.",
+    },
+    {
+      id: "LOG-9923",
+      timestamp: "16 Sep 2026, 11:05:40 WIB",
+      adminName: "Tasya Anggraeni Firdaus, SE.",
+      adminId: "ADM-002",
+      clientId: "CL-74102 (CV Borneo Karya)",
+      ticketId: "TK-2026-092",
+      statusBefore: "Draft",
+      statusAfter: "In Progress",
+      relatedFile: "Kompilasi_Jurnal_Buku_Besar_Q3_SAK.xlsx",
+      notes: "Kompilasi awal jurnal buku besar Q3 dimulai.",
+    },
+    {
+      id: "LOG-9922",
+      timestamp: "15 Sep 2026, 09:20:10 WIB",
+      adminName: "Siti Nurhaliza, S.E.",
+      adminId: "ADM-005",
+      clientId: "CL-40112 (PT Cipta Sarana)",
+      ticketId: "TK-2026-058",
+      statusBefore: "In Progress",
+      statusAfter: "Completed",
+      relatedFile: "BPE_SPT_Masa_PPN_1111_Agustus.pdf",
+      notes: "Pelaporan SPT PPN 1111 berhasil melalui sistem Coretax DJP.",
+    },
     {
       id: "LOG-9921",
       timestamp: "14 Sep 2026, 14:30:15 WIB",
@@ -146,7 +204,7 @@ export default function SuperadminDashboard() {
   const handleAddAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdmin.name || !newAdmin.email || !newAdmin.initialPassword) {
-      alert("Mohon lengkapi seluruh kolom formulir.");
+      showToast("Mohon lengkapi seluruh kolom formulir.");
       return;
     }
 
@@ -169,32 +227,34 @@ export default function SuperadminDashboard() {
       specialty: "Tax Service Core",
       initialPassword: "",
     });
-    alert(`Admin ${created.name} berhasil ditambahkan.`);
+    showToast(`Admin ${created.name} berhasil ditambahkan.`);
   };
 
   // Toggle soft-delete
   const handleToggleStatus = (adminId: string) => {
     setAdmins(
-      admins.map((a) =>
-        a.id === adminId
-          ? { ...a, status: a.status === "Active" ? "Inactive" : "Active" }
-          : a
-      )
+      admins.map((a) => {
+        if (a.id === adminId) {
+          const next = a.status === "Active" ? "Inactive" : "Active";
+          showToast(`Status admin ${a.name} diubah menjadi ${next}.`);
+          return { ...a, status: next };
+        }
+        return a;
+      })
     );
   };
 
   // Hard delete check
   const handleDeleteAdmin = (admin: AdminUser) => {
     if (admin.taskCount > 0) {
-      alert(
-        `Penghapusan permanen ditolak: Akun ${admin.name} memiliki ${admin.taskCount} riwayat tugas aktif dalam Log Audit. Gunakan fitur Nonaktifkan Akun (Soft Delete).`
+      showToast(
+        `Penghapusan permanen ditolak: Akun ${admin.name} memiliki ${admin.taskCount} riwayat tugas aktif. Gunakan fitur Nonaktifkan (Soft Delete).`
       );
       return;
     }
 
-    if (confirm(`Hapus permanen akun admin ${admin.name}?`)) {
-      setAdmins(admins.filter((a) => a.id !== admin.id));
-    }
+    setAdmins(admins.filter((a) => a.id !== admin.id));
+    showToast(`Akun admin ${admin.name} berhasil dihapus permanen.`);
   };
 
   // Filtered logs
@@ -203,12 +263,28 @@ export default function SuperadminDashboard() {
     if (
       searchQuery &&
       !log.ticketId.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !log.clientId.toLowerCase().includes(searchQuery.toLowerCase())
+      !log.clientId.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !log.adminName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !log.relatedFile.toLowerCase().includes(searchQuery.toLowerCase())
     ) {
       return false;
     }
     return true;
   });
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterAdmin, searchQuery]);
+
+  const itemsPerPage = 6;
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Export functions
   const handleExportCSV = () => {
@@ -227,72 +303,133 @@ export default function SuperadminDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast("Salinan berkas audit trail berhasil diekspor ke format CSV.");
   };
 
   const handleExportPDF = () => {
-    alert("Mengenerate laporan rekapitulasi audit status resmi Zhou Consulting ke format PDF...");
+    showToast("Mengenerate salinan resmi Laporan Audit Trail Zhou Consulting ke format PDF terenkripsi SHA-256.");
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col selection:bg-primary selection:text-white">
-      {/* Top Header */}
-      <header className="bg-primary-dark text-white border-b border-white/10 sticky top-0 z-30">
-        <div className="container-custom flex items-center justify-between h-18 py-3">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-primary font-bold text-lg">
-                Z
-              </div>
-              <div className="flex flex-col">
-                <span className="text-base font-bold tracking-tight text-white">
-                  ZHOU CONSULTING
-                </span>
-                <span className="text-[10px] text-silver uppercase tracking-wider font-medium">
-                  Superadmin Executive Console
-                </span>
-              </div>
-            </Link>
-
-            <Badge variant="success" className="text-[10px] hidden md:inline-flex">
-              Superadmin Authority
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-white/20 text-silver hover:text-white hover:bg-white/10 text-xs hidden sm:inline-flex"
-            >
-              <Link href="/dashboard/admin">Buka Konsol Staf Admin</Link>
-            </Button>
-
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-white/10 text-xs text-white">
-              <div className="w-6 h-6 rounded-full bg-silver/30 flex items-center justify-center text-xs">
-                <UserIcon />
-              </div>
-              <div className="hidden sm:flex flex-col text-left">
-                <span className="font-semibold text-xs leading-none">Muhamad Dekhsa Afnan</span>
-                <span className="text-[10px] text-silver">Managing Director &amp; Superadmin</span>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/login")}
-              className="border-white/20 text-white hover:bg-white/10 hover:text-white text-xs px-3"
-            >
-              <LogoutIcon className="text-xs sm:mr-1.5" />
-              <span className="hidden sm:inline">Keluar</span>
-            </Button>
-          </div>
+    <div className="space-y-8">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-primary text-white text-xs font-semibold py-3 px-5 rounded-xl shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircleIcon className="text-success text-base" />
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-silver hover:text-white ml-2"
+          >
+            <CloseIcon className="text-xs" />
+          </button>
         </div>
-      </header>
+      )}
 
-      {/* Main Container */}
-      <main className="container-custom flex-1 py-8 space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
+            <Link href="/dashboard/superadmin" className="hover:text-primary transition-colors">
+              Superadmin Portal
+            </Link>
+            <span>/</span>
+            <span className="text-primary font-bold">Log Audit &amp; Keamanan Sistem</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
+            Log Audit Perubahan Status &amp; Aktivitas
+          </h1>
+          <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
+            Pencatatan riwayat perubahan status penugasan klien, unggahan berkas, dan aktivitas administratif yang bersifat <em>immutable</em> &amp; <em>append-only</em> sesuai UU PDP No. 27/2022.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="text-xs h-9 px-3 border-primary-light font-semibold"
+          >
+            <ExportIcon className="text-xs mr-1.5" />
+            Ekspor CSV
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleExportPDF}
+            className="text-xs h-9 px-3.5 font-semibold shadow-xs"
+          >
+            <ExportIcon className="text-xs mr-1.5" />
+            Laporan PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* 3 TOP AUDIT METRIC CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
+              Total Log Aktivitas
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
+              <DocumentIcon />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-primary font-mono">
+              28
+            </span>
+            <span className="text-xs text-text-secondary">Catatan</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
+            <ShieldTaxIcon className="text-xs text-emerald-500" />
+            <span>Append-Only Mutlak</span>
+          </div>
+        </Card>
+
+        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
+              Perubahan Status Selesai
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-success/15 flex items-center justify-center text-success text-xs">
+              <CheckCircleIcon />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-success font-mono">
+              18
+            </span>
+            <span className="text-xs text-text-secondary">Mutasi Selesai</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-success font-medium">
+            <CheckIcon className="text-[9px]" />
+            <span>100% Terverifikasi Konsultan</span>
+          </div>
+        </Card>
+
+        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
+              Integritas Kriptografis
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
+              <LockIcon />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-primary font-mono">
+              SHA-256
+            </span>
+          </div>
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
+            <CheckIcon className="text-[9px]" />
+            <span>Kepatuhan UU PDP No. 27/2022</span>
+          </div>
+        </Card>
+      </div>
         {/* Navigation Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-primary-light pb-3">
           <div className="flex items-center gap-2">
@@ -394,8 +531,8 @@ export default function SuperadminDashboard() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => alert(`Reset password untuk ${admin.email} telah dikirimkan.`)}
-                              className="text-[11px] py-1 px-2.5 h-auto"
+                              onClick={() => showToast(`Tautan reset password untuk ${admin.email} berhasil dikirimkan ke email resmi.`)}
+                              className="text-[11px] py-1 px-2.5 h-auto cursor-pointer"
                             >
                               Reset
                             </Button>
@@ -505,7 +642,7 @@ export default function SuperadminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-primary-light text-text">
-                    {filteredLogs.map((log) => (
+                    {paginatedLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-surface/50 transition-colors">
                         <td className="py-3.5 px-4 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                           {log.timestamp}
@@ -544,10 +681,23 @@ export default function SuperadminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {filteredLogs.length > 0 && (
+                <div className="p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
+                  <span>
+                    Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
+                    {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan audit log
+                  </span>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-      </main>
 
       {/* Modal: Tambah Admin Baru */}
       {showAddAdminModal && (

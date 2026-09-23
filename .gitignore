@@ -59,3 +59,6 @@ figma_thumbnail.pngscripts/figma-cdp.jsscripts/figma-inspect.js
 /figma_file_meta.json
 /scripts/figma-cdp.js
 /scripts/figma-inspect.js
+
+# local scratch files
+/scratch/

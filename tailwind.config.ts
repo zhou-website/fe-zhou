@@ -10,6 +10,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-open-sans)", "Open Sans", "sans-serif"],
+        mono: ["var(--font-open-sans)", "Open Sans", "sans-serif"],
+        serif: ["var(--font-open-sans)", "Open Sans", "sans-serif"],
       },
       colors: {
         primary: {
@@ -19,6 +21,13 @@ const config: Config = {
         },
         "primary-dark": "#060D22",
         "primary-light": "#E9EDF5",
+        navy: {
+          DEFAULT: "#0B1533",
+          dark: "#060D22",
+          light: "#E9EDF5",
+        },
+        "navy-dark": "#060D22",
+        "navy-light": "#E9EDF5",
         silver: "#C5C8D0",
         grey: "#C5C8D0",
         background: "#FFFFFF",
@@ -47,6 +56,8 @@ const config: Config = {
         "metric-label": ["13px", { lineHeight: "20px", fontWeight: "600" }],
         helper: ["12px", { lineHeight: "18px", fontWeight: "400" }],
         "modal-heading": ["20px", { lineHeight: "28px", fontWeight: "700" }],
+        "modal-body": ["14px", { lineHeight: "22px", fontWeight: "400" }],
+        breadcrumb: ["13px", { lineHeight: "20px", fontWeight: "600" }],
         footer: ["13px", { lineHeight: "20px", fontWeight: "400" }],
       },
       borderRadius: {

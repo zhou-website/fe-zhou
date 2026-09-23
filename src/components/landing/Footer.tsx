@@ -14,7 +14,6 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
-  ShieldTaxIcon,
   LocationIcon,
   PhoneIcon,
   EnvelopeIcon,
@@ -22,8 +21,10 @@ import {
   LinkedinIcon,
   InstagramIcon,
 } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function Footer() {
+  const { t } = useLanguage();
   const [legalModalType, setLegalModalType] = useState<"privasi" | "syarat" | "kepatuhan" | null>(null);
 
   const scrollToTop = () => {
@@ -38,45 +39,34 @@ export function Footer() {
       <div className="container-custom space-y-12">
         {/* Upper Grid: Brand & Accreditation + Navigation Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
-          {/* Col 1: Brand, Tagline & Official Contact (4 cols) */}
-          <div className="lg:col-span-4 space-y-5">
+          {/* Col 1: Brand, Tagline & Official Contact (5 cols) */}
+          <div className="lg:col-span-5 space-y-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-primary font-bold text-xl shadow-sm">
                 Z
               </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight text-white leading-none">
-                  ZHOU CONSULTING
-                </span>
-                <span className="text-[10px] text-silver tracking-wide uppercase font-medium mt-1">
-                  Finance &bull; Accounting &bull; Tax Partner
-                </span>
-              </div>
+              <span className="text-lg font-bold tracking-tight text-white leading-none">
+                ZHOU CONSULTING
+              </span>
+            </div>
+
+            {/* Tagline Layanan */}
+            <div className="space-y-1">
+              <p className="text-xs sm:text-sm font-bold text-white leading-snug">
+                {t.footer.tagline2}
+              </p>
             </div>
 
             <p className="text-xs text-silver leading-relaxed max-w-sm">
-              Firma konsultan terpercaya di bidang tata kelola akuntansi, perencanaan perpajakan korporat, dan asistensi kepatuhan sistem Coretax DJP 2026 berlandaskan regulasi fiskal nasional.
+              {t.footer.desc}
             </p>
-
-            {/* Legal Credentials Badges */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Badge variant="outline" size="sm" className="border-white/20 text-silver text-[10px]">
-                Konsultan Pajak (BKP)
-              </Badge>
-              <Badge variant="outline" size="sm" className="border-white/20 text-silver text-[10px]">
-                Chartered Accountant (CA)
-              </Badge>
-              <Badge variant="outline" size="sm" className="border-white/20 text-silver text-[10px]">
-                Coretax 2026 Ready
-              </Badge>
-            </div>
 
             {/* Contact Details */}
             <div className="space-y-2.5 text-xs text-silver/90 pt-2 border-t border-white/10">
               <div className="flex items-start gap-2.5">
                 <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
                 <span className="leading-relaxed">
-                  Gedung Pusat Bisnis Lantai 8, Jl. Jend. Sudirman Kav. 21, Jakarta Selatan 12920
+                  Menara Sudirman Kav. 21 Lt. 12, Jl. Jend. Sudirman, Jakarta Selatan 12190
                 </span>
               </div>
               <div className="flex items-center gap-2.5">
@@ -85,7 +75,9 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2.5">
                 <EnvelopeIcon className="text-silver text-xs shrink-0" />
-                <span>consult@zhouconsulting.id</span>
+                <a href="mailto:consultingzhou@gmail.com" className="hover:text-white transition-colors">
+                  consultingzhou@gmail.com
+                </a>
               </div>
             </div>
 
@@ -121,9 +113,9 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Col 2: Navigasi Portal (2 cols) */}
-          <div className="lg:col-span-2 space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Navigasi Portal</h4>
+          {/* Col 2: Navigasi Portal (3 cols) */}
+          <div className="lg:col-span-3 space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider">{t.footer.navTitle}</h4>
             <ul className="space-y-2.5 text-xs text-silver">
               <li>
                 <Link href="/#profil" className="hover:text-white transition-colors">
@@ -136,128 +128,134 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#peraturan" className="hover:text-white transition-colors">
+                <Link href="/peraturan" className="hover:text-white transition-colors">
                   Regulasi &amp; Kurs KMK
                 </Link>
               </li>
               <li>
-                <Link href="/#edukasi" className="hover:text-white transition-colors">
+                <Link href="/edukasi" className="hover:text-white transition-colors">
                   Wawasan &amp; Edukasi
                 </Link>
               </li>
               <li>
-                <Link href="/#karir" className="hover:text-white transition-colors">
+                <Link href="/karir" className="hover:text-white transition-colors">
                   Peluang Karir
                 </Link>
               </li>
               <li>
-                <Link href="/#kontak" className="hover:text-white transition-colors">
+                <Link href="/kontak" className="hover:text-white transition-colors">
                   Hubungi Kami
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Layanan Konsultasi (3 cols) */}
-          <div className="lg:col-span-3 space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Layanan Konsultasi</h4>
-            <ul className="space-y-2.5 text-xs text-silver">
-              <li>
-                <Link href="/#layanan-hukum" className="hover:text-white transition-colors">
-                  Konsultasi Hukum Korporat &amp; Legal
-                </Link>
-              </li>
-              <li>
-                <Link href="/#layanan-bisnis" className="hover:text-white transition-colors">
-                  Konsultasi Bisnis &amp; Kelayakan Usaha
-                </Link>
-              </li>
-              <li>
-                <Link href="/#layanan-akuntansi" className="hover:text-white transition-colors">
-                  Accounting Service &amp; Kompilasi SAK
-                </Link>
-              </li>
-              <li>
-                <Link href="/#layanan-pajak" className="hover:text-white transition-colors">
-                  Tax Service Core &amp; Kepatuhan SPT
-                </Link>
-              </li>
-              <li>
-                <Link href="/#layanan-pajak" className="hover:text-white transition-colors">
-                  Pendampingan SP2DK &amp; Audit DJP
-                </Link>
-              </li>
-              <li>
-                <Link href="/#edukasi" className="hover:text-white transition-colors">
-                  In-House Corporate Tax Training
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Col 3: Layanan Konsultasi & Tax Service (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">
+                {t.footer.consultTitle}
+              </h4>
+              <ul className="space-y-2 text-xs text-silver">
+                <li>
+                  <Link href="/layanan/akuntansi" className="hover:text-white transition-colors">
+                    Accounting Services
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/bisnis" className="hover:text-white transition-colors">
+                    Business &amp; Financial Services
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service" className="hover:text-white transition-colors font-medium text-white">
+                    Tax Services (Kepatuhan SPT)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/hukum" className="hover:text-white transition-colors">
+                    Law Services (Legal Compliance)
+                  </Link>
+                </li>
+              </ul>
+            </div>
 
-          {/* Col 4: Akses Sistem & Keamanan (3 cols) */}
-          <div className="lg:col-span-3 space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Akses Portal Klien</h4>
-            <ul className="space-y-2.5 text-xs text-silver">
-              <li>
-                <Link href="/login" className="hover:text-white transition-colors font-medium">
-                  Login Portal Klien (Monitoring Tiket)
-                </Link>
-              </li>
-              <li>
-                <Link href="/login" className="hover:text-white transition-colors font-medium">
-                  Login Admin &amp; Konsultan
-                </Link>
-              </li>
-              <li className="pt-2">
-                <div className="p-3 rounded-lg bg-white/5 border border-white/10 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-white font-semibold text-[11px]">
-                    <ShieldTaxIcon className="text-xs text-silver" />
-                    <span>Perjanjian Kerahasiaan (NDA)</span>
-                  </div>
-                  <p className="text-[11px] text-silver/70 leading-relaxed">
-                    Setiap penugasan klien dilindungi dokumen kerahasiaan resmi dan kepatuhan kode etik ikatan konsultan.
-                  </p>
-                </div>
-              </li>
-            </ul>
+            <div className="pt-2 border-t border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  {t.footer.taxTitle}
+                </h4>
+              </div>
+              <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] text-silver">
+                <li>
+                  <Link href="/layanan/tax-service#e-faktur" className="hover:text-white transition-colors">
+                    e-Faktur / PPN
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service#e-bupot-21" className="hover:text-white transition-colors">
+                    e-Bupot PPh 21
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service#e-bupot-unifikasi" className="hover:text-white transition-colors">
+                    e-Bupot Unifikasi
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service#e-billing" className="hover:text-white transition-colors">
+                    e-Billing &amp; VSWP
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service#pelaporan-spt" className="hover:text-white transition-colors">
+                    Pelaporan SPT
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/layanan/tax-service#integrasi-api" className="hover:text-white transition-colors">
+                    Integrasi API ERP
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
         {/* Bottom Bar: Copyright, Legal Links, and Back to Top */}
         <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-footer text-silver/80">
           <div>
-            &copy; {new Date().getFullYear()} PT Zhou Konsultan Indonesia (Zhou Consulting). Seluruh hak cipta dilindungi undang-undang.
+            &copy; {new Date().getFullYear()} {t.footer.copyright}
           </div>
 
           <div className="flex flex-wrap items-center gap-5 text-xs">
             <button
               type="button"
               onClick={() => setLegalModalType("privasi")}
-              className="hover:text-white transition-colors focus:outline-none"
+              className="hover:text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white rounded px-1"
             >
-              Kebijakan Privasi
+              {t.footer.privacy}
             </button>
             <button
               type="button"
               onClick={() => setLegalModalType("syarat")}
-              className="hover:text-white transition-colors focus:outline-none"
+              className="hover:text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white rounded px-1"
             >
-              Syarat &amp; Ketentuan
+              {t.footer.terms}
             </button>
             <button
               type="button"
               onClick={() => setLegalModalType("kepatuhan")}
-              className="hover:text-white transition-colors focus:outline-none"
+              className="hover:text-white transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white rounded px-1"
             >
-              Standar Kepatuhan
+              {t.footer.compliance}
             </button>
             <button
               type="button"
               onClick={scrollToTop}
-              className="text-silver hover:text-white font-semibold transition-colors focus:outline-none"
+              className="text-silver hover:text-white font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-white rounded px-1.5 py-0.5 border border-white/10 hover:border-white/25 active:scale-[0.98]"
             >
-              Kembali ke Atas &uarr;
+              {t.footer.backToTop}
             </button>
           </div>
         </div>

@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import { Open_Sans } from "next/font/google";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const openSans = Open_Sans({
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-open-sans",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Zhou Consulting — Finance, Accounting, and Tax Partner",
+  title: "Zhou Consulting",
   description:
-    "Mitra profesional dan terpercaya untuk layanan akuntansi, perpajakan, dan konsultasi bisnis keuangan Anda.",
+    "Mitra profesional untuk layanan akuntansi, perpajakan, dan konsultasi bisnis keuangan Anda.",
 };
 
 export default function RootLayout({
@@ -21,10 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className={`${openSans.variable} font-sans antialiased bg-background text-text`}>
-        {children}
+    <html lang="id" className={openSans.variable}>
+      <body className={`${openSans.className} font-sans antialiased bg-background text-text`}>
+        <AuthProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );
 }
+

@@ -2,36 +2,61 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   ChevronDownIcon,
   MenuIcon,
   CloseIcon,
-  ShieldTaxIcon,
-  BriefcaseIcon,
-  BookIcon,
-  ArrowRightIcon,
 } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 export function Navbar() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const { language, setLanguage, t } = useLanguage();
+  const { user, isAuthenticated, logout } = useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [servicesDropdownOpen, setServicesDropdownOpen] = useState(false);
-  const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [layananOpen, setLayananOpen] = useState(false);
+  const [mobileLayananOpen, setMobileLayananOpen] = useState(false);
+  const [peraturanOpen, setPeraturanOpen] = useState(false);
+  const [mobilePeraturanOpen, setMobilePeraturanOpen] = useState(false);
+  const [edukasiOpen, setEdukasiOpen] = useState(false);
+  const [mobileEdukasiOpen, setMobileEdukasiOpen] = useState(false);
+
+  const layananRef = useRef<HTMLDivElement>(null);
+  const peraturanRef = useRef<HTMLDivElement>(null);
+  const edukasiRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
+        layananRef.current &&
+        !layananRef.current.contains(event.target as Node)
       ) {
-        setServicesDropdownOpen(false);
+        setLayananOpen(false);
+      }
+      if (
+        peraturanRef.current &&
+        !peraturanRef.current.contains(event.target as Node)
+      ) {
+        setPeraturanOpen(false);
+      }
+      if (
+        edukasiRef.current &&
+        !edukasiRef.current.contains(event.target as Node)
+      ) {
+        setEdukasiOpen(false);
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setServicesDropdownOpen(false);
+        setLayananOpen(false);
+        setPeraturanOpen(false);
+        setEdukasiOpen(false);
         setMobileMenuOpen(false);
       }
     }
@@ -43,216 +68,444 @@ export function Navbar() {
     };
   }, []);
 
-  const closeMobileMenu = () => {
+  const closeAllMenus = () => {
     setMobileMenuOpen(false);
-    setMobileServicesOpen(false);
+    setLayananOpen(false);
+    setMobileLayananOpen(false);
+    setPeraturanOpen(false);
+    setMobilePeraturanOpen(false);
+    setEdukasiOpen(false);
+    setMobileEdukasiOpen(false);
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-primary/95 backdrop-blur-md text-white shadow-md border-b border-white/10 transition-colors">
+    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md text-text-primary shadow-sm border-b border-primary-light transition-colors">
       <div className="container-custom flex h-20 items-center justify-between py-4">
         {/* Brand Logo */}
         <Link
           href="/"
-          className="flex items-center gap-3 group"
-          onClick={closeMobileMenu}
+          className="flex items-center gap-2.5 group"
+          onClick={closeAllMenus}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-primary font-bold text-xl tracking-wider shadow-sm group-hover:bg-primary-light transition-colors">
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-md bg-primary text-white font-bold text-base sm:text-lg tracking-wider shadow-sm group-hover:bg-primary-dark transition-colors">
             Z
           </div>
-          <div className="flex flex-col">
-            <span className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
-              ZHOU CONSULTING
-            </span>
-            <span className="text-[10px] sm:text-[11px] text-silver tracking-wide uppercase font-medium">
-              Finance &bull; Accounting &bull; Tax Partner
-            </span>
-          </div>
+          <span className="text-base sm:text-lg font-bold tracking-tight text-primary group-hover:text-primary-dark transition-colors">
+            ZHOU CONSULTING
+          </span>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold">
+        <nav className="hidden xl:flex items-center gap-6 text-sm font-semibold">
           <Link
-            href="/#profil"
-            className="text-silver hover:text-white transition-colors duration-150 py-2"
+            href="/"
+            className={`transition-colors duration-150 py-2 relative ${
+              isHome
+                ? "text-primary font-bold after:absolute after:-bottom-[23px] after:left-0 after:right-0 after:h-[2.5px] after:bg-primary"
+                : "text-text-secondary hover:text-primary"
+            }`}
           >
-            Profil Perusahaan
+            {t.nav.home}
           </Link>
 
-          {/* Layanan with Interactive Dropdown */}
+          {/* Unified Layanan Dropdown (Ringkas & Simpel persis gaya dropdown Peraturan) */}
           <div
             className="relative"
-            ref={dropdownRef}
-            onMouseEnter={() => setServicesDropdownOpen(true)}
-            onMouseLeave={() => setServicesDropdownOpen(false)}
+            ref={layananRef}
+            onMouseEnter={() => setLayananOpen(true)}
+            onMouseLeave={() => setLayananOpen(false)}
           >
-            <div className="flex items-center gap-1.5 cursor-pointer text-silver hover:text-white transition-colors duration-150 py-2">
-              <Link href="/#layanan" className="hover:text-white">
-                Layanan
-              </Link>
-              <button
-                type="button"
-                onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
-                className="p-1 focus:outline-none"
-                aria-label="Toggle Layanan dropdown"
-                aria-expanded={servicesDropdownOpen}
-              >
-                <ChevronDownIcon
-                  className={`text-[10px] transition-transform duration-200 ${
-                    servicesDropdownOpen ? "rotate-180 text-white" : ""
-                  }`}
-                />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setLayananOpen(!layananOpen)}
+              aria-expanded={layananOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.services}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  layananOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
 
-            {/* Dropdown Menu Card */}
-            {servicesDropdownOpen && (
-              <div className="absolute top-full left-0 w-80 rounded-lg bg-primary-dark border border-white/15 p-4 shadow-xl text-white space-y-3 z-50 animate-in fade-in duration-150">
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-silver pb-1.5 border-b border-white/10">
-                    Konsultasi
-                  </div>
-                  <div className="mt-2 space-y-1.5">
-                    <Link
-                      href="/#layanan-hukum"
-                      onClick={() => setServicesDropdownOpen(false)}
-                      className="group/item flex items-center justify-between p-2 rounded-md hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <BriefcaseIcon className="text-xs text-silver group-hover/item:text-white" />
-                        <div>
-                          <div className="text-xs font-semibold text-white">
-                            Konsultasi Hukum
-                          </div>
-                          <div className="text-[10px] text-silver">
-                            Compliance hukum korporat &amp; kontrak
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRightIcon className="text-[10px] text-silver opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                    </Link>
-
-                    <Link
-                      href="/#layanan-bisnis"
-                      onClick={() => setServicesDropdownOpen(false)}
-                      className="group/item flex items-center justify-between p-2 rounded-md hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <BriefcaseIcon className="text-xs text-silver group-hover/item:text-white" />
-                        <div>
-                          <div className="text-xs font-semibold text-white">
-                            Konsultasi Business
-                          </div>
-                          <div className="text-[10px] text-silver">
-                            Studi kelayakan &amp; proyeksi kas
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRightIcon className="text-[10px] text-silver opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                    </Link>
-
-                    <Link
-                      href="/#layanan-akuntansi"
-                      onClick={() => setServicesDropdownOpen(false)}
-                      className="group/item flex items-center justify-between p-2 rounded-md hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <BookIcon className="text-xs text-silver group-hover/item:text-white" />
-                        <div>
-                          <div className="text-xs font-semibold text-white">
-                            Accounting Service
-                          </div>
-                          <div className="text-[10px] text-silver">
-                            Laporan keuangan berstandar SAK
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRightIcon className="text-[10px] text-silver opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                    </Link>
-                  </div>
+            {/* Dropdown Container Ringkas 1 Kolom Vertikal */}
+            {layananOpen && (
+              <div className="absolute top-full left-0 w-72 rounded-xl bg-white border border-primary-light p-2 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                {/* BAGIAN 1: KONSULTASI */}
+                <div className="px-3.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                  {t.nav.consultationSection}
                 </div>
+                <Link
+                  href="/layanan/akuntansi"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Accounting Services
+                </Link>
+                <Link
+                  href="/layanan/bisnis"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Business &amp; Financial Services
+                </Link>
+                <Link
+                  href="/layanan/tax-service"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Tax Services
+                </Link>
+                <Link
+                  href="/layanan/hukum"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Law Services
+                </Link>
 
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-silver pb-1.5 border-b border-white/10">
-                    Tax Service
-                  </div>
-                  <div className="mt-2">
-                    <Link
-                      href="/#layanan-pajak"
-                      onClick={() => setServicesDropdownOpen(false)}
-                      className="group/item flex items-center justify-between p-2 rounded-md hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <ShieldTaxIcon className="text-xs text-success" />
-                        <div>
-                          <div className="text-xs font-semibold text-white">
-                            Tax Service Core
-                          </div>
-                          <div className="text-[10px] text-silver">
-                            SPT Masa/Tahunan &amp; Sistem Coretax DJP
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRightIcon className="text-[10px] text-silver opacity-0 group-hover/item:opacity-100 transition-opacity" />
-                    </Link>
-                  </div>
+                {/* Garis pemisah halus / divider tipis */}
+                <hr className="my-2 border-gray-100" />
+
+                {/* BAGIAN 2: TAX SERVICE CORE */}
+                <div className="px-3.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                  {t.nav.taxCoreSection}
                 </div>
+                <Link
+                  href="/layanan/tax-service#e-faktur"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  e-Faktur Pajak
+                </Link>
+                <Link
+                  href="/layanan/tax-service#e-bupot-21"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  e-Bupot 21/26
+                </Link>
+                <Link
+                  href="/layanan/tax-service#e-bupot-unifikasi"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  e-Bupot Unifikasi
+                </Link>
+                <Link
+                  href="/layanan/tax-service#e-billing"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  e-Billing &amp; VSWP
+                </Link>
+                <Link
+                  href="/layanan/tax-service#pelaporan-spt"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Pelaporan SPT (BPE DJP)
+                </Link>
+                <Link
+                  href="/layanan/tax-service#integrasi-api"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Integrasi API Coretax
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Peraturan Dropdown */}
+          <div
+            className="relative"
+            ref={peraturanRef}
+            onMouseEnter={() => setPeraturanOpen(true)}
+            onMouseLeave={() => setPeraturanOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setPeraturanOpen(!peraturanOpen)}
+              aria-expanded={peraturanOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.regulations}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  peraturanOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
+
+            {peraturanOpen && (
+              <div className="absolute top-full left-0 w-52 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Link
+                  href="/peraturan"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.regulations}
+                </Link>
+                <Link
+                  href="/peraturan#kurs-pajak"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Kurs Pajak
+                </Link>
+                <Link
+                  href="/peraturan#unduh-peraturan"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Unduh Peraturan
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Edukasi Pajak Dropdown */}
+          <div
+            className="relative"
+            ref={edukasiRef}
+            onMouseEnter={() => setEdukasiOpen(true)}
+            onMouseLeave={() => setEdukasiOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setEdukasiOpen(!edukasiOpen)}
+              aria-expanded={edukasiOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.education}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  edukasiOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
+
+            {edukasiOpen && (
+              <div className="absolute top-full left-0 w-64 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Link
+                  href="/edukasi?tab=edukasi-zhou"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.educationZhou}
+                </Link>
+                <Link
+                  href="/edukasi?tab=belajar-pajak"
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.belajarPajak}
+                </Link>
               </div>
             )}
           </div>
 
           <Link
-            href="/#peraturan"
-            className="text-silver hover:text-white transition-colors duration-150 py-2"
+            href="/kontak"
+            className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
           >
-            Peraturan
+            {t.nav.contact}
           </Link>
           <Link
-            href="/#edukasi"
-            className="text-silver hover:text-white transition-colors duration-150 py-2"
+            href="/karir"
+            className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
           >
-            Edukasi
-          </Link>
-          <Link
-            href="/#karir"
-            className="text-silver hover:text-white transition-colors duration-150 py-2"
-          >
-            Karir
-          </Link>
-          <Link
-            href="/#kontak"
-            className="text-silver hover:text-white transition-colors duration-150 py-2"
-          >
-            Kontak
+            {t.nav.career}
           </Link>
         </nav>
 
-        {/* Desktop Header CTA Actions */}
-        <div className="hidden lg:flex items-center gap-3">
-          <Button
-            variant="silver"
-            size="sm"
-            asChild
-            className="font-semibold text-xs tracking-wide px-5"
-          >
-            <Link href="/login">Login</Link>
-          </Button>
+        {/* Desktop Header Actions (Language Switcher & Auth Buttons) */}
+        <div className="hidden xl:flex items-center gap-5">
+          {/* Language Switcher */}
+          <div className="flex items-center gap-1.5 text-xs select-none">
+            <button
+              type="button"
+              onClick={() => setLanguage("ID")}
+              className={`transition-colors cursor-pointer ${
+                language === "ID"
+                  ? "font-bold text-primary"
+                  : "text-text-secondary hover:text-primary font-medium"
+              }`}
+            >
+              ID
+            </button>
+            <span className="text-silver/60">|</span>
+            <button
+              type="button"
+              onClick={() => setLanguage("EN")}
+              className={`transition-colors cursor-pointer ${
+                language === "EN"
+                  ? "font-bold text-primary"
+                  : "text-text-secondary hover:text-primary font-medium"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+
+          {/* Action Buttons: Masuk & Daftar OR Role-Based Portal, Profil & Logout */}
+          <div className="flex items-center gap-2">
+            {isAuthenticated && user ? (
+              <>
+                {user.role === "superadmin" ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/superadmin">Superadmin Portal</Link>
+                  </Button>
+                ) : user.role === "admin" ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/admin">Admin Portal</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/user">Dashboard Saya</Link>
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="text-text-secondary hover:text-primary font-semibold text-xs tracking-wide px-3 py-2 rounded-md transition-colors"
+                >
+                  <Link
+                    href={
+                      user.role === "superadmin"
+                        ? "/dashboard/superadmin/users"
+                        : user.role === "admin"
+                        ? "/dashboard/admin?section=company"
+                        : "/dashboard/user/profil"
+                    }
+                  >
+                    Profil
+                  </Link>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={logout}
+                  className="border-primary-light text-text-secondary hover:text-error hover:border-error/40 font-semibold text-xs tracking-wide px-3 py-2 rounded-md transition-colors cursor-pointer"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="border-primary-light text-primary hover:bg-surface font-semibold text-xs tracking-wide px-4 py-2 rounded-md transition-colors"
+                >
+                  <Link href="/login">{t.nav.login}</Link>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  asChild
+                  className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-4 py-2 rounded-md shadow-xs transition-colors"
+                >
+                  <Link href="/register">{t.nav.register}</Link>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Mobile / Tablet Hamburger Toggle */}
-        <div className="flex lg:hidden items-center gap-2">
-          <Button
-            variant="silver"
-            size="sm"
-            asChild
-            className="text-xs font-semibold px-3 py-1.5 mr-1"
-          >
-            <Link href="/login">Login</Link>
-          </Button>
+        {/* Mobile / Tablet Hamburger & Actions */}
+        <div className="flex xl:hidden items-center gap-2">
+          <div className="flex items-center gap-1 text-xs font-semibold mr-1">
+            <button
+              type="button"
+              onClick={() => setLanguage("ID")}
+              className={`${language === "ID" ? "font-bold text-primary" : "text-text-secondary"}`}
+            >
+              ID
+            </button>
+            <span className="text-silver/60">|</span>
+            <button
+              type="button"
+              onClick={() => setLanguage("EN")}
+              className={`${language === "EN" ? "font-bold text-primary" : "text-text-secondary"}`}
+            >
+              EN
+            </button>
+          </div>
+
+          {isAuthenticated && user ? (
+            <Button
+              variant="primary"
+              size="sm"
+              asChild
+              className="text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
+            >
+              <Link
+                href={
+                  user.role === "superadmin"
+                    ? "/dashboard/superadmin"
+                    : user.role === "admin"
+                    ? "/dashboard/admin"
+                    : "/dashboard/user"
+                }
+              >
+                {user.role === "superadmin"
+                  ? "Superadmin Portal"
+                  : user.role === "admin"
+                  ? "Admin Portal"
+                  : "Dashboard Saya"}
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="text-xs font-semibold px-2.5 py-1.5 border-primary-light text-primary"
+              >
+                <Link href="/login">{t.nav.login}</Link>
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                asChild
+                className="text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
+              >
+                <Link href="/register">{t.nav.register}</Link>
+              </Button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2.5 text-white hover:text-silver focus:outline-none focus:ring-1 focus:ring-silver/40 rounded-md"
+            className="p-2 text-text-primary hover:text-primary focus:outline-none focus:ring-1 focus:ring-primary-light rounded-md"
             aria-label="Toggle navigation menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -267,116 +520,314 @@ export function Navbar() {
 
       {/* Mobile / Tablet Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-white/10 bg-primary-dark px-4 py-6 space-y-4 shadow-2xl">
+        <div className="xl:hidden border-t border-primary-light bg-white px-4 py-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
           <div className="flex flex-col space-y-2 text-sm font-semibold">
             <Link
-              href="/#profil"
-              onClick={closeMobileMenu}
-              className="py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
+              href="/"
+              onClick={closeAllMenus}
+              className={`py-2.5 px-3 rounded-md transition-colors ${
+                isHome
+                  ? "text-primary font-bold bg-surface"
+                  : "text-text-primary hover:bg-surface"
+              }`}
             >
-              Profil Perusahaan
+              {t.nav.home}
             </Link>
 
-            {/* Mobile Layanan with Accordion */}
-            <div>
+            {/* Unified Mobile Layanan Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
               <button
                 type="button"
-                onClick={() => setMobileServicesOpen(!mobileServicesOpen)}
-                className="w-full flex items-center justify-between py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
+                onClick={() => setMobileLayananOpen(!mobileLayananOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
               >
-                <span>Layanan</span>
+                <span>{t.nav.services}</span>
                 <ChevronDownIcon
                   className={`text-xs transition-transform duration-200 ${
-                    mobileServicesOpen ? "rotate-180 text-white" : ""
+                    mobileLayananOpen ? "rotate-180 text-primary" : ""
                   }`}
                 />
               </button>
 
-              {mobileServicesOpen && (
-                <div className="pl-5 pr-2 py-2 space-y-1.5 bg-primary/60 rounded-md mt-1 border-l-2 border-silver/40">
-                  <div className="text-[10px] font-bold text-silver uppercase tracking-wider pt-1">
-                    Konsultasi
+              {mobileLayananOpen && (
+                <div className="p-2 space-y-1 bg-white border-t border-primary-light text-xs">
+                  {/* BAGIAN 1: KONSULTASI */}
+                  <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                    {t.nav.consultationSection}
                   </div>
                   <Link
-                    href="/#layanan-hukum"
-                    onClick={closeMobileMenu}
-                    className="block py-1.5 text-xs text-silver hover:text-white transition-colors"
+                    href="/layanan/akuntansi"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
-                    &bull; Konsultasi Hukum
+                    Accounting Services
                   </Link>
                   <Link
-                    href="/#layanan-bisnis"
-                    onClick={closeMobileMenu}
-                    className="block py-1.5 text-xs text-silver hover:text-white transition-colors"
+                    href="/layanan/bisnis"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
-                    &bull; Konsultasi Business
+                    Business &amp; Financial Services
                   </Link>
                   <Link
-                    href="/#layanan-akuntansi"
-                    onClick={closeMobileMenu}
-                    className="block py-1.5 text-xs text-silver hover:text-white transition-colors"
+                    href="/layanan/tax-service"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
-                    &bull; Accounting Service
+                    Tax Services
+                  </Link>
+                  <Link
+                    href="/layanan/hukum"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Law Services
                   </Link>
 
-                  <div className="text-[10px] font-bold text-silver uppercase tracking-wider pt-2 border-t border-white/10">
-                    Tax Service
+                  {/* Garis pemisah halus */}
+                  <hr className="my-2 border-gray-100" />
+
+                  {/* BAGIAN 2: TAX SERVICE CORE */}
+                  <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                    {t.nav.taxCoreSection}
                   </div>
                   <Link
-                    href="/#layanan-pajak"
-                    onClick={closeMobileMenu}
-                    className="block py-1.5 text-xs text-silver hover:text-white transition-colors"
+                    href="/layanan/tax-service#e-faktur"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
-                    &bull; Tax Service Core
+                    e-Faktur Pajak
+                  </Link>
+                  <Link
+                    href="/layanan/tax-service#e-bupot-21"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    e-Bupot 21/26
+                  </Link>
+                  <Link
+                    href="/layanan/tax-service#e-bupot-unifikasi"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    e-Bupot Unifikasi
+                  </Link>
+                  <Link
+                    href="/layanan/tax-service#e-billing"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    e-Billing &amp; VSWP
+                  </Link>
+                  <Link
+                    href="/layanan/tax-service#pelaporan-spt"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Pelaporan SPT (BPE DJP)
+                  </Link>
+                  <Link
+                    href="/layanan/tax-service#integrasi-api"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Integrasi API Coretax
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Peraturan Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobilePeraturanOpen(!mobilePeraturanOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
+              >
+                <span>{t.nav.regulations}</span>
+                <ChevronDownIcon
+                  className={`text-xs transition-transform duration-200 ${
+                    mobilePeraturanOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {mobilePeraturanOpen && (
+                <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
+                  <Link
+                    href="/peraturan"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.regulations}
+                  </Link>
+                  <Link
+                    href="/peraturan#kurs-pajak"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Kurs Pajak
+                  </Link>
+                  <Link
+                    href="/peraturan#unduh-peraturan"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Unduh Peraturan
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Edukasi Pajak Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobileEdukasiOpen(!mobileEdukasiOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
+              >
+                <span>{t.nav.education}</span>
+                <ChevronDownIcon
+                  className={`text-xs transition-transform duration-200 ${
+                    mobileEdukasiOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {mobileEdukasiOpen && (
+                <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
+                  <Link
+                    href="/edukasi?tab=edukasi-zhou"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.educationZhou}
+                  </Link>
+                  <Link
+                    href="/edukasi?tab=belajar-pajak"
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.belajarPajak}
                   </Link>
                 </div>
               )}
             </div>
 
             <Link
-              href="/#peraturan"
-              onClick={closeMobileMenu}
-              className="py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
+              href="/kontak"
+              onClick={closeAllMenus}
+              className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
             >
-              Peraturan
+              {t.nav.contact}
             </Link>
             <Link
-              href="/#edukasi"
-              onClick={closeMobileMenu}
-              className="py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
+              href="/karir"
+              onClick={closeAllMenus}
+              className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
             >
-              Edukasi
-            </Link>
-            <Link
-              href="/#karir"
-              onClick={closeMobileMenu}
-              className="py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
-            >
-              Karir
-            </Link>
-            <Link
-              href="/#kontak"
-              onClick={closeMobileMenu}
-              className="py-2.5 px-3 rounded-md text-silver hover:text-white hover:bg-white/5 transition-colors"
-            >
-              Kontak
+              {t.nav.career}
             </Link>
           </div>
 
-          <div className="pt-4 border-t border-white/10">
-            <Button
-              variant="silver"
-              size="lg"
-              asChild
-              className="w-full font-semibold text-sm justify-center"
-              onClick={closeMobileMenu}
-            >
-              <Link href="/login">Portal Login</Link>
-            </Button>
+          <div className="pt-4 border-t border-primary-light flex flex-col gap-2.5">
+            {isAuthenticated && user ? (
+              <>
+                <div className="px-3 py-2 rounded-lg bg-surface text-xs text-text-secondary flex items-center justify-between">
+                  <span className="font-semibold text-text-primary truncate">{user.name}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                    {user.role === "superadmin"
+                      ? "Superadmin"
+                      : user.role === "admin"
+                      ? "Staff Admin"
+                      : "Klien"}
+                  </span>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-xs justify-center bg-primary hover:bg-primary-dark text-white"
+                  onClick={closeAllMenus}
+                >
+                  <Link
+                    href={
+                      user.role === "superadmin"
+                        ? "/dashboard/superadmin"
+                        : user.role === "admin"
+                        ? "/dashboard/admin"
+                        : "/dashboard/user"
+                    }
+                  >
+                    {user.role === "superadmin"
+                      ? "Superadmin Portal"
+                      : user.role === "admin"
+                      ? "Admin Portal"
+                      : "Dashboard Saya"}
+                  </Link>
+                </Button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    asChild
+                    className="w-full font-semibold text-xs justify-center border-primary-light text-text-primary hover:bg-surface"
+                    onClick={closeAllMenus}
+                  >
+                    <Link
+                      href={
+                        user.role === "superadmin"
+                          ? "/dashboard/superadmin/users"
+                          : user.role === "admin"
+                          ? "/dashboard/admin?section=company"
+                          : "/dashboard/user/profil"
+                      }
+                    >
+                      Profil
+                    </Link>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="default"
+                    type="button"
+                    onClick={() => {
+                      closeAllMenus();
+                      logout();
+                    }}
+                    className="w-full font-semibold text-xs justify-center border-error/30 text-error hover:bg-error/10 cursor-pointer"
+                  >
+                    Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-sm justify-center border-primary-light text-primary hover:bg-surface"
+                  onClick={closeAllMenus}
+                >
+                  <Link href="/login">{t.nav.login}</Link>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-sm justify-center bg-primary hover:bg-primary-dark text-white"
+                  onClick={closeAllMenus}
+                >
+                  <Link href="/register">{t.nav.register}</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
     </header>
   );
 }
-

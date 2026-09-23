@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,14 +13,12 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import {
-  DownloadIcon,
-  ArrowRightIcon,
-  ShieldTaxIcon,
-  BookIcon,
   CheckCircleIcon,
 } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
 
 export function RegulationsSection() {
+  const { t } = useLanguage();
   const taxRates = [
     {
       currency: "USD",
@@ -94,7 +95,7 @@ export function RegulationsSection() {
   return (
     <section
       id="peraturan"
-      aria-label="Portal Regulasi dan Kurs Pajak"
+      aria-label="Regulasi dan Kurs Pajak"
       className="py-16 md:py-20 lg:py-24 bg-white border-b border-primary-light scroll-mt-20"
     >
       <div className="container-custom space-y-12">
@@ -104,13 +105,13 @@ export function RegulationsSection() {
             variant="silver"
             className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
           >
-            Portal Regulasi &amp; Kurs
+            {t.regulations.badge}
           </Badge>
           <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
-            Kurs Pajak Mingguan &amp; Referensi Regulasi DJP
+            {t.regulations.headline}
           </h2>
           <p className="text-[15px] leading-[24px] sm:text-body-large text-text-secondary leading-relaxed">
-            Data kurs konversi resmi Kementerian Keuangan untuk transaksi valas perpajakan serta arsip peraturan terbaru penunjang kepatuhan wajib pajak.
+            {t.regulations.subheading}
           </p>
         </div>
 
@@ -184,13 +185,12 @@ export function RegulationsSection() {
           <div className="lg:col-span-5 rounded-lg border border-primary-light bg-surface p-6 space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <ShieldTaxIcon className="text-primary text-sm" />
                 <h3 className="text-card-heading font-semibold text-primary">
-                  Pusat Regulasi &amp; Tautan DJP
+                  {t.regulations.badge}
                 </h3>
               </div>
               <p className="text-xs text-text-secondary leading-relaxed">
-                Akses langsung ke regulasi induk perpajakan nasional, harmonisasi UU HPP, dan petunjuk teknis implementasi Coretax.
+                {t.regulations.subheading}
               </p>
             </div>
 
@@ -205,15 +205,14 @@ export function RegulationsSection() {
                 <div className="w-7 h-7 rounded-md bg-primary-light text-primary flex items-center justify-center text-xs">
                   <CheckCircleIcon className="text-success" />
                 </div>
-                <span>Portal Resmi DJP Online (Kemenkeu)</span>
+                <span>{t.regulations.portalDjp}</span>
               </div>
-              <ArrowRightIcon className="text-xs text-primary transition-transform group-hover:translate-x-1" />
             </a>
 
             {/* Regulation Documents List */}
             <div className="space-y-2.5">
               <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
-                Dokumen Regulasi Terkini
+                {t.regulations.docTitle}
               </span>
               {regulations.map((reg, idx) => (
                 <div
@@ -222,7 +221,6 @@ export function RegulationsSection() {
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <BookIcon className="text-text-secondary text-[11px]" />
                       <span className="font-semibold text-primary">
                         {reg.title}
                       </span>
@@ -238,20 +236,35 @@ export function RegulationsSection() {
               ))}
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="w-full text-xs font-semibold hover:border-primary justify-center gap-2"
-            >
-              <a
-                href="#kontak"
-                className="inline-flex items-center justify-center gap-2"
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="primary"
+                size="sm"
+                asChild
+                className="flex-1 text-xs font-semibold justify-center gap-2"
               >
-                <DownloadIcon className="text-xs" />
-                <span>Unduh Kompilasi Regulasi Pajak (PDF)</span>
-              </a>
-            </Button>
+                <Link
+                  href="/peraturan"
+                  className="inline-flex items-center justify-center gap-2"
+                >
+                  <span>{t.regulations.btnAll}</span>
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="flex-1 text-xs font-semibold hover:border-primary justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Link
+                  href="/peraturan#kurs-pajak"
+                  className="inline-flex items-center justify-center gap-2"
+                  title="Lihat Tabel & Unduh KMK Kurs Pajak Mingguan"
+                >
+                  <span>Unduh KMK (PDF)</span>
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

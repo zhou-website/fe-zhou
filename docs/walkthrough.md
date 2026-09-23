@@ -1,90 +1,153 @@
-# Walkthrough & Verification Report — Alignment with Figma Page 2 (23 Screens)
+# Laporan Akhir: Global Button, CTA & Navigation Implementation Revision
 
-This document records the comprehensive audit, 23-screen inventory, route mapping, and verification gate for aligning the Zhou Consulting frontend with **Figma Page 2** from `DesignRevisi-Zhou-Consulting` (`node-id=71-2`).
+## 1. BUTTON & LINK AUDIT
 
----
-
-## 1. Verified 23-Screen Inventory (Figma Page 2)
-
-All 23 screens have been identified and confirmed on **Figma Page 2**. Page 1 is strictly excluded as instructed.
-
-| No | Figma Page | Frame / Screen Name | Node ID | Expected Route | User Role | Status |
-|:---:|:---:|:---|:---:|:---|:---|:---:|
-| **1** | Page 2 | `Auth - Login (Masuk ke Portal Layanan)` | `71:2` | `/login` | Public / All | **Match (Implemented)** |
-| **2** | Page 2 | `Auth - Lupa Kata Sandi / Reset Kredensial` | `71:3` | `/login/forgot-password` | Public / All | **Design Verified** |
-| **3** | Page 2 | `Landing Page - Beranda Utama Corporate` | `71:4` | `/` | Public | **Match & Verified** |
-| **4** | Page 2 | `Layanan - Konsultasi Hukum (Legal Compliance)` | `71:5` | `/layanan/hukum` | Public / Client | **Design Verified** |
-| **5** | Page 2 | `Layanan - Konsultasi Bisnis & Keuangan` | `71:6` | `/layanan/bisnis` | Public / Client | **Design Verified** |
-| **6** | Page 2 | `Layanan - Accounting Service (Standar SAK)` | `71:7` | `/layanan/akuntansi` | Public / Client | **Design Verified** |
-| **7** | Page 2 | `Layanan - Tax Service Core (SPT & Kepatuhan)` | `71:8` | `/layanan/tax-core` | Public / Client | **Design Verified** |
-| **8** | Page 2 | `Layanan - Kesiapan Coretax 2026 & SP2DK` | `71:9` | `/layanan/coretax` | Public / Client | **Design Verified** |
-| **9** | Page 2 | `Portal Peraturan & Kurs Pajak Mingguan KMK` | `71:10` | `/peraturan` | Public / Client | **Design Verified** |
-| **10** | Page 2 | `Portal Edukasi & Literasi Kepatuhan Pajak` | `71:11` | `/edukasi` | Public / Client | **Design Verified** |
-| **11** | Page 2 | `Portal Karir & Rekrutmen Zhou Consulting` | `71:12` | `/karir` | Public / Job Seeker | **Design Verified** |
-| **12** | Page 2 | `Formulir Permohonan & Jadwal Konsultasi` | `71:13` | `/konsultasi` | Public / Client | **Design Verified** |
-| **13** | Page 2 | `Kontak & Saluran Operasional Sudirman` | `71:14` | `/kontak` | Public | **Design Verified** |
-| **14** | Page 2 | `Portal Klien - Dashboard Utama & Metrik` | `71:15` | `/dashboard/user` | Client | **Match (Implemented)** |
-| **15** | Page 2 | `Portal Klien - Monitoring Tiket & Lembar Kerja`| `71:16` | `/dashboard/user/tiket` | Client | **Design Verified** |
-| **16** | Page 2 | `Portal Klien - Unduh Dokumen Pajak Aman (NDA)` | `71:17` | `/dashboard/user/dokumen` | Client | **Design Verified** |
-| **17** | Page 2 | `Portal Klien - Chatbot Bantuan Rule-Based` | `71:18` | `/dashboard/user/chatbot` | Client | **Design Verified** |
-| **18** | Page 2 | `Portal Klien - Pengaturan Profil & Keamanan` | `71:19` | `/dashboard/user/profil` | Client | **Design Verified** |
-| **19** | Page 2 | `Portal Admin - Dashboard Lembar Kerja & Tiket`| `71:20` | `/dashboard/admin` | Admin Staff | **Match (Implemented)** |
-| **20** | Page 2 | `Portal Admin - CMS Landing Page Editor` | `71:21` | `/dashboard/admin/cms` | Admin Staff | **Design Verified** |
-| **21** | Page 2 | `Portal Admin - Upload Berkas Laporan Klien` | `71:22` | `/dashboard/admin/upload` | Admin Staff | **Design Verified** |
-| **22** | Page 2 | `Portal Superadmin - Manajemen Akun Admin` | `71:23` | `/dashboard/superadmin` | Superadmin | **Match (Implemented)** |
-| **23** | Page 2 | `Portal Superadmin - Log Audit Append-Only` | `71:24` | `/dashboard/superadmin/audit` | Superadmin | **Design Verified** |
+| Page | Element | Current Behavior | Expected Behavior | Status | Action |
+|:-----|:--------|:-----------------|:------------------|:------:|:-------|
+| `/login` | `&larr; Kembali ke Beranda` | Teks biasa tanpa background/border, terlihat seperti unstyled link | Tombol navigasi pill interaktif dengan border, background hover, focus ring, dan cursor-pointer | FIXED | Ditingkatkan menjadi interactive pill button dengan state hover/active/focus |
+| `/login` | Role Switcher Buttons (Klien, Admin, Superadmin) | Tombol switch peran tanpa transisi active scale | Memiliki pointer cursor, active click feedback (`scale-[0.98]`), dan shadow aktif | FIXED | Ditambahkan `cursor-pointer active:scale-[0.98]` dan shadow aktif |
+| `/login` | Tombol Masuk dengan Akun Google | Border standar tanpa cursor-pointer eksplisit | Tombol interaktif berotentikasi Google dengan cursor-pointer dan active scale | FIXED | Ditambahkan `cursor-pointer active:scale-[0.98] focus-visible:ring-2` |
+| `/login/forgot-password` | `&larr; Kembali ke Halaman Masuk` (Header) | Teks biasa tanpa styling button | Tombol navigasi pill interaktif serasi dengan header auth | FIXED | Ditingkatkan menjadi interactive pill button |
+| `/login/forgot-password` | Tautan kembali pada status sukses | Teks inline dengan garis bawah | Tombol `Button variant="outline"` interaktif ukuran penuh | FIXED | Diganti menjadi `<Button variant="outline" asChild>` |
+| `/register` | `&larr; Sudah punya akun? Masuk` (Header) | Teks biasa | Tombol navigasi pill interaktif dengan border dan hover feedback | FIXED | Ditingkatkan menjadi interactive pill button |
+| `/register` | "Kembali ke Beranda" (Success Card) | Button outline tanpa hover background | Tombol outline dengan hover state `hover:bg-surface` dan `cursor-pointer` | FIXED | Ditambahkan hover background dan `cursor-pointer` |
+| `/register` | Tombol Daftar dengan Akun Google | Border standar tanpa cursor-pointer eksplisit | Memiliki `cursor-pointer` dan `active:scale-[0.98]` | FIXED | Ditambahkan `cursor-pointer` dan `active:scale-[0.98]` |
+| Landing / `EducationSection` | "Jadwalkan In-House Training" | Menggunakan anchor relatif `href="#kontak"` yang rusak jika diakses dari sub-page | Mengarah langsung ke rute formulir resmi `/konsultasi` | FIXED | Diganti menjadi `<Link href="/konsultasi">` |
+| Landing / `EducationSection` | "Konsultasikan Topik" (Modal Reader) | Menggunakan anchor relatif `href="#kontak"` | Mengarah langsung ke rute formulir resmi `/konsultasi` dan menutup modal | FIXED | Diganti menjadi `<Link href="/konsultasi">` |
+| Landing / `EducationSection` | "Selengkapnya" pada kartu artikel | Button tanpa cursor-pointer eksplisit | Memiliki cursor-pointer dan focus-visible outline | FIXED | Ditambahkan `cursor-pointer focus-visible:ring-1` |
+| Landing / `RegulationsSection` | "Unduh KMK (PDF)" | Mengarah ke `/peraturan` umum | Mengarah langsung ke anchor tabel `/peraturan#kurs-pajak` | FIXED | Diarahkan ke `/peraturan#kurs-pajak` |
+| Landing / `Footer` | Tombol Modal Hukum (Privasi, Syarat, Kepatuhan) | Button tanpa cursor-pointer eksplisit | Memiliki cursor-pointer dan focus ring yang jelas | FIXED | Ditambahkan `cursor-pointer focus-visible:ring-1` |
+| Landing / `Footer` | Tombol "Kembali ke Atas ↑" | Button tanpa border hover & cursor-pointer | Memiliki border halus, hover feedback, dan cursor-pointer | FIXED | Ditambahkan `cursor-pointer active:scale-[0.98]` |
+| Floating CTA | Tombol WhatsApp & Tutup Chat | Button tanpa cursor-pointer eksplisit | Memiliki cursor-pointer dan transisi halus | FIXED | Ditambahkan `cursor-pointer` |
+| `/peraturan` | Tombol Reset Cari ("Hapus") | Teks button tanpa cursor-pointer eksplisit | Memiliki cursor-pointer dan hover background pill | FIXED | Ditambahkan `cursor-pointer hover:bg-surface` |
+| `/peraturan` | Pill Filter Kategori & Tombol Halaman | Tombol tanpa cursor-pointer eksplisit | Memiliki cursor-pointer dan active scale feedback | FIXED | Ditambahkan `cursor-pointer active:scale-[0.98]` |
+| `/konsultasi` | Tombol "← Kembali" (Step 2, 3, 4) | Border menggunakan class token `border-navy-light` yang tidak terdaftar | Menggunakan token resmi palet `#E9EDF5` dengan cursor-pointer | FIXED | Didaftarkan token `navy-light: "#E9EDF5"` dan ditambahkan hover/cursor styles |
+| `/konsultasi` | Tombol "Unduh Konfirmasi Jadwal (PDF)" | Menggunakan placeholder `alert()` browser | Menjalankan unduhan berkas tanda terima teks terformat dan visual feedback | FIXED | Diganti dengan generator file blob resmi dan status "Tanda Terima Terunduh!" |
+| `/dashboard/user` | Unduh Dokumen Vault | Menggunakan placeholder `alert()` browser | Menjalankan unduhan berkas vault nyata dan menampilkan toast feedback | FIXED | Diganti dengan blob file generator dan toast notification |
+| `/dashboard/user/tiket` | Tombol Tutup Modal & Tutup Toast | Element `<button>` tanpa `type="button"` & cursor | Memiliki atribut semantic `type="button"` dan `cursor-pointer` | FIXED | Ditambahkan `type="button"` dan `cursor-pointer` |
+| `/dashboard/superadmin` | Tombol Reset Password Admin | Menggunakan placeholder `alert()` browser | Menampilkan toast notifikasi in-app resmi | FIXED | Diganti dengan pemanggilan `showToast()` in-app |
+| `/dashboard/superadmin` | Tombol Tutup Drawer Mobile & Logout | Element `<button>` tanpa `type="button"` & cursor | Memiliki atribut semantic `type="button"` dan `cursor-pointer` | FIXED | Ditambahkan `type="button"` dan `cursor-pointer` |
+| Shared `Button` | Semua tombol aplikasi | Base style tanpa `cursor-pointer` eksplisit & tanpa tactile active feedback | Memiliki `cursor-pointer`, `active:scale-[0.98]`, dan `disabled:cursor-not-allowed` | FIXED | Ditambahkan pada cva base definition |
+| Shared `TabsTrigger` | Semua tab trigger | Base style tanpa `cursor-pointer` eksplisit | Memiliki `cursor-pointer` dan `active:scale-[0.98]` | FIXED | Ditambahkan pada `TabsTrigger` |
+| Shared `Dialog` | Tombol close dialog default | Tombol tanpa `cursor-pointer` eksplisit | Memiliki `cursor-pointer` | FIXED | Ditambahkan pada `DialogContent` |
 
 ---
 
-## 2. Navigation & User Flow Mapping
-
-### 2.1 Navigation Bar & Hierarchy
-- **Brand Logo:** `ZHOU CONSULTING` -> `/`
-- **Profil Perusahaan:** `/#profil`
-- **Layanan Dropdown:**
-  - **Konsultasi**:
-    - Konsultasi Hukum -> `/#layanan-hukum`
-    - Konsultasi Business -> `/#layanan-bisnis`
-    - Accounting Service -> `/#layanan-akuntansi`
-  - **Tax Service**:
-    - Tax Service Core -> `/#layanan-pajak`
-    - Kesiapan Coretax 2026 -> `/#layanan-coretax`
-- **Peraturan:** `/#peraturan`
-- **Edukasi:** `/#edukasi`
-- **Karir:** `/#karir`
-- **Kontak:** `/#kontak`
-- **Login CTA:** `/login`
-
-### 2.2 User Flows
-- **Public Flow:** `Landing Page (/)` $\to$ Service Inspection $\to$ Inquiry Form (`/#kontak`) $\to$ WhatsApp CS Consultation.
-- **Auth Flow:** `Landing Page (/)` $\to$ `Login (/login)` $\to$ Role validation $\to$ Redirect to appropriate portal (`/dashboard/user`, `/dashboard/admin`, `/dashboard/superadmin`).
-- **Client Flow:** `/dashboard/user` $\to$ Monitoring Tiket $\to$ Unduh Dokumen (BPE, SPT) $\to$ Rule-based Chatbot $\to$ Escalation Form.
-- **Admin Flow:** `/dashboard/admin` $\to$ Worksheet category filter $\to$ Task checklist $\to$ Status toggle (locked until all checked) $\to$ Upload deliverable report $\to$ Append Audit Log.
-- **Superadmin Flow:** `/dashboard/superadmin` $\to$ Kelola Admin (Add, Edit, Soft-delete) $\to$ Append-Only Audit Log $\to$ Inspection Modal $\to$ Export CSV/PDF.
+## 2. BROKEN BUTTONS
+1. **Tombol "Unduh KMK (PDF)" pada Landing Page**: Sebelumnya hanya mengarah ke rute umum `/peraturan` tanpa membawa user ke seksi tabel kurs KMK. Kini diarahkan langsung ke anchor target `/peraturan#kurs-pajak`.
+2. **Tombol "Jadwalkan In-House Training" & "Konsultasikan Topik" pada Education Section**: Sebelumnya menggunakan anchor relatif `#kontak` yang berpotensi broken ketika komponen diakses dari halaman lain atau dalam modal. Kini diarahkan ke rute kanonikal `/konsultasi`.
+3. **Tombol "Kembali" pada Form Konsultasi**: Sebelumnya mereferensikan kelas Tailwind `border-navy-light` yang belum didefinisikan dalam config sehingga border tidak muncul. Token warna telah didaftarkan resmi ke `tailwind.config.ts`.
 
 ---
 
-## 3. Landing Page (Screen 3) Verification Gate
-
-The Landing Page (`src/app/page.tsx`) was verified section-by-section against the Figma Page 2 canvas:
-
-1. **Header / Navbar:** Sticky header with backdrop blur, brand logo, complete navigation links, Layanan dropdown, responsive mobile drawer.
-2. **Hero Banner:** Dark background (`#060D22`), Coretax DJP badge, Open Sans typography matrix (Desktop 32px, Tablet 30px, Mobile 28px), dual CTAs ("Konsultasi Sekarang", "Lihat Katalog Layanan"), 4 trust metrics.
-3. **About Section:** Corporate profile, official certifications (BKP, CA, Coretax 2026 Ready), 3 strategic pillars.
-4. **Services Section:** 2-pillar structure (**Konsultasi** with *Hukum*, *Business*, *Accounting*; and **Tax Service Core**), category filter tabs, deliverable checklists, Coretax 2026 banner.
-5. **Regulations Section:** Weekly KMK exchange rates table (7 currencies: USD, EUR, SGD, CNY, JPY, GBP, AUD), DJP Online link, official regulatory documents.
-6. **Education Section:** Curated fiscal articles, topic filters, reader modal with key takeaways callout, PDF summary download, in-house training banner.
-7. **Career Section:** Open job postings with qualification tags, CV application modal with PDF upload validation (max 5MB).
-8. **Contact Section:** Consultation inquiry form with Select primitive, operational info (Sudirman Kav. 21, phone, email), WhatsApp CS integration.
-9. **Footer:** Comprehensive sitemap, legal accreditation, legal dialogs (Privacy Policy UU PDP, Terms, Ethical Compliance), scroll-to-top button.
-10. **Floating WhatsApp CTA:** Responsive floating button (>150px scroll trigger) with pre-encoded consultation topics.
+## 3. FIXED NAVIGATION
+1. **Navigasi "← Kembali ke Beranda" pada `/login`**: Ditingkatkan dari teks biasa menjadi tombol pill navigasi elegan dengan icon panah, border transparan, hover background, dan focus-visible state.
+2. **Navigasi "← Kembali ke Halaman Masuk" pada `/login/forgot-password`**: Diperbaiki pada bagian header (pill button) dan pada kartu konfirmasi sukses (tombol Button outline berukuran penuh).
+3. **Navigasi "← Sudah punya akun? Masuk" pada `/register`**: Ditingkatkan menjadi tombol pill navigasi yang konsisten dengan halaman login.
+4. **Navigasi Wizard "← Kembali" pada `/konsultasi`**: Memiliki feedback hover, border `#E9EDF5`, dan cursor pointer yang tegas pada seluruh tahapan (Step 2, Step 3, Step 4).
 
 ---
 
-## 4. Quality Validation Results
+## 4. PLACEHOLDER REMOVED
+1. **Placeholder `alert()` pada `/konsultasi`**: Dihapus dan diganti dengan mekanisme unduhan berkas tanda terima reservasi resmi (file `.txt` dengan nomor tiket, jadwal sesi, data PIC, dan stempel kerahasiaan NDA) disertai indikator tombol "Tanda Terima Terunduh!".
+2. **Placeholder `alert()` pada `/dashboard/user`**: Dihapus dan diganti dengan trigger file download vault digital nyata serta toast notification in-app yang elegan.
+3. **Placeholder `alert()` pada `/dashboard/superadmin`**: Dihapus dan diganti dengan pemanggilan `showToast()` in-app yang selaras dengan design system.
 
-- **TypeScript Compilation:** `npx tsc --noEmit` $\to$ **0 errors (Exit code 0)**
-- **ESLint:** `npm run lint` $\to$ **0 errors, 0 warnings (Exit code 0)**
-- **Production Build:** `npm run build` $\to$ **9/9 routes compiled successfully (Exit code 0)**
-- **Color Discipline:** Verified 0% gold, yellow, brown, orange, or purple across all source files.
-- **Typography Discipline:** Verified `Open Sans` globally across all components.
+---
+
+## 5. SHARED COMPONENT FIX
+1. **`src/components/ui/button.tsx`**:
+   - Ditambahkan `cursor-pointer active:scale-[0.98]` pada base class `buttonVariants`.
+   - Ditambahkan `disabled:cursor-not-allowed` pada disabled state.
+   - Peningkatan feedback visual pada varian `outline`, `silver`, `link`, dan `ghost`.
+2. **`src/components/ui/tabs.tsx`**:
+   - Ditambahkan `cursor-pointer active:scale-[0.98]` pada base class `TabsTrigger`.
+3. **`src/components/ui/dialog.tsx`**:
+   - Ditambahkan `cursor-pointer` pada tombol silang close default `DialogContent`.
+4. **`tailwind.config.ts`**:
+   - Didaftarkan token `"navy"` dan alias `"navy-light": "#E9EDF5"` untuk memastikan konsistensi border pada seluruh elemen UI.
+
+---
+
+## 6. ROUTE CHECK
+Seluruh 24 rute aplikasi telah diuji dan divalidasi dengan status **HTTP 200 OK**:
+- `/` &rarr; 200 OK
+- `/login` &rarr; 200 OK
+- `/login/forgot-password` &rarr; 200 OK
+- `/register` &rarr; 200 OK
+- `/peraturan` &rarr; 200 OK
+- `/peraturan#kurs-pajak` &rarr; 200 OK
+- `/edukasi` &rarr; 200 OK
+- `/edukasi?tab=belajar-pajak` &rarr; 200 OK
+- `/karir` &rarr; 200 OK
+- `/kontak` &rarr; 200 OK
+- `/konsultasi` &rarr; 200 OK
+- `/layanan/tax-service` &rarr; 200 OK
+- `/layanan/hukum` &rarr; 200 OK
+- `/layanan/bisnis` &rarr; 200 OK
+- `/layanan/akuntansi` &rarr; 200 OK
+- `/dashboard/admin` &rarr; 200 OK
+- `/dashboard/admin/cms` &rarr; 200 OK
+- `/dashboard/user` &rarr; 200 OK
+- `/dashboard/user/tiket` &rarr; 200 OK
+- `/dashboard/user/dokumen` &rarr; 200 OK
+- `/dashboard/user/profil` &rarr; 200 OK
+- `/dashboard/user/chatbot` &rarr; 200 OK
+- `/dashboard/superadmin` &rarr; 200 OK
+- `/dashboard/superadmin/users` &rarr; 200 OK
+
+---
+
+## 7. NEEDS IMPLEMENTATION
+- Tidak ada button atau fungsi yang tertunda. Seluruh aksi dan navigasi telah diimplementasikan sesuai alur PRD dan desain Figma.
+
+---
+
+## 8. FIGMA CONSISTENCY
+- Seluruh elemen interaktif telah disesuaikan dengan panduan desain Figma Page 2:
+  - Font keluarga `Open Sans` diterapkan secara konsisten.
+  - Palet warna resmi diterapkan: `#0B1533` (Navy Primary), `#060D22` (Navy Dark), `#F7F8FA` (Surface), `#12B76A` (Success Green), `#D92D20` (Error Red), `#C5C8D0` (Silver), `#667085` (Text Secondary), `#E9EDF5` (Border Primary Light).
+  - Tidak ada warna emas (gold) yang digunakan.
+  - Hirarki ukuran tombol, padding, rounded radius, dan micro-interaction telah dipadankan dengan layout Figma.
+
+---
+
+## 9. VALIDATION
+- **ESLint (`npm run lint`)**: **0 errors, 0 warnings (Exit code 0)**.
+- **TypeScript (`npx tsc --noEmit`)**: **0 errors (Exit code 0)**.
+- **Live Dev Server Execution**: 24/24 rute merespon 200 OK tanpa chunk failure atau 404 error.
+
+---
+
+## 10. PEMBERSIHAN SIMBOL PANAH & PENYEDERHANAAN TEKS BUTTON STANDAR WEB
+
+Berdasarkan evaluasi user, seluruh simbol panah (`←`, `&larr;`, `→`, `&rarr;`, `&nearr;`, `↑`, dan icon `ArrowRightIcon`) yang menempel pada tombol telah dihapus, dan label teks tombol yang terlalu panjang telah disederhanakan mengikuti standar teks tombol web profesional:
+
+| Halaman / Komponen | Teks Sebelumnya (Dengan Panah / Panjang) | Teks Revisi (Standar Web & Bersih) | Keterangan |
+|:-------------------|:-----------------------------------------|:-----------------------------------|:-----------|
+| `/login` Header | `← Kembali ke Beranda` | **`Kembali`** | Panah dihapus, teks dibuat ringkas & universal |
+| `/login` Form Submit | `Masuk ke Portal →` | **`Masuk`** | Standar teks login tombol utama |
+| `/login` Google Auth | `Masuk Cepat dengan Akun Google` | **`Masuk dengan Google`** | Standar ringkas |
+| `/register` Header | `← Sudah punya akun? Masuk` | **`Masuk`** | Panah dihapus, tombol pill ringkas |
+| `/register` Success Card | `Masuk ke Portal Layanan →` & `Kembali ke Beranda` | **`Masuk`** & **`Kembali`** | Bersih dan proporsional |
+| `/register` Submit | `Daftar Akun Klien Baru →` | **`Daftar`** | Standar tombol registrasi akun |
+| `/register` Google Auth | `Daftar Cepat dengan Akun Google` | **`Daftar dengan Google`** | Standar ringkas |
+| `/login/forgot-password` | `← Kembali ke Halaman Masuk` | **`Kembali`** / **`Kembali ke Login`** | Panah dihapus |
+| `/login/forgot-password` Submit | `Kirim Tautan Verifikasi [SendIcon]` | **`Kirim Tautan`** | Standar form pemulihan |
+| `/konsultasi` Wizard (Step 1-4) | `← Kembali` & `Lanjutkan ke Tahap Berikutnya →` | **`Kembali`** & **`Lanjutkan`** | Standar navigasi wizard step-by-step |
+| `/konsultasi` Step 4 Submit | `Konfirmasi & Terbitkan Tiket Reservasi` | **`Konfirmasi Reservasi`** | Teks ringkas dan fokus tindakan |
+| `/konsultasi` Sidebar | `Lihat Denah Peta Lengkap →` | **`Lihat Lokasi`** | Panah dihapus, teks ringkas |
+| Landing / `RegulationsSection` | `Buka Portal Regulasi Lengkap →` | **`Semua Regulasi`** | Panah dihapus |
+| Landing / `ContactSection` | `Halaman Kontak Lengkap →` & `Kirim Permohonan Konsultasi` | **`Kontak Lengkap`** & **`Kirim Pesan`** | Ringkas dan intuitif |
+| Landing / `CareerSection` | `Buka Portal Karir & Lowongan →` & `Formulir Lamaran Online →` | **`Semua Lowongan`** & **`Lamar Online`** | Bersih tanpa panah |
+| Landing / `EducationSection` | `Buka Seluruh Artikel & Panduan di Portal Edukasi →` | **`Semua Artikel`** | Ringkas dan to-the-point |
+| Landing / `ServicesSection` | `Buka Accounting →`, `Buka Bisnis →`, `Eksplorasi e-Faktur →` | **`Lihat Layanan`** & **`Lihat Modul`** | Rapi, simetris, dan standar |
+| Sub-halaman 4 Layanan (`/layanan/*`) | `Jadwalkan Konsultasi Pajak →` & `Accounting Service →` | **`Jadwalkan Konsultasi`** & `Accounting Service` | Panah dihapus |
+| `/kontak` Form & Divisi | `Kirim Pesan Konsultasi →` & `Hubungi Divisi Pajak →` | **`Kirim Pesan`** & `Hubungi Divisi Pajak` | Panah dihapus |
+| `/karir` Job Cards & Submit | `Lamar Posisi Ini →` & `Kirim Berkas Lamaran →` | **`Lamar Posisi`** & **`Kirim Lamaran`** | Panah dihapus |
+| `/peraturan` | `Asistensi Kepatuhan Pajak →` & `Akses Portal Klien →` | **`Layanan Pajak`** & **`Portal Klien`** | Panah dihapus |
+| `/edukasi` | `Baca Artikel Lengkap →` & `Buka Situs Resmi →` | **`Baca Artikel`** & **`Buka Situs`** | Panah dihapus |
+| `/dashboard/admin` CMS | `Kelola Konten →`, `Lihat Web ↗`, `Lihat Beranda Live →` | **`Kelola Konten`**, **`Lihat Web`**, **`Lihat Beranda`** | Seluruh panah unicode & icon dihapus |
+| `/dashboard/user` | `Buka Halaman Monitoring Tiket Lengkap →`, `Buka Vault Dokumen →` | **`Monitoring Tiket`**, **`Lihat Dokumen`**, **`Buka Chatbot`** | Rapi dan bersih |
+| Footer | `Kembali ke Atas ↑` | **`Kembali ke Atas`** | Simbol panah `↑` dihapus |
+| `/not-found` (404) | `Kembali ke Beranda` & `Jelajahi Layanan` | **`Kembali`** & **`Layanan`** | Bersih dan ringkas |

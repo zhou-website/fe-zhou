@@ -164,7 +164,7 @@ export const DialogContent = React.forwardRef<
           <button
             type="button"
             onClick={() => context?.setOpen(false)}
-            className="absolute right-4 top-4 rounded-sm text-text-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 p-1"
+            className="absolute right-4 top-4 rounded-sm text-text-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 p-1 cursor-pointer"
             aria-label="Tutup dialog"
           >
             <CloseIcon className="text-base" />

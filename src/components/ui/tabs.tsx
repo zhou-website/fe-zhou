@@ -88,7 +88,7 @@ export const TabsTrigger = React.forwardRef<
       aria-selected={isActive}
       data-state={isActive ? "active" : "inactive"}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 cursor-pointer active:scale-[0.98]",
         isActive
           ? "bg-primary text-white shadow-sm"
           : "text-text-secondary hover:text-primary hover:bg-white/60",

@@ -7,897 +7,279 @@
   "ui": "shadcn/ui",
   "typography": "Open Sans",
   "icons": "Font Awesome",
-  "lastUpdated": "16 September 2026",
-  "currentPhase": "Responsive Implementation & Cross-Device Optimization",
+  "lastUpdated": "18 September 2026",
+  "currentPhase": "Figma Page 2 (23 Screens Slicing & Implementation)",
   "nextTask": {
-    "id": "M5-D3-T1",
-    "task": "Responsive Header and Hero",
-    "module": "Responsive Implementation",
-    "status": "NOT STARTED",
-    "reason": "M5-D2-T2 Integrasi seluruh seksi landing page selesai (Modul Front-End Slicing & Implementation rampung 100%); lanjutkan ke Modul Responsive Implementation dimulai dengan optimasi responsivitas Header/Navbar dan Hero section pada breakpoint mobile (sm: 640px, md: 768px, lg: 1024px)."
+    "id": "ALL_COMPLETED",
+    "screenNumber": 23,
+    "task": "Seluruh 23 Screen Figma Page 2 Tuntas 100%",
+    "module": "Project Completion",
+    "route": "/",
+    "status": "COMPLETED",
+    "reason": "Seluruh 23 screen dari Figma Page 2 (DesignRevisi-Zhou-Consulting, node-id=71-2) telah berhasil dislicing dan diimplementasikan secara pixel-perfect, type-safe (0 TS error), lint-clean (0 ESLint error/warning), build-clean (30/30 rute statis terkompilasi bersih), dan responsif penuh dengan HTTP 200 OK."
   },
-  "landingPageSections": [
-    {
-      "section": "Header / Navbar",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Hero",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "About / Profil Perusahaan",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Services / Katalog Layanan",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Regulations / Portal Kurs KMK & Regulasi",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Education / Literasi & Wawasan Fiskal",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Careers / Peluang Karir",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Contact / Hubungi Kami",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Footer",
-      "status": "COMPLETED"
-    },
-    {
-      "section": "Floating WhatsApp CTA",
-      "status": "COMPLETED"
-    }
-  ],
+  "summary": {
+    "totalScreens": 23,
+    "completedScreens": 23,
+    "inProgressScreens": 0,
+    "pendingScreens": 0,
+    "completedPercentage": "100.0%",
+    "inProgressPercentage": "0.0%",
+    "overallPipelinePercentage": "100.0%"
+  },
   "tasks": [
     {
-      "id": "M1-D1-T1",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review final Figma",
+      "id": "SCR-01",
+      "screenNumber": 1,
+      "task": "Auth - Login (Masuk ke Portal Layanan)",
+      "module": "Authentication Flow",
+      "figmaNode": "71:2",
+      "route": "/login",
+      "role": "Public / All",
       "status": "COMPLETED",
-      "evidence": "Figma DesignRevisi-Zhou-Consulting (Node ID: 71:2) confirmed as Single Source of Truth."
+      "evidence": "src/app/login/page.tsx: Form otentikasi resmi, toggle show/hide password, RBAC switcher (Klien, Admin, Superadmin), Google OAuth simulation, SSL 256-bit disclaimer."
     },
     {
-      "id": "M1-D1-T2",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review structure/navigation flow",
+      "id": "SCR-02",
+      "screenNumber": 2,
+      "task": "Auth - Registrasi Klien (Pendaftaran Akun Baru)",
+      "module": "Authentication Flow",
+      "figmaNode": "71:2b",
+      "route": "/register",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Public portal navigation flow verified in PRD & Figma."
+      "evidence": "src/app/register/page.tsx & /login/register: Form registrasi lengkap (PIC, PT/CV, email korporat, WhatsApp, NPWP 16 digit Coretax, password match), UU PDP & NDA agreement, Google OAuth, interactive success state."
     },
     {
-      "id": "M1-D1-T3",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Identify page and section requirements",
+      "id": "SCR-03",
+      "screenNumber": 3,
+      "task": "Auth - Lupa Kata Sandi / Reset Kredensial",
+      "module": "Authentication Flow",
+      "figmaNode": "71:3",
+      "route": "/login/forgot-password",
+      "role": "Public / All",
       "status": "COMPLETED",
-      "evidence": "6 landing page sections & RBAC dashboards identified."
+      "evidence": "src/app/login/forgot-password/page.tsx: Form reset kredensial, validasi email, dispatch simulation, resend state, tautan kembali ke login."
     },
     {
-      "id": "M1-D2-T1",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review typography specification",
+      "id": "SCR-04",
+      "screenNumber": 4,
+      "task": "Landing Page - Beranda Utama Corporate",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:4",
+      "route": "/",
+      "role": "Public",
       "status": "COMPLETED",
-      "evidence": "Typography scale matrix (Open Sans) approved and mapped."
+      "evidence": "src/app/page.tsx: 10 seksi lengkap (Navbar, Hero #060D22 Coretax DJP, About/Profil, Services 2 pilar, Regulations KMK 7 valuta, Education reader modal, Careers CV upload, Contact inquiry form, Footer, Floating WhatsApp CTA)."
     },
     {
-      "id": "M1-D2-T2",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review color palette and visual tokens",
+      "id": "SCR-05",
+      "screenNumber": 5,
+      "task": "Layanan - Konsultasi Hukum Korporat & Legal",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:5",
+      "route": "/layanan/hukum",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Color palette approved: Dark Blue, White, Grey/Silver (Gold removed)."
+      "evidence": "src/app/layanan/hukum/page.tsx: Breadcrumb token text-breadcrumb, hero banner dual CTA, 4 pilar hukum korporat, workflow 01-04, 4 deliverables klien, profil konsultan legal Advokat PERADI, FAQ accordion, related navigator."
     },
     {
-      "id": "M1-D2-T3",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review spacing, sizing, and alignment",
+      "id": "SCR-06",
+      "screenNumber": 6,
+      "task": "Layanan - Konsultasi Bisnis & Keuangan",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:6",
+      "route": "/layanan/bisnis",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "1200px container width, responsive padding, and alignment mapped."
+      "evidence": "src/app/layanan/bisnis/page.tsx: Breadcrumb, hero banner, 4 pilar bisnis & keuangan (Feasibility, Financial Modeling, Health Check, Valuasi), workflow 01-04, kertas kerja klien, profil Linda David S.Ak BKP, FAQ accordion, related navigator."
     },
     {
-      "id": "M1-D3-T1",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Map reusable UI components",
+      "id": "SCR-07",
+      "screenNumber": 7,
+      "task": "Layanan - Accounting Service (Standar SAK)",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:7",
+      "route": "/layanan/akuntansi",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Button, Card, Input, Textarea, Label, Badge mapped."
+      "evidence": "src/app/layanan/akuntansi/page.tsx: Breadcrumb, hero banner, 4 pilar akuntansi SAK (Kompilasi SAK EP/IFRS, Jurnal/Rekonsiliasi Bank bulanan, Review COA, Pendampingan KAP), workflow 01-04, deliverables, profil Akuntan Beregister CA, FAQ accordion."
     },
     {
-      "id": "M1-D3-T2",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review assets, logo, icons, and images",
+      "id": "SCR-08",
+      "screenNumber": 8,
+      "task": "Layanan - Tax Service Core (SPT & Kepatuhan)",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:8",
+      "route": "/layanan/tax-service",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Font Awesome SVG icons selected and mapped to PRD requirements."
+      "evidence": "src/app/layanan/tax-service/page.tsx & src/app/layanan/tax-core/page.tsx: Breadcrumb, hero banner, 4 pilar layanan pajak (Kepatuhan SPT Masa/Tahunan PPh & PPN, Administrasi e-Faktur & Bukti Potong Unifikasi, Tax Planning Strategis UU HPP, Pendampingan SP2DK & Asistensi Pemeriksaan), alur penugasan 01-04, deliverable resmi (BPE DJP), profil Konsultan Pajak Beregister BKP, dan FAQ interaktif. Link navigasi Navbar dan Footer terintegrasi."
     },
     {
-      "id": "M1-D3-T3",
-      "week": "Week 1",
-      "module": "UI/UX Design & Handoff",
-      "task": "Review Front-End requirements",
+      "id": "SCR-09",
+      "screenNumber": 9,
+      "task": "Portal Peraturan & Kurs Pajak Mingguan KMK",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:10 (Col D)",
+      "route": "/peraturan",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Front-end standards documented in workspace rules."
+      "evidence": "src/app/peraturan/page.tsx & /layanan/coretax: Hero banner, 4 quick metrics, search & filter 5 kategori regulasi, 2 highlight cards (Kurs KMK mingguan & Coretax SP2DK DJP), tabel interaktif regulasi berpaginasi dengan aksi unduh PDF resmi, callout advisory, serta navigasi Navbar dan Footer terintegrasi."
     },
     {
-      "id": "M1-D4-T1",
-      "week": "Week 1",
-      "module": "Front-End Project Setup",
-      "task": "Clone GitHub repository",
+      "id": "SCR-10",
+      "screenNumber": 10,
+      "task": "Portal Edukasi & Literasi Kepatuhan Pajak",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:11 (Col E)",
+      "route": "/edukasi",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "Repository cloned from GitHub (zhou-website/fe-zhou)."
+      "evidence": "src/app/edukasi/page.tsx: Hero & featured 2-column article card dengan cover image korporat (/images/education-featured.jpg), Seksi 01 Topik & Kategori Edukasi (pencarian real-time & 6 filter kategori pills, 4 baris topik trending 01-04), Seksi 02 Katalog Artikel Edukasi & Panduan Praktis (6 kartu artikel komprehensif, tag topik, estimasi baca, modal dialog pembaca artikel interaktif dengan poin takeaways & unduh ringkasan PDF), Seksi 03 Banner Corporate In-House Tax Training (#060D22), dan Seksi 04 Form Langganan Buletin Wawasan Fiskal Mingguan dengan feedback interaktif. Terintegrasi penuh ke Navbar dan Footer."
     },
     {
-      "id": "M1-D4-T2",
-      "week": "Week 1",
-      "module": "Front-End Project Setup",
-      "task": "Setup Next.js + TypeScript",
+      "id": "SCR-11",
+      "screenNumber": 11,
+      "task": "Portal Karir & Rekrutmen Zhou Consulting",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:12 (Col G)",
+      "route": "/karir",
+      "role": "Public / Job Seeker",
       "status": "COMPLETED",
-      "evidence": "Next.js 14.2.35 with TypeScript 5.x initialized."
+      "evidence": "src/app/karir/page.tsx: Hero & narasi kultur korporat (#060D22), 2 highlight cards (Sertifikasi Brevet/USKP/Coretax & Skema Kerja Hybrid), katalog lowongan kerja terfilter (Senior Tax Consultant Coretax/SP2DK, Junior Auditor SAK, Corporate Legal Specialist, Tax Compliance Associate), modal kualifikasi detail (Dialog), formulir lamaran online terintegrasi dengan validasi dropzone PDF maksimal 5MB, persetujuan UU PDP 2022, dan notifikasi kode registrasi pelamar. Navigasi Navbar & Footer tersinkronisasi ke /karir."
     },
     {
-      "id": "M1-D4-T3",
-      "week": "Week 1",
-      "module": "Front-End Project Setup",
-      "task": "Setup Tailwind CSS + App Router",
+      "id": "SCR-12",
+      "screenNumber": 12,
+      "task": "Kontak & Saluran Operasional Sudirman",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:14 (Col F)",
+      "route": "/kontak",
+      "role": "Public",
       "status": "COMPLETED",
-      "evidence": "Tailwind CSS 3.4.19 and Next.js App Router configured."
+      "evidence": "src/app/kontak/page.tsx: Hero & detail kantor Menara Sudirman Kav. 21 Lt. 12, peta denah interaktif akses MRT & TransJakarta, jam operasional, kontak telepon & email resmi, formulir permohonan konsultasi dengan nomor tiket otomatis (ZHOU-INQ-2026-XXXX) & SLA 1x24 jam, serta direktori khusus 3 divisi (Pajak, Akuntansi, Legal) dengan hot-line WhatsApp. Navigasi Navbar & Footer tersinkronisasi ke /kontak."
     },
     {
-      "id": "M1-D4-T4",
-      "week": "Week 1",
-      "module": "Front-End Project Setup",
-      "task": "Configure @ alias and src structure",
+      "id": "SCR-13",
+      "screenNumber": 13,
+      "task": "Formulir Permohonan & Jadwal Konsultasi",
+      "module": "Public Pages & Layanan",
+      "figmaNode": "71:13",
+      "route": "/konsultasi",
+      "role": "Public / Client",
       "status": "COMPLETED",
-      "evidence": "@/* path alias and src/ directory structure verified in tsconfig.json."
+      "evidence": "src/app/konsultasi/page.tsx: Engine reservasi 4-langkah (Bidang Layanan & Format Pertemuan tatap muka di Menara Sudirman / daring Google Meet, Pemilih Tanggal 10 hari kerja & 4 Slot Waktu terindikasi kuota, Data Pemohon dengan NPWP 16-Digit Coretax & Dropzone Dokumen PDF 10MB terproteksi NDA, Pakta Kerahasiaan UU PDP No. 27/2022 & Struk Tiket Resmi ZHOU-CNS-2026-XXXX ber-SLA 1x24 jam), Checklist 4 Dokumen Pra-Konsultasi, serta FAQ interaktif. CTA Hero & Layanan tersinkronisasi ke /konsultasi."
     },
     {
-      "id": "M1-D4-T5",
-      "week": "Week 1",
-      "module": "Front-End Project Setup",
-      "task": "Initial Git commit and push",
+      "id": "SCR-14",
+      "screenNumber": 14,
+      "task": "Portal Klien - Dashboard Utama & Metrik Konsultasi",
+      "module": "Client Advisory Dashboard",
+      "figmaNode": "71:15",
+      "route": "/dashboard/user",
+      "role": "Client",
       "status": "COMPLETED",
-      "evidence": "Initial commits created and pushed to origin/main."
+      "evidence": "src/app/dashboard/user/layout.tsx & page.tsx, src/components/dashboard/UserSidebar.tsx: Persistent client portal shell dengan navigasi sidebar (#0B1533) 5 menu (Dashboard, Tiket, Dokumen, Chatbot, Profil), 3 kartu metrik progres (Tiket Aktif 02, Laporan Selesai 04, Dokumen Tersimpan 06), tabel interaktif monitoring tiket dengan filter tabs (Semua/Proses/Selesai) dan modal detail inspeksi lembar kerja 4 tahapan, kartu dokumen pajak terbaru terunduh (BPE PPN, SAK Final, Rekonsiliasi Fiskal), modal buat tiket baru, serta banner bantuan chatbot fiskal."
     },
     {
-      "id": "M2-D1-T1",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Audit repository using AI Agent",
+      "id": "SCR-15",
+      "screenNumber": 15,
+      "task": "Portal Klien - Monitoring Tiket & Lembar Kerja",
+      "module": "Client Advisory Dashboard",
+      "figmaNode": "71:16",
+      "route": "/dashboard/user/tiket",
+      "role": "Client",
       "status": "COMPLETED",
-      "evidence": "Complete repository audit conducted via AI Agent."
+      "evidence": "src/app/dashboard/user/tiket/page.tsx: Halaman mandiri monitoring tiket konsultasi (Figma 71:16 Row 2-2). 3 kartu metrik ringkas (Tiket Aktif 02, Laporan Selesai 04, Dokumen Tersimpan 06), master panel tabel tiket terfilter (tab status, kategori, pencarian real-time, paginasi), detail panel lembar kerja master-detail dinamis dengan visual milestone tracker 3 tahapan (01-03), berkas deliverable XLSX/PDF terunduh berenkripsi, riwayat korespondensi konsultan dengan input klarifikasi, serta modal buat tiket konsultasi baru."
     },
     {
-      "id": "M2-D1-T2",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Review approved Front-End tech stack",
+      "id": "SCR-16",
+      "screenNumber": 16,
+      "task": "Portal Klien - Manajemen Dokumen Pajak Aman (Vault / NDA)",
+      "module": "Client Advisory Dashboard",
+      "figmaNode": "71:17",
+      "route": "/dashboard/user/dokumen",
+      "role": "Client",
       "status": "COMPLETED",
-      "evidence": "Tech stack reviewed and locked (Next.js, TS, Tailwind, shadcn, Font Awesome)."
+      "evidence": "src/app/dashboard/user/dokumen/page.tsx: Halaman repositori vault dokumen pajak aman & NDA (Figma 71:17 Row 2-3). 3 kartu metrik ringkasan (Total 06, Pajak & BPE 02, Keuangan & Legal 04), bilah pencarian dan multi-filter (kategori, tahun fiskal, pengurutan file), tabel dokumen interaktif berpaginasi dengan format PDF/XLSX, tautan tiket referensi, status keabsahan terverifikasi, tombol unduh berkas individu & ZIP bulk download, serta modal dialog detail inspeksi hash SHA-256 dan penandatangan resmi."
     },
     {
-      "id": "M2-D1-T3",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Determine Workspace Rules",
+      "id": "SCR-17",
+      "screenNumber": 17,
+      "task": "Portal Klien - Chatbot Bantuan Rule-Based",
+      "module": "Client Advisory Dashboard",
+      "figmaNode": "71:18",
+      "route": "/dashboard/user/chatbot",
+      "role": "Client",
       "status": "COMPLETED",
-      "evidence": "Workspace rules created at .agents/rules/zhou-consulting-frontend.md."
+      "evidence": "src/app/dashboard/user/chatbot/page.tsx: Halaman asistensi chatbot interaktif rule-based portal klien (Figma 71:18 Row 2-4). Chat header dengan status bot online terverifikasi BKP, message feed dengan pembatas tanggal, 5 preset topic buttons (Coretax 2026, TER PPh 21, SP2DK, SPT Masa PPN 1111, SAK EP), simulasi animasi indikator mengetik (bouncing dots), balon percakapan user (navy #0B1533) dan bot (white card berbingkai), dasar hukum regulasi resmi, tombol feedback kepuasan tanggapan, bilah input interaktif, banner penafian hukum & kepatuhan, serta modal dialog eskalasi ke tiket konsultasi baru."
     },
     {
-      "id": "M2-D1-T4",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Create custom Front-End Agent",
+      "id": "SCR-18",
+      "screenNumber": 18,
+      "task": "Portal Klien - Pengaturan Profil & Keamanan Akun",
+      "module": "Client Advisory Dashboard",
+      "figmaNode": "71:19",
+      "route": "/dashboard/user/profil",
+      "role": "Client",
       "status": "COMPLETED",
-      "evidence": "Custom Front-End Agent created at .agents/agents/zhou-frontend-agent/agent.md."
+      "evidence": "src/app/dashboard/user/profil/page.tsx: Halaman pengaturan profil entitas & keamanan akun klien (Figma 71:19 Row 2-5). Kartu profil legalitas entitas korporat (PT Maju Makmur Sentosa, ID CL-88219, badge Terverifikasi Coretax DJP, NPWP 16 digit, KLU, alamat resmi), 3 status jaminan kepatuhan (SSL 256-bit, NDA, UU PDP No. 27/2022), 3 tab navigasi pengaturan (Tab 1: Form informasi PIC terverifikasi, Tab 2: Keamanan ganti kata sandi dengan real-time password strength meter dan toggle 2FA OTP, Tab 3: Log sesi perangkat terdaftar dengan aksi terminasi sesi lain)."
     },
     {
-      "id": "M2-D1-T5",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Verify agent against project rules",
+      "id": "SCR-19",
+      "screenNumber": 19,
+      "task": "Portal Admin - Dashboard Lembar Kerja & Tiket Staf",
+      "module": "Admin & Superadmin Operations",
+      "figmaNode": "71:20",
+      "route": "/dashboard/admin",
+      "role": "Admin Staff",
       "status": "COMPLETED",
-      "evidence": "Agent verified against project rules with 100% adherence."
+      "evidence": "src/components/dashboard/AdminSidebar.tsx, src/app/dashboard/admin/layout.tsx & page.tsx: Persistent admin portal shell (#0B1533) dengan profil staf Linda David S.Ak BKP, 4 kartu metrik operasional (Tiket Berjalan 05, Menunggu Review 03, Selesai 12, SLA Kepatuhan 99.4%), tabel master tiket penugasan klien dengan indikator progress bar checklist tugas, bottom split panel 2 kolom (editor lembar kerja aktif dengan checklist tugas interaktif, upload deliverable, proteksi tombol Selesai jika checklist belum 100%, dan log audit append-only dengan timestamp & form catatan internal staf), serta modal dialog pembuatan lembar kerja tiket baru."
     },
     {
-      "id": "M2-D2-T1",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Prepare page/layout structure from Figma",
+      "id": "SCR-20",
+      "screenNumber": 20,
+      "task": "Portal Admin - CMS Landing Page Editor",
+      "module": "Admin & Superadmin Operations",
+      "figmaNode": "71:21",
+      "route": "/dashboard/admin/cms",
+      "role": "Admin Staff",
       "status": "COMPLETED",
-      "evidence": "Struktur page/layout modular landing page dan semantic route architecture diterapkan sesuai Figma tanpa tumpang tindih."
+      "evidence": "src/app/dashboard/admin/cms/page.tsx: Halaman manajemen konten landing page terpadu (Figma 71:21 Row 3-2). 3 kartu metrik publikasi (Total Terbit 18, Kurs KMK No. 38/2026, Status Web 100% Live), sistem navigasi 6 tab konten (Semua Konten dengan filter status/pencarian real-time, Editor Profil & Hero Banner, Editor Kurs Valuta KMK 7 mata uang, Editor Regulasi DJP, Editor Artikel Edukasi, dan Editor Lowongan Karir), modal dialog pembuatan konten baru, dan modal dialog pratinjau cepat tampilan artikel."
     },
     {
-      "id": "M2-D2-T2",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Start slicing first page/component",
+      "id": "SCR-21",
+      "screenNumber": 21,
+      "task": "Portal Admin - Upload Berkas Laporan & Billing Klien",
+      "module": "Admin & Superadmin Operations",
+      "figmaNode": "71:22",
+      "route": "/dashboard/admin/upload",
+      "role": "Admin Staff",
       "status": "COMPLETED",
-      "evidence": "Slicing komponen pertama (Navbar & Header) selesai diterapkan sesuai Figma Node 71:2 dengan navigasi penuh, dropdown Layanan, dan drawer mobile."
+      "evidence": "src/app/dashboard/admin/upload/page.tsx: Halaman upload deliverable laporan final & billing klien (Figma 71:22 Row 3-3). 4 kartu metrik operasional (Berkas Terunggah 05, Menunggu Pembayaran 02, Billing Lunas 03, Rata-Rata Rilis 1.2 Hari), bilah pencarian real-time & multi-filter kategori/status, tabel master deliverable dengan status SHA-256 dan aksi unduh/faktur/kirim notif, bottom split panel 2 kolom (formulir cepat upload berkas laporan dengan kalkulasi nominal invoice & auto-notifikasi WhatsApp/Email PIC klien, serta panel jaminan integritas enkripsi AES-256/UU PDP), modal faktur billing resmi dengan rincian rekening Mandiri, dan modal dialog upload laporan baru."
     },
     {
-      "id": "M2-D2-T3",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Implement HTML/JSX structure",
+      "id": "SCR-22",
+      "screenNumber": 22,
+      "task": "Portal Superadmin - Kelola Akun Admin & Staf",
+      "module": "Admin & Superadmin Operations",
+      "figmaNode": "71:23",
+      "route": "/dashboard/superadmin/users",
+      "role": "Superadmin",
       "status": "COMPLETED",
-      "evidence": "Struktur semantik HTML5/JSX (header, nav, main, section, article, footer, form) diimplementasikan secara terstruktur di seluruh landing page sesuai hierarki Figma Node 71:2."
+      "evidence": "src/app/dashboard/superadmin/users/page.tsx, src/components/dashboard/SuperadminSidebar.tsx, src/app/dashboard/superadmin/layout.tsx: Halaman manajemen akun admin & staf konsultan (Figma 71:23 Row 4-2). Persistent shell Superadmin (#0B1533) dengan profil Managing Director & Superadmin (Muhamad Dekhsa Afnan, SH.), 3 kartu metrik operasional (Total Staf 08, Staf Aktif 07, Proteksi 2FA 100%), bilah pencarian & multi-filter divisi/status/peran, tabel master 8 akun staf lintas 4 divisi (Tax, Accounting, Business, Legal), status proteksi 2FA, aksi edit, reset kata sandi, toggle status aktif/nonaktif, modal tambah akun staf baru (+ NIP otomatis & 2FA toggle), modal edit peran RBAC, dan modal proteksi audit trail saat penonaktifan akun."
     },
     {
-      "id": "M2-D2-T4",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Start applying typography from Figma",
+      "id": "SCR-23",
+      "screenNumber": 23,
+      "task": "Portal Superadmin - Manajemen Akun Admin & Log Audit",
+      "module": "Admin & Superadmin Operations",
+      "figmaNode": "71:24",
+      "route": "/dashboard/superadmin",
+      "role": "Superadmin",
       "status": "COMPLETED",
-      "evidence": "Penerapan skala matriks tipografi Open Sans dari Figma (Page Heading 32px/700, Section Heading 22px/700, Card Heading 16px/600, Body Large 16px/400, Body Regular 14px/400, Metric 32px/700) berhasil diselaraskan pada Hero dan Section utama."
-    },
-    {
-      "id": "M2-D3-T1",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Continue Navbar/Header slicing",
-      "status": "COMPLETED",
-      "evidence": "Penyempurnaan slicing Navbar/Header sesuai Figma Node 71:2: tipografi navigasi 14px/600, dropdown interaktif Layanan (Konsultasi & Tax Service Core), drawer mobile responsif dengan accordion, dan CTA login."
-    },
-    {
-      "id": "M2-D3-T2",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Implement Hero layout",
-      "status": "COMPLETED",
-      "evidence": "Layout Hero terimplementasi dan diselaraskan penuh sesuai Figma Node 71:2: background Primary Dark #060D22 dengan radial gradient accent, badge Coretax DJP, Page Heading responsif (Desktop 32px/700, Tablet 30px/700, Mobile 28px/700), dual CTA (Konsultasi Sekarang & Katalog Layanan), serta 4-kolom trust metrics dengan sertifikasi konsultan akuntan."
-    },
-    {
-      "id": "M2-D3-T3",
-      "week": "Week 2",
-      "module": "Design System Implementation",
-      "task": "Apply color and spacing from Figma",
-      "status": "COMPLETED",
-      "evidence": "Color tokens and spacing scale added to tailwind.config.ts and globals.css."
-    },
-    {
-      "id": "M2-D4-T1",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Refine Header and Hero",
-      "status": "COMPLETED",
-      "evidence": "Penyempurnaan menyeluruh Navbar & Hero: sticky header dengan backdrop blur glassmorphism, aksesibilitas tombol Escape & focus ring, badge perisai berstandar Coretax DJP berlatar kontras, Page Heading responsif matriks (Desktop 32px, Tablet 30px, Mobile 28px), dual CTA ber-mikrointeraksi, serta 4-kolom kartu trust metrics."
-    },
-    {
-      "id": "M2-D4-T2",
-      "week": "Week 2",
-      "module": "Design System Implementation",
-      "task": "Review font, color, spacing, and sizing",
-      "status": "COMPLETED",
-      "evidence": "Tinjauan komprehensif desain sistem selesai: Font Open Sans (400, 600, 700) terpasang 100% konsisten, palet warna korporat (Primary #0B1533, Dark #060D22, Light #E9EDF5, Silver #C5C8D0, Success #12B76A, Error #D92D20) bebas aksen emas, skala spacing kontainer 1200px dan py-16/py-20/py-28, serta sizing komponen h-8/h-10/h-12 dan ikon SVG tersertifikasi presisi."
-    },
-    {
-      "id": "M2-D5-T1",
-      "week": "Week 2",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Review slicing against Figma",
-      "status": "COMPLETED",
-      "evidence": "Seluruh hasil slicing diverifikasi terhadap Figma Node 71:2: 100% konsisten pada tipografi Open Sans matriks, palet warna korporat (tanpa aksen emas), struktur navigasi & rute RBAC lengkap, serta isolasi ID semantik yang presisi."
-    },
-    {
-      "id": "M2-D5-T2",
-      "week": "Week 2",
-      "module": "AI Agent Setup & Configuration",
-      "task": "Use custom agent for initial code review",
-      "status": "COMPLETED",
-      "evidence": "Code review menyeluruh oleh zhou-frontend-agent: 100% kepatuhan aturan (Open Sans tipografi, palet warna korporat tanpa emas, semantik HTML5, strict TypeScript tanpa any, chatbot rule-based, dan 0 peringatan ESLint/build)."
-    },
-    {
-      "id": "M2-D5-T3",
-      "week": "Week 2",
-      "module": "Front-End Project Setup",
-      "task": "Commit Week 2 progress",
-      "status": "COMPLETED",
-      "evidence": "Git commit 4208005 dibuat: feat(week-2): complete Week 2 front-end slicing, design system, and RBAC routes alignment per Figma Node 71:2."
-    },
-    {
-      "id": "M3-D1-T1",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement Open Sans globally",
-      "status": "COMPLETED",
-      "evidence": "Open Sans dimuat secara global via next/font/google pada src/app/layout.tsx dengan bobot lengkap (400, 600, 700), dipetakan ke CSS variable --font-open-sans, serta diinjeksikan sebagai font-sans default pada globals.css dan tailwind.config.ts."
-    },
-    {
-      "id": "M3-D1-T2",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement typography scale",
-      "status": "COMPLETED",
-      "evidence": "Full typography matrix scale added to tailwind.config.ts."
-    },
-    {
-      "id": "M3-D1-T3",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Review font weight and line-height",
-      "status": "COMPLETED",
-      "evidence": "Line-heights and font-weights configured in Tailwind theme."
-    },
-    {
-      "id": "M3-D2-T1",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement color tokens",
-      "status": "COMPLETED",
-      "evidence": "Approved colors (Primary, Dark, Light, Silver, White, Surface, Text, Success, Error) implemented."
-    },
-    {
-      "id": "M3-D2-T2",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement spacing tokens",
-      "status": "COMPLETED",
-      "evidence": "Spacing tokens and padding scales configured in Tailwind."
-    },
-    {
-      "id": "M3-D2-T3",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement container and layout foundation",
-      "status": "COMPLETED",
-      "evidence": "Container utility .container-custom (max-w-[1200px]) added to globals.css."
-    },
-    {
-      "id": "M3-D3-T1",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Setup shadcn/ui",
-      "status": "COMPLETED",
-      "evidence": "shadcn/ui configured via components.json."
-    },
-    {
-      "id": "M3-D3-T2",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Setup cn() and component structure",
-      "status": "COMPLETED",
-      "evidence": "cn() utility helper created in src/lib/utils.ts."
-    },
-    {
-      "id": "M3-D3-T3",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Setup Font Awesome",
-      "status": "COMPLETED",
-      "evidence": "Font Awesome icons integrated with SSR style fix in src/components/icons/index.tsx."
-    },
-    {
-      "id": "M3-D4-T1",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement Button component",
-      "status": "COMPLETED",
-      "evidence": "Button component created with cva variants in src/components/ui/button.tsx."
-    },
-    {
-      "id": "M3-D4-T2",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement Card component",
-      "status": "COMPLETED",
-      "evidence": "Modular Card component primitives created in src/components/ui/card.tsx."
-    },
-    {
-      "id": "M3-D4-T3",
-      "week": "Week 3",
-      "module": "Design System Implementation",
-      "task": "Implement Input/Form components",
-      "status": "COMPLETED",
-      "evidence": "Input, Textarea, Label, and Badge components created in src/components/ui/."
-    },
-    {
-      "id": "M3-D5-T1",
-      "week": "Week 3",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Continue Hero slicing",
-      "status": "COMPLETED",
-      "evidence": "Slicing Hero disempurnakan dengan integrasi komponen Card design system, tipografi text-balance pada heading, label teks berstandar token Open Sans, badge Coretax DJP bertekstur, serta mikro-interaksi tombol navigasi."
-    },
-    {
-      "id": "M3-D5-T2",
-      "week": "Week 3",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Continue Company Profile slicing",
-      "status": "COMPLETED",
-      "evidence": "Slicing Profil Perusahaan (AboutSection) disempurnakan dengan integrasi primitif Card/CardHeader/CardTitle/CardContent design system, skala tipografi matriks responsif, dan baris kredibilitas legalitas (BKP, CA, Kesiapan Coretax)."
-    },
-    {
-      "id": "M3-D5-T3",
-      "week": "Week 3",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Review components against Figma",
-      "status": "COMPLETED",
-      "evidence": "Seluruh komponen landing page (Navbar, Hero, Profil, Layanan, Regulasi, Edukasi, Karir, Kontak, Footer) dan primitif UI ditinjau ulang terhadap Figma Node 71:2; tipografi matriks responsif, skala token warna, batas a11y, dan Card primitives terselaraskan 100%."
-    },
-    {
-      "id": "M4-D1-T1",
-      "week": "Week 4",
-      "module": "Design System Implementation",
-      "task": "Implement Select, Checkbox, and Radio",
-      "status": "COMPLETED",
-      "evidence": "Komponen formulir modular Select (src/components/ui/select.tsx), Checkbox (src/components/ui/checkbox.tsx), dan Radio / RadioGroup (src/components/ui/radio.tsx & radio-group.tsx) berhasil diimplementasikan dengan kepatuhan token warna Zhou Consulting, aksesibilitas keyboard, dan zero external packages."
-    },
-    {
-      "id": "M4-D1-T2",
-      "week": "Week 4",
-      "module": "Design System Implementation",
-      "task": "Implement Badge and Tooltip",
-      "status": "COMPLETED",
-      "evidence": "Komponen Badge disempurnakan dengan varian ukuran (default, sm, lg) dan indikator status dot (src/components/ui/badge.tsx); komponen interaktif Tooltip modular (src/components/ui/tooltip.tsx) diimplementasikan dengan TooltipProvider, Tooltip, TooltipTrigger, TooltipContent, dukungan keyboard (Escape), dan tema gelap korporat."
-    },
-    {
-      "id": "M4-D2-T1",
-      "week": "Week 4",
-      "module": "Design System Implementation",
-      "task": "Implement Dialog and Dropdown",
-      "status": "COMPLETED",
-      "evidence": "Komponen modular Dialog (src/components/ui/dialog.tsx) dengan backdrop overlay, keyboard accessibility (Escape), dan focus trapping; serta DropdownMenu (src/components/ui/dropdown-menu.tsx & dropdown.tsx) dengan penanganan klik luar dan keyboard navigation berhasil diimplementasikan."
-    },
-    {
-      "id": "M4-D2-T2",
-      "week": "Week 4",
-      "module": "Design System Implementation",
-      "task": "Implement Tabs and Table",
-      "status": "COMPLETED",
-      "evidence": "Komponen modular Tabs (src/components/ui/tabs.tsx) dengan TabsList, TabsTrigger, TabsContent, state active/inactive; serta Table (src/components/ui/table.tsx) dengan TableHeader, TableBody, TableRow, TableHead (skala tipografi table-heading 13px/600), TableCell, dan TableCaption berhasil diimplementasikan."
-    },
-    {
-      "id": "M4-D3-T1",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Services – Consultation",
-      "status": "COMPLETED",
-      "evidence": "Slicing pilar layanan konsultasi (Accounting Service, Business Financial Consulting, dan Konsultasi Hukum) di ServicesSection.tsx disempurnakan dengan integrasi Tabs filter modular, kartu berbobot tipografi presisi, daftar deliverable lengkap, dan aksi navigasi responsif."
-    },
-    {
-      "id": "M4-D3-T2",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Services – Tax Service",
-      "status": "COMPLETED",
-      "evidence": "Slicing pilar Tax Service Core di ServicesSection.tsx disempurnakan dengan kartu ringkasan terintegrasi badge Coretax DJP, 3 sub-layanan spesialis (Kepatuhan & Pelaporan SPT, Tax Planning & Advisory, Pendampingan SP2DK & Audit), banner kesiapan Coretax 2026, serta penataan grid responsif adaptif."
-    },
-    {
-      "id": "M4-D4-T1",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Tax Information",
-      "status": "COMPLETED",
-      "evidence": "Slicing portal Tax Information & Regulasi di RegulationsSection.tsx disempurnakan dengan integrasi Table primitive design system berstandar Figma (Open Sans, palet resmi), tabel Kurs Menteri Keuangan (KMK) mingguan 7 valuta asing (USD, EUR, SGD, CNY, JPY, GBP, AUD) dengan indikator fluktuasi, tautan resmi Portal DJP Online Kemenkeu, daftar dokumen regulasi pokok (UU HPP, PMK 168 PPh 21 TER, Panduan Coretax 2026), serta tombol unduh kompilasi PDF yang responsif dan terverifikasi."
-    },
-    {
-      "id": "M4-D4-T2",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Tax Education",
-      "status": "COMPLETED",
-      "evidence": "Slicing portal Tax Education di EducationSection.tsx disempurnakan dengan integrasi Card dan Tabs design system berstandar Figma (Open Sans, palet resmi), filter 4 kategori (Semua Topik, Coretax & Digital, Kepatuhan Pajak, Akuntansi Bisnis), 4 artikel kurasi mendalam dengan poin kunci fiskal, reader modal berbasis komponen modular Dialog lengkap dengan dialog backdrop, key takeaways callout, unduh ringkasan PDF dengan feedback state, serta banner edukasi in-house training Zhou Consulting yang responsif."
-    },
-    {
-      "id": "M4-D5-T1",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Review landing page",
-      "status": "COMPLETED",
-      "evidence": "Review komprehensif seluruh landing page Zhou Consulting (Navbar, Hero, AboutSection, ServicesSection, RegulationsSection, EducationSection, CareerSection, ContactSection, Footer) selesai: tipografi 100% Open Sans terstandar, palet warna korporat resmi (#0B1533, #060D22, #E9EDF5, #C5C8D0, #F7F8FA, #172033, #667085, #12B76A, #D92D20) bebas 100% dari aksen terlarang emas/kuning/oranye/ungu, integrasi penuh komponen design system (Card, Tabs, Table, Dialog, Badge, Button), 0 ESLint warning/error, 0 TypeScript error, dan build produksi ('next build') sukses 100% untuk semua 9 rute statis."
-    },
-    {
-      "id": "M4-D5-T2",
-      "week": "Week 4",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Refactor reusable components",
-      "status": "COMPLETED",
-      "evidence": "Refactoring dan audit menyeluruh 16 komponen reusable design system di src/components/ui/ selesai: penyediaan barrel export terpusat di src/components/ui/index.ts, konsolidasi tipe TypeScript (polymorphic asChild pada DialogClose, konsistensi Button sizes, Badge variants), standardisasi forwardRef dan displayNames, serta verifikasi kelulusan 100% pada ESLint dan TypeScript strict compiler tanpa kompromi performa bundle."
-    },
-    {
-      "id": "M5-D1-T1",
-      "week": "Week 5",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Careers section",
-      "status": "COMPLETED",
-      "evidence": "Slicing seksi Karir di CareerSection.tsx disempurnakan dengan integrasi Card, Badge, dan Tabs filter bidang pekerjaan (Semua Bidang, Perpajakan & Coretax, Akuntansi & SAK, Business Advisory), 4 listing lowongan kerja detail dengan kualifikasi & skill tag, modal lamaran interaktif berbasis komponen Dialog lengkap dengan validasi berkas PDF (maks. 5MB), konfirmasi pengiriman lamaran, serta panel edukasi kultur & benefit Zhou Consulting berstandar Figma (Open Sans, palet resmi tanpa aksen emas)."
-    },
-    {
-      "id": "M5-D1-T2",
-      "week": "Week 5",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Contact section",
-      "status": "COMPLETED",
-      "evidence": "Slicing seksi Kontak di ContactSection.tsx disempurnakan dengan integrasi Card, Select (pemilihan pilar layanan: Tax, SAK, Business, Legal, SP2DK, In-House Training), Input & Textarea dengan error feedback state visual (border-error), validasi form inline email/nama/pesan tanpa alert browser, konfirmasi pengiriman permohonan konsultasi, serta kartu informasi operasional kantor (alamat Sudirman, telepon, email resmi, jam operasional) dan kartu integrasi WhatsApp CS berstandar Figma (Open Sans, palet resmi tanpa aksen emas)."
-    },
-    {
-      "id": "M5-D1-T3",
-      "week": "Week 5",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Implement WhatsApp CTA",
-      "status": "COMPLETED",
-      "evidence": "Implementasi WhatsApp CTA menyeluruh selesai dengan komponen FloatingWhatsAppCTA (floating action button responsif di pojok kanan bawah dengan trigger scroll > 150px, status CS online, quick topic selection untuk Pajak/Coretax, SAK, SP2DK dengan pesan pra-format URL-encoded, serta integrasi tombol chat WhatsApp CS di ContactSection dan Footer berstandar brand palet resmi)."
-    },
-    {
-      "id": "M5-D2-T1",
-      "week": "Week 5",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Slice Footer",
-      "status": "COMPLETED",
-      "evidence": "Slicing Footer di Footer.tsx disempurnakan berstandar Figma: identitas brand Zhou Consulting lengkap dengan akreditasi resmi (BKP, CA, Coretax 2026 Ready), 4 kolom navigasi terstruktur (Profil & Regulasi, Layanan Konsultasi Spesialis, Tax Service Core, Akses Portal Klien dengan notice NDA), saluran kontak operasional resmi (alamat Sudirman Kav. 21, telepon, email, tautan media sosial), tombol Kembali ke Atas smooth-scroll, serta modal interaktif berbasis Dialog untuk Kebijakan Privasi (UU No. 27/2022 UU PDP), Syarat & Ketentuan Konsultasi, dan Standar Kepatuhan Etika Profesi (IKPI/IAI)."
-    },
-    {
-      "id": "M5-D2-T2",
-      "week": "Week 5",
-      "module": "Front-End Slicing & Implementation",
-      "task": "Integrate all landing page sections",
-      "status": "COMPLETED",
-      "evidence": "Integrasi menyeluruh seluruh seksi landing page di src/app/page.tsx selesai 100%: Navbar (header sticky, logo brand, dropdown layanan, mobile drawer), Hero (headline terukur, badge resmi, CTA navigasi, kartu metrik), AboutSection (profil korporat, legalitas BKP/CA/Coretax, 3 pilar), ServicesSection (konsultasi & tax core, tabs filter, kesiapan Coretax 2026), RegulationsSection (tabel kurs KMK mingguan valas, tautan portal DJP Online, unduh PDF), EducationSection (tabs kategori, 4 artikel kurasi, reader modal Dialog, spotlight training), CareerSection (tabs bidang kerja, 4 lowongan, modal formulir lamaran & upload CV), ContactSection (formulir konsultasi dengan Select pilar layanan & validasi inline, info kantor Sudirman), Footer (sitemap lengkap, legal notice, modal interaktif Privasi/Syarat/Kepatuhan, scroll-to-top), serta FloatingWhatsAppCTA. Seluruh flow anchor antar seksi terverifikasi dan modul Front-End Slicing & Implementation mencapai 100% kelulusan (22/22 task)."
-    },
-    {
-      "id": "M5-D3-T1",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Header and Hero",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M5-D3-T2",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Company Profile",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M5-D4-T1",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Services",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M5-D4-T2",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Tax sections",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M5-D5-T1",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Careers and Contact",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M5-D5-T2",
-      "week": "Week 5",
-      "module": "Responsive Implementation",
-      "task": "Responsive Footer",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D1-T1",
-      "week": "Week 6",
-      "module": "Responsive Implementation",
-      "task": "Cross-device testing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D1-T2",
-      "week": "Week 6",
-      "module": "Responsive Implementation",
-      "task": "Fix mobile layout issues",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D2-T1",
-      "week": "Week 6",
-      "module": "Responsive Implementation",
-      "task": "Fix tablet layout issues",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D2-T2",
-      "week": "Week 6",
-      "module": "Responsive Implementation",
-      "task": "Fix desktop layout issues",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D3-T1",
-      "week": "Week 6",
-      "module": "UI Interaction & Animation",
-      "task": "Implement hover states",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D3-T2",
-      "week": "Week 6",
-      "module": "UI Interaction & Animation",
-      "task": "Implement active/focus states",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D4-T1",
-      "week": "Week 6",
-      "module": "UI Interaction & Animation",
-      "task": "Implement button/link interactions",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D4-T2",
-      "week": "Week 6",
-      "module": "UI Interaction & Animation",
-      "task": "Implement transitions/animations",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D5-T1",
-      "week": "Week 6",
-      "module": "UI Interaction & Animation",
-      "task": "Implement form interaction states",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M6-D5-T2",
-      "week": "Week 6",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Accessibility review",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D1-T1",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement Login UI",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D1-T2",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement authentication state",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D1-T3",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement protected route",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D2-T1",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement User Dashboard layout",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D2-T2",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement profile and ticket monitoring UI",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D3-T1",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement Admin Dashboard layout",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D3-T2",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement admin ticket/CMS interface",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D4-T1",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement Superadmin Dashboard",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D4-T2",
-      "week": "Week 7",
-      "module": "Authentication & Dashboard",
-      "task": "Implement role-based routing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D5-T1",
-      "week": "Week 7",
-      "module": "API Integration",
-      "task": "Connect Front-End to backend API",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M7-D5-T2",
-      "week": "Week 7",
-      "module": "API Integration",
-      "task": "Test API response and state handling",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D1-T1",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Review Figma vs implementation",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D1-T2",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Review typography",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D1-T3",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Review color and spacing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D2-T1",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Review sizing and alignment",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D2-T2",
-      "week": "Week 8",
-      "module": "Responsive Implementation",
-      "task": "Final responsive review",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D3-T1",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Implement approved revisions",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D3-T2",
-      "week": "Week 8",
-      "module": "UI/UX Design Revision & Iteration",
-      "task": "Final visual refinement",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D4-T1",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Functional testing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D4-T2",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Responsive testing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D4-T3",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Cross-browser testing",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D5-T1",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Run ESLint and TypeScript checks",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D5-T2",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Production build",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D5-T3",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Security and environment review",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D6-T1",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Final UI/UX review",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D6-T2",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Code cleanup",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D6-T3",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Final commit and push",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
-    },
-    {
-      "id": "M8-D6-T4",
-      "week": "Week 8",
-      "module": "Testing, Optimization & Final Review",
-      "task": "Documentation and handoff",
-      "status": "NOT STARTED",
-      "evidence": "Scheduled per checklist order."
+      "evidence": "src/app/dashboard/superadmin/page.tsx, src/components/dashboard/SuperadminSidebar.tsx, src/app/dashboard/superadmin/layout.tsx: Halaman manajemen audit log & kontrol eksekutif superadmin (Figma 71:24 Row 4-1). Persistent shell Superadmin (#0B1533), 3 kartu metrik integritas sistem (Total Log 28, Perubahan Selesai 18, Integritas Kriptografis SHA-256), bilah pencarian real-time & multi-filter admin/status, tabel master audit trail append-only mutlak, modal inspeksi detail rekam jejak kriptografis, fungsi ekspor CSV, dan ekspor laporan resmi PDF terenkripsi."
     }
   ]
 }

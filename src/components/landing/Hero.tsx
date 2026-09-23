@@ -1,111 +1,364 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { ArrowRightIcon, ShieldTaxIcon, CheckCircleIcon } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
+
+/**
+ * Helper to render an authentic 3D embossed isometric cube
+ * using highlight (#FFFFFF, 5%-8% opacity) and shadow (#000000, 35%-45% opacity) strokes.
+ * Strictly ZERO gradients: 100% solid color fills and chiseled beveled edges.
+ */
+function EmbossedCube({ cx, cy, size = 52 }: { cx: number; cy: number; size?: number }) {
+  const w = Math.round(size * 0.866025); // cos(30°) ≈ 45px for size 52
+  const h = Math.round(size * 0.5); // sin(30°) = 26px for size 52
+
+  return (
+    <g className="transition-opacity duration-300">
+      {/* 1. Top Facet (Facing top-left light source: subtle 2.5% white fill) */}
+      <polygon
+        points={`${cx},${cy - size} ${cx + w},${cy - h} ${cx},${cy} ${cx - w},${cy - h}`}
+        fill="#FFFFFF"
+        fillOpacity="0.025"
+      />
+      {/* Top Facet - Highlight Stroke (Top-Left edge) */}
+      <line
+        x1={cx - w}
+        y1={cy - h}
+        x2={cx}
+        y2={cy - size}
+        stroke="#FFFFFF"
+        strokeOpacity="0.08"
+        strokeWidth="1"
+      />
+      {/* Top Facet - Shadow Stroke (Directly offset under Top-Left highlight) */}
+      <line
+        x1={cx - w + 1}
+        y1={cy - h + 1}
+        x2={cx + 1}
+        y2={cy - size + 1}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Top Facet - Highlight Stroke (Bottom-Left inner edge) */}
+      <line
+        x1={cx - w}
+        y1={cy - h}
+        x2={cx}
+        y2={cy}
+        stroke="#FFFFFF"
+        strokeOpacity="0.07"
+        strokeWidth="1"
+      />
+      <line
+        x1={cx - w}
+        y1={cy - h + 1}
+        x2={cx}
+        y2={cy + 1}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Top Facet - Shadow Stroke (Top-Right edge) */}
+      <line
+        x1={cx}
+        y1={cy - size}
+        x2={cx + w}
+        y2={cy - h}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Top Facet - Shadow Stroke (Bottom-Right inner edge) */}
+      <line
+        x1={cx}
+        y1={cy}
+        x2={cx + w}
+        y2={cy - h}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+
+      {/* 2. Left Facet (Direct side reflection: subtle 1.2% white fill) */}
+      <polygon
+        points={`${cx - w},${cy - h} ${cx},${cy} ${cx},${cy + size} ${cx - w},${cy + h}`}
+        fill="#FFFFFF"
+        fillOpacity="0.012"
+      />
+      {/* Left Facet - Highlight Stroke (Left vertical edge) */}
+      <line
+        x1={cx - w}
+        y1={cy - h}
+        x2={cx - w}
+        y2={cy + h}
+        stroke="#FFFFFF"
+        strokeOpacity="0.08"
+        strokeWidth="1"
+      />
+      {/* Left Facet - Shadow Stroke (Adjacent to vertical highlight) */}
+      <line
+        x1={cx - w + 1}
+        y1={cy - h}
+        x2={cx - w + 1}
+        y2={cy + h}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Left Facet - Highlight Stroke (Center ridge) */}
+      <line
+        x1={cx}
+        y1={cy}
+        x2={cx}
+        y2={cy + size}
+        stroke="#FFFFFF"
+        strokeOpacity="0.08"
+        strokeWidth="1"
+      />
+      {/* Left Facet - Shadow Stroke (Adjacent to center ridge) */}
+      <line
+        x1={cx + 1}
+        y1={cy}
+        x2={cx + 1}
+        y2={cy + size}
+        stroke="#000000"
+        strokeOpacity="0.40"
+        strokeWidth="1"
+      />
+      {/* Left Facet - Bottom Shadow Stroke */}
+      <line
+        x1={cx - w}
+        y1={cy + h}
+        x2={cx}
+        y2={cy + size}
+        stroke="#000000"
+        strokeOpacity="0.40"
+        strokeWidth="1"
+      />
+
+      {/* 3. Right Facet (In shadow: 22% dark navy/black solid tint) */}
+      <polygon
+        points={`${cx},${cy} ${cx + w},${cy - h} ${cx + w},${cy + h} ${cx},${cy + size}`}
+        fill="#000000"
+        fillOpacity="0.22"
+      />
+      {/* Right Facet - Shadow Stroke (Right vertical edge) */}
+      <line
+        x1={cx + w}
+        y1={cy - h}
+        x2={cx + w}
+        y2={cy + h}
+        stroke="#000000"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      {/* Right Facet - Shadow Stroke (Bottom edge) */}
+      <line
+        x1={cx + w}
+        y1={cy + h}
+        x2={cx}
+        y2={cy + size}
+        stroke="#000000"
+        strokeOpacity="0.45"
+        strokeWidth="1"
+      />
+    </g>
+  );
+}
 
 export function Hero() {
+  const { t } = useLanguage();
   return (
     <section
       id="hero"
       aria-label="Hero Banner"
-      className="relative bg-primary-dark text-white py-16 md:py-20 lg:py-28 overflow-hidden"
+      className="relative bg-[#060D22] text-white py-20 sm:py-24 lg:py-28 overflow-hidden"
     >
-      {/* Background Decorative Accent */}
+      {/* 
+        Background Graphic Layer: 100% Solid Navy (#060D22) Base
+        Strictly NO Gradients (No linear-gradient, no radial-gradient, no blur-3xl ambient color glow).
+        Pure 3D Embossed Effect created via Classical Highlight (#FFFFFF, 5%-8%) & Shadow (#000000, 35%-45%) Contrast.
+      */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/50 via-primary-dark to-primary-dark pointer-events-none"
-      />
-      {/* Subtle grid pattern overlay for texture */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"
-      />
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-[#060D22]"
+      >
+        {/* Noise Texture Overlay */}
+        <div className="absolute inset-0 opacity-[0.15] mix-blend-overlay">
+          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <filter id="noiseFilter">
+              <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+          </svg>
+        </div>
 
-      <div className="container-custom relative z-10 space-y-12">
-        <div className="max-w-3xl space-y-6">
-          {/* Badge indicator */}
-          <Badge
-            variant="silver"
-            className="inline-flex items-center gap-2 py-1.5 px-3.5 bg-white/10 text-white border-white/20 backdrop-blur-sm shadow-sm hover:bg-white/15 transition-colors"
+        {/* 1. Full-Surface Architectural Beveled Grid Pattern (56px x 56px) */}
+        <svg
+          className="absolute inset-0 w-full h-full"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <pattern
+              id="embossed-grid"
+              width="56"
+              height="56"
+              patternUnits="userSpaceOnUse"
+            >
+              {/* Horizontal Bevel: Highlight line at y=0, Shadow line at y=1 */}
+              <line
+                x1="0"
+                y1="0"
+                x2="56"
+                y2="0"
+                stroke="#FFFFFF"
+                strokeOpacity="0.06"
+                strokeWidth="1"
+              />
+              <line
+                x1="0"
+                y1="1"
+                x2="56"
+                y2="1"
+                stroke="#000000"
+                strokeOpacity="0.35"
+                strokeWidth="1"
+              />
+
+              {/* Vertical Bevel: Highlight line at x=0, Shadow line at x=1 */}
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="56"
+                stroke="#FFFFFF"
+                strokeOpacity="0.06"
+                strokeWidth="1"
+              />
+              <line
+                x1="1"
+                y1="0"
+                x2="1"
+                y2="56"
+                stroke="#000000"
+                strokeOpacity="0.35"
+                strokeWidth="1"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#embossed-grid)" />
+        </svg>
+
+        {/* 2. Embossed Isometric Architectural Sculpture (Right / Middle Area) */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[520px] lg:w-[620px] h-[480px] pointer-events-none select-none opacity-90 sm:opacity-100">
+          <svg
+            viewBox="0 0 620 480"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-full h-full"
           >
-            <ShieldTaxIcon className="text-xs text-silver" />
-            <span className="text-badge font-semibold text-white">
-              Kepatuhan Berstandar Coretax DJP
-            </span>
-          </Badge>
+            {/* Architectural Connecting Beveled Guide Rays */}
+            <line
+              x1="220"
+              y1="40"
+              x2="580"
+              y2="248"
+              stroke="#FFFFFF"
+              strokeOpacity="0.05"
+              strokeWidth="1"
+            />
+            <line
+              x1="220"
+              y1="41"
+              x2="580"
+              y2="249"
+              stroke="#000000"
+              strokeOpacity="0.30"
+              strokeWidth="1"
+            />
 
+            <line
+              x1="140"
+              y1="230"
+              x2="500"
+              y2="438"
+              stroke="#FFFFFF"
+              strokeOpacity="0.05"
+              strokeWidth="1"
+            />
+            <line
+              x1="140"
+              y1="231"
+              x2="500"
+              y2="439"
+              stroke="#000000"
+              strokeOpacity="0.30"
+              strokeWidth="1"
+            />
+
+            {/*
+              Interlocking Embossed Isometric Cubes (Rendered Back to Front)
+              Unit size: 52px. Column step: w=45px, h=26px.
+            */}
+            {/* Back Row (Upper Level) */}
+            <EmbossedCube cx={420} cy={105} size={52} />
+            <EmbossedCube cx={510} cy={157} size={52} />
+
+            {/* Middle-Back Row */}
+            <EmbossedCube cx={330} cy={157} size={52} />
+            <EmbossedCube cx={420} cy={209} size={52} />
+            <EmbossedCube cx={510} cy={261} size={52} />
+
+            {/* Front-Middle Row */}
+            <EmbossedCube cx={240} cy={209} size={52} />
+            <EmbossedCube cx={330} cy={261} size={52} />
+            <EmbossedCube cx={420} cy={313} size={52} />
+
+            {/* Lower-Front Stepping Pedestals */}
+            <EmbossedCube cx={240} cy={313} size={52} />
+            <EmbossedCube cx={330} cy={365} size={52} />
+          </svg>
+        </div>
+      </div>
+
+      {/* Main Content Container (relative z-10 for sharp focus, high contrast & zero glare) */}
+      <div className="container-custom relative z-10">
+        <div className="max-w-3xl space-y-6 sm:space-y-8">
           {/* Main Hero Headline */}
-          <h1 className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-page-heading font-bold tracking-tight text-white text-balance">
-            Solusi Terintegrasi Akuntansi, Pajak &amp; Tata Kelola Finansial Bisnis
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.1]">
+            {t.hero.title}
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-[15px] leading-[24px] sm:text-body-large text-silver leading-relaxed max-w-2xl">
-            Zhou Consulting mendampingi entitas bisnis, korporasi, dan wirausaha dalam mencapai kepatuhan pajak paripurna, pencatatan keuangan presisi, dan strategi fiskal yang berdaya saing.
-          </p>
+          {/* Subtitles */}
+          <div className="space-y-2">
+            <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug">
+              {t.hero.subtitle2}
+            </p>
+          </div>
 
-          {/* Call to Actions */}
+          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <Button
-              variant="silver"
+              variant="outline"
               size="lg"
               asChild
-              className="group font-semibold text-sm shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98]"
+              className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md shadow-sm transition-all duration-200 active:scale-[0.98]"
             >
-              <Link href="/#kontak" className="inline-flex items-center gap-2">
-                <span>Konsultasi Sekarang</span>
-                <ArrowRightIcon className="text-xs text-primary transition-transform duration-200 group-hover:translate-x-1" />
-              </Link>
+              <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
             </Button>
 
             <Button
               variant="outline"
               size="lg"
               asChild
-              className="border-silver/40 text-white hover:bg-white/10 hover:text-white font-semibold text-sm transition-all duration-200 active:scale-[0.98]"
+              className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md transition-all duration-200 active:scale-[0.98]"
             >
-              <Link href="/#layanan">Lihat Katalog Layanan</Link>
+              <Link href="/#layanan">{t.hero.ctaServices}</Link>
             </Button>
           </div>
-        </div>
-
-        {/* Hero Trust Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 pt-8 border-t border-white/10">
-          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
-            <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
-              150+
-            </div>
-            <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
-              Entitas Klien Korporat
-            </div>
-          </Card>
-
-          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
-            <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
-              99.8%
-            </div>
-            <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
-              Akurasi Kepatuhan Pajak
-            </div>
-          </Card>
-
-          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex flex-col justify-center transition-all duration-200">
-            <div className="text-[28px] leading-[36px] sm:text-[30px] sm:leading-[38px] lg:text-metric-number font-bold text-white tracking-tight">
-              100%
-            </div>
-            <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver mt-1">
-              Kesiapan Sistem Coretax
-            </div>
-          </Card>
-
-          <Card className="h-full p-4 sm:p-5 rounded-lg bg-white/[0.03] border-white/10 text-white hover:border-white/25 hover:bg-white/[0.05] shadow-none flex items-center gap-3.5 transition-all duration-200">
-            <CheckCircleIcon className="text-2xl sm:text-3xl text-success flex-shrink-0" />
-            <div className="text-[12px] leading-[18px] sm:text-metric-label text-silver">
-              Konsultan Pajak &amp; Akuntan Tersertifikasi
-            </div>
-          </Card>
         </div>
       </div>
     </section>

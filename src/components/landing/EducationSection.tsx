@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardContent,
   CardFooter,
 } from "@/components/ui/card";
 import {
@@ -26,14 +26,12 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  BookIcon,
-  ArrowRightIcon,
   DownloadIcon,
   CheckCircleIcon,
   ClockIcon,
   CalendarIcon,
-  ShieldTaxIcon,
 } from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface Article {
   id: string;
@@ -85,7 +83,7 @@ const ARTICLES: Article[] = [
     content: [
       "Surat Permintaan Penjelasan atas Data dan/atau Keterangan (SP2DK) umumnya terbit akibat anomali data perbandingan laporan keuangan wajib pajak dengan data eksternal pihak ketiga yang dihimpun DJP.",
       "Area paling rentan terhadap pengujian fiskus meliputi selisih omzet PPN vs PPh Badan, ekualisasi biaya tenaga kerja dengan PPh Pasal 21, serta transaksi afiliasi dengan pemegang saham.",
-      "Penyusunan kertas kerja rekonsiliasi fiskal yang terdokumentasi rapi sejak awal tahun buku merupakan proteksi terbaik perusahaan dalam memberikan respon sanggahan yang terstruktur dan terpercaya.",
+      "Penyusunan kertas kerja rekonsiliasi fiskal yang terdokumentasi rapi sejak awal tahun buku merupakan langkah mitigasi perusahaan dalam memberikan respon sanggahan yang terstruktur dan akuntabel.",
     ],
   },
   {
@@ -131,6 +129,7 @@ const ARTICLES: Article[] = [
 ];
 
 export function EducationSection() {
+  const { t } = useLanguage();
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("semua");
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
@@ -159,27 +158,19 @@ export function EducationSection() {
           <div className="max-w-3xl space-y-3">
             <Badge
               variant="silver"
-              className="uppercase tracking-wider text-badge font-semibold py-1 px-3 inline-flex items-center gap-1.5"
+              className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
             >
-              <BookIcon className="text-xs" />
-              <span>Literasi &amp; Edukasi</span>
+              <span>{t.education.badge}</span>
             </Badge>
             <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
-              Wawasan Praktis Perpajakan &amp; Tata Kelola Keuangan
+              {t.education.headline}
             </h2>
             <p className="text-[15px] leading-[24px] sm:text-body-large text-text-secondary leading-relaxed">
-              Kumpulan artikel edukatif, panduan teknis kepatuhan fiskal, dan analisis regulasi bisnis yang dikurasi langsung oleh para konsultan berlisensi Zhou Consulting.
+              {t.education.subheading}
             </p>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedArticle(ARTICLES[0])}
-            className="self-start md:self-auto text-xs font-semibold hover:border-primary shrink-0"
-          >
-            Baca Panduan Coretax 2026
-          </Button>
+
         </div>
 
         {/* Category Filter Tabs */}
@@ -214,10 +205,7 @@ export function EducationSection() {
               className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white"
             >
               <CardHeader className="space-y-3 pb-3">
-                <div className="flex items-center justify-between text-xs text-text-secondary gap-2">
-                  <Badge variant="secondary" size="sm" className="font-semibold text-[11px]">
-                    {article.category}
-                  </Badge>
+                <div className="flex items-center justify-end text-xs text-text-secondary gap-2">
                   <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary whitespace-nowrap">
                     <CalendarIcon className="text-[10px]" />
                     {article.date}
@@ -236,17 +224,6 @@ export function EducationSection() {
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="py-2">
-                <div className="space-y-1.5 pt-2 border-t border-primary-light/60">
-                  <span className="text-[10px] font-bold text-primary tracking-wider uppercase block">
-                    Poin Utama:
-                  </span>
-                  <p className="text-[11px] text-text-secondary leading-normal line-clamp-2">
-                    &bull; {article.takeaways[0]}
-                  </p>
-                </div>
-              </CardContent>
-
               <CardFooter className="pt-3 border-t border-primary-light flex items-center justify-between mt-2">
                 <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
                   <ClockIcon className="text-[11px]" />
@@ -255,39 +232,30 @@ export function EducationSection() {
                 <button
                   type="button"
                   onClick={() => setSelectedArticle(article)}
-                  className="text-xs font-bold text-primary inline-flex items-center gap-1.5 group-hover:translate-x-0.5 transition-transform focus:outline-none"
+                  className="text-xs font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded px-1.5 py-0.5"
                 >
                   <span>Selengkapnya</span>
-                  <ArrowRightIcon className="text-[10px]" />
                 </button>
               </CardFooter>
             </Card>
           ))}
         </div>
 
-        {/* Training / Corporate Education Spotlight Banner */}
-        <div className="rounded-lg border border-primary-light bg-white p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-          <div className="space-y-2 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
-              <ShieldTaxIcon className="text-primary text-sm" />
-              <span>Program In-House Training Zhou Consulting</span>
-            </div>
-            <h3 className="text-base sm:text-lg font-bold text-primary">
-              Butuh Pelatihan Pajak &amp; Coretax Khusus untuk Tim Internal Anda?
-            </h3>
-            <p className="text-xs sm:text-sm text-text-secondary max-w-2xl leading-relaxed">
-              Kami menyelenggarakan workshop praktis perpajakan perusahaan, simulasi Coretax DJP 2026, dan standardisasi pembukuan SAK yang disesuaikan dengan kebutuhan industri Anda.
-            </p>
-          </div>
+        {/* Link to Full Education Portal */}
+        <div className="flex justify-center -mt-2">
           <Button
-            variant="primary"
+            variant="outline"
             size="default"
             asChild
-            className="w-full md:w-auto shrink-0 text-xs font-bold"
+            className="text-xs font-bold gap-2 hover:border-primary"
           >
-            <a href="#kontak">Jadwalkan In-House Training</a>
+            <Link href="/edukasi">
+              <span>Semua Artikel</span>
+            </Link>
           </Button>
         </div>
+
+
       </div>
 
       {/* Accessible Reader Dialog */}
@@ -386,14 +354,14 @@ export function EducationSection() {
                     variant="primary"
                     size="sm"
                     asChild
-                    className="flex-1 sm:flex-none text-xs"
+                    className="flex-1 sm:flex-none text-xs shadow-sm"
                   >
-                    <a
-                      href="#kontak"
+                    <Link
+                      href="/konsultasi"
                       onClick={() => setSelectedArticle(null)}
                     >
                       Konsultasikan Topik
-                    </a>
+                    </Link>
                   </Button>
                 </div>
               </DialogFooter>

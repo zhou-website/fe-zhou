@@ -11,7 +11,6 @@ import {
   CheckCircleIcon,
   QuestionCircleIcon,
   PhoneIcon,
-  SendIcon,
 } from "@/components/icons";
 
 export default function ForgotPasswordPage() {
@@ -59,21 +58,17 @@ export default function ForgotPasswordPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-primary font-bold text-lg">
               Z
             </div>
-            <div className="flex flex-col">
-              <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
-                ZHOU CONSULTING
-              </span>
-              <span className="text-[10px] text-silver uppercase tracking-wider font-medium">
-                Finance &bull; Accounting &bull; Tax Partner
-              </span>
-            </div>
+            <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
+              ZHOU CONSULTING
+            </span>
           </Link>
 
           <Link
             href="/login"
-            className="text-xs font-semibold text-silver hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/15 hover:border-white/30 text-silver hover:text-white transition-all text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-[0.98]"
+            title="Kembali"
           >
-            &larr; Kembali ke Halaman Masuk
+            <span>Kembali</span>
           </Link>
         </div>
       </header>
@@ -85,7 +80,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-semibold">
               <ShieldTaxIcon className="text-xs" />
-              <span>Pemulihan Kredensial Resmi</span>
+              <span>Pemulihan Kredensial Akun</span>
             </div>
             <h1 className="text-2xl font-bold text-primary tracking-tight">
               Lupa Kata Sandi?
@@ -130,10 +125,7 @@ export default function ForgotPasswordPage() {
                 {isLoading ? (
                   <span>Mengirimkan tautan...</span>
                 ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <span>Kirim Tautan Verifikasi</span>
-                    <SendIcon className="text-[10px]" />
-                  </span>
+                  <span>Kirim Tautan</span>
                 )}
               </Button>
             </form>
@@ -182,19 +174,25 @@ export default function ForgotPasswordPage() {
               </div>
               <div className="flex items-center gap-1.5">
                 <EnvelopeIcon className="text-silver text-[10px]" />
-                <span>admin@zhouconsulting.id</span>
+                <a href="mailto:consultingzhou@gmail.com" className="hover:underline">
+                  consultingzhou@gmail.com
+                </a>
               </div>
             </div>
           </div>
 
-          {/* Navigation link back to Login */}
-          <div className="text-center pt-2">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline transition-colors"
+          {/* Navigation button back to Login */}
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              size="default"
+              asChild
+              className="w-full font-semibold text-xs border-primary-light text-primary hover:bg-surface justify-center gap-2 cursor-pointer shadow-xs"
             >
-              <span>&larr; Kembali ke Halaman Masuk</span>
-            </Link>
+              <Link href="/login" className="inline-flex items-center justify-center">
+                <span>Kembali ke Login</span>
+              </Link>
+            </Button>
           </div>
 
           {/* Security notice */}
@@ -209,7 +207,7 @@ export default function ForgotPasswordPage() {
 
       {/* Bottom Footer */}
       <footer className="py-4 text-center text-xs text-text-secondary border-t border-primary-light bg-white">
-        &copy; {new Date().getFullYear()} Zhou Consulting. Finance, Accounting &amp; Tax Partner.
+        &copy; {new Date().getFullYear()} Zhou Consulting.
       </footer>
     </div>
   );
