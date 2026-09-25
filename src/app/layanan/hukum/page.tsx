@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/card";
 import {
   BriefcaseIcon,
-  ShieldTaxIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   CheckIcon,
@@ -128,24 +127,21 @@ export default function KonsultasiHukumPage() {
 
       {/* 2. Main Content */}
       <main className="flex-1">
-        {/* Breadcrumb Navigation */}
-        <div className="bg-surface border-b border-primary-light py-3">
-          <div className="container-custom flex items-center gap-2 text-breadcrumb text-text-secondary">
-            <Link href="/" className="hover:text-primary transition-colors">
-              Beranda
-            </Link>
-            <span>/</span>
-            <Link href="/#layanan" className="hover:text-primary transition-colors">
-              Layanan
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-semibold">Konsultasi Hukum</span>
-          </div>
-        </div>
-
-        {/* Service Scopes Grid */}
-        <section className="py-12 md:py-16 bg-surface border-b border-primary-light">
+        {/* Service Scopes Grid with Integrated Breadcrumb */}
+        <section className="py-14 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-10">
+            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
+              <Link href="/" className="hover:text-primary transition-colors">
+                Beranda
+              </Link>
+              <span>/</span>
+              <Link href="/#layanan" className="hover:text-primary transition-colors">
+                Layanan
+              </Link>
+              <span>/</span>
+              <span className="text-primary font-semibold">Konsultasi Hukum</span>
+            </nav>
+
             <div className="max-w-3xl space-y-3">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
                 Ruang Lingkup
@@ -269,10 +265,6 @@ export default function KonsultasiHukumPage() {
           <div className="container-custom">
             <div className="p-6 md:p-8 rounded-2xl bg-primary text-white border border-white/10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               <div className="lg:col-span-8 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-silver text-[11px] font-semibold">
-                  <ShieldTaxIcon className="text-xs" />
-                  <span>Konsultan Penanggung Jawab Layanan</span>
-                </div>
                 <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white">
                   Muhamad Dekhsa Afnan, SH., M.Kn.
                 </h3>

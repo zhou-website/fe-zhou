@@ -52,7 +52,7 @@ const INITIAL_STAFF: StaffAdmin[] = [
   },
   {
     id: "STF-02",
-    name: "Tasya Anggraeni Firdaus, SE.",
+    name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     nip: "ADM-002",
     email: "tasya.anggraeni@zhouconsulting.id",
     phone: "+62 812-9876-1202",
@@ -65,7 +65,7 @@ const INITIAL_STAFF: StaffAdmin[] = [
   },
   {
     id: "STF-03",
-    name: "Muhamad Dekhsa Afnan, SH.",
+    name: "Muhamad Dekhsa Afnan, SH., M.Kn.",
     nip: "ADM-003",
     email: "dekhsa.afnan@zhouconsulting.id",
     phone: "+62 812-9876-1203",
@@ -78,9 +78,9 @@ const INITIAL_STAFF: StaffAdmin[] = [
   },
   {
     id: "STF-04",
-    name: "Budi Santoso, SE., Ak., CA",
+    name: "Hendro Wibowo, SE., Ak., CA",
     nip: "ADM-004",
-    email: "budi.santoso@zhouconsulting.id",
+    email: "hendro.wibowo@zhouconsulting.id",
     phone: "+62 812-9876-1204",
     role: "Lead Financial Analyst",
     division: "Business Financial Consulting",

@@ -125,7 +125,7 @@ export function RegulationsSection() {
                     <h3 className="text-sm font-bold text-primary">
                       Kurs Menteri Keuangan (KMK)
                     </h3>
-                    <Badge variant="success" size="sm" dot>
+                    <Badge variant="secondary" size="sm">
                       KMK No. 38/KM.10/2026
                     </Badge>
                   </div>
@@ -133,9 +133,6 @@ export function RegulationsSection() {
                     Periode Aktif: 10 September – 16 September 2026
                   </span>
                 </div>
-                <Badge variant="silver" size="sm">
-                  Kemenkeu Terverifikasi
-                </Badge>
               </div>
 
               <Table>

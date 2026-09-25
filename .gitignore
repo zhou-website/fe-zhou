@@ -51,14 +51,13 @@ next-env.d.ts
 # temporary Figma inspection files
 figma_cdp_screenshot.png
 figma_file_meta.json
-figma_thumbnail.pngscripts/figma-cdp.jsscripts/figma-inspect.js
+figma_thumbnail.png
 
-# ignore temporary Figma inspection files
-/figma_thumbnail.png
-/figma_cdp_screenshot.png
-/figma_file_meta.json
-/scripts/figma-cdp.js
-/scripts/figma-inspect.js
+# temporary scripts
+scripts/figma-cdp.js
+scripts/figma-inspect.js
+scripts/inspect-all-items.js
+scripts/parse-checklist.js
 
 # local scratch files
 /scratch/

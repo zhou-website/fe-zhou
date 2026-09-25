@@ -91,10 +91,10 @@ export default function TaxServicePage() {
     },
     {
       id: "pelaporan-spt",
-      tag: "Coretax Ready 2026",
-      title: "Pelaporan SPT (Coretax Ready)",
+      tag: "Modul Pelaporan SPT",
+      title: "Pelaporan SPT Masa & Tahunan",
       icon: ExportIcon,
-      desc: "Penyusunan dan pelaporan SPT Masa & Tahunan Badan (1771) dan Orang Pribadi (1770) yang diuji silang dan siap diunggah ke Coretax DJP.",
+      desc: "Penyusunan dan pelaporan SPT Masa & Tahunan Badan (1771) dan Orang Pribadi (1770) yang diuji silang dan siap diunggah ke portal resmi DJP.",
       points: [
         "Rekonsiliasi fiskal positif dan negatif berlandaskan UU HPP",
         "Kompilasi lampiran khusus & daftar nominatif biaya promosi",
@@ -218,24 +218,21 @@ export default function TaxServicePage() {
 
       {/* 2. Main Content */}
       <main className="flex-1">
-        {/* Breadcrumb Navigation */}
-        <div className="bg-surface border-b border-primary-light py-3">
-          <div className="container-custom flex items-center gap-2 text-breadcrumb text-text-secondary">
-            <Link href="/" className="hover:text-primary transition-colors">
-              Beranda
-            </Link>
-            <span>/</span>
-            <Link href="/#layanan" className="hover:text-primary transition-colors">
-              Layanan
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-semibold">Tax Service Core</span>
-          </div>
-        </div>
-
-        {/* Service Scopes Grid */}
-        <section className="py-12 md:py-16 bg-surface border-b border-primary-light">
+        {/* Service Scopes Grid with Integrated Breadcrumb */}
+        <section className="py-14 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-10">
+            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
+              <Link href="/" className="hover:text-primary transition-colors">
+                Beranda
+              </Link>
+              <span>/</span>
+              <Link href="/#layanan" className="hover:text-primary transition-colors">
+                Layanan
+              </Link>
+              <span>/</span>
+              <span className="text-primary font-semibold">Tax Service Core</span>
+            </nav>
+
             <div className="max-w-3xl space-y-3">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
                 Ruang Lingkup
@@ -287,30 +284,21 @@ export default function TaxServicePage() {
         <section
           id="modul-pajak"
           aria-label="Modul Tax Service & Coretax"
-          className="py-16 md:py-20 bg-background border-b border-primary-light scroll-mt-20"
+          className="py-16 md:py-20 bg-white border-b border-primary-light scroll-mt-20"
         >
           <div className="container-custom space-y-12">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-              <div className="max-w-2xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                    Modul Terintegrasi
-                  </Badge>
-                  <Badge variant="success" size="sm" dot>
-                    Tax Service Core &amp; Coretax 2026
-                  </Badge>
-                </div>
-                <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
-                  Sub-Layanan Pajak: Otomasi &amp; Administrasi Lengkap
-                </h2>
-                <p className="text-body-regular text-text-secondary leading-relaxed">
-                  Solusi administrasi per sub-menu berbasis modul kepatuhan perpajakan dan arsitektur Coretax DJP guna meniadakan risiko denda administratif.
-                </p>
+            <div className="max-w-3xl space-y-3">
+              <div className="flex items-center gap-2">
+                <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
+                  Modul Terintegrasi
+                </Badge>
               </div>
-
-              <Button variant="primary" asChild className="self-start sm:self-auto shadow-sm">
-                <Link href="/#kontak">Konsultasi Modul Pajak</Link>
-              </Button>
+              <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
+                Sub-Layanan Pajak: Otomasi &amp; Administrasi Lengkap
+              </h2>
+              <p className="text-body-regular text-text-secondary leading-relaxed">
+                Solusi administrasi per sub-menu berbasis modul kepatuhan perpajakan dan arsitektur Coretax DJP guna meniadakan risiko denda administratif.
+              </p>
             </div>
 
             {/* 6 Tax Service Modules Grid */}
@@ -382,7 +370,7 @@ export default function TaxServicePage() {
         </section>
 
         {/* Workflow & Process Steps */}
-        <section className="py-16 md:py-20 bg-white border-b border-primary-light">
+        <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-12">
             <div className="text-center max-w-2xl mx-auto space-y-3">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
@@ -420,7 +408,7 @@ export default function TaxServicePage() {
         </section>
 
         {/* Deliverables Section */}
-        <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
+        <section className="py-16 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="max-w-2xl space-y-3">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
@@ -453,14 +441,10 @@ export default function TaxServicePage() {
         </section>
 
         {/* Lead Consultant Credibility Box */}
-        <section className="py-16 md:py-20 bg-white border-b border-primary-light">
+        <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom">
             <div className="p-6 md:p-8 rounded-2xl bg-primary text-white border border-white/10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
               <div className="lg:col-span-8 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-silver text-[11px] font-semibold">
-                  <ShieldTaxIcon className="text-xs" />
-                  <span>Konsultan Pajak Berlisensi (BKP) Kemenkeu RI</span>
-                </div>
                 <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white">
                   Konsultan Pajak Teregistrasi &amp; Kuasa Hukum Pengadilan Pajak
                 </h3>
@@ -487,7 +471,7 @@ export default function TaxServicePage() {
         </section>
 
         {/* Interactive FAQ Section */}
-        <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
+        <section className="py-16 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom max-w-3xl space-y-10">
             <div className="text-center space-y-3">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
@@ -529,7 +513,7 @@ export default function TaxServicePage() {
         </section>
 
         {/* Bottom Related Services Navigator */}
-        <section className="py-12 bg-white border-b border-primary-light">
+        <section className="py-14 md:py-18 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-6">
             <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
               Eksplorasi Layanan Terkait Lainnya:

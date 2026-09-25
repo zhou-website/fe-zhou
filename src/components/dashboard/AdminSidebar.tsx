@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { BackendStatusBadge } from "@/components/common/BackendStatusBadge";
 import {
   DocumentIcon,
   UserIcon,
@@ -209,6 +210,8 @@ export function AdminSidebar() {
               </span>
             </div>
           </div>
+
+          <BackendStatusBadge compact className="w-full justify-center py-1 bg-white/5 border-white/10" />
 
           <button
             type="button"

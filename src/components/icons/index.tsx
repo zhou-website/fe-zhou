@@ -12,8 +12,10 @@ import {
   faEnvelope,
   faClock,
   faArrowRight,
+  faArrowLeft,
   faChevronDown,
   faChevronRight,
+  faChevronLeft,
   faBars,
   faXmark,
   faUser,
@@ -25,6 +27,7 @@ import {
   faPlus,
   faTrash,
   faPenToSquare,
+  faPencil,
   faComments,
   faPaperPlane,
   faRightFromBracket,
@@ -76,8 +79,10 @@ export const PhoneIcon = createIcon(faPhone);
 export const EnvelopeIcon = createIcon(faEnvelope);
 export const ClockIcon = createIcon(faClock);
 export const ArrowRightIcon = createIcon(faArrowRight);
+export const ArrowLeftIcon = createIcon(faArrowLeft);
 export const ChevronDownIcon = createIcon(faChevronDown);
 export const ChevronRightIcon = createIcon(faChevronRight);
+export const ChevronLeftIcon = createIcon(faChevronLeft);
 export const MenuIcon = createIcon(faBars);
 export const CloseIcon = createIcon(faXmark);
 export const UserIcon = createIcon(faUser);
@@ -89,6 +94,7 @@ export const FilterIcon = createIcon(faFilter);
 export const PlusIcon = createIcon(faPlus);
 export const TrashIcon = createIcon(faTrash);
 export const EditIcon = createIcon(faPenToSquare);
+export const PencilIcon = createIcon(faPencil);
 export const ChatbotIcon = createIcon(faComments);
 export const SendIcon = createIcon(faPaperPlane);
 export const LogoutIcon = createIcon(faRightFromBracket);

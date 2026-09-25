@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { BackendStatusBadge } from "@/components/common/BackendStatusBadge";
 import {
   DocumentIcon,
   ChatbotIcon,
@@ -30,7 +31,7 @@ const USER_NAV_ITEMS: NavItem[] = [
     icon: BuildingIcon,
   },
   {
-    label: "Tiket Konsultasi",
+    label: "Konsultasi",
     href: "/dashboard/user/tiket",
     icon: ClockIcon,
     badge: "3",
@@ -202,14 +203,14 @@ export function UserSidebar() {
           <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-xs">
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="w-7 h-7 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs">
-                {user?.name ? user.name.slice(0, 2).toUpperCase() : <UserIcon className="text-xs" />}
+                {user?.avatarText || (user?.name ? user.name.slice(0, 2).toUpperCase() : "BS")}
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-white truncate">
-                  {user?.name || "Klien Terdaftar"}
+                  {user?.name || "Budi Santoso, S.E."}
                 </div>
                 <div className="text-[10px] text-silver truncate">
-                  {user?.email || "klien@zhou.co.id"}
+                  {user?.email || "budi.santoso@majumakmur.co.id"}
                 </div>
               </div>
             </div>
@@ -219,6 +220,8 @@ export function UserSidebar() {
               <span className="text-success font-semibold">&bull; Aktif</span>
             </div>
           </div>
+
+          <BackendStatusBadge compact className="w-full justify-center py-1 bg-white/5 border-white/10" />
 
           {/* Logout Action */}
           <button

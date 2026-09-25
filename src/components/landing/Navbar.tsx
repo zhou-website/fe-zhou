@@ -8,6 +8,8 @@ import {
   ChevronDownIcon,
   MenuIcon,
   CloseIcon,
+  UserIcon,
+  LogoutIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -387,10 +389,12 @@ export function Navbar() {
                 )}
 
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   asChild
-                  className="text-text-secondary hover:text-primary font-semibold text-xs tracking-wide px-3 py-2 rounded-md transition-colors"
+                  className="h-8 w-8 p-0 rounded-lg border-primary-light text-text-secondary hover:text-primary hover:border-primary hover:bg-surface transition-colors shrink-0"
+                  title="Profil Pengguna"
+                  aria-label="Profil Pengguna"
                 >
                   <Link
                     href={
@@ -401,7 +405,7 @@ export function Navbar() {
                         : "/dashboard/user/profil"
                     }
                   >
-                    Profil
+                    <UserIcon className="text-xs" />
                   </Link>
                 </Button>
 
@@ -410,9 +414,11 @@ export function Navbar() {
                   size="sm"
                   type="button"
                   onClick={logout}
-                  className="border-primary-light text-text-secondary hover:text-error hover:border-error/40 font-semibold text-xs tracking-wide px-3 py-2 rounded-md transition-colors cursor-pointer"
+                  className="h-8 w-8 p-0 rounded-lg border-primary-light text-text-secondary hover:text-error hover:border-error/40 hover:bg-error/5 transition-colors cursor-pointer shrink-0"
+                  title="Keluar / Logout"
+                  aria-label="Keluar / Logout"
                 >
-                  Logout
+                  <LogoutIcon className="text-xs" />
                 </Button>
               </>
             ) : (
@@ -773,7 +779,7 @@ export function Navbar() {
                     variant="outline"
                     size="default"
                     asChild
-                    className="w-full font-semibold text-xs justify-center border-primary-light text-text-primary hover:bg-surface"
+                    className="w-full font-semibold text-xs justify-center border-primary-light text-text-primary hover:bg-surface gap-1.5"
                     onClick={closeAllMenus}
                   >
                     <Link
@@ -785,7 +791,8 @@ export function Navbar() {
                           : "/dashboard/user/profil"
                       }
                     >
-                      Profil
+                      <UserIcon className="text-xs" />
+                      <span>Profil</span>
                     </Link>
                   </Button>
 
@@ -797,9 +804,10 @@ export function Navbar() {
                       closeAllMenus();
                       logout();
                     }}
-                    className="w-full font-semibold text-xs justify-center border-error/30 text-error hover:bg-error/10 cursor-pointer"
+                    className="w-full font-semibold text-xs justify-center border-error/30 text-error hover:bg-error/10 cursor-pointer gap-1.5"
                   >
-                    Logout
+                    <LogoutIcon className="text-xs" />
+                    <span>Logout</span>
                   </Button>
                 </div>
               </>

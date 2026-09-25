@@ -1,12 +1,7 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-
-} from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 
 export function AboutSection() {
@@ -20,7 +15,7 @@ export function AboutSection() {
     >
       <div className="container-custom">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Sisi Kiri: Badge, Headline Utama & Aksi Cepat */}
+          {/* Sisi Kiri: Badge, Headline Utama */}
           <div className="lg:col-span-6 space-y-5">
             <div className="inline-flex items-center gap-2">
               <Badge
@@ -36,17 +31,6 @@ export function AboutSection() {
             </h2>
 
             <div className="w-16 h-1 bg-primary rounded-full" />
-
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              <Button variant="primary" size="sm" asChild className="text-xs font-semibold">
-                <Link href="/konsultasi">
-                  <span>{t.about.btnSchedule}</span>
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild className="text-xs font-semibold">
-                <Link href="/#layanan">{t.about.btnCatalog}</Link>
-              </Button>
-            </div>
           </div>
 
           {/* Sisi Kanan: Kartu Narasi Mengapa Zhou Consulting */}

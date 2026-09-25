@@ -125,7 +125,7 @@ export const DialogOverlay = React.forwardRef<
       ref={ref}
       onClick={() => context?.setOpen(false)}
       className={cn(
-        "fixed inset-0 z-50 bg-primary-dark/60 backdrop-blur-sm transition-opacity duration-200 animate-in fade-in",
+        "fixed inset-0 z-50 bg-primary-dark/60 backdrop-blur-md transition-opacity duration-200 animate-in fade-in",
         className
       )}
       {...props}

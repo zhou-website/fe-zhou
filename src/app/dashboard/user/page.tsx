@@ -19,8 +19,6 @@ import {
   ClockIcon,
   CheckCircleIcon,
   DocumentIcon,
-  ChatbotIcon,
-  PlusIcon,
   CheckIcon,
   CloseIcon,
   DownloadIcon,
@@ -71,7 +69,7 @@ const INITIAL_TICKETS: Ticket[] = [
     id: "TK-2026-042",
     title: "Kompilasi Laporan Keuangan Berstandar SAK Q2 2026",
     category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE.",
+    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     status: "Completed",
     progress: 100,
     updatedAt: "08 Sep 2026, 11:15 WIB",
@@ -196,6 +194,7 @@ ZHOU CONSULTING - DIGITAL CLIENT VAULT
 ======================================================
 Berkas Resmi : ${fileName}
 Entitas      : PT Maju Makmur Sentosa (CL-88219)
+PIC Klien    : Budi Santoso, S.E. (Finance & Tax Manager)
 Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
 Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
 Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
@@ -246,44 +245,13 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           </ol>
         </nav>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                Dashboard Saya
-              </h1>
-              <Badge variant="outline" className="bg-success/15 text-success border-success/30 text-[10px] px-2 py-0.5">
-                Klien Terverifikasi
-              </Badge>
-            </div>
-            <p className="text-xs text-text-secondary">
-              Pantau progres tiket konsultasi, lembar kerja akuntansi, dan unduh berkas resmi Anda di sini.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 shadow-sm"
-            >
-              <PlusIcon className="text-xs" />
-              <span>Buat Tiket Baru</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="border-navy-light text-primary hover:bg-surface"
-            >
-              <Link href="/dashboard/user/chatbot" className="inline-flex items-center gap-1.5">
-                <ChatbotIcon className="text-xs text-primary" />
-                <span className="hidden sm:inline">Tanya Chatbot</span>
-              </Link>
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-primary tracking-tight mb-1">
+            Dashboard Saya
+          </h1>
+          <p className="text-xs text-text-secondary">
+            Pantau progres layanan konsultasi, lembar kerja akuntansi, dan unduh berkas resmi Anda di sini.
+          </p>
         </div>
       </div>
 
@@ -294,7 +262,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                Tiket Aktif Berjalan
+                Konsultasi Aktif Berjalan
               </div>
               <div className="text-3xl font-bold text-primary">
                 0{activeCount}
@@ -359,10 +327,10 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           <div>
             <div className="flex items-center gap-2">
               <CardTitle className="text-base font-bold text-primary">
-                Monitoring Tiket Konsultasi Terbaru
+                Monitoring Konsultasi Terbaru
               </CardTitle>
               <Badge variant="outline" className="text-xs bg-surface text-text-secondary border-navy-light">
-                {tickets.length} Tiket Terdaftar
+                {tickets.length} Konsultasi Terdaftar
               </Badge>
             </div>
             <CardDescription className="text-xs text-text-secondary mt-0.5">
@@ -407,17 +375,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 Selesai ({completedCount})
               </button>
             </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="text-xs text-primary hover:bg-surface font-semibold hidden md:inline-flex"
-            >
-              <Link href="/dashboard/user/tiket">
-                <span>Lihat Semua</span>
-              </Link>
-            </Button>
           </div>
         </CardHeader>
 
@@ -426,7 +383,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
             <table className="w-full text-left text-xs text-text-primary">
               <thead className="bg-surface/80 border-b border-navy-light text-[10px] uppercase font-bold text-text-secondary tracking-wider">
                 <tr>
-                  <th scope="col" className="py-3 px-4 sm:px-6">ID Tiket</th>
+                  <th scope="col" className="py-3 px-4 sm:px-6">ID Konsultasi</th>
                   <th scope="col" className="py-3 px-4">Judul Pekerjaan &amp; Layanan</th>
                   <th scope="col" className="py-3 px-4 hidden md:table-cell">Konsultan Lead</th>
                   <th scope="col" className="py-3 px-4">Progres</th>
@@ -490,7 +447,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                         onClick={() => setSelectedTicket(ticket)}
                         className="text-xs py-1 px-2.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
                       >
-                        Detail Tiket
+                        Detail Konsultasi
                       </Button>
                     </td>
                   </tr>
@@ -504,22 +461,19 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
               href="/dashboard/user/tiket"
               className="text-xs text-primary hover:underline font-semibold"
             >
-              <span>Monitoring Tiket</span>
+              <span>Monitoring Konsultasi</span>
             </Link>
           </div>
         </CardContent>
       </Card>
 
       {/* Section: Dokumen Pajak & Laporan Terbaru (Secured Vault) */}
-      <Card className="border-navy-light bg-white shadow-sm">
+      <Card className="border-navy-light bg-white shadow-sm overflow-hidden">
         <CardHeader className="p-5 sm:p-6 border-b border-navy-light flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <ShieldTaxIcon className="text-sm text-primary" />
-              <CardTitle className="text-base font-bold text-primary">
-                Dokumen Pajak &amp; Laporan Terbaru (Secured Vault)
-              </CardTitle>
-            </div>
+            <CardTitle className="text-base font-bold text-primary">
+              Dokumen Pajak &amp; Laporan Terbaru (Secured Vault)
+            </CardTitle>
             <CardDescription className="text-xs text-text-secondary mt-0.5">
               Seluruh berkas luaran resmi yang telah diverifikasi konsultan tersimpan dengan protokol keamanan NDA.
             </CardDescription>
@@ -537,75 +491,58 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           </Button>
         </CardHeader>
 
-        <CardContent className="p-5 sm:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {INITIAL_DOCUMENTS.map((doc) => (
-              <div
-                key={doc.id}
-                className="border border-navy-light rounded-xl p-4 bg-surface/40 hover:bg-surface/70 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                      {doc.category}
-                    </span>
-                    <span className="text-[10px] text-text-secondary">{doc.size}</span>
-                  </div>
-
-                  <h3 className="text-xs font-bold text-primary line-clamp-2 mb-1">
-                    {doc.name}
-                  </h3>
-
-                  <div className="text-[11px] text-text-secondary mt-2">
-                    Terbit: {doc.date} &bull; Ref: <code className="font-mono text-primary font-semibold">{doc.ticketRef}</code>
-                  </div>
-                </div>
-
-                <div className="pt-3 mt-3 border-t border-navy-light/60">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadSimulation(doc.name)}
-                    className="w-full text-xs py-1 h-auto border-navy-light text-primary hover:bg-white inline-flex items-center justify-center gap-1.5"
-                  >
-                    <DownloadIcon className="text-[10px]" />
-                    <span>Unduh Dokumen (PDF)</span>
-                  </Button>
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-navy-light">
+                <tr>
+                  <th className="py-3 px-4 sm:px-6">Nama Dokumen</th>
+                  <th className="py-3 px-4">Kategori</th>
+                  <th className="py-3 px-4">Tanggal Terbit</th>
+                  <th className="py-3 px-4">Ukuran</th>
+                  <th className="py-3 px-4">Referensi Konsultasi</th>
+                  <th className="py-3 px-4 sm:px-6 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-navy-light">
+                {INITIAL_DOCUMENTS.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-surface/50 transition-colors">
+                    <td className="py-3.5 px-4 sm:px-6 font-semibold text-primary">
+                      {doc.name}
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        {doc.category}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
+                      {doc.date}
+                    </td>
+                    <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
+                      {doc.size}
+                    </td>
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <code className="font-mono text-primary font-semibold text-xs">
+                        {doc.ticketRef}
+                      </code>
+                    </td>
+                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadSimulation(doc.name)}
+                        className="text-xs py-1 px-3.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
+                      >
+                        Unduh
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
-
-      {/* Callout Banner: Chatbot Bantuan Rule-Based */}
-      <div className="bg-[#060D22] text-white rounded-xl p-6 border border-[#172652] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1 max-w-2xl">
-          <div className="flex items-center gap-2">
-            <ChatbotIcon className="text-sm text-primary-light" />
-            <span className="text-xs font-bold uppercase tracking-wider text-silver">
-              Bantuan Instan Klien
-            </span>
-          </div>
-          <h2 className="text-base sm:text-lg font-bold text-white">
-            Punya Pertanyaan Seputar Coretax atau Regulasi Pajak Terbaru?
-          </h2>
-          <p className="text-xs text-silver leading-relaxed">
-            Gunakan Chatbot Bantuan Rule-Based Zhou Consulting untuk mendapatkan panduan cepat tanpa antre, atau eskalasikan langsung menjadi tiket konsultasi lanjutan bila diperlukan pendampingan konsultan.
-          </p>
-        </div>
-
-        <Button
-          variant="silver"
-          size="sm"
-          asChild
-          className="shrink-0 text-xs font-bold"
-        >
-          <Link href="/dashboard/user/chatbot">
-            <span>Buka Chatbot</span>
-          </Link>
-        </Button>
-      </div>
 
       {/* MODAL 1: Detail Tiket & Lembar Kerja Inspeksi */}
       {selectedTicket && (
@@ -749,7 +686,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
             <div className="flex items-start justify-between pb-3 border-b border-navy-light">
               <div>
                 <h3 className="text-base font-bold text-primary">
-                  Buat Tiket Konsultasi Baru
+                  Buat Konsultasi Baru
                 </h3>
                 <p className="text-xs text-text-secondary mt-0.5">
                   Sampaikan permohonan analisis atau pendampingan fiskal lanjutan dari entitas Anda.
@@ -836,7 +773,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                     </>
                   ) : (
                     <>
-                      <span>Kirim Tiket Konsultasi</span>
+                      <span>Kirim Permohonan Konsultasi</span>
                       <CheckIcon className="text-xs" />
                     </>
                   )}

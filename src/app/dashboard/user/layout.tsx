@@ -5,7 +5,7 @@ import { DashboardGuard } from "@/components/auth/DashboardGuard";
 export const metadata = {
   title: "Dashboard Saya — Zhou Consulting",
   description:
-    "Dashboard klien resmi Zhou Consulting untuk monitoring progres tiket konsultasi, lembar kerja akuntansi, pelaporan SPT Coretax 2026, dan unduh berkas resmi.",
+    "Dashboard klien resmi Zhou Consulting untuk monitoring progres layanan konsultasi, lembar kerja akuntansi, pelaporan SPT Coretax 2026, dan unduh berkas resmi.",
 };
 
 export default function UserDashboardLayout({

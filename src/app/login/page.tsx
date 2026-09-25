@@ -21,7 +21,7 @@ import {
 function LoginFormContent() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
-  const { login } = useAuth();
+  const { login, loginWithApi } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,30 +29,45 @@ function LoginFormContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [selectedRole, setSelectedRole] = useState<"user" | "admin" | "superadmin">("user");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await loginWithApi(
+        email || "klien@perusahaan.com",
+        password || "Client123!",
+        redirectParam
+      );
+
+      if (!res.success) {
+        setErrorMessage(res.message || "Email atau kata sandi tidak valid. Silakan coba kembali.");
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Gagal menghubungi server live backend.";
+      setErrorMessage(message);
+    } finally {
       setIsLoading(false);
-      login(email || "klien@korporat.com", selectedRole, redirectParam);
-    }, 500);
+    }
   };
 
   const handleQuickLogin = (role: "user" | "admin" | "superadmin") => {
     setSelectedRole(role);
+    setErrorMessage("");
     if (role === "user") {
-      setEmail("klien@korporat.com");
-      setPassword("klienpassword");
+      setEmail("klien@perusahaan.com");
+      setPassword("Client123!");
     } else if (role === "admin") {
-      setEmail("staff.admin@zhouconsulting.id");
-      setPassword("adminpassword");
+      setEmail("admin@zhouconsulting.com");
+      setPassword("Admin123!");
     } else {
-      setEmail("superadmin@zhouconsulting.id");
-      setPassword("superadminpassword");
+      setEmail("superadmin@zhouconsulting.com");
+      setPassword("SuperAdmin123!");
     }
   };
 
@@ -174,6 +189,17 @@ function LoginFormContent() {
               </button>
             </div>
           </div>
+
+          {/* Error Notice jika autentikasi backend gagal */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5 animate-in fade-in">
+              <span className="font-bold text-sm leading-none mt-0.5">⚠️</span>
+              <div>
+                <span className="font-bold block">Gagal Masuk</span>
+                <span className="text-[11px] leading-tight block mt-0.5">{errorMessage}</span>
+              </div>
+            </div>
+          )}
 
           {/* Authentication Form */}
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">

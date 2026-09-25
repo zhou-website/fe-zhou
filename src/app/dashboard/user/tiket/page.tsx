@@ -22,9 +22,12 @@ import {
   DocumentIcon,
   PlusIcon,
   CloseIcon,
-  DownloadIcon,
   SearchIcon,
   UserIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChatbotIcon,
+  WhatsappIcon,
 } from "@/components/icons";
 
 interface Milestone {
@@ -122,11 +125,11 @@ const INITIAL_TICKETS: Ticket[] = [
       },
       {
         id: "msg-2",
-        sender: "Budi Santoso (Direktur Keuangan PT MMS)",
-        role: "Klien",
-        date: "16 Sep 2026 &bull; 16:45 WIB",
+        sender: "Linda David, S.Ak., BKP (Lead Tax Consultant)",
+        role: "Konsultan",
+        date: "16 Sep 2026 &bull; 17:15 WIB",
         message:
-          "Terima kasih Bu Linda. Kami telah memeriksa kertas kerja tersebut dan menyetujui penyesuaian fiskal. Silakan dilanjutkan ke tahap finalisasi draf pelaporan.",
+          "Kertas kerja ekualisasi dan rekonsiliasi fiskal telah diverifikasi lengkap. Penugasan dilanjutkan ke tahap finalisasi draf pelaporan SPT Tahunan Badan Form 1771 pada sistem Coretax DJP.",
       },
     ],
   },
@@ -134,7 +137,7 @@ const INITIAL_TICKETS: Ticket[] = [
     id: "TK-2026-042",
     title: "Kompilasi Laporan Keuangan Berstandar SAK EP Q2 2026",
     category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE.",
+    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     status: "Completed",
     progress: 100,
     createdAt: "18 Agu 2026",
@@ -179,7 +182,7 @@ const INITIAL_TICKETS: Ticket[] = [
     correspondences: [
       {
         id: "msg-3",
-        sender: "Tasya Anggraeni Firdaus, SE. (Senior Accountant)",
+        sender: "Tasya Anggraeni Firdaus, SE., Ak., CA (Accounting Partner)",
         role: "Konsultan",
         date: "28 Agu 2026 &bull; 11:00 WIB",
         message:
@@ -304,9 +307,6 @@ export default function ClientTicketMonitoringPage() {
   const [newCategory, setNewCategory] = useState<Ticket["category"]>("Tax Service Core");
   const [newUrgency, setNewUrgency] = useState("Normal");
   const [newDescription, setNewDescription] = useState("");
-
-  // Reply Input State
-  const [replyMessage, setReplyMessage] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -343,7 +343,7 @@ export default function ClientTicketMonitoringPage() {
   const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newDescription.trim()) {
-      showToast("Mohon lengkapi judul dan deskripsi permohonan tiket.");
+      showToast("Mohon lengkapi judul dan deskripsi permohonan konsultasi.");
       return;
     }
 
@@ -363,7 +363,7 @@ export default function ClientTicketMonitoringPage() {
           title: "Intake & Verifikasi Berkas Awal",
           status: "in_progress",
           date: "17 Sep 2026",
-          description: "Tiket baru diterima sistem operasional dan sedang dialokasikan ke lead konsultan terkait.",
+          description: "Permohonan konsultasi diterima sistem operasional dan sedang dialokasikan ke lead konsultan terkait.",
         },
         {
           step: "02",
@@ -384,10 +384,10 @@ export default function ClientTicketMonitoringPage() {
       correspondences: [
         {
           id: `msg-${Date.now()}`,
-          sender: "Budi Santoso (Direktur Keuangan PT MMS)",
-          role: "Klien",
+          sender: "Tim Konsultan Zhou (Sistem Penugasan)",
+          role: "Konsultan",
           date: "Hari ini &bull; Baru saja",
-          message: newDescription,
+          message: `Permohonan konsultasi telah diterima: "${newDescription}". Konsultan pendamping sedang menelaah berkas pendukung.`,
         },
       ],
     };
@@ -397,35 +397,7 @@ export default function ClientTicketMonitoringPage() {
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");
-    showToast(`Tiket permohonan berhasil dibuat dengan nomor referensi ${newId}. Tim kami akan segera menindaklanjuti.`);
-  };
-
-  // Handle Send Reply Message
-  const handleSendReply = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!replyMessage.trim()) return;
-
-    const newCorrespondence: Correspondence = {
-      id: `msg-${Date.now()}`,
-      sender: "Budi Santoso (Direktur Keuangan PT MMS)",
-      role: "Klien",
-      date: "Hari ini &bull; Baru saja",
-      message: replyMessage,
-    };
-
-    const updatedTickets = tickets.map((t) => {
-      if (t.id === selectedTicket.id) {
-        return {
-          ...t,
-          correspondences: [...t.correspondences, newCorrespondence],
-        };
-      }
-      return t;
-    });
-
-    setTickets(updatedTickets);
-    setReplyMessage("");
-    showToast("Pesan klarifikasi berhasil dikirimkan ke konsultan pendamping.");
+    showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}. Tim kami akan segera menindaklanjuti.`);
   };
 
   return (
@@ -454,10 +426,10 @@ export default function ClientTicketMonitoringPage() {
               Dashboard Saya
             </Link>
             <span>/</span>
-            <span className="text-primary font-bold">Tiket Konsultasi</span>
+            <span className="text-primary font-bold">Layanan Konsultasi</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Monitoring Tiket &amp; Lembar Kerja
+            Monitoring Konsultasi &amp; Lembar Kerja
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
             Pantau alur tahapan penugasan akuntansi, kepatuhan pajak Coretax DJP, dan unduh berkas deliverable resmi secara terpusat.
@@ -470,7 +442,7 @@ export default function ClientTicketMonitoringPage() {
           className="shadow-sm font-semibold text-xs py-2.5 px-5 flex items-center gap-2 self-start sm:self-auto"
         >
           <PlusIcon className="text-xs" />
-          <span>Buat Tiket Baru</span>
+          <span>Buat Konsultasi Baru</span>
         </Button>
       </div>
 
@@ -480,7 +452,7 @@ export default function ClientTicketMonitoringPage() {
         <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Tiket Aktif Berjalan</span>
+              <span className="text-xs text-text-muted font-medium">Konsultasi Aktif Berjalan</span>
               <div className="text-3xl font-bold text-primary">02</div>
               <span className="text-[11px] text-text-secondary">Dalam telaah konsultan</span>
             </div>
@@ -528,46 +500,49 @@ export default function ClientTicketMonitoringPage() {
         </Card>
       </div>
 
-      {/* MASTER PANEL: TABEL DAFTAR TIKET KONSULTASI */}
+      {/* MASTER PANEL: TABEL DAFTAR KONSULTASI */}
       <Card className="rounded-2xl border-primary-light bg-white shadow-sm overflow-hidden">
         <CardHeader className="p-5 sm:p-6 border-b border-primary-light space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base sm:text-lg font-bold text-primary">
-                Daftar Seluruh Tiket Konsultasi
+                Daftar Seluruh Konsultasi
               </CardTitle>
               <CardDescription className="text-xs text-text-secondary mt-0.5">
-                Klik baris tiket untuk membuka lembar kerja milestone dan berkas deliverable di panel bawah.
+                Klik baris konsultasi untuk membuka lembar kerja milestone dan berkas deliverable di panel bawah.
               </CardDescription>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-primary-light self-start sm:self-auto">
+            <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-primary-light self-start sm:self-auto text-xs">
               <button
+                type="button"
                 onClick={() => setFilterTab("all")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
                   filterTab === "all"
-                    ? "bg-primary text-white shadow-sm"
+                    ? "bg-white text-primary shadow-sm font-bold"
                     : "text-text-secondary hover:text-primary"
                 }`}
               >
                 Semua ({tickets.length})
               </button>
               <button
+                type="button"
                 onClick={() => setFilterTab("in_progress")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
                   filterTab === "in_progress"
-                    ? "bg-primary text-white shadow-sm"
+                    ? "bg-white text-primary shadow-sm font-bold"
                     : "text-text-secondary hover:text-primary"
                 }`}
               >
                 Dalam Proses ({tickets.filter((t) => t.status === "In Progress").length})
               </button>
               <button
+                type="button"
                 onClick={() => setFilterTab("completed")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
                   filterTab === "completed"
-                    ? "bg-primary text-white shadow-sm"
+                    ? "bg-white text-primary shadow-sm font-bold"
                     : "text-text-secondary hover:text-primary"
                 }`}
               >
@@ -582,7 +557,7 @@ export default function ClientTicketMonitoringPage() {
               <SearchIcon className="absolute left-3 top-3 text-text-muted text-xs" />
               <Input
                 type="text"
-                placeholder="Cari ID tiket, judul kebutuhan, atau nama konsultan..."
+                placeholder="Cari ID konsultasi, judul kebutuhan, atau nama konsultan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 text-xs h-9 bg-surface border-primary-light"
@@ -609,7 +584,7 @@ export default function ClientTicketMonitoringPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
-                  <th className="py-3.5 px-4">ID Tiket</th>
+                  <th className="py-3.5 px-4">ID Konsultasi</th>
                   <th className="py-3.5 px-4">Subjek / Kebutuhan</th>
                   <th className="py-3.5 px-4">Divisi</th>
                   <th className="py-3.5 px-4">Konsultan Lead</th>
@@ -668,26 +643,33 @@ export default function ClientTicketMonitoringPage() {
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <Badge
-                          variant={ticket.status === "Completed" ? "success" : "primary"}
-                          size="sm"
-                          dot
+                          variant="outline"
+                          className={`text-[10px] px-2 py-0.5 font-semibold ${
+                            ticket.status === "Completed"
+                              ? "bg-success/15 text-success border-success/30"
+                              : "bg-primary/10 text-primary border-primary/20"
+                          }`}
                         >
                           {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
                         </Badge>
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <Button
-                          variant={isSelected ? "primary" : "outline"}
+                          variant="outline"
                           size="sm"
-                          className="text-[11px] h-7 px-3"
+                          className={`text-xs py-1 px-3 h-auto font-semibold transition-all ${
+                            isSelected
+                              ? "bg-primary/10 text-primary border-primary/30"
+                              : "border-primary-light text-primary hover:bg-surface"
+                          }`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedTicketId(ticket.id);
                           }}
                         >
-                          {isSelected ? "Terpilih" : "Buka Lembar Kerja"}
+                          Buka Lembar Kerja
                         </Button>
                       </td>
                     </tr>
@@ -697,7 +679,7 @@ export default function ClientTicketMonitoringPage() {
                 {filteredTickets.length === 0 && (
                   <tr>
                     <td colSpan={7} className="py-10 text-center text-text-muted">
-                      Tidak ditemukan tiket dengan filter yang dipilih.
+                      Tidak ditemukan konsultasi dengan filter yang dipilih.
                     </td>
                   </tr>
                 )}
@@ -707,17 +689,33 @@ export default function ClientTicketMonitoringPage() {
 
           <div className="p-4 border-t border-primary-light bg-surface/40 flex items-center justify-between text-xs text-text-muted">
             <span>
-              Menampilkan {filteredTickets.length} dari {tickets.length} total tiket konsultasi
+              Menampilkan {filteredTickets.length} dari {tickets.length} total konsultasi
             </span>
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs" disabled>
-                Sebelumnya
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-7 h-7 p-0 flex items-center justify-center text-xs border-primary-light text-text-muted hover:text-primary disabled:opacity-40"
+                disabled
+                aria-label="Halaman Sebelumnya"
+              >
+                <ChevronLeftIcon className="text-xs" />
               </Button>
-              <Button variant="primary" size="sm" className="h-7 px-2.5 text-xs">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-7 h-7 p-0 flex items-center justify-center text-xs bg-primary/10 text-primary border-primary/30 font-bold"
+              >
                 1
               </Button>
-              <Button variant="outline" size="sm" className="h-7 px-2.5 text-xs" disabled>
-                Selanjutnya
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-7 h-7 p-0 flex items-center justify-center text-xs border-primary-light text-text-muted hover:text-primary disabled:opacity-40"
+                disabled
+                aria-label="Halaman Selanjutnya"
+              >
+                <ChevronRightIcon className="text-xs" />
               </Button>
             </div>
           </div>
@@ -726,31 +724,16 @@ export default function ClientTicketMonitoringPage() {
 
       {/* DETAIL PANEL: LEMBAR KERJA & ALUR TAHAPAN TIKET TERPILIH (MASTER-DETAIL) */}
       <div className="space-y-6 pt-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
-              Inspeksi Lembar Kerja:
-            </span>
-            <span className="font-mono text-sm font-bold bg-primary text-white px-2 py-0.5 rounded">
-              {selectedTicket.id}
-            </span>
-            <span className="text-xs text-text-secondary font-semibold">
-              &bull; {selectedTicket.category}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Badge
-              variant={selectedTicket.status === "Completed" ? "success" : "primary"}
-              size="sm"
-              dot
-            >
-              {selectedTicket.status === "Completed" ? "Status: Selesai" : "Status: Dalam Proses"}
-            </Badge>
-            <span className="text-xs text-text-muted">
-              Target Selesai: {selectedTicket.estimatedCompletion}
-            </span>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
+            Inspeksi Lembar Kerja:
+          </span>
+          <span className="font-mono text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded">
+            {selectedTicket.id}
+          </span>
+          <span className="text-xs text-text-secondary font-semibold">
+            &bull; {selectedTicket.category}
+          </span>
         </div>
 
         {/* Selected Ticket Overview Card */}
@@ -792,7 +775,7 @@ export default function ClientTicketMonitoringPage() {
                       isDone
                         ? "bg-surface/60 border-success/30"
                         : isInProg
-                        ? "bg-white border-primary shadow-sm"
+                        ? "bg-white border-primary/40 shadow-sm"
                         : "bg-surface/30 border-primary-light text-text-muted"
                     }`}
                   >
@@ -803,7 +786,7 @@ export default function ClientTicketMonitoringPage() {
                             isDone
                               ? "bg-success/20 text-success"
                               : isInProg
-                              ? "bg-primary text-white"
+                              ? "bg-primary/15 text-primary border border-primary/30"
                               : "bg-surface border text-text-muted"
                           }`}
                         >
@@ -883,15 +866,14 @@ export default function ClientTicketMonitoringPage() {
                     </div>
 
                     <Button
-                      variant="primary"
+                      variant="outline"
                       size="sm"
                       onClick={() =>
                         showToast(`Mengunduh berkas resmi ${doc.name} (Simulasi 256-bit Secured Download).`)
                       }
-                      className="text-xs h-8 px-3 shrink-0 flex items-center gap-1.5"
+                      className="text-xs py-1 px-3.5 h-auto border-primary-light text-primary hover:bg-surface font-semibold shrink-0"
                     >
-                      <DownloadIcon className="text-xs" />
-                      <span>Unduh</span>
+                      Unduh
                     </Button>
                   </div>
                 ))}
@@ -903,64 +885,68 @@ export default function ClientTicketMonitoringPage() {
             )}
           </div>
 
-          {/* Riwayat Korespondensi & Catatan Konsultan */}
+          {/* Catatan Konsultan Staf */}
           <div className="space-y-4 pt-4 border-t border-primary-light">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
-              Riwayat Diskusi &amp; Catatan Konsultan Staf
-            </h3>
-
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {selectedTicket.correspondences.map((msg) => {
-                const isStaff = msg.role === "Konsultan";
-                return (
-                  <div
-                    key={msg.id}
-                    className={`p-4 rounded-xl border text-xs leading-relaxed space-y-1.5 ${
-                      isStaff
-                        ? "bg-surface/80 border-primary-light"
-                        : "bg-white border-primary-light/80"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="font-bold text-primary flex items-center gap-2">
-                        <span>{msg.sender}</span>
-                        <Badge
-                          variant={isStaff ? "primary" : "silver"}
-                          size="sm"
-                          className="text-[9px] py-0 px-1.5"
-                        >
-                          {msg.role}
-                        </Badge>
-                      </div>
-                      <span
-                        className="text-[10px] text-text-muted"
-                        dangerouslySetInnerHTML={{ __html: msg.date }}
-                      />
-                    </div>
-                    <p className="text-text-secondary">{msg.message}</p>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
+                Catatan Konsultan Staf
+              </h3>
+              <span className="text-[11px] text-text-muted">
+                Catatan resmi progres &amp; evaluasi pengerjaan penugasan
+              </span>
             </div>
 
-            {/* Form Balas / Kirim Klarifikasi */}
-            <form onSubmit={handleSendReply} className="space-y-3 pt-2">
-              <Textarea
-                placeholder="Tulis pesan pertanyaan, klarifikasi dokumen, atau respon Anda untuk konsultan pendamping..."
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                rows={3}
-                className="text-xs bg-surface border-primary-light"
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-text-muted">
-                  Kerahasiaan pesan terproteksi pakta kerahasiaan NDA &amp; UU PDP 2022.
-                </span>
-                <Button type="submit" variant="primary" size="sm" className="text-xs">
-                  Kirim Pesan Klarifikasi
-                </Button>
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {selectedTicket.correspondences.map((msg) => (
+                <div
+                  key={msg.id}
+                  className="p-4 rounded-xl border border-primary-light bg-surface/70 text-xs leading-relaxed space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-primary flex items-center gap-2">
+                      <span>{msg.sender}</span>
+                      <Badge
+                        variant="primary"
+                        size="sm"
+                        className="text-[9px] py-0 px-1.5"
+                      >
+                        {msg.role}
+                      </Badge>
+                    </div>
+                    <span
+                      className="text-[10px] text-text-muted"
+                      dangerouslySetInnerHTML={{ __html: msg.date }}
+                    />
+                  </div>
+                  <p className="text-text-secondary">{msg.message}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Banner Pengalihan Sesi Konsultasi ke Chatbot & WhatsApp */}
+            <div className="p-3.5 rounded-xl bg-surface border border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <p className="text-text-secondary text-[11px] leading-relaxed">
+                Untuk sesi konsultasi tanya-jawab interaktif dan eskalasi penugasan, silakan gunakan menu <strong>Chatbot Bantuan</strong> atau hubungi konsultan via <strong>WhatsApp Resmi</strong>.
+              </p>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href="/dashboard/user/chatbot"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-primary-light text-primary hover:bg-surface text-xs font-semibold shadow-2xs transition-colors"
+                >
+                  <ChatbotIcon className="text-xs" />
+                  <span>Chatbot Bantuan</span>
+                </Link>
+                <a
+                  href="https://wa.me/6281234567890"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success text-white hover:bg-success/90 text-xs font-semibold shadow-2xs transition-colors"
+                >
+                  <WhatsappIcon className="text-xs" />
+                  <span>Konsultasi WA</span>
+                </a>
               </div>
-            </form>
+            </div>
           </div>
         </Card>
       </div>
@@ -975,7 +961,7 @@ export default function ClientTicketMonitoringPage() {
                   <PlusIcon />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-primary">Buat Tiket Konsultasi Baru</h3>
+                  <h3 className="text-base font-bold text-primary">Buat Konsultasi Baru</h3>
                   <p className="text-[11px] text-text-muted">Layanan Klien PT Maju Makmur Sentosa</p>
                 </div>
               </div>
@@ -1073,7 +1059,7 @@ export default function ClientTicketMonitoringPage() {
                   Batal
                 </Button>
                 <Button type="submit" variant="primary" size="sm">
-                  Kirim Permohonan Tiket
+                  Kirim Permohonan Konsultasi
                 </Button>
               </div>
             </form>

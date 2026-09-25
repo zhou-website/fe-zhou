@@ -23,7 +23,7 @@ import {
 function RegisterFormContent() {
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
-  const { login } = useAuth();
+  const { login, registerWithApi } = useAuth();
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -54,7 +54,7 @@ function RegisterFormContent() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -91,15 +91,29 @@ function RegisterFormContent() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const res = await registerWithApi(
+        {
+          name: formData.fullName,
+          company_name: formData.companyName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+        },
+        redirectParam
+      );
+
+      if (!res.success) {
+        setErrorMessage(res.message || "Registrasi gagal. Pastikan email belum pernah terdaftar.");
+        setIsLoading(false);
+      } else {
+        setIsSuccess(true);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Gagal menghubungi server live backend.";
+      setErrorMessage(message);
       setIsLoading(false);
-      setIsSuccess(true);
-      // Auto-login user
-      login(formData.email, "user", null, {
-        name: formData.fullName,
-        company: formData.companyName || "Klien Mandiri",
-      });
-    }, 600);
+    }
   };
 
   const handleGoogleSignup = () => {

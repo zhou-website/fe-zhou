@@ -36,7 +36,8 @@ import {
   ShieldTaxIcon,
   SearchIcon,
   CloseIcon,
-
+  ChevronLeftIcon,
+  ChevronRightIcon,
   DocumentIcon,
 } from "@/components/icons";
 import {
@@ -60,11 +61,6 @@ const CATEGORIES = [
 
 function EducationPortalContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const initialTab = tabParam === "belajar-pajak" ? "belajar-pajak" : "edukasi-zhou";
-
-  // Main Dual Mode Switcher: "edukasi-zhou" vs "belajar-pajak"
-  const [mainTab, setMainTab] = useState<"edukasi-zhou" | "belajar-pajak">(initialTab);
 
   // Dynamic Zhou Articles from storage
   const [articlesList, setArticlesList] = useState<ZhouArticle[]>([]);
@@ -79,10 +75,6 @@ function EducationPortalContent() {
   const [bpInstitutionFilter, setBpInstitutionFilter] = useState<"all" | "DJP" | "Kemenkeu">("all");
   const [bpTypeFilter, setBpTypeFilter] = useState<string>("all");
   const [bpSearchQuery, setBpSearchQuery] = useState<string>("");
-
-  // Newsletter state
-  const [newsletterEmail, setNewsletterEmail] = useState<string>("");
-  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "success" | "error">("idle");
 
   // Load articles from localStorage on mount and listen to updates
   useEffect(() => {
@@ -100,13 +92,14 @@ function EducationPortalContent() {
     };
   }, []);
 
-  // Sync tab with URL search parameter
+  // Smooth scroll to Belajar Pajak if requested via tab query parameter
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab === "belajar-pajak") {
-      setMainTab("belajar-pajak");
-    } else {
-      setMainTab("edukasi-zhou");
+      const el = document.getElementById("belajar-pajak");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
     }
   }, [searchParams]);
 
@@ -147,7 +140,66 @@ function EducationPortalContent() {
     });
   }, [bpInstitutionFilter, bpTypeFilter, bpSearchQuery]);
 
-  const featuredArticle = filteredArticles[0] || (articlesList.length > 0 ? articlesList[0] : ZHOU_ARTICLES[0]);
+  // Featured articles list for carousel (managed by Admin)
+  const featuredArticles = useMemo(() => {
+    const source = articlesList.length > 0 ? articlesList : ZHOU_ARTICLES;
+    const published = source.filter((a) => !a.status || a.status === "Published");
+    const featured = published.filter((a) => a.isFeatured !== false);
+    return featured.length > 0 ? featured : published.slice(0, 3);
+  }, [articlesList]);
+
+  // Carousel Index & Swipe State
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+
+  // Auto-slide every 6s when not hovered or paused
+  useEffect(() => {
+    if (featuredArticles.length <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredArticles.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [featuredArticles.length, isPaused]);
+
+  // Reset carousel index if list shrinks
+  useEffect(() => {
+    if (carouselIndex >= featuredArticles.length) {
+      setCarouselIndex(0);
+    }
+  }, [featuredArticles.length, carouselIndex]);
+
+  // Touch Swipe Handlers for mobile & tablet
+  const minSwipeDistance = 50;
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+  const onTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return;
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      setCarouselIndex((prev) => (prev + 1) % featuredArticles.length);
+    } else if (isRightSwipe) {
+      setCarouselIndex((prev) => (prev - 1 + featuredArticles.length) % featuredArticles.length);
+    }
+  };
+
+  const handlePrevSlide = () => {
+    setCarouselIndex((prev) => (prev - 1 + featuredArticles.length) % featuredArticles.length);
+  };
+
+  const handleNextSlide = () => {
+    setCarouselIndex((prev) => (prev + 1) % featuredArticles.length);
+  };
+
+  const currentFeatured = featuredArticles[carouselIndex] || featuredArticles[0];
 
   const handleDownloadPdf = (articleTitle: string) => {
     setDownloadSuccessModal(articleTitle);
@@ -156,278 +208,256 @@ function EducationPortalContent() {
     }, 4000);
   };
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterEmail || !newsletterEmail.includes("@")) {
-      setNewsletterStatus("error");
-      return;
-    }
-    setNewsletterStatus("success");
-    setNewsletterEmail("");
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
       {/* 1. Header / Navbar */}
       <Navbar />
 
       {/* 2. Main Content */}
-      <main className="flex-1">
-        {/* Breadcrumb Navigation */}
-        <div className="bg-surface border-b border-primary-light py-3">
-          <div className="container-custom flex items-center gap-2 text-breadcrumb text-text-secondary">
-            <Link href="/" className="hover:text-primary transition-colors">
-              Beranda
-            </Link>
-            <span>/</span>
-            <Link href="/edukasi" className="hover:text-primary transition-colors">
-              Edukasi Pajak
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-semibold">
-              {mainTab === "edukasi-zhou"
-                ? "Edukasi dari Zhou Consulting"
-                : "Belajar Pajak (Kemenkeu & DJP)"}
-            </span>
-          </div>
-        </div>
+      <main className="flex-1 flex flex-col">
+        {/* ========================================================= */}
+        {/* BAGIAN 1: PUBLIKASI UNGGULAN ZHOU CAROUSEL SHOWCASE       */}
+        {/* ========================================================= */}
+        <section
+          aria-label="Publikasi Unggulan Zhou Carousel"
+          className="py-14 md:py-20 bg-surface border-b border-primary-light"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          <div className="container-custom space-y-8">
+            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
+              <Link href="/" className="hover:text-primary transition-colors">
+                Beranda
+              </Link>
+              <span>/</span>
+              <span className="text-primary font-semibold">
+                Pusat Edukasi Pajak
+              </span>
+            </nav>
 
-        {/* Page Header Clean */}
-        <div className="py-6 bg-surface border-b border-primary-light">
-          <div className="container-custom space-y-1.5">
-            <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
-              Pusat Literasi
-            </Badge>
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-              Pusat Edukasi Pajak &amp; Belajar Mandiri
-            </h1>
-          </div>
-        </div>
+            <div className="max-w-3xl space-y-3">
+              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
+                Pusat Literasi
+              </Badge>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
+                Pusat Edukasi Pajak &amp; Belajar Mandiri
+              </h1>
+              <p className="text-body-regular text-text-secondary leading-relaxed">
+                Panduan praktis, analisis regulasi terbaru, dan materi literasi perpajakan komprehensif dari konsultan Zhou Consulting.
+              </p>
+            </div>
 
-        {/* Dual Mode Switcher Bar (Sticky Sub-Nav) */}
-        <div className="bg-white border-b border-primary-light sticky top-20 z-30 shadow-xs">
-          <div className="container-custom py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setMainTab("edukasi-zhou")}
-                  className={`px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-                    mainTab === "edukasi-zhou"
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-surface text-text-secondary hover:text-primary hover:bg-primary-light/50 border border-primary-light"
-                  }`}
-                >
-                  <BookIcon className="text-sm" />
-                  <span>Edukasi dari Zhou Consulting</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                      mainTab === "edukasi-zhou"
-                        ? "bg-white/20 text-white"
-                        : "bg-primary/10 text-primary"
-                    }`}
-                  >
-                    {(articlesList.length > 0 ? articlesList.filter((a) => a.status !== "Draft") : ZHOU_ARTICLES).length} Artikel
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMainTab("belajar-pajak")}
-                  id="belajar-pajak"
-                  className={`px-4 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-                    mainTab === "belajar-pajak"
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-surface text-text-secondary hover:text-primary hover:bg-primary-light/50 border border-primary-light"
-                  }`}
-                >
-                  <ShieldTaxIcon className="text-sm" />
-                  <span>Belajar Pajak (Kemenkeu &amp; DJP)</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      mainTab === "belajar-pajak"
-                        ? "bg-white/20 text-white"
-                        : "bg-emerald-500/15 text-emerald-700 border border-emerald-500/25"
-                    }`}
-                  >
-                    {BELAJAR_PAJAK_LINKS.length} Link Resmi
-                  </span>
-                </button>
+            {/* Top Carousel Navigation Bar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
+                  Publikasi Unggulan Zhou
+                </Badge>
               </div>
 
-              <div className="hidden md:flex items-center gap-1 text-xs text-text-secondary">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>
-                  {mainTab === "edukasi-zhou"
-                    ? "Menampilkan Konten Publikasi Zhou"
-                    : "Menampilkan Tautan Resmi DJP & Kemenkeu"}
-                </span>
+              {/* Prev / Next Buttons & Counter */}
+              {featuredArticles.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-semibold text-text-secondary mr-1">
+                    {carouselIndex + 1} / {featuredArticles.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePrevSlide}
+                    aria-label="Artikel sebelumnya"
+                    className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronLeftIcon className="text-xs" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextSlide}
+                    aria-label="Artikel berikutnya"
+                    className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                  >
+                    <ChevronRightIcon className="text-xs" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Slide Container with Swipe Touch Listeners */}
+            <div
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+              className="bg-white rounded-2xl border border-primary-light p-6 md:p-8 lg:p-10 shadow-sm relative overflow-hidden transition-all duration-300"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                {/* Visual Cover Kolom Kiri */}
+                <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none">
+                  <Image
+                    src="/images/education-featured.jpg"
+                    alt={currentFeatured.title}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 40vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4">
+                    <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
+                      {currentFeatured.category}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Info & Konten Kolom Kanan */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+                    <Badge variant="success" size="sm" dot>
+                      {currentFeatured.category}
+                    </Badge>
+                    <span>&bull;</span>
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon className="text-[10px]" />
+                      {currentFeatured.date}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="flex items-center gap-1">
+                      <ClockIcon className="text-[10px]" />
+                      {currentFeatured.readTime}
+                    </span>
+                  </div>
+
+                  <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-primary leading-snug">
+                    {currentFeatured.title}
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                    {currentFeatured.summary}
+                  </p>
+
+                  <div className="pt-2">
+                    <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+                      Poin Kunci Transisi:
+                    </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text">
+                      {currentFeatured.takeaways.slice(0, 4).map((pt, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
+                          <span className="leading-snug">{pt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-4 flex flex-wrap items-center gap-3">
+                    <Button
+                      variant="primary"
+                      onClick={() => setActiveArticleModal(currentFeatured)}
+                      className="text-xs font-semibold px-5 shadow-sm"
+                    >
+                      <span>Baca Artikel</span>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => handleDownloadPdf(currentFeatured.title)}
+                      className="text-xs font-semibold px-4 border-primary/30 hover:border-primary text-primary inline-flex items-center gap-2"
+                    >
+                      <DownloadIcon className="text-xs" />
+                      <span>Unduh PDF</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
+
+              {/* Dot Indicators at the bottom */}
+              {featuredArticles.length > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-6 border-t border-primary-light/60 mt-6">
+                  {featuredArticles.map((art, idx) => (
+                    <button
+                      key={art.id || idx}
+                      type="button"
+                      onClick={() => setCarouselIndex(idx)}
+                      aria-label={`Lihat slide ${idx + 1}: ${art.title}`}
+                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                        carouselIndex === idx
+                          ? "w-8 bg-primary shadow-xs"
+                          : "w-2 bg-primary-light hover:bg-primary/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* ========================================================= */}
-        {/* BAGIAN 1: EDUKASI DARI ZHOU CONSULTING (KONTEN UPLOAD ZHOU) */}
-        {/* ========================================================= */}
-        {mainTab === "edukasi-zhou" && (
-          <>
-            {/* Featured Article Showcase */}
-            <section className="py-12 md:py-16 bg-white border-b border-primary-light">
-              <div className="container-custom">
-                <div className="bg-surface rounded-2xl border border-primary-light p-6 md:p-8 lg:p-10 shadow-sm">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    {/* Visual Cover Kolom Kiri */}
-                    <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group">
-                      <Image
-                        src="/images/education-featured.jpg"
-                        alt="Corporate Boardroom Zhou Consulting"
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 40vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        priority
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
-                          Publikasi Unggulan Zhou Consulting
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Info & Konten Kolom Kanan */}
-                    <div className="lg:col-span-7 space-y-4">
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-                        <Badge variant="success" size="sm" dot>
-                          {featuredArticle.category}
-                        </Badge>
-                        <span>&bull;</span>
-                        <span className="flex items-center gap-1">
-                          <CalendarIcon className="text-[10px]" />
-                          {featuredArticle.date}
-                        </span>
-                        <span>&bull;</span>
-                        <span className="flex items-center gap-1">
-                          <ClockIcon className="text-[10px]" />
-                          {featuredArticle.readTime}
-                        </span>
-                      </div>
-
-                      <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-primary leading-snug">
-                        {featuredArticle.title}
-                      </h2>
-
-                      <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                        {featuredArticle.summary}
-                      </p>
-
-                      <div className="pt-2">
-                        <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                          Poin Kunci Transisi:
-                        </div>
-                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text">
-                          {featuredArticle.takeaways.slice(0, 4).map((pt, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
-                              <span className="leading-snug">{pt}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="pt-4 flex flex-wrap items-center gap-3">
-                        <Button
-                          variant="primary"
-                          onClick={() => setActiveArticleModal(featuredArticle)}
-                          className="text-xs font-semibold px-5 shadow-sm"
-                        >
-                          <span>Baca Artikel</span>
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          onClick={() => handleDownloadPdf(featuredArticle.title)}
-                          className="text-xs font-semibold px-4 border-primary/30 hover:border-primary text-primary inline-flex items-center gap-2"
-                        >
-                          <DownloadIcon className="text-xs" />
-                          <span>Unduh PDF</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Topik & Pencarian Artikel Zhou */}
-            <section className="py-12 bg-surface border-b border-primary-light">
-              <div className="container-custom space-y-6">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                  <div className="space-y-1 max-w-2xl">
-                    <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
-                      Kategori Artikel Zhou
-                    </span>
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                      Katalog Edukasi Praktisi Zhou Consulting
-                    </h2>
-                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                      Materi dan telaah regulasi yang disusun langsung oleh konsultan pajak berizin (BKP) dan akuntan bersertifikat (CA).
-                    </p>
-                  </div>
-
-                  {/* Search Bar Input */}
-                  <div className="relative w-full md:w-80">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-secondary">
-                      <SearchIcon className="text-xs" />
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="Cari artikel / perihal regulasi..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9 pr-9 text-xs bg-white"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery("")}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-secondary hover:text-primary"
-                        aria-label="Hapus pencarian"
-                      >
-                        <CloseIcon className="text-xs" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Category Filter Pills */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {CATEGORIES.map((cat) => {
-                    const isActive = selectedCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat.id)}
-                        className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                          isActive
-                            ? "bg-primary text-white shadow-sm"
-                            : "bg-white text-text-secondary border border-primary-light hover:border-silver hover:text-primary"
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-
-            {/* Articles Grid */}
-            <section className="py-14 md:py-18 bg-white border-b border-primary-light">
+            {/* Katalog Artikel Edukasi Zhou (Filter & Grid Terpadu) */}
+            <section id="katalog-artikel" className="py-14 md:py-20 bg-white border-b border-primary-light scroll-mt-20">
               <div className="container-custom space-y-8">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg sm:text-xl font-bold text-primary">
+                {/* Header & Filter Search Toolbar */}
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div className="space-y-1 max-w-2xl">
+                      <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                        Kategori Artikel Zhou
+                      </span>
+                      <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                        Katalog Edukasi Praktisi Zhou Consulting
+                      </h2>
+                      <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                        Materi dan telaah regulasi yang disusun langsung oleh konsultan pajak berizin (BKP) dan akuntan bersertifikat (CA).
+                      </p>
+                    </div>
+
+                    {/* Search Bar Input */}
+                    <div className="relative w-full md:w-80">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-text-secondary">
+                        <SearchIcon className="text-xs" />
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Cari artikel / perihal regulasi..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 pr-9 text-xs bg-white"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-secondary hover:text-primary"
+                          aria-label="Hapus pencarian"
+                        >
+                          <CloseIcon className="text-xs" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {CATEGORIES.map((cat) => {
+                      const isActive = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat.id)}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                            isActive
+                              ? "bg-primary text-white shadow-sm"
+                              : "bg-white text-text-secondary border border-primary-light hover:border-silver hover:text-primary"
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Sub-header counter */}
+                <div className="flex items-center justify-between pt-2 border-t border-primary-light">
+                  <h3 className="text-base sm:text-lg font-bold text-primary">
                     Daftar Artikel ({filteredArticles.length})
                   </h3>
                   <span className="text-xs text-text-secondary font-medium">
@@ -526,14 +556,10 @@ function EducationPortalContent() {
             </section>
 
 
-          </>
-        )}
-
         {/* ========================================================= */}
         {/* BAGIAN 2: BELAJAR PAJAK (LINK EDUKASI KEMENKEU & DJP)     */}
         {/* ========================================================= */}
-        {mainTab === "belajar-pajak" && (
-          <section className="py-12 md:py-16 bg-white border-b border-primary-light">
+        <section id="belajar-pajak" className="py-14 md:py-20 bg-surface border-b border-primary-light scroll-mt-20">
             <div className="container-custom space-y-10">
               {/* Header Box Belajar Pajak */}
               <div className="rounded-2xl bg-gradient-to-r from-primary to-primary-dark text-white p-6 sm:p-8 md:p-10 shadow-md relative overflow-hidden">
@@ -556,7 +582,7 @@ function EducationPortalContent() {
               </div>
 
               {/* Filters & Search Toolbar */}
-              <div className="bg-surface rounded-2xl border border-primary-light p-4 sm:p-5 shadow-xs space-y-4">
+              <div className="bg-white rounded-2xl border border-primary-light p-4 sm:p-5 shadow-xs space-y-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Filter Institusi */}
                   <div className="flex flex-wrap items-center gap-2">
@@ -751,82 +777,38 @@ function EducationPortalContent() {
                 </div>
               )}
 
-              {/* Edukasi Notice Box */}
-              <div className="p-6 rounded-2xl bg-surface border border-primary-light flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1 max-w-2xl">
-                  <h4 className="text-xs sm:text-sm font-bold text-primary">
-                    Mengapa Mengakses Sumber Belajar Resmi Kemenkeu &amp; DJP?
-                  </h4>
-                  <p className="text-[11px] sm:text-xs text-text-secondary leading-relaxed">
-                    Materi yang bersumber langsung dari Direktorat Jenderal Pajak dan Kementerian Keuangan memiliki legitimasi hukum fiskal tertinggi, bebas biaya, serta selalu dimutakhirkan mengikuti implementasi Coretax 2026.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="text-xs font-semibold shrink-0"
-                >
-                  <Link href="/konsultasi">Konsultasi Pendampingan</Link>
-                </Button>
-              </div>
+
             </div>
           </section>
-        )}
 
-        {/* Buletin Wawasan Fiskal Mingguan (Newsletter) */}
-        <section className="py-12 md:py-16 bg-surface border-b border-primary-light">
-          <div className="container-custom max-w-4xl">
-            <div className="rounded-xl bg-primary border border-white/10 p-6 md:p-8 text-white text-center space-y-4 shadow-md">
-              <div className="space-y-2">
-                <Badge variant="silver" className="bg-white/10 text-white border-white/20 text-[10px]">
-                  Buletin Edukasi Mingguan
-                </Badge>
-                <h3 className="text-lg sm:text-xl font-bold text-white">
-                  Berlangganan Buletin Wawasan Fiskal Mingguan
+
+
+        {/* Consultation Advisory Callout Section */}
+        <section className="py-14 md:py-20 bg-white flex-1">
+          <div className="container-custom">
+            <div className="p-6 md:p-8 rounded-2xl bg-primary text-white border border-white/10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center shadow-lg">
+              <div className="lg:col-span-8 space-y-3">
+                <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white">
+                  Butuh Pendalaman Kasus Pajak &amp; Diskusi Kepatuhan Bisnis Anda?
                 </h3>
-                <p className="text-xs text-silver max-w-xl mx-auto leading-relaxed">
-                  Dapatkan ringkasan peraturan pajak KMK terbaru, kajian kritis Coretax 2026, dan panduan kepatuhan akuntansi langsung di kotak masuk email Anda setiap Senin pagi.
+                <p className="text-xs text-silver leading-relaxed max-w-2xl">
+                  Materi edukasi dan regulasi perpajakan seringkali memerlukan telaah khusus sesuai konteks transaksi usaha Anda. Tim konsultan Zhou Consulting siap memberikan advisori terarah dengan perlindungan kerahasiaan penuh.
                 </p>
               </div>
 
-              {newsletterStatus === "success" ? (
-                <div className="bg-success/20 border border-success/40 text-white p-4 rounded-lg text-xs max-w-md mx-auto space-y-1">
-                  <div className="font-bold flex items-center justify-center gap-1.5 text-white">
-                    <CheckCircleIcon className="text-success" />
-                    <span>Pendaftaran Berhasil!</span>
-                  </div>
-                  <p className="text-silver text-[11px]">
-                    Terima kasih telah bergabung. Edisi buletin wawasan fiskal berikutnya akan dikirimkan ke email Anda.
-                  </p>
-                </div>
-              ) : (
-                <form
-                  onSubmit={handleNewsletterSubmit}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-2.5 max-w-md mx-auto pt-1"
-                >
-                  <Input
-                    type="email"
-                    placeholder="Masukkan email korporat Anda..."
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    error={newsletterStatus === "error"}
-                    className="bg-white text-text text-xs h-10 w-full"
-                    required
-                  />
-                  <Button
-                    type="submit"
-                    variant="silver"
-                    className="h-10 px-5 text-xs font-semibold w-full sm:w-auto shrink-0 shadow-sm"
-                  >
-                    Berlangganan
+              <div className="lg:col-span-4 flex flex-col gap-3 justify-end">
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+                  <Button variant="silver" asChild className="w-full justify-center text-xs font-semibold shadow-md">
+                    <Link href="/konsultasi">Reservasi Konsultasi</Link>
                   </Button>
-                </form>
-              )}
-
-              <p className="text-[10px] text-silver/70">
-                Kami menghormati privasi Anda sesuai ketentuan UU PDP. Anda dapat membatalkan langganan kapan saja.
-              </p>
+                  <Button variant="outline" asChild className="w-full justify-center text-xs font-semibold border-white/30 text-white hover:bg-white/10">
+                    <Link href="/kontak">Hubungi Kami</Link>
+                  </Button>
+                </div>
+                <div className="text-center text-[11px] text-silver/80">
+                  Terlindungi Perjanjian Kerahasiaan (NDA)
+                </div>
+              </div>
             </div>
           </div>
         </section>

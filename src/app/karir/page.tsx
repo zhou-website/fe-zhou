@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import {
+  CareerSettings,
+  DEFAULT_CAREER_SETTINGS,
+  getStoredCareerSettings,
+  CAREER_SETTINGS_EVENT,
+} from "@/data/karirStorage";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +43,6 @@ import {
   DocumentIcon,
   LocationIcon,
   ClockIcon,
-  BuildingIcon,
   SearchIcon,
   CloseIcon,
   PhoneIcon,
@@ -197,10 +202,28 @@ const CAREER_JOBS: JobPosition[] = [
 ];
 
 export default function CareerPage() {
-  const formRef = useRef<HTMLDivElement>(null);
+  const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedJobModal, setSelectedJobModal] = useState<JobPosition | null>(null);
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
+  const [selectedJobToApply, setSelectedJobToApply] = useState<JobPosition | null>(null);
+
+  // Sync Career Settings with localStorage on mount & events
+  useEffect(() => {
+    setCareerSettings(getStoredCareerSettings());
+
+    const handleCareerUpdate = () => {
+      setCareerSettings(getStoredCareerSettings());
+    };
+
+    window.addEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+    window.addEventListener("storage", handleCareerUpdate);
+    return () => {
+      window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+      window.removeEventListener("storage", handleCareerUpdate);
+    };
+  }, []);
 
   // Form State
   const [selectedPositionId, setSelectedPositionId] = useState<string>("");
@@ -278,13 +301,19 @@ export default function CareerPage() {
     }
   };
 
-  // Pre-fill position and scroll to form
-  const handleApplyJob = (job: JobPosition) => {
-    setSelectedPositionId(job.id);
-    setSelectedJobModal(null);
-    if (formRef.current) {
-      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Pre-fill position and open application modal (no scrolling down)
+  const handleApplyJob = (job: JobPosition | null) => {
+    if (job) {
+      setSelectedPositionId(job.id);
+      setSelectedJobToApply(job);
+    } else {
+      setSelectedPositionId("general-talent-pool");
+      setSelectedJobToApply(null);
     }
+    setSelectedJobModal(null);
+    setSubmitError("");
+    setSubmitSuccess(false);
+    setIsApplyModalOpen(true);
   };
 
   // Form Submission
@@ -334,6 +363,7 @@ export default function CareerPage() {
 
   const handleResetForm = () => {
     setSelectedPositionId("");
+    setSelectedJobToApply(null);
     setFullName("");
     setEmail("");
     setPhone("");
@@ -355,10 +385,10 @@ export default function CareerPage() {
     <div className="min-h-screen bg-white text-text-primary flex flex-col font-sans selection:bg-primary-light selection:text-primary">
       <Navbar />
 
-      <main className="flex-1">
-        {/* Breadcrumb Navigation */}
-        <section className="bg-surface border-b border-primary-light/60 py-3.5" aria-label="Breadcrumb">
-          <div className="container-custom">
+      <main className="flex-1 flex flex-col">
+        {/* Seksi Katalog Lowongan Kerja Terbuka dengan Breadcrumb & Header Terpadu */}
+        <section className="py-14 md:py-20 bg-surface flex-1" aria-label="Daftar Lowongan Kerja">
+          <div className="container-custom space-y-10">
             <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
               <Link href="/" className="hover:text-primary transition-colors">
                 Beranda
@@ -366,473 +396,548 @@ export default function CareerPage() {
               <span>/</span>
               <span className="text-primary font-semibold">Karir &amp; Rekrutmen</span>
             </nav>
-          </div>
-        </section>
 
-        {/* Seksi Katalog Lowongan Kerja Terbuka */}
-        <section className="py-10 md:py-14 bg-surface border-b border-primary-light/60" aria-label="Daftar Lowongan Kerja">
-          <div className="container-custom space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div className="space-y-2 max-w-2xl">
-                <div className="inline-flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
-                  <BuildingIcon className="text-primary text-sm" />
-                  <span>Daftar Lowongan Posisi Aktif</span>
+            <div className="max-w-3xl space-y-3">
+              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
+                Talenta &amp; Karir
+              </Badge>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
+                Peluang Karir &amp; Rekrutmen Zhou Consulting
+              </h1>
+              <p className="text-body-regular text-text-secondary leading-relaxed">
+                Bergabunglah dengan tim konsultan pajak berlisensi BKP, akuntan bersertifikat, dan penasihat hukum korporat terkemuka Menara Sudirman. Pilih lowongan spesialis di bawah ini untuk melihat kualifikasi lengkap atau kirimkan berkas lamaran Anda.
+              </p>
+            </div>
+
+            {!careerSettings.isOpen ? (
+              /* Tampilan Statis Saat Lowongan Periode Ini Belum Dibuka */
+              <div className="rounded-2xl border border-primary-light bg-white p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-sm space-y-6 my-6 animate-in fade-in duration-200">
+                <div className="w-16 h-16 rounded-full bg-surface border border-primary-light flex items-center justify-center mx-auto text-primary text-2xl shadow-2xs">
+                  <ClockIcon />
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-                  Peluang Karir &amp; Rekrutmen
-                </h1>
-                <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                  Pilih lowongan spesialis di bawah ini untuk melihat kualifikasi lengkap atau kirimkan CV terbuka untuk database talenta kami.
-                </p>
-              </div>
+                <div className="space-y-2.5">
+                  <Badge variant="silver" className="text-xs uppercase tracking-wider font-semibold py-1 px-3">
+                    Status: Rekrutmen Belum Dibuka
+                  </Badge>
+                  <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                    {careerSettings.closedTitle}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed max-w-lg mx-auto">
+                    {careerSettings.closedMessage}
+                  </p>
+                </div>
 
-              {/* Search Bar */}
-              <div className="w-full md:w-72 relative shrink-0">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                <Input
-                  type="text"
-                  placeholder="Cari posisi atau keahlian..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-primary text-xs"
-                    aria-label="Hapus kata pencarian"
-                  >
-                    <CloseIcon className="text-[10px]" />
-                  </button>
+                {careerSettings.closedPeriodNote && (
+                  <div className="p-4 rounded-xl bg-surface border border-primary-light/80 text-xs text-text-secondary max-w-md mx-auto text-center space-y-1">
+                    <span className="font-bold text-primary block text-[11px] uppercase tracking-wider">
+                      Jadwal &amp; Catatan Periode:
+                    </span>
+                    <p className="leading-relaxed">{careerSettings.closedPeriodNote}</p>
+                  </div>
                 )}
-              </div>
-            </div>
 
-            {/* Department Filter Tabs */}
-            <div className="flex items-center justify-start overflow-x-auto pb-2">
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-auto"
-              >
-                <TabsList className="bg-white border border-primary-light">
-                  <TabsTrigger value="all" className="text-xs">
-                    Semua Bidang ({CAREER_JOBS.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="tax" className="text-xs">
-                    Tax Service Core
-                  </TabsTrigger>
-                  <TabsTrigger value="accounting" className="text-xs">
-                    Accounting Service
-                  </TabsTrigger>
-                  <TabsTrigger value="legal" className="text-xs">
-                    Legal Compliance
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" asChild className="text-xs font-semibold hover:border-primary">
+                    <Link href="/kontak">Hubungi Sekretariat Zhou</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild className="text-xs text-text-secondary hover:text-primary">
+                    <Link href="/">Kembali ke Beranda</Link>
+                  </Button>
+                </div>
 
-            {/* Grid Kartu Lowongan Kerja */}
-            {filteredJobs.length === 0 ? (
-              <div className="p-8 rounded-lg bg-white border border-primary-light text-center space-y-3">
-                <BriefcaseIcon className="text-2xl text-text-secondary mx-auto opacity-50" />
-                <h3 className="text-sm font-bold text-primary">Tidak Ada Posisi yang Sesuai</h3>
-                <p className="text-xs text-text-secondary max-w-md mx-auto">
-                  Posisi dengan kata kunci &quot;{searchQuery}&quot; belum ditemukan. Anda tetap dapat mengirimkan CV terbuka melalui formulir di bawah.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setActiveTab("all");
-                  }}
-                  className="text-xs"
-                >
-                  Tampilkan Semua Posisi
-                </Button>
+                <div className="pt-2 border-t border-primary-light/60">
+                  <p className="text-[11px] text-text-muted">
+                    Pembaruan Terakhir: {careerSettings.lastUpdated} &bull; Zhou Consulting People &amp; Culture Team
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredJobs.map((job) => (
-                  <Card
-                    key={job.id}
-                    className="bg-white border-primary-light hover:border-primary hover:shadow-md transition-all duration-200 group"
-                  >
-                    <CardHeader className="space-y-3 pb-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="primary" size="sm" className="font-semibold text-[11px]">
-                            {job.department}
-                          </Badge>
-                          <Badge variant="silver" size="sm" className="text-[10px] inline-flex items-center gap-1">
-                            <ClockIcon className="text-[9px]" />
-                            <span>{job.type}</span>
-                          </Badge>
-                        </div>
-                        <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary font-medium">
-                          <LocationIcon className="text-[11px] text-text-secondary" />
-                          {job.location}
-                        </span>
-                      </div>
+              <>
+                {/* Filter & Search Control Bar */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  {/* Department Filter Tabs (Kiri di Desktop, Bawah di Mobile) */}
+                  <div className="order-2 md:order-1 flex items-center justify-start overflow-x-auto pb-1 md:pb-0 max-w-full min-w-0">
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={setActiveTab}
+                      className="w-auto"
+                    >
+                      <TabsList className="bg-white border border-primary-light">
+                        <TabsTrigger value="all" className="text-xs">
+                          Semua Bidang ({CAREER_JOBS.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="tax" className="text-xs">
+                          Tax Service Core
+                        </TabsTrigger>
+                        <TabsTrigger value="accounting" className="text-xs">
+                          Accounting Service
+                        </TabsTrigger>
+                        <TabsTrigger value="legal" className="text-xs">
+                          Legal Compliance
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
 
-                      <CardTitle
-                        onClick={() => setSelectedJobModal(job)}
-                        className="text-base sm:text-lg font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer"
+                  {/* Search Bar (Kanan di Desktop, Full-width di Atas pada Mobile) */}
+                  <div className="order-1 md:order-2 w-full md:w-72 relative shrink-0">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                    <Input
+                      type="text"
+                      placeholder="Cari posisi atau keahlian..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary shadow-2xs"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-primary text-xs cursor-pointer"
+                        aria-label="Hapus kata pencarian"
                       >
-                        {job.title}
-                      </CardTitle>
+                        <CloseIcon className="text-[10px]" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                      <CardDescription className="text-xs text-text-secondary leading-relaxed line-clamp-2">
-                        {job.summary}
-                      </CardDescription>
-                    </CardHeader>
+                {/* Grid Kartu Lowongan Kerja */}
+                {filteredJobs.length === 0 ? (
+                  <div className="p-8 rounded-lg bg-white border border-primary-light text-center space-y-3">
+                    <BriefcaseIcon className="text-2xl text-text-secondary mx-auto opacity-50" />
+                    <h3 className="text-sm font-bold text-primary">Tidak Ada Posisi yang Sesuai</h3>
+                    <p className="text-xs text-text-secondary max-w-md mx-auto">
+                      Posisi dengan kata kunci &quot;{searchQuery}&quot; belum ditemukan.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setActiveTab("all");
+                      }}
+                      className="text-xs"
+                    >
+                      Tampilkan Semua Posisi
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredJobs.map((job) => (
+                      <Card
+                        key={job.id}
+                        className="bg-white border-primary-light hover:border-primary hover:shadow-md transition-all duration-200 group"
+                      >
+                        <CardHeader className="space-y-3 pb-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="primary" size="sm" className="font-semibold text-[11px]">
+                                {job.department}
+                              </Badge>
+                              <Badge variant="silver" size="sm" className="text-[10px] inline-flex items-center gap-1">
+                                <ClockIcon className="text-[9px]" />
+                                <span>{job.type}</span>
+                              </Badge>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 text-xs text-text-secondary font-medium">
+                              <LocationIcon className="text-[11px] text-text-secondary" />
+                              {job.location}
+                            </span>
+                          </div>
 
-                    <CardContent className="py-2 space-y-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {job.skills.map((skill, sIdx) => (
-                          <span
-                            key={sIdx}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface border border-primary-light text-text-secondary"
+                          <CardTitle
+                            onClick={() => setSelectedJobModal(job)}
+                            className="text-base sm:text-lg font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer"
                           >
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </CardContent>
+                            {job.title}
+                          </CardTitle>
 
-                    <CardFooter className="pt-3 border-t border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
-                      <div className="text-xs text-text-secondary">
-                        <span className="text-text-secondary">Kualifikasi: </span>
-                        <strong className="text-primary">{job.experience}</strong>
-                      </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedJobModal(job)}
-                          className="text-xs font-semibold hover:border-primary flex-1 sm:flex-initial"
-                        >
-                          Lihat Kualifikasi
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleApplyJob(job)}
-                          className="text-xs font-semibold px-4 flex-1 sm:flex-initial"
-                        >
-                          <span>Lamar Posisi</span>
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
+                          <CardDescription className="text-xs text-text-secondary leading-relaxed line-clamp-2">
+                            {job.summary}
+                          </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="py-2 space-y-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {job.skills.map((skill, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-surface border border-primary-light text-text-secondary"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </CardContent>
+
+                        <CardFooter className="pt-3 border-t border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
+                          <div className="text-xs text-text-secondary">
+                            <span className="text-text-secondary">Kualifikasi: </span>
+                            <strong className="text-primary">{job.experience}</strong>
+                          </div>
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedJobModal(job)}
+                              className="text-xs font-semibold hover:border-primary flex-1 sm:flex-initial"
+                            >
+                              Lihat Kualifikasi
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleApplyJob(job)}
+                              className="text-xs font-semibold px-4 flex-1 sm:flex-initial"
+                            >
+                              <span>Lamar Posisi</span>
+                            </Button>
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
 
-        {/* Seksi Formulir Pendaftaran & Lamaran Kerja Online */}
-        <section
-          ref={formRef}
-          id="formulir-lamaran"
-          className="py-16 md:py-20 bg-white scroll-mt-24"
-          aria-label="Formulir Lamaran Karir"
-        >
-          <div className="container-custom max-w-4xl space-y-8">
-            <div className="text-center space-y-3 max-w-2xl mx-auto">
-              <Badge
-                variant="silver"
-                className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
-              >
-                <span>Pendaftaran Online</span>
-              </Badge>
-              <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-                Formulir Pendaftaran &amp; Rekrutmen Talenta
-              </h2>
-              <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                Lengkapi biodata diri Anda dan lampirkan curriculum vitae (CV) terbaru dalam format PDF. Tim People &amp; Culture Zhou Consulting akan meninjau kualifikasi Anda.
-              </p>
-            </div>
+      </main>
 
-            {/* Container Formulir Utama */}
-            <div className="rounded-xl border border-primary-light bg-surface p-6 sm:p-8 md:p-10 shadow-sm">
-              {submitSuccess ? (
-                <div className="rounded-lg bg-white border border-success/30 p-6 sm:p-8 text-center space-y-4">
-                  <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto text-xl">
-                    <CheckCircleIcon />
-                  </div>
-                  <div className="space-y-1">
-                    <Badge variant="outline" className="text-success border-success font-semibold text-xs mb-2">
-                      Lamaran Berhasil Dikirim
-                    </Badge>
-                    <h3 className="text-lg sm:text-xl font-bold text-primary">
-                      Terima Kasih Atas Antusiasme Anda
-                    </h3>
-                    <p className="text-xs sm:text-sm text-text-secondary max-w-lg mx-auto leading-relaxed">
-                      Berkas lamaran dan CV Anda telah tersimpan dengan nomor registrasi kandidat:
-                    </p>
-                    <div className="p-2.5 bg-surface rounded border border-primary-light font-mono text-sm font-bold text-primary inline-block mt-2">
-                      {registrationCode}
-                    </div>
-                  </div>
-                  <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-                    Tim People &amp; Culture kami akan melakukan penelaahan berkas dalam waktu 3–5 hari kerja. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
-                  </p>
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      size="default"
-                      onClick={handleResetForm}
-                      className="text-xs font-semibold"
-                    >
-                      Kirim Lamaran Posisi Lain
-                    </Button>
-                  </div>
+      {/* Formulir Pendaftaran Lamaran Kerja (Modal Dialog dengan Background Blur) */}
+      <Dialog
+        open={isApplyModalOpen}
+        onOpenChange={(open) => {
+          setIsApplyModalOpen(open);
+          if (!open) {
+            setSubmitError("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
+          {submitSuccess ? (
+            <div className="rounded-lg bg-surface border border-success/30 p-6 sm:p-8 text-center space-y-4 my-2">
+              <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto text-xl">
+                <CheckCircleIcon />
+              </div>
+              <div className="space-y-1">
+                <Badge variant="outline" className="text-success border-success font-semibold text-xs mb-2">
+                  Lamaran Berhasil Dikirim
+                </Badge>
+                <h3 className="text-lg sm:text-xl font-bold text-primary">
+                  Terima Kasih Atas Antusiasme Anda
+                </h3>
+                <p className="text-xs sm:text-sm text-text-secondary max-w-lg mx-auto leading-relaxed">
+                  Berkas lamaran dan CV Anda telah tersimpan dengan nomor registrasi kandidat:
+                </p>
+                <div className="p-2.5 bg-white rounded border border-primary-light font-mono text-sm font-bold text-primary inline-block mt-2">
+                  {registrationCode}
                 </div>
-              ) : (
-                <form onSubmit={handleSubmitApplication} className="space-y-6">
-                  {/* Alert Pesan Error jika Ada */}
-                  {submitError && (
-                    <div className="p-3.5 rounded-lg bg-error/10 border border-error/30 text-error text-xs font-medium flex items-center gap-2">
-                      <CloseIcon className="text-xs shrink-0" />
-                      <span>{submitError}</span>
-                    </div>
+              </div>
+              <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
+                Tim People &amp; Culture kami akan melakukan penelaahan berkas dalam waktu 3–5 hari kerja. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
+              </p>
+              <div className="pt-2 flex justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={() => {
+                    handleResetForm();
+                    setIsApplyModalOpen(false);
+                  }}
+                  className="text-xs font-semibold"
+                >
+                  Tutup
+                </Button>
+                <Button
+                  variant="primary"
+                  size="default"
+                  onClick={handleResetForm}
+                  className="text-xs font-semibold"
+                >
+                  Kirim Lamaran Posisi Lain
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <DialogHeader className="space-y-2 pb-4 border-b border-primary-light text-left">
+                <div className="flex items-center gap-2">
+                  <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
+                    Pendaftaran Online
+                  </Badge>
+                  {selectedJobToApply && (
+                    <Badge variant="primary" size="sm" className="text-xs">
+                      {selectedJobToApply.department}
+                    </Badge>
                   )}
+                </div>
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                  Formulir Lamaran: {selectedJobToApply ? selectedJobToApply.title : "Pendaftaran Database Talenta"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-text-secondary leading-relaxed">
+                  Lengkapi data diri dan lampirkan CV terbaru (PDF) Anda. Tim People &amp; Culture Zhou Consulting akan segera meninjau berkas Anda.
+                </DialogDescription>
+              </DialogHeader>
 
-                  {/* Dropdown Posisi yang Dilamar */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="posisi-dilamar" className="text-xs font-bold text-primary">
-                      Posisi yang Dilamar <span className="text-error">*</span>
-                    </Label>
-                    <select
-                      id="posisi-dilamar"
-                      value={selectedPositionId}
-                      onChange={(e) => setSelectedPositionId(e.target.value)}
-                      className="w-full rounded-md border border-primary-light bg-white px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="">-- Pilih Posisi Lowongan --</option>
-                      {CAREER_JOBS.map((job) => (
-                        <option key={job.id} value={job.id}>
-                          {job.title} ({job.department})
-                        </option>
-                      ))}
-                      <option value="general-talent-pool">
-                        General Application / Database Talenta Terbuka
+              <form onSubmit={handleSubmitApplication} className="space-y-4 pt-4">
+                {/* Alert Pesan Error jika Ada */}
+                {submitError && (
+                  <div className="p-3 rounded-lg bg-error/10 border border-error/30 text-error text-xs font-medium flex items-center gap-2">
+                    <CloseIcon className="text-xs shrink-0" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
+
+                {/* Dropdown Posisi yang Dilamar */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="modal-posisi-dilamar" className="text-xs font-bold text-primary">
+                    Posisi yang Dilamar <span className="text-error">*</span>
+                  </Label>
+                  <select
+                    id="modal-posisi-dilamar"
+                    value={selectedPositionId}
+                    onChange={(e) => {
+                      const posId = e.target.value;
+                      setSelectedPositionId(posId);
+                      const found = CAREER_JOBS.find((j) => j.id === posId) || null;
+                      setSelectedJobToApply(found);
+                    }}
+                    className="w-full rounded-md border border-primary-light bg-white px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">-- Pilih Posisi Lowongan --</option>
+                    {CAREER_JOBS.map((job) => (
+                      <option key={job.id} value={job.id}>
+                        {job.title} ({job.department})
                       </option>
-                    </select>
-                  </div>
+                    ))}
+                    <option value="general-talent-pool">
+                      General Application / Database Talenta Terbuka
+                    </option>
+                  </select>
+                </div>
 
-                  {/* 2 Kolom: Nama Lengkap & Email */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="applicant-name" className="text-xs font-bold text-primary">
-                        Nama Lengkap (Sesuai KTP) <span className="text-error">*</span>
-                      </Label>
-                      <div className="relative">
-                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                        <Input
-                          id="applicant-name"
-                          type="text"
-                          placeholder="cth. Hendra Wijaya, S.E."
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="applicant-email" className="text-xs font-bold text-primary">
-                        Alamat Email Aktif <span className="text-error">*</span>
-                      </Label>
-                      <div className="relative">
-                        <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                        <Input
-                          id="applicant-email"
-                          type="email"
-                          placeholder="cth. hendra.wijaya@email.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2 Kolom: WhatsApp & Pendidikan */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="applicant-phone" className="text-xs font-bold text-primary">
-                        Nomor WhatsApp / Handphone <span className="text-error">*</span>
-                      </Label>
-                      <div className="relative">
-                        <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                        <Input
-                          id="applicant-phone"
-                          type="tel"
-                          placeholder="cth. 081234567890"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="applicant-education" className="text-xs font-bold text-primary">
-                        Pendidikan Terakhir &amp; Jurusan <span className="text-error">*</span>
-                      </Label>
+                {/* 2 Kolom: Nama Lengkap & Email */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="modal-applicant-name" className="text-xs font-bold text-primary">
+                      Nama Lengkap (Sesuai KTP) <span className="text-error">*</span>
+                    </Label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
                       <Input
-                        id="applicant-education"
+                        id="modal-applicant-name"
                         type="text"
-                        placeholder="cth. S1 Akuntansi - Universitas Indonesia"
-                        value={education}
-                        onChange={(e) => setEducation(e.target.value)}
-                        className="text-xs bg-white border-primary-light focus-visible:ring-primary"
+                        placeholder="cth. Hendra Wijaya, S.E."
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
                         required
                       />
                     </div>
                   </div>
 
-                  {/* Kolom Profil LinkedIn / Portofolio (Opsional) */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="applicant-linkedin" className="text-xs font-bold text-primary">
-                      Tautan Profil LinkedIn / Portofolio <span className="text-text-secondary font-normal">(Opsional)</span>
+                  <div className="space-y-1">
+                    <Label htmlFor="modal-applicant-email" className="text-xs font-bold text-primary">
+                      Alamat Email Aktif <span className="text-error">*</span>
+                    </Label>
+                    <div className="relative">
+                      <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                      <Input
+                        id="modal-applicant-email"
+                        type="email"
+                        placeholder="cth. hendra.wijaya@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2 Kolom: WhatsApp & Pendidikan */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="modal-applicant-phone" className="text-xs font-bold text-primary">
+                      Nomor WhatsApp / HP <span className="text-error">*</span>
+                    </Label>
+                    <div className="relative">
+                      <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                      <Input
+                        id="modal-applicant-phone"
+                        type="tel"
+                        placeholder="cth. 081234567890"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="modal-applicant-education" className="text-xs font-bold text-primary">
+                      Pendidikan Terakhir &amp; Jurusan <span className="text-error">*</span>
                     </Label>
                     <Input
-                      id="applicant-linkedin"
-                      type="url"
-                      placeholder="cth. https://linkedin.com/in/hendrawijaya"
-                      value={linkedin}
-                      onChange={(e) => setLinkedin(e.target.value)}
+                      id="modal-applicant-education"
+                      type="text"
+                      placeholder="cth. S1 Akuntansi - PTN/PTS"
+                      value={education}
+                      onChange={(e) => setEducation(e.target.value)}
                       className="text-xs bg-white border-primary-light focus-visible:ring-primary"
+                      required
                     />
                   </div>
+                </div>
 
-                  {/* Area Upload Berkas CV PDF */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-primary block">
-                      Unggah Berkas Curriculum Vitae (CV) <span className="text-error">*</span>
-                    </Label>
+                {/* Kolom Profil LinkedIn / Portofolio (Opsional) */}
+                <div className="space-y-1">
+                  <Label htmlFor="modal-applicant-linkedin" className="text-xs font-bold text-primary">
+                    Tautan Profil LinkedIn / Portofolio <span className="text-text-secondary font-normal">(Opsional)</span>
+                  </Label>
+                  <Input
+                    id="modal-applicant-linkedin"
+                    type="url"
+                    placeholder="cth. https://linkedin.com/in/hendrawijaya"
+                    value={linkedin}
+                    onChange={(e) => setLinkedin(e.target.value)}
+                    className="text-xs bg-white border-primary-light focus-visible:ring-primary"
+                  />
+                </div>
 
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => handleFileSelect(e.target.files?.[0])}
-                      className="hidden"
-                      id="cv-file-input"
-                    />
+                {/* Area Upload Berkas CV PDF */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-primary block">
+                    Unggah Berkas Curriculum Vitae (CV) <span className="text-error">*</span>
+                  </Label>
 
-                    {uploadedFile ? (
-                      <div className="p-4 rounded-lg bg-white border border-primary flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <DocumentIcon className="text-primary text-xl shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-primary truncate">
-                              {uploadedFile.name}
-                            </p>
-                            <p className="text-[10px] text-text-secondary">
-                              {(uploadedFile.size / 1024).toFixed(1)} KB &bull; Berkas PDF Siap Diunggah
-                            </p>
-                          </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => handleFileSelect(e.target.files?.[0])}
+                    className="hidden"
+                    id="modal-cv-file-input"
+                  />
+
+                  {uploadedFile ? (
+                    <div className="p-3 rounded-lg bg-surface border border-primary flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <DocumentIcon className="text-primary text-xl shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-primary truncate">
+                            {uploadedFile.name}
+                          </p>
+                          <p className="text-[10px] text-text-secondary">
+                            {(uploadedFile.size / 1024).toFixed(1)} KB &bull; Berkas PDF Siap Diunggah
+                          </p>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRemoveFile}
-                          className="text-xs text-error hover:text-error/80 shrink-0"
-                        >
-                          <CloseIcon className="text-xs mr-1" />
-                          <span>Hapus</span>
-                        </Button>
                       </div>
-                    ) : (
-                      <div
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="p-6 sm:p-8 rounded-lg bg-white border-2 border-dashed border-primary-light hover:border-primary transition-colors cursor-pointer text-center space-y-2 group"
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveFile}
+                        className="text-xs text-error hover:text-error/80 shrink-0"
                       >
-                        <DocumentIcon className="text-2xl text-text-secondary group-hover:text-primary transition-colors mx-auto" />
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-primary">
-                            Tarik &amp; lepas berkas CV Anda di sini, atau{" "}
-                            <span className="underline text-primary">klik untuk memilih berkas</span>
-                          </p>
-                          <p className="text-[11px] text-text-secondary">
-                            Format wajib PDF &bull; Ukuran maksimal 5 MB
-                          </p>
-                        </div>
+                        <CloseIcon className="text-xs mr-1" />
+                        <span>Hapus</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-5 rounded-lg bg-surface border-2 border-dashed border-primary-light hover:border-primary transition-colors cursor-pointer text-center space-y-1.5 group"
+                    >
+                      <DocumentIcon className="text-xl text-text-secondary group-hover:text-primary transition-colors mx-auto" />
+                      <div>
+                        <p className="text-xs font-bold text-primary">
+                          Tarik &amp; lepas berkas CV di sini, atau{" "}
+                          <span className="underline text-primary">klik untuk memilih</span>
+                        </p>
+                        <p className="text-[10px] text-text-secondary">
+                          Format PDF &bull; Maksimal 5 MB
+                        </p>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {fileError && (
-                      <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
-                        <CloseIcon className="text-[10px]" />
-                        <span>{fileError}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Surat Pengantar / Catatan Tambahan (Opsional) */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="applicant-cover-letter" className="text-xs font-bold text-primary">
-                      Surat Pengantar Singkat / Catatan Kualifikasi Tambahan <span className="text-text-secondary font-normal">(Opsional)</span>
-                    </Label>
-                    <textarea
-                      id="applicant-cover-letter"
-                      rows={3}
-                      placeholder="Jelaskan secara ringkas motivasi, keahlian utama, atau pengalaman relevan Anda..."
-                      value={coverLetter}
-                      onChange={(e) => setCoverLetter(e.target.value)}
-                      className="w-full rounded-md border border-primary-light bg-white p-3 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  {/* Checkbox Persetujuan Kebijakan Privasi UU PDP */}
-                  <div className="pt-2 border-t border-primary-light/60">
-                    <label className="flex items-start gap-2.5 cursor-pointer text-xs text-text-secondary leading-relaxed">
-                      <input
-                        type="checkbox"
-                        checked={agreeTerms}
-                        onChange={(e) => setAgreeTerms(e.target.checked)}
-                        className="mt-0.5 rounded border-primary-light text-primary focus:ring-primary"
-                      />
-                      <span>
-                        Saya menyatakan bahwa seluruh data yang diisi adalah benar dan menyetujui pemrosesan data pribadi untuk keperluan seleksi rekrutmen Zhou Consulting sesuai ketentuan <strong>UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)</strong>.
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Tombol Submit */}
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <p className="text-[11px] text-text-secondary text-center sm:text-left">
-                      Semua data lamaran diproses secara rahasia dan aman (SSL 256-bit).
+                  {fileError && (
+                    <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                      <CloseIcon className="text-[10px]" />
+                      <span>{fileError}</span>
                     </p>
+                  )}
+                </div>
+
+                {/* Surat Pengantar Singkat (Opsional) */}
+                <div className="space-y-1">
+                  <Label htmlFor="modal-applicant-cover-letter" className="text-xs font-bold text-primary">
+                    Surat Pengantar Singkat / Catatan <span className="text-text-secondary font-normal">(Opsional)</span>
+                  </Label>
+                  <textarea
+                    id="modal-applicant-cover-letter"
+                    rows={2}
+                    placeholder="Ringkasan motivasi atau keahlian utama Anda..."
+                    value={coverLetter}
+                    onChange={(e) => setCoverLetter(e.target.value)}
+                    className="w-full rounded-md border border-primary-light bg-white p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                {/* Checkbox Persetujuan Kebijakan Privasi UU PDP */}
+                <div className="pt-2 border-t border-primary-light">
+                  <label className="flex items-start gap-2 cursor-pointer text-[11px] text-text-secondary leading-relaxed">
+                    <input
+                      type="checkbox"
+                      checked={agreeTerms}
+                      onChange={(e) => setAgreeTerms(e.target.checked)}
+                      className="mt-0.5 rounded border-primary-light text-primary focus:ring-primary"
+                    />
+                    <span>
+                      Saya menyetujui pemrosesan data pelamar kerja oleh Zhou Consulting sesuai ketentuan <strong>UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)</strong>.
+                    </span>
+                  </label>
+                </div>
+
+                {/* Tombol Submit & Dialog Footer */}
+                <DialogFooter className="pt-3 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-[10px] text-text-secondary text-center sm:text-left">
+                    Enkripsi SSL 256-bit &bull; Terjamin Rahasia
+                  </p>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsApplyModalOpen(false)}
+                      className="text-xs flex-1 sm:flex-initial"
+                    >
+                      Batal
+                    </Button>
                     <Button
                       type="submit"
                       variant="primary"
-                      size="default"
+                      size="sm"
                       loading={isSubmitting}
                       disabled={isSubmitting}
-                      className="w-full sm:w-auto text-xs font-bold px-6 py-2.5 shrink-0"
+                      className="text-xs font-bold px-5 flex-1 sm:flex-initial"
                     >
                       <span>Kirim Lamaran</span>
                     </Button>
                   </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
+                </DialogFooter>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Accessible Job Detail Modal Dialog */}
       <Dialog

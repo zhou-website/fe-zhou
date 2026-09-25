@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { WhatsappIcon } from "@/components/icons";
+import { ArrowRightIcon } from "@/components/icons";
 export function ContactSection() {
   return (
     <section
@@ -29,33 +29,17 @@ export function ContactSection() {
             Tim Zhou Consulting siap membantu kebutuhan konsultasi hukum, business, dan tax service Anda.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <div className="flex items-center justify-center pt-4">
             <Button
               variant="primary"
               size="lg"
               asChild
-              className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm"
+              className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm group"
             >
-              <Link href="/kontak">
-                Hubungi Kami
+              <Link href="/kontak" className="inline-flex items-center justify-center gap-2">
+                <span>Kontak Lengkap</span>
+                <ArrowRightIcon className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm border-success text-success hover:bg-success/5 hover:text-success"
-            >
-              <a
-                href="https://wa.me/6281234567890?text=Halo%20Zhou%20Consulting,%20saya%20ingin%20berkonsultasi%20mengenai%20layanan%20akuntansi%20dan%20pajak."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2"
-              >
-                <WhatsappIcon className="text-base" />
-                <span>Chat WhatsApp</span>
-              </a>
             </Button>
           </div>
         </div>

@@ -23,9 +23,15 @@ export function getStoredZhouArticles(): ZhouArticle[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      return parsed.map((item, idx) => ({
+        ...item,
+        isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
+      }));
     }
-    return ZHOU_ARTICLES;
+    return ZHOU_ARTICLES.map((item, idx) => ({
+      ...item,
+      isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
+    }));
   } catch (error) {
     console.error("Gagal membaca zhou_articles_data dari localStorage:", error);
     return ZHOU_ARTICLES;
@@ -115,6 +121,23 @@ export function toggleArticleStatus(id: string): ZhouArticle[] {
       const nextStatus: "Published" | "Draft" =
         item.status === "Published" ? "Draft" : "Published";
       return { ...item, status: nextStatus };
+    }
+    return item;
+  });
+
+  saveStoredZhouArticles(updated);
+  return updated;
+}
+
+/**
+ * Mengubah status Unggulan Carousel (isFeatured: true <-> false)
+ */
+export function toggleArticleFeatured(id: string): ZhouArticle[] {
+  const current = getStoredZhouArticles();
+  const updated = current.map((item) => {
+    if (item.id === id) {
+      const currentFeatured = item.isFeatured !== undefined ? item.isFeatured : false;
+      return { ...item, isFeatured: !currentFeatured };
     }
     return item;
   });

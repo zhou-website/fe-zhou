@@ -17,6 +17,7 @@ export interface ZhouArticle {
   content: string[];
   status?: "Published" | "Draft";
   attachment?: ZhouArticleAttachment;
+  isFeatured?: boolean;
 }
 
 export interface BelajarPajakLink {
@@ -66,7 +67,7 @@ export const ZHOU_ARTICLES: ZhouArticle[] = [
     categoryKey: "sp2dk",
     date: "10 September 2026",
     readTime: "6 menit baca",
-    author: "Budi Santoso, S.E., BKP",
+    author: "Linda David, S.Ak., BKP",
     summary:
       "Langkah preventif dalam penataan bukti potong, rekonsiliasi fiskal berkala, dan penyusunan kertas kerja ekualisasi omzet komersial vs SPT Tahunan.",
     takeaways: [
@@ -110,7 +111,7 @@ export const ZHOU_ARTICLES: ZhouArticle[] = [
     categoryKey: "akuntansi",
     date: "14 Agustus 2026",
     readTime: "8 menit baca",
-    author: "Tasya Anggraeni, S.E., Ak.",
+    author: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     summary:
       "Transisi menyeluruh dari SAK ETAP ke SAK EP, penilaian aset berwujud, perlakuan sewa pembiayaan, dan dampaknya terhadap rasio solvabilitas bank.",
     takeaways: [
@@ -132,7 +133,7 @@ export const ZHOU_ARTICLES: ZhouArticle[] = [
     categoryKey: "legal",
     date: "02 Agustus 2026",
     readTime: "6 menit baca",
-    author: "Muhamad Dekhsa, S.H., M.Kn.",
+    author: "Muhamad Dekhsa Afnan, SH., M.Kn.",
     summary:
       "Mitigasi risiko pemotongan PPh final pengalihan saham, penyesuaian anggaran dasar PT melalui AHU Kemenkumham, dan perlindungan pemegang saham minoritas.",
     takeaways: [

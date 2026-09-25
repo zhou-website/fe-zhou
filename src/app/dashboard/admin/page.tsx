@@ -34,14 +34,12 @@ import {
   INITIAL_HOMEPAGE_CONTENT,
   INITIAL_COMPANY_PROFILE,
   INITIAL_SERVICES,
-  INITIAL_REGULATIONS,
   INITIAL_KMK_RATES,
   INITIAL_CAREERS,
   INITIAL_CONTACT_CONTENT,
   HomepageContent,
   CompanyProfileContent,
   ServiceItemContent,
-  RegulationContentItem,
   KmkRatesContent,
   CareerJobItem,
   ContactConsultationContent,
@@ -53,9 +51,31 @@ import {
   updateZhouArticle,
   deleteZhouArticle,
   toggleArticleStatus,
+  toggleArticleFeatured,
   resetZhouArticlesToDefault,
   ZHOU_ARTICLES_EVENT,
 } from "@/data/edukasiStorage";
+import {
+  StoredRegulationItem,
+  RegulationCategory,
+  RegulationStatus,
+  REGULATION_CATEGORIES,
+  getStoredRegulations,
+  addRegulation,
+  updateRegulation,
+  deleteRegulation,
+  toggleRegulationStatus,
+  resetRegulationsToDefault,
+  REGULATIONS_EVENT,
+} from "@/data/regulasiStorage";
+import {
+  CareerSettings,
+  DEFAULT_CAREER_SETTINGS,
+  getStoredCareerSettings,
+  saveStoredCareerSettings,
+  resetStoredCareerSettings,
+  CAREER_SETTINGS_EVENT,
+} from "@/data/karirStorage";
 
 // Operational tickets (Preserved from existing functionality)
 interface ChecklistItem {
@@ -101,7 +121,7 @@ const PRESERVED_TICKETS: AdminTicket[] = [
     clientId: "CL-74102",
     title: "Penyusunan Jurnal Buku Besar & Laporan Laba Rugi Q3 SAK EP",
     category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE.",
+    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     status: "In Progress",
     slaDue: "28 Sep 2026",
     checklists: [
@@ -153,9 +173,39 @@ function AdminDashboardContent() {
   const [homepageContent, setHomepageContent] = useState<HomepageContent>(INITIAL_HOMEPAGE_CONTENT);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileContent>(INITIAL_COMPANY_PROFILE);
   const [servicesList] = useState<ServiceItemContent[]>(INITIAL_SERVICES);
-  const [regulationsList] = useState<RegulationContentItem[]>(INITIAL_REGULATIONS);
+  // Regulations & SOP Zhou CRUD State
+  const [regulationsList, setRegulationsList] = useState<StoredRegulationItem[]>([]);
+  const [regSearchQuery, setRegSearchQuery] = useState("");
+  const [regCategoryFilter, setRegCategoryFilter] = useState("Semua");
+  const [regStatusFilter, setRegStatusFilter] = useState("Semua");
+
+  // Regulation Modals
+  const [isRegModalOpen, setIsRegModalOpen] = useState(false);
+  const [regItemToEdit, setRegItemToEdit] = useState<StoredRegulationItem | null>(null);
+  const [regItemToDelete, setRegItemToDelete] = useState<StoredRegulationItem | null>(null);
+
+  // Regulation Form State
+  const [regForm, setRegForm] = useState<{
+    docNumber: string;
+    title: string;
+    category: RegulationCategory;
+    effectiveDate: string;
+    scope: string;
+    fileSize: string;
+    status: RegulationStatus;
+  }>({
+    docNumber: "",
+    title: "",
+    category: "Regulasi Zhou",
+    effectiveDate: "",
+    scope: "",
+    fileSize: "1.8 MB",
+    status: "Berlaku",
+  });
   const [kmkRates, setKmkRates] = useState<KmkRatesContent>(INITIAL_KMK_RATES);
   const [careersList] = useState<CareerJobItem[]>(INITIAL_CAREERS);
+  const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
+  const [careerSettingsSaved, setCareerSettingsSaved] = useState<boolean>(false);
   const [contactContent, setContactContent] = useState<ContactConsultationContent>(INITIAL_CONTACT_CONTENT);
   const [ticketsList, setTicketsList] = useState<AdminTicket[]>(PRESERVED_TICKETS);
   const [selectedTicket, setSelectedTicket] = useState<AdminTicket>(PRESERVED_TICKETS[0]);
@@ -189,6 +239,7 @@ function AdminDashboardContent() {
     takeawaysRaw: "",
     contentRaw: "",
     status: "Published" as "Published" | "Draft",
+    isFeatured: true,
     hasAttachment: true,
     attachmentName: "Modul_Edukasi_Zhou_2026.pdf",
     attachmentSize: "2.4 MB",
@@ -211,6 +262,156 @@ function AdminDashboardContent() {
     };
   }, []);
 
+  // Sync Regulations & SOP Zhou with localStorage on mount & events
+  useEffect(() => {
+    setRegulationsList(getStoredRegulations());
+
+    const handleRegUpdate = () => {
+      setRegulationsList(getStoredRegulations());
+    };
+
+    window.addEventListener(REGULATIONS_EVENT, handleRegUpdate);
+    window.addEventListener("storage", handleRegUpdate);
+    return () => {
+      window.removeEventListener(REGULATIONS_EVENT, handleRegUpdate);
+      window.removeEventListener("storage", handleRegUpdate);
+    };
+  }, []);
+
+  // Sync Career Settings with localStorage on mount & events
+  useEffect(() => {
+    setCareerSettings(getStoredCareerSettings());
+
+    const handleCareerUpdate = () => {
+      setCareerSettings(getStoredCareerSettings());
+    };
+
+    window.addEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+    window.addEventListener("storage", handleCareerUpdate);
+    return () => {
+      window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+      window.removeEventListener("storage", handleCareerUpdate);
+    };
+  }, []);
+
+  const handleToggleCareerOpenStatus = () => {
+    const updated: CareerSettings = {
+      ...careerSettings,
+      isOpen: !careerSettings.isOpen,
+      lastUpdated: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    };
+    setCareerSettings(updated);
+    saveStoredCareerSettings(updated);
+    setCareerSettingsSaved(true);
+    setTimeout(() => setCareerSettingsSaved(false), 3500);
+  };
+
+  const handleSaveCareerAnnouncement = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: CareerSettings = {
+      ...careerSettings,
+      lastUpdated: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+    };
+    saveStoredCareerSettings(updated);
+    setCareerSettingsSaved(true);
+    setTimeout(() => setCareerSettingsSaved(false), 3500);
+  };
+
+  const handleResetCareerAnnouncement = () => {
+    if (confirm("Reset pengaturan dan teks pengumuman karir ke teks default?")) {
+      resetStoredCareerSettings();
+      setCareerSettings(DEFAULT_CAREER_SETTINGS);
+      setCareerSettingsSaved(true);
+      setTimeout(() => setCareerSettingsSaved(false), 3500);
+    }
+  };
+
+  const handleOpenAddRegulation = (categoryDefault?: RegulationCategory) => {
+    const todayStr = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    setRegItemToEdit(null);
+    setRegForm({
+      docNumber: categoryDefault === "Regulasi Zhou" || !categoryDefault ? "SOP-ZHOU/2026/01" : "PER-05/PJ/2026",
+      title: "",
+      category: categoryDefault || "Regulasi Zhou",
+      effectiveDate: todayStr,
+      scope: "",
+      fileSize: "1.8 MB",
+      status: "Berlaku",
+    });
+    setIsRegModalOpen(true);
+  };
+
+  const handleOpenEditRegulation = (reg: StoredRegulationItem) => {
+    setRegItemToEdit(reg);
+    setRegForm({
+      docNumber: reg.docNumber,
+      title: reg.title,
+      category: reg.category,
+      effectiveDate: reg.effectiveDate,
+      scope: reg.scope,
+      fileSize: reg.fileSize,
+      status: reg.status,
+    });
+    setIsRegModalOpen(true);
+  };
+
+  const handleSaveRegulation = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regForm.title.trim() || !regForm.docNumber.trim()) return;
+
+    if (regItemToEdit) {
+      updateRegulation(regItemToEdit.id, regForm);
+    } else {
+      addRegulation(regForm);
+    }
+    setIsRegModalOpen(false);
+    setRegItemToEdit(null);
+  };
+
+  const handleConfirmDeleteRegulation = () => {
+    if (!regItemToDelete) return;
+    deleteRegulation(regItemToDelete.id);
+    setRegItemToDelete(null);
+  };
+
+  const handleToggleRegStatus = (id: string) => {
+    toggleRegulationStatus(id);
+  };
+
+  const handleResetRegulations = () => {
+    if (window.confirm("Kembalikan daftar regulasi dan SOP ke pengaturan awal (default)?")) {
+      resetRegulationsToDefault();
+    }
+  };
+
+  const filteredAdminRegulations = useMemo(() => {
+    return regulationsList.filter((item) => {
+      const matchCategory =
+        regCategoryFilter === "Semua" || item.category === regCategoryFilter;
+      const matchStatus =
+        regStatusFilter === "Semua" || item.status === regStatusFilter;
+      const q = regSearchQuery.toLowerCase().trim();
+      const matchQuery =
+        q === "" ||
+        item.docNumber.toLowerCase().includes(q) ||
+        item.title.toLowerCase().includes(q) ||
+        item.scope.toLowerCase().includes(q);
+      return matchCategory && matchStatus && matchQuery;
+    });
+  }, [regulationsList, regCategoryFilter, regStatusFilter, regSearchQuery]);
+
   const handleOpenUploadZhou = () => {
     const todayStr = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
@@ -229,6 +430,7 @@ function AdminDashboardContent() {
       takeawaysRaw: "Poin rekomendasi kepatuhan fiskal 1\nPoin mitigasi risiko regulasi 2",
       contentRaw: "Paragraf pertama materi edukasi perpajakan Zhou Consulting...\n\nParagraf kedua pembahasan regulasi teknis...",
       status: "Published",
+      isFeatured: true,
       hasAttachment: true,
       attachmentName: "Modul_Panduan_Fiskal_Zhou_2026.pdf",
       attachmentSize: "2.4 MB",
@@ -250,6 +452,7 @@ function AdminDashboardContent() {
       takeawaysRaw: art.takeaways ? art.takeaways.join("\n") : "",
       contentRaw: art.content ? art.content.join("\n\n") : "",
       status: art.status || "Published",
+      isFeatured: art.isFeatured !== false,
       hasAttachment: !!art.attachment,
       attachmentName: art.attachment?.name || "Modul_Edukasi_Zhou.pdf",
       attachmentSize: art.attachment?.size || "2.4 MB",
@@ -292,6 +495,7 @@ function AdminDashboardContent() {
         takeaways: takeaways.length > 0 ? takeaways : ["Poin rekomendasi konsultan"],
         content: content.length > 0 ? content : [zhouForm.summary.trim()],
         status: zhouForm.status,
+        isFeatured: zhouForm.isFeatured,
         attachment,
       });
       setZhouArticles(updated);
@@ -313,6 +517,7 @@ function AdminDashboardContent() {
         takeaways: takeaways.length > 0 ? takeaways : ["Poin rekomendasi konsultan Zhou"],
         content: content.length > 0 ? content : [zhouForm.summary.trim()],
         status: zhouForm.status,
+        isFeatured: zhouForm.isFeatured,
         attachment,
       });
       setZhouArticles((prev) => [newArticle, ...prev]);
@@ -337,6 +542,19 @@ function AdminDashboardContent() {
     const item = updated.find((a) => a.id === id);
     if (item) {
       showToast(`Status materi dialihkan ke [${item.status}].`);
+    }
+  };
+
+  const handleToggleZhouFeatured = (id: string) => {
+    const updated = toggleArticleFeatured(id);
+    setZhouArticles(updated);
+    const item = updated.find((a) => a.id === id);
+    if (item) {
+      showToast(
+        item.isFeatured !== false
+          ? `Materi "${item.title.substring(0, 25)}..." diaktifkan di Carousel Unggulan.`
+          : `Materi "${item.title.substring(0, 25)}..." dilepas dari Carousel Unggulan.`
+      );
     }
   };
 
@@ -732,7 +950,7 @@ function AdminDashboardContent() {
           { id: "homepage", label: "1. Beranda / Hero" },
           { id: "company", label: "2. Profil Perusahaan" },
           { id: "services", label: "3. Layanan (4 Divisi)", badge: "4" },
-          { id: "regulations", label: "4. Peraturan", badge: `${regulationsList.length}` },
+          { id: "regulations", label: "4. Peraturan & Regulasi Zhou", badge: `${regulationsList.length}` },
           { id: "kurs", label: "5. Kurs KMK (7 Valuta)" },
           { id: "education", label: "6. Edukasi Pajak (2 Menu)", badge: `${zhouEduCount + govEduCount}` },
           { id: "careers", label: "7. Karir & Rekrutmen", badge: `${careersList.length}` },
@@ -1310,87 +1528,213 @@ function AdminDashboardContent() {
       )}
 
       {/* =========================================================
-          SECTION 5: PERATURAN & REGULASI
+          SECTION 5: PERATURAN & REGULASI ZHOU (FULL CRUD)
          ========================================================= */}
       {activeSection === "regulations" && (
         <div className="space-y-5">
-          <div className="flex items-center justify-between">
+          {/* Header Action Banner */}
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div>
-              <h3 className="text-base font-bold text-primary">Katalog Regulasi &amp; Putusan Fiskal</h3>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Daftar peraturan UU, PP, PMK, dan PER DJP yang ditampilkan pada website (/peraturan) lengkap dengan dokumen unduh PDF
-              </p>
+              <span className="font-bold text-primary block text-sm">
+                Katalog Regulasi &amp; Standar Prosedur Operasional (SOP) Zhou
+              </span>
+              <span className="text-text-secondary">
+                Kelola arsip peraturan UU, PP, PMK, PER DJP serta SOP internal Zhou Consulting yang tampil di rute publik (/peraturan).
+              </span>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setNewItemForm({
-                  section: "regulations",
-                  title: "",
-                  category: "Peraturan Menteri",
-                  summary: "",
-                  status: "Published",
-                  author: "Muhamad Dekhsa, SH.",
-                  url: "#",
-                  institution: "DJP",
-                  mediaType: "PDF",
-                });
-                setIsNewItemModalOpen(true);
-              }}
-              className="text-xs h-8 px-3 border-primary-light"
-            >
-              <PlusIcon className="text-xs mr-1" />
-              Tambah Regulasi Baru
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetRegulations}
+                title="Kembalikan daftar regulasi &amp; SOP ke pengaturan awal jika diperlukan"
+                className="text-xs h-8 px-2.5 border-primary-light text-text-secondary hover:text-primary"
+              >
+                Reset Default
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleOpenAddRegulation("Regulasi Zhou")}
+                className="bg-primary hover:bg-primary-dark text-white text-xs font-semibold h-8 px-3.5 shadow-sm flex items-center gap-1.5"
+              >
+                <PlusIcon className="text-xs" />
+                <span>Tambah Regulasi / SOP Zhou</span>
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {regulationsList.map((reg) => (
-              <Card
-                key={reg.id}
-                className="rounded-2xl border-primary-light bg-white p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div className="space-y-1 max-w-2xl">
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="font-mono font-bold text-primary bg-primary-light px-2 py-0.5 rounded text-[11px]">
-                      {reg.id}
-                    </span>
-                    <Badge variant="primary" size="sm">
-                      {reg.category}
-                    </Badge>
-                    <Badge variant={reg.status === "Published" ? "success" : "silver"} size="sm" dot>
-                      {reg.status}
-                    </Badge>
-                    <span className="text-[10px] text-text-muted">
-                      &bull; Berlaku: {reg.effectiveDate} &bull; Berkas: {reg.fileSize}
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-primary">{reg.docNumber}: {reg.title}</h4>
-                  <p className="text-[11px] text-text-secondary">{reg.scope}</p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    href="/peraturan"
-                    target="_blank"
-                    className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1"
-                  >
-                    <span>Lihat di Website</span>
-                  </Link>
-                  <Button
+          {/* Filter & Search Bar */}
+          <div className="bg-white p-3.5 rounded-xl border border-primary-light shadow-2xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs" />
+                <Input
+                  type="text"
+                  placeholder="Cari nomor dokumen, judul, ruang lingkup..."
+                  value={regSearchQuery}
+                  onChange={(e) => setRegSearchQuery(e.target.value)}
+                  className="text-xs pl-8 pr-7 h-8 bg-surface border-primary-light"
+                />
+                {regSearchQuery && (
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleStatus(`PUB-${reg.id}`)}
-                    className="text-xs h-8 px-2.5"
+                    onClick={() => setRegSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary"
                   >
-                    Toggle Status
-                  </Button>
-                </div>
+                    <CloseIcon className="text-[10px]" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={regCategoryFilter}
+                onChange={(e) => setRegCategoryFilter(e.target.value)}
+                className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface text-text-secondary focus:text-primary focus:bg-white cursor-pointer font-medium"
+              >
+                <option value="Semua">Semua Kategori ({regulationsList.length})</option>
+                {REGULATION_CATEGORIES.filter((c) => c !== "Semua").map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat} ({regulationsList.filter((r) => r.category === cat).length})
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={regStatusFilter}
+                onChange={(e) => setRegStatusFilter(e.target.value)}
+                className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface text-text-secondary focus:text-primary focus:bg-white cursor-pointer font-medium"
+              >
+                <option value="Semua">Semua Status</option>
+                <option value="Berlaku">Status: Berlaku</option>
+                <option value="Pembaruan">Status: Pembaruan</option>
+              </select>
+
+              {(regSearchQuery || regCategoryFilter !== "Semua" || regStatusFilter !== "Semua") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegSearchQuery("");
+                    setRegCategoryFilter("Semua");
+                    setRegStatusFilter("Semua");
+                  }}
+                  className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
+                >
+                  Reset Filter
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-text-secondary">
+                Menampilkan <strong>{filteredAdminRegulations.length}</strong> dari <strong>{regulationsList.length}</strong> dokumen
+              </span>
+              <Link
+                href="/peraturan"
+                target="_blank"
+                className="text-xs font-semibold h-8 px-2.5 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white flex items-center gap-1 transition-colors"
+              >
+                <span>Lihat di Web</span>
+                <EyeIcon className="text-[10px]" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Cards List */}
+          <div className="grid grid-cols-1 gap-3">
+            {filteredAdminRegulations.length === 0 ? (
+              <Card className="p-8 text-center rounded-2xl border-dashed border-primary-light bg-surface">
+                <DocumentIcon className="text-2xl text-text-muted mx-auto mb-2" />
+                <p className="font-bold text-primary text-xs">Tidak ada dokumen regulasi yang ditemukan</p>
+                <p className="text-[11px] text-text-secondary mt-1">
+                  Coba sesuaikan kata kunci pencarian atau reset filter kategori di atas.
+                </p>
               </Card>
-            ))}
+            ) : (
+              filteredAdminRegulations.map((reg) => (
+                <Card
+                  key={reg.id}
+                  className="rounded-2xl border-primary-light bg-white p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/40 transition-colors"
+                >
+                  <div className="space-y-1.5 max-w-2xl">
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <span className="font-mono font-bold text-primary bg-primary-light px-2 py-0.5 rounded text-[11px]">
+                        {reg.id}
+                      </span>
+                      {reg.category === "Regulasi Zhou" ? (
+                        <Badge variant="primary" className="bg-primary text-white text-[10px] font-bold shadow-2xs">
+                          {reg.category}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-medium text-text-primary">
+                          {reg.category}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant={reg.status === "Berlaku" ? "success" : "secondary"}
+                        size="sm"
+                        dot
+                      >
+                        {reg.status}
+                      </Badge>
+                      <span className="text-[10px] text-text-muted">
+                        &bull; Berlaku: {reg.effectiveDate} &bull; Berkas: {reg.fileSize}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-primary">
+                      {reg.docNumber}: {reg.title}
+                    </h4>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      {reg.scope}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Link
+                      href="/peraturan"
+                      target="_blank"
+                      className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1"
+                      title="Lihat langsung pada halaman publik /peraturan"
+                    >
+                      <EyeIcon className="text-[11px]" />
+                      <span>Lihat</span>
+                    </Link>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenEditRegulation(reg)}
+                      className="text-xs h-8 px-2.5 border-primary-light text-primary hover:bg-primary-light"
+                      title="Edit rincian dokumen regulasi ini"
+                    >
+                      <EditIcon className="text-[11px] mr-1" />
+                      <span>Edit</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleRegStatus(reg.id)}
+                      className="text-xs h-8 px-2.5 text-text-secondary hover:text-primary"
+                      title="Ganti status antara Berlaku dan Pembaruan"
+                    >
+                      Toggle Status
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRegItemToDelete(reg)}
+                      className="text-xs h-8 px-2 border-red-200 text-error hover:bg-red-50 hover:border-red-400"
+                      title="Hapus dokumen regulasi ini"
+                    >
+                      <TrashIcon className="text-[11px]" />
+                    </Button>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -1661,6 +2005,16 @@ function AdminDashboardContent() {
                             />
                             {art.status || "Published"}
                           </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              art.isFeatured !== false
+                                ? "bg-amber-50 text-amber-800 border border-amber-300"
+                                : "bg-surface text-text-muted border border-primary-light"
+                            }`}
+                            title={art.isFeatured !== false ? "Aktif di Carousel Unggulan (/edukasi)" : "Tidak tampil di Carousel"}
+                          >
+                            <span>{art.isFeatured !== false ? "★ Unggulan Carousel" : "☆ Standar"}</span>
+                          </span>
                           <span className="text-[11px] text-text-muted flex items-center gap-1">
                             <ClockIcon className="text-[10px]" />
                             {art.readTime}
@@ -1727,6 +2081,21 @@ function AdminDashboardContent() {
                           >
                             <EditIcon className="text-[10px]" />
                             <span>Edit</span>
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleZhouFeatured(art.id)}
+                            className={`text-xs h-7 px-2 border-primary-light ${
+                              art.isFeatured !== false
+                                ? "text-amber-800 bg-amber-50 hover:bg-amber-100 border-amber-300 font-semibold"
+                                : "text-text-secondary hover:text-primary"
+                            }`}
+                            title="Atur apakah materi ini ditampilkan di Banner Carousel Unggulan (/edukasi)"
+                          >
+                            <span>{art.isFeatured !== false ? "Lepas Carousel" : "+ Carousel"}</span>
                           </Button>
 
                           <Button
@@ -1851,10 +2220,183 @@ function AdminDashboardContent() {
           SECTION 8: KARIR & REKRUTMEN
          ========================================================= */}
       {activeSection === "careers" && (
-        <div className="space-y-5">
-          <div className="flex items-center justify-between">
+        <div className="space-y-6">
+          {/* Card Kontrol Status Lowongan & Teks Statis Periode Kosong */}
+          <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary-light">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-primary">
+                    Status Penerimaan Lowongan Karir &amp; Pengumuman Statis
+                  </h3>
+                  <Badge
+                    variant={careerSettings.isOpen ? "success" : "silver"}
+                    size="sm"
+                    dot
+                  >
+                    {careerSettings.isOpen
+                      ? "Penerimaan Terbuka (Aktif Ditampilkan)"
+                      : "Penerimaan Ditutup (Pesan Statis Tampil)"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Kelola apakah Zhou Consulting sedang membuka lowongan karir untuk publik atau tidak. Jika opsi penerimaan ditutup, halaman <code className="text-primary font-mono text-[11px] bg-surface px-1.5 py-0.5 rounded border border-primary-light/60">/karir</code> akan menampilkan pengumuman statis yang Anda atur di bawah ini.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant={careerSettings.isOpen ? "outline" : "primary"}
+                  size="sm"
+                  onClick={handleToggleCareerOpenStatus}
+                  className="text-xs font-bold h-9 px-4 gap-2"
+                >
+                  {careerSettings.isOpen ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-error inline-block" />
+                      <span>Tutup Penerimaan Lowongan</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-success inline-block" />
+                      <span>Buka Kembali Lowongan</span>
+                    </>
+                  )}
+                </Button>
+                <Link
+                  href="/karir"
+                  target="_blank"
+                  className="text-xs font-semibold h-9 px-3 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1.5 transition-colors"
+                >
+                  <EyeIcon className="text-xs" />
+                  <span>Lihat /karir</span>
+                </Link>
+              </div>
+            </div>
+
+            {careerSettingsSaved && (
+              <div className="p-3.5 rounded-lg bg-success/10 border border-success/30 text-success text-xs font-medium flex items-center justify-between gap-2 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <CheckCircleIcon className="text-sm shrink-0" />
+                  <span>Pengaturan karir dan pengumuman statis berhasil diperbarui dan disinkronkan ke halaman publik (/karir).</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCareerSettingsSaved(false)}
+                  className="text-success hover:underline text-xs"
+                >
+                  Tutup
+                </button>
+              </div>
+            )}
+
+            {/* Form Editor Pengumuman Statis */}
+            <form onSubmit={handleSaveCareerAnnouncement} className="space-y-4 pt-1">
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-xs font-bold text-primary uppercase tracking-wider">
+                  Kustomisasi Teks Pengumuman Statis
+                </span>
+                <span className="text-[11px] text-text-muted">
+                  Terakhir Diperbarui: <strong>{careerSettings.lastUpdated}</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="closedTitle" className="text-xs font-bold text-primary block">
+                    Judul Pengumuman Statis <span className="text-error">*</span>
+                  </Label>
+                  <Input
+                    id="closedTitle"
+                    type="text"
+                    value={careerSettings.closedTitle}
+                    onChange={(e) =>
+                      setCareerSettings({
+                        ...careerSettings,
+                        closedTitle: e.target.value,
+                      })
+                    }
+                    placeholder="cth. Lowongan Periode Ini Belum Dibuka"
+                    className="text-xs bg-surface border-primary-light"
+                    required
+                  />
+                  <p className="text-[11px] text-text-muted">
+                    Judul utama yang muncul saat Zhou tidak membuka lowongan.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="closedPeriodNote" className="text-xs font-bold text-primary block">
+                    Catatan Periode / Jadwal Pembukaan Berikutnya
+                  </Label>
+                  <Input
+                    id="closedPeriodNote"
+                    type="text"
+                    value={careerSettings.closedPeriodNote}
+                    onChange={(e) =>
+                      setCareerSettings({
+                        ...careerSettings,
+                        closedPeriodNote: e.target.value,
+                      })
+                    }
+                    placeholder="cth. Jadwal penerimaan periode baru akan diumumkan melalui portal resmi."
+                    className="text-xs bg-surface border-primary-light"
+                  />
+                  <p className="text-[11px] text-text-muted">
+                    Keterangan periode rekrutmen selanjutnya bagi para pengunjung.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="closedMessage" className="text-xs font-bold text-primary block">
+                  Deskripsi / Pesan Pengumuman Statis <span className="text-error">*</span>
+                </Label>
+                <Textarea
+                  id="closedMessage"
+                  rows={3}
+                  value={careerSettings.closedMessage}
+                  onChange={(e) =>
+                    setCareerSettings({
+                      ...careerSettings,
+                      closedMessage: e.target.value,
+                    })
+                  }
+                  placeholder="Tuliskan keterangan bahwa saat ini seluruh posisi telah terisi..."
+                  className="w-full text-xs bg-surface border-primary-light"
+                  required
+                />
+                <p className="text-[11px] text-text-muted">
+                  Pesan yang menjelaskan kepada kandidat terkait status lowongan saat ini.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-primary-light/60">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetCareerAnnouncement}
+                  className="text-xs h-8"
+                >
+                  Reset ke Teks Bawaan
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="text-xs font-bold h-8 px-4"
+                >
+                  Simpan Perubahan Pengumuman
+                </Button>
+              </div>
+            </form>
+          </Card>
+
+          <div className="flex items-center justify-between pt-2">
             <div>
-              <h3 className="text-base font-bold text-primary">Manajemen Lowongan Karir Aktif (/karir)</h3>
+              <h3 className="text-base font-bold text-primary">Daftar Lowongan Karir Aktif (/karir)</h3>
               <p className="text-xs text-text-secondary mt-0.5">
                 Kelola posisi pekerjaan aktif, kualifikasi, tanggung jawab, dan tunjangan rekrutmen Zhou Consulting
               </p>
@@ -2593,6 +3135,20 @@ function AdminDashboardContent() {
                 />
               </div>
 
+              {/* Pilihan Tampilkan di Carousel Unggulan Showcase */}
+              <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex items-center justify-between">
+                <Label className="text-xs font-bold text-amber-950 flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={zhouForm.isFeatured}
+                    onChange={(e) => setZhouForm((prev) => ({ ...prev, isFeatured: e.target.checked }))}
+                    className="rounded text-amber-600 focus:ring-0 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Tampilkan di Carousel Publikasi Unggulan Utama (/edukasi)</span>
+                </Label>
+                <span className="text-[10px] text-amber-800 font-semibold">Bisa di-swipe pengunjung</span>
+              </div>
+
               {/* Attachment / File Modul Upload Section */}
               <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -2827,6 +3383,214 @@ function AdminDashboardContent() {
                 variant="primary"
                 size="sm"
                 onClick={handleConfirmDeleteZhou}
+                className="h-8 px-4 bg-error hover:bg-error/90 text-white font-semibold"
+              >
+                Hapus Permanen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL: TAMBAH / EDIT DOKUMEN REGULASI & SOP ZHOU (CRUD)
+         ========================================================= */}
+      {isRegModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+              <div>
+                <h3 className="text-base font-bold text-primary">
+                  {regItemToEdit ? "Edit Dokumen Regulasi / SOP" : "Tambah Dokumen Regulasi / SOP Baru"}
+                </h3>
+                <p className="text-[11px] text-text-secondary mt-0.5">
+                  {regItemToEdit
+                    ? "Perbarui metadata dokumen hukum atau SOP internal. Perubahan langsung tersimpan ke website."
+                    : "Tambahkan dokumen hukum resmi atau regulasi internal Zhou Consulting ke sistem."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegModalOpen(false);
+                  setRegItemToEdit(null);
+                }}
+                className="w-7 h-7 rounded-lg text-text-muted hover:text-primary hover:bg-surface flex items-center justify-center"
+              >
+                <CloseIcon className="text-xs" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRegulation} className="space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">
+                    Kategori Regulasi <span className="text-error">*</span>
+                  </Label>
+                  <select
+                    value={regForm.category}
+                    onChange={(e) =>
+                      setRegForm((prev) => ({
+                        ...prev,
+                        category: e.target.value as RegulationCategory,
+                      }))
+                    }
+                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                  >
+                    {REGULATION_CATEGORIES.filter((c) => c !== "Semua").map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">Status Dokumen</Label>
+                  <select
+                    value={regForm.status}
+                    onChange={(e) =>
+                      setRegForm((prev) => ({
+                        ...prev,
+                        status: e.target.value as RegulationStatus,
+                      }))
+                    }
+                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                  >
+                    <option value="Berlaku">Berlaku (Aktif)</option>
+                    <option value="Pembaruan">Pembaruan (Revisi/Transisi)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">
+                    Nomor Dokumen <span className="text-error">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    required
+                    placeholder="Contoh: SOP-ZHOU/TAX/2026/01 atau PMK No. 81/2024"
+                    value={regForm.docNumber}
+                    onChange={(e) => setRegForm((prev) => ({ ...prev, docNumber: e.target.value }))}
+                    className="text-xs h-9 bg-surface border-primary-light focus:bg-white font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">Ukuran File</Label>
+                  <Input
+                    type="text"
+                    placeholder="1.8 MB"
+                    value={regForm.fileSize}
+                    onChange={(e) => setRegForm((prev) => ({ ...prev, fileSize: e.target.value }))}
+                    className="text-xs h-9 bg-surface border-primary-light focus:bg-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">
+                  Tanggal Berlaku Mulai <span className="text-error">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="Contoh: 1 Januari 2026 atau 15 Juli 2025"
+                  value={regForm.effectiveDate}
+                  onChange={(e) => setRegForm((prev) => ({ ...prev, effectiveDate: e.target.value }))}
+                  className="text-xs h-9 bg-surface border-primary-light focus:bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">
+                  Judul Regulasi / Dokumen <span className="text-error">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  required
+                  placeholder="Judul lengkap regulasi atau panduan operasional..."
+                  value={regForm.title}
+                  onChange={(e) => setRegForm((prev) => ({ ...prev, title: e.target.value }))}
+                  className="text-xs h-9 bg-surface border-primary-light focus:bg-white"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">
+                  Ruang Lingkup &amp; Ringkasan Regulasi <span className="text-error">*</span>
+                </Label>
+                <Textarea
+                  rows={3}
+                  required
+                  placeholder="Uraikan ruang lingkup, pokok materi, substansi hukum, atau petunjuk teknis terkait..."
+                  value={regForm.scope}
+                  onChange={(e) => setRegForm((prev) => ({ ...prev, scope: e.target.value }))}
+                  className="text-xs bg-surface border-primary-light focus:bg-white leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsRegModalOpen(false);
+                    setRegItemToEdit(null);
+                  }}
+                  className="h-8 px-3.5 border-primary-light"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="h-8 px-5 font-semibold">
+                  {regItemToEdit ? "Simpan Perubahan" : "Simpan Dokumen"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL: KONFIRMASI HAPUS DOKUMEN REGULASI (DELETE)
+         ========================================================= */}
+      {regItemToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-error/30 max-w-sm w-full p-5 space-y-4 text-xs">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+                <TrashIcon className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-primary">Hapus Dokumen Regulasi?</h3>
+                <p className="text-text-secondary leading-tight">
+                  Dokumen &ldquo;{regItemToDelete.docNumber}: {regItemToDelete.title}&rdquo; akan dihapus.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-surface rounded-xl border border-primary-light text-[11px] text-text-muted">
+              Dokumen ini tidak akan lagi tampil di tabel regulasi publik website (/peraturan).
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRegItemToDelete(null)}
+                className="h-8 px-3"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmDeleteRegulation}
                 className="h-8 px-4 bg-error hover:bg-error/90 text-white font-semibold"
               >
                 Hapus Permanen

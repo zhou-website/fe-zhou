@@ -336,20 +336,20 @@ export function ServicesSection() {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <Button
+              variant="outline"
+              size="lg"
+              asChild
+              className="border-white/30 text-white hover:bg-white/10 font-bold text-xs sm:text-sm px-5"
+            >
+              <Link href="/#layanan">Katalog Layanan</Link>
+            </Button>
+            <Button
               variant="silver"
               size="lg"
               asChild
               className="font-bold text-xs sm:text-sm px-6 shadow-md"
             >
               <Link href="/konsultasi">Reservasi Konsultasi</Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="border-white/30 text-white hover:bg-white/10 font-bold text-xs sm:text-sm px-5"
-            >
-              <a href="https://wa.me/6281234567890?text=Halo%20Zhou%20Consulting,%20saya%20tertarik%20dengan%20layanan%20Anda." target="_blank" rel="noopener noreferrer">Hubungi Kami</a>
             </Button>
           </div>
         </div>

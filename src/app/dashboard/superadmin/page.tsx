@@ -61,7 +61,7 @@ export default function SuperadminDashboard() {
     },
     {
       id: "ADM-002",
-      name: "Tasya Anggraeni Firdaus, SE.",
+      name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
       email: "tasya.anggraeni@zhouconsulting.id",
       role: "Senior Accounting Specialist & Admin",
       specialty: "Accounting Service & SAK",
@@ -112,7 +112,7 @@ export default function SuperadminDashboard() {
     {
       id: "LOG-9924",
       timestamp: "17 Sep 2026, 15:40:12 WIB",
-      adminName: "Budi Santoso, SE., Ak., CA",
+      adminName: "Hendro Wibowo, SE., Ak., CA",
       adminId: "ADM-004",
       clientId: "CL-62910 (PT Solusi Niaga)",
       ticketId: "TK-2026-077",
@@ -124,7 +124,7 @@ export default function SuperadminDashboard() {
     {
       id: "LOG-9923",
       timestamp: "16 Sep 2026, 11:05:40 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE.",
+      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
       adminId: "ADM-002",
       clientId: "CL-74102 (CV Borneo Karya)",
       ticketId: "TK-2026-092",
@@ -160,7 +160,7 @@ export default function SuperadminDashboard() {
     {
       id: "LOG-9918",
       timestamp: "12 Sep 2026, 09:12:44 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE.",
+      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
       adminId: "ADM-002",
       clientId: "CL-74102 (CV Borneo Karya)",
       ticketId: "TK-2026-042",
@@ -172,7 +172,7 @@ export default function SuperadminDashboard() {
     {
       id: "LOG-9905",
       timestamp: "10 Sep 2026, 16:45:10 WIB",
-      adminName: "Muhamad Dekhsa Afnan, SH.",
+      adminName: "Muhamad Dekhsa Afnan, SH., M.Kn.",
       adminId: "ADM-SUPER",
       clientId: "CL-51209 (PT Mega Cipta)",
       ticketId: "TK-2026-061",
@@ -184,7 +184,7 @@ export default function SuperadminDashboard() {
     {
       id: "LOG-9892",
       timestamp: "08 Sep 2026, 11:20:00 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE.",
+      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
       adminId: "ADM-002",
       clientId: "CL-33981 (Yayasan Bina)",
       ticketId: "TK-2026-050",

@@ -16,13 +16,11 @@ import {
 } from "@/components/ui/card";
 import {
   DocumentIcon,
-  DownloadIcon,
   CheckCircleIcon,
   ShieldTaxIcon,
   SearchIcon,
   CloseIcon,
   BriefcaseIcon,
-  BookIcon,
 } from "@/components/icons";
 
 interface VaultDocument {
@@ -46,7 +44,7 @@ interface VaultDocument {
 const INITIAL_DOCUMENTS: VaultDocument[] = [
   {
     id: "DOC-2026-001",
-    name: "BPE_SPT_Masa_PPN_1111_Masa_Agustus_2026.pdf",
+    name: "BPE SPT Masa PPN 1111.pdf",
     category: "Pajak",
     format: "PDF",
     ticketRef: "TK-2026-089",
@@ -58,12 +56,12 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Terverifikasi BPE DJP",
     statusType: "success",
     sha256Hash: "8f2a9c4b1e5d7a8f3b2c1e4d5a6f7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4",
-    signatory: "DJP Coretax System & Linda David, S.Ak., BKP",
+    signatory: "Linda David, S.Ak., BKP",
     description: "Bukti Penerimaan Elektronik resmi pelaporan SPT Masa PPN 1111 Masa Pajak Agustus 2026 dengan QR Code DJP valid.",
   },
   {
     id: "DOC-2026-002",
-    name: "Kertas_Kerja_Ekualisasi_Fiskal_PPh_Badan_2026.xlsx",
+    name: "Kertas Kerja Fiskal 2026.xlsx",
     category: "Pajak",
     format: "XLSX",
     ticketRef: "TK-2026-089",
@@ -75,12 +73,12 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Final Review Disetujui",
     statusType: "success",
     sha256Hash: "3e5a7f9b1c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4",
-    signatory: "Linda David, S.Ak., BKP (Lead Tax Consultant)",
+    signatory: "Linda David, S.Ak., BKP",
     description: "Kertas kerja rekonsiliasi peredaran bruto dan penyesuaian koreksi fiskal positif/negatif sesuai ketentuan PMK 81/2024.",
   },
   {
     id: "DOC-2026-003",
-    name: "Laporan_Keuangan_SAK_Q2_2026_Final_Audited.pdf",
+    name: "Laporan Keuangan SAK Q2.pdf",
     category: "Akuntansi",
     format: "PDF",
     ticketRef: "TK-2026-042",
@@ -92,12 +90,12 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Audit KAP Disetujui",
     statusType: "success",
     sha256Hash: "1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3",
-    signatory: "Tasya Anggraeni Firdaus, SE. (Chartered Accountant)",
+    signatory: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     description: "Laporan posisi keuangan neraca, laporan laba rugi, dan catatan atas laporan keuangan (CALK) standar SAK EP.",
   },
   {
     id: "DOC-2026-004",
-    name: "Ledger_Buku_Besar_Rekonsiliasi_Bank_Q2.xlsx",
+    name: "Buku Besar Bank Q2.xlsx",
     category: "Akuntansi",
     format: "XLSX",
     ticketRef: "TK-2026-042",
@@ -109,12 +107,12 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Terverifikasi SAK",
     statusType: "primary",
     sha256Hash: "7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9",
-    signatory: "Tasya Anggraeni Firdaus, SE. (Senior Accountant)",
+    signatory: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     description: "Buku besar umum rekonsiliasi tiga rekening koran korporat serta mutasi kas operasional kuartal kedua 2026.",
   },
   {
     id: "DOC-2026-005",
-    name: "Legal_Opinion_Kontrak_Vendor_Pengadaan_PT_MMS.pdf",
+    name: "Legal Opinion Kontrak Vendor.pdf",
     category: "Legal",
     format: "PDF",
     ticketRef: "TK-2026-015",
@@ -126,12 +124,12 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Tandatangan Advokat",
     statusType: "success",
     sha256Hash: "4d6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6",
-    signatory: "Muhamad Dekhsa Afnan, SH., M.Kn. (Advokat PERADI)",
+    signatory: "Muhamad Dekhsa Afnan, SH., M.Kn.",
     description: "Pendapat hukum advokat terkait mitigasi klausul wanprestasi dan tanggung renteng faktur pajak pada kontrak vendor pengadaan.",
   },
   {
     id: "DOC-2026-006",
-    name: "Pakta_Integritas_Kerahasiaan_NDA_PT_MMS_2026.pdf",
+    name: "Pakta Kerahasiaan NDA 2026.pdf",
     category: "Legal",
     format: "PDF",
     ticketRef: "MASTER-DOC",
@@ -143,7 +141,7 @@ const INITIAL_DOCUMENTS: VaultDocument[] = [
     statusBadge: "Terikat UU PDP",
     statusType: "primary",
     sha256Hash: "9a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0",
-    signatory: "Managing Partner Zhou Consulting & Direktur Utama PT MMS",
+    signatory: "Zhou Consulting & PT MMS",
     description: "Non-Disclosure Agreement resmi yang mengikat perlindungan kerahasiaan seluruh dokumen fiskal dan finansial klien.",
   },
 ];
@@ -234,7 +232,7 @@ export default function ClientDocumentVaultPage() {
       )}
 
       {/* Top Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
+      <div className="pb-6 border-b border-primary-light">
         <div>
           <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
             <Link href="/dashboard/user" className="hover:text-primary transition-colors">
@@ -250,15 +248,6 @@ export default function ClientDocumentVaultPage() {
             Arsip repositori aman luaran resmi pelaporan SPT BPE DJP, kompilasi laporan keuangan audit SAK, dan dokumen legalitas terenkripsi.
           </p>
         </div>
-
-        <Button
-          variant="primary"
-          onClick={handleDownloadAll}
-          className="shadow-sm font-semibold text-xs py-2.5 px-5 flex items-center gap-2 self-start sm:self-auto"
-        >
-          <DownloadIcon className="text-xs" />
-          <span>Unduh Semua Berkas (ZIP)</span>
-        </Button>
       </div>
 
       {/* Row 3 Metric Summary Cards */}
@@ -315,9 +304,14 @@ export default function ClientDocumentVaultPage() {
                 Setiap dokumen dilengkapi hash integritas SHA-256 dan terproteksi perjanjian kerahasiaan NDA.
               </CardDescription>
             </div>
-            <div className="text-xs text-text-muted">
-              Menampilkan <span className="font-bold text-primary">{filteredDocuments.length}</span> dari {documents.length} berkas
-            </div>
+
+            <Button
+              variant="primary"
+              onClick={handleDownloadAll}
+              className="shadow-sm font-semibold text-xs py-2.5 px-4 flex items-center self-start sm:self-auto shrink-0 cursor-pointer"
+            >
+              <span>Unduh Semua Berkas</span>
+            </Button>
           </div>
 
           {/* Filter Bar: Search + Category + Year + Sort */}
@@ -327,7 +321,7 @@ export default function ClientDocumentVaultPage() {
               <SearchIcon className="absolute left-3 top-3 text-text-muted text-xs" />
               <Input
                 type="text"
-                placeholder="Cari nama berkas, nomor tiket, atau penandatangan..."
+                placeholder="Cari nama berkas, nomor referensi, atau penandatangan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 text-xs h-9 bg-surface border-primary-light"
@@ -382,7 +376,7 @@ export default function ClientDocumentVaultPage() {
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
                   <th className="py-3.5 px-4">Nama Dokumen &amp; Format</th>
-                  <th className="py-3.5 px-4">Divisi &amp; Referensi Tiket</th>
+                  <th className="py-3.5 px-4">Divisi &amp; Referensi Layanan</th>
                   <th className="py-3.5 px-4">Tanggal &amp; Ukuran</th>
                   <th className="py-3.5 px-4">Status Keabsahan</th>
                   <th className="py-3.5 px-4 text-right">Aksi</th>
@@ -407,7 +401,7 @@ export default function ClientDocumentVaultPage() {
                           <div className="font-bold text-primary truncate max-w-xs sm:max-w-sm" title={doc.name}>
                             {doc.name}
                           </div>
-                          <div className="text-[11px] text-text-muted font-mono flex items-center gap-1.5 mt-0.5">
+                          <div className="text-[11px] text-text-muted font-mono flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
                             <span>ID: {doc.id}</span>
                             <span>&bull;</span>
                             <span className="text-primary font-semibold">{doc.signatory}</span>
@@ -448,7 +442,7 @@ export default function ClientDocumentVaultPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setSelectedDoc(doc)}
-                          className="text-[11px] h-8 px-2.5 border-primary-light text-text-secondary hover:text-primary"
+                          className="text-[11px] h-8 px-2.5 border-primary-light text-text-secondary hover:text-primary font-medium"
                         >
                           Rincian
                         </Button>
@@ -456,9 +450,8 @@ export default function ClientDocumentVaultPage() {
                           variant="primary"
                           size="sm"
                           onClick={() => handleDownloadSingle(doc)}
-                          className="text-[11px] h-8 px-3.5 flex items-center gap-1.5 shadow-sm"
+                          className="text-[11px] h-8 px-3.5 shadow-sm font-semibold"
                         >
-                          <DownloadIcon className="text-xs" />
                           <span>Unduh</span>
                         </Button>
                       </div>
@@ -492,44 +485,7 @@ export default function ClientDocumentVaultPage() {
         </CardContent>
       </Card>
 
-      {/* COMPLIANCE & SECURITY ASSURANCE BANNER */}
-      <div className="p-6 rounded-2xl bg-surface border border-primary-light grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-base shrink-0">
-            <ShieldTaxIcon />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-primary">Enkripsi 256-Bit SSL/TLS</h4>
-            <p className="text-[11px] text-text-secondary leading-relaxed">
-              Seluruh berkas pelaporan dan kertas kerja tersimpan dengan enkripsi standar korporat perbankan.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-success/15 flex items-center justify-center text-success text-base shrink-0">
-            <CheckCircleIcon />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-primary">Kepatuhan UU PDP No. 27/2022</h4>
-            <p className="text-[11px] text-text-secondary leading-relaxed">
-              Data finansial klien terlindungi pakta integritas dan tidak pernah dibagikan ke pihak ketiga.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-base shrink-0">
-            <BookIcon className="text-sm" />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-xs font-bold text-primary">Audit Trail Terverifikasi</h4>
-            <p className="text-[11px] text-text-secondary leading-relaxed">
-              Setiap aktivitas unduh dan akses dokumen dicatat secara otomatis dalam sistem log audit perusahaan.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* DETAIL MODAL: METADATA & KEABSAHAN DOKUMEN */}
       {selectedDoc && (
@@ -575,7 +531,7 @@ export default function ClientDocumentVaultPage() {
                   <span className="font-semibold text-primary">{selectedDoc.date}</span>
                 </div>
                 <div>
-                  <span className="text-text-muted block text-[10px]">Referensi Tiket:</span>
+                  <span className="text-text-muted block text-[10px]">Referensi Konsultasi:</span>
                   <span className="font-mono font-bold text-primary">{selectedDoc.ticketRef}</span>
                 </div>
               </div>
@@ -618,9 +574,8 @@ export default function ClientDocumentVaultPage() {
                     handleDownloadSingle(selectedDoc);
                     setSelectedDoc(null);
                   }}
-                  className="flex items-center gap-1.5"
+                  className="font-semibold"
                 >
-                  <DownloadIcon className="text-xs" />
                   <span>Unduh Berkas Ini</span>
                 </Button>
               </div>

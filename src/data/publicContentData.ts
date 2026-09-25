@@ -560,13 +560,13 @@ export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
     },
     {
       division: "Divisi Akuntansi & SAK",
-      personInCharge: "Tasya Anggraeni Firdaus, SE.",
+      personInCharge: "Tasya Anggraeni Firdaus, SE., Ak., CA",
       number: "+62 813-8890-1234",
       badge: "SLA 30 Menit",
     },
     {
       division: "Divisi Hukum Korporat",
-      personInCharge: "Muhamad Dekhsa, SH.",
+      personInCharge: "Muhamad Dekhsa Afnan, SH., M.Kn.",
       number: "+62 811-9988-7766",
       badge: "SLA 30 Menit",
     },
@@ -610,7 +610,7 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
     summary: INITIAL_COMPANY_PROFILE.profileStatement,
     status: INITIAL_COMPANY_PROFILE.status,
     lastUpdated: INITIAL_COMPANY_PROFILE.lastUpdated,
-    editor: "Muhamad Dekhsa, SH.",
+    editor: "Muhamad Dekhsa Afnan, SH., M.Kn.",
   });
 
   // Services (4 items)
@@ -642,7 +642,7 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
       summary: reg.scope,
       status: reg.status,
       lastUpdated: reg.lastUpdated,
-      editor: "Muhamad Dekhsa, SH.",
+      editor: "Muhamad Dekhsa Afnan, SH., M.Kn.",
       fileSize: reg.fileSize,
       effectiveDate: reg.effectiveDate,
     });

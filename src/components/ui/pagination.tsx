@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 
 export interface PaginationProps {
   currentPage: number;
@@ -72,13 +73,7 @@ export function Pagination({
         className="w-9 h-9 rounded-lg bg-white border border-primary-light flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface hover:border-silver disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs active:scale-95 cursor-pointer"
         aria-label="Halaman Sebelumnya"
       >
-        <svg
-          className="w-3 h-3 fill-current text-gray-500"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M16 19L7 12l9-7v14z" />
-        </svg>
+        <ChevronLeftIcon className="text-xs" />
       </button>
 
       {/* Nomor-nomor Halaman */}
@@ -121,13 +116,7 @@ export function Pagination({
         className="w-9 h-9 rounded-lg bg-white border border-primary-light flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface hover:border-silver disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs active:scale-95 cursor-pointer"
         aria-label="Halaman Selanjutnya"
       >
-        <svg
-          className="w-3 h-3 fill-current text-gray-500"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M8 5l9 7-9 7V5z" />
-        </svg>
+        <ChevronRightIcon className="text-xs" />
       </button>
     </nav>
   );

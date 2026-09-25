@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -8,13 +8,7 @@ import { FloatingWhatsAppCTA } from "@/components/landing/FloatingWhatsAppCTA";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pagination } from "@/components/ui/pagination";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import {
   Table,
   TableHeader,
@@ -26,177 +20,89 @@ import {
 import {
   SearchIcon,
   FilterIcon,
-
+  CloseIcon,
   CheckCircleIcon,
-  WhatsappIcon,
-  ClockIcon,
-  CalendarIcon,
   ChevronRightIcon,
 } from "@/components/icons";
 
-interface RegulationItem {
-  id: string;
-  docNumber: string;
-  title: string;
-  category: "Undang-Undang" | "Peraturan Pemerintah" | "Peraturan Menteri" | "Peraturan DJP" | "Keputusan KMK";
-  effectiveDate: string;
-  scope: string;
-  fileSize: string;
-  status: "Berlaku" | "Pembaruan";
-}
-
-interface TaxRateItem {
-  currency: string;
-  name: string;
-  rate: string;
-  change: string;
-  trend: "up" | "down" | "flat";
-}
-
-const WEEKLY_RATES: TaxRateItem[] = [
-  { currency: "USD", name: "US Dollar", rate: "Rp 15.825,00", change: "+0.15%", trend: "up" },
-  { currency: "EUR", name: "Euro", rate: "Rp 16.940,00", change: "-0.08%", trend: "down" },
-  { currency: "SGD", name: "Singapore Dollar", rate: "Rp 11.890,00", change: "+0.05%", trend: "up" },
-  { currency: "CNY", name: "Chinese Yuan", rate: "Rp 2.185,00", change: "+0.10%", trend: "up" },
-  { currency: "JPY", name: "Japanese Yen (100)", rate: "Rp 10.450,00", change: "-0.22%", trend: "down" },
-  { currency: "GBP", name: "British Pound", rate: "Rp 20.150,00", change: "+0.18%", trend: "up" },
-  { currency: "AUD", name: "Australian Dollar", rate: "Rp 10.320,00", change: "-0.05%", trend: "down" },
-];
-
-const REGULATIONS_LIST: RegulationItem[] = [
-  {
-    id: "REG-01",
-    docNumber: "UU No. 7 Tahun 2021",
-    title: "Harmonisasi Peraturan Perpajakan (UU HPP)",
-    category: "Undang-Undang",
-    effectiveDate: "29 Oktober 2021",
-    scope: "Reformasi PPh Badan, kenaikan tarif PPN 11%, integrasi NIK menjadi NPWP, dan program pengungkapan sukarela.",
-    fileSize: "2.4 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-02",
-    docNumber: "PMK No. 168/PMK.03/2023",
-    title: "Petunjuk Teknis Pemotongan Pajak atas Penghasilan Sehubungan dengan Pekerjaan (PPh 21 TER)",
-    category: "Peraturan Menteri",
-    effectiveDate: "1 Januari 2024",
-    scope: "Penerapan skema Tarif Efektif Rata-Rata (TER) PPh 21 bulanan kategori A, B, C dan TER harian pegawai.",
-    fileSize: "1.8 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-03",
-    docNumber: "PMK No. 81 Tahun 2024",
-    title: "Ketentuan Perpajakan dalam Rangka Pelaksanaan Sistem Inti Administrasi Perpajakan (Coretax)",
-    category: "Peraturan Menteri",
-    effectiveDate: "1 Januari 2025",
-    scope: "Standardisasi akun wajib pajak, deposit pajak terpadu, e-Bupot unifikasi, dan pemadanan NIK 16 digit.",
-    fileSize: "3.7 MB",
-    status: "Pembaruan",
-  },
-  {
-    id: "REG-04",
-    docNumber: "PP No. 55 Tahun 2022",
-    title: "Penyesuaian Pengaturan di Bidang Pajak Penghasilan Badan dan Orang Pribadi",
-    category: "Peraturan Pemerintah",
-    effectiveDate: "20 Desember 2022",
-    scope: "Perlakuan natura/kenikmatan, instrumen pencegahan penghindaran pajak (GAAR), dan batasan omzet tidak kena pajak UMKM.",
-    fileSize: "1.9 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-05",
-    docNumber: "PER-04/PJ/2024",
-    title: "Petunjuk Teknis Administrasi Nomor Pokok Wajib Pajak dan Sertifikat Elektronik Coretax DJP",
-    category: "Peraturan DJP",
-    effectiveDate: "1 Juli 2024",
-    scope: "Tata cara aktivasi akun wajib pajak baru, penataan sertifikat digital, dan otentikasi multi-faktor DJP.",
-    fileSize: "2.1 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-06",
-    docNumber: "KMK No. 38/KM.10/2026",
-    title: "Nilai Kurs Valuta Asing sebagai Dasar Pelunasan Bea Masuk, PPN, dan PPh",
-    category: "Keputusan KMK",
-    effectiveDate: "15 September 2026",
-    scope: "Penetapan kurs pajak mingguan resmi Kemenkeu untuk konversi transaksi ekspor, impor, dan faktur valas.",
-    fileSize: "850 KB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-07",
-    docNumber: "PER-03/PJ/2022 jo PER-11/PJ/2022",
-    title: "Pedoman Teknis Faktur Pajak Elektronik (e-Faktur PPN)",
-    category: "Peraturan DJP",
-    effectiveDate: "1 April 2022",
-    scope: "Ketentuan upload faktur pajak keluaran paling lambat tanggal 15 bulan berikutnya serta mitigasi faktur fiktif.",
-    fileSize: "1.5 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-08",
-    docNumber: "PER-17/PJ/2021",
-    title: "Tata Cara Pembuatan Bukti Pemotongan/Pemungutan Unifikasi dan Pelaporan SPT Masa PPh Unifikasi",
-    category: "Peraturan DJP",
-    effectiveDate: "1 Januari 2022",
-    scope: "Integrasi pelaporan PPh Pasal 22, 23, 26, dan PPh Final Pasal 4 ayat (2) ke dalam satu format pelaporan digital.",
-    fileSize: "2.8 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-09",
-    docNumber: "PP No. 44 Tahun 2022",
-    title: "Penerapan Pajak Pertambahan Nilai Barang dan Jasa serta Pajak Penjualan atas Barang Mewah",
-    category: "Peraturan Pemerintah",
-    effectiveDate: "2 Desember 2022",
-    scope: "Penunjukan pemungut PPN PMSE (perdagangan melalui sistem elektronik) dan fasilitas PPN dibebaskan/tidak dipungut.",
-    fileSize: "1.6 MB",
-    status: "Berlaku",
-  },
-  {
-    id: "REG-10",
-    docNumber: "UU No. 1 Tahun 2022",
-    title: "Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (UU HKPD)",
-    category: "Undang-Undang",
-    effectiveDate: "5 Januari 2022",
-    scope: "Penyelarasan Pajak Daerah dan Retribusi Daerah (PDRD) dengan tarif PBJT korporat serta opsen pajak provinsi/kabupaten.",
-    fileSize: "3.2 MB",
-    status: "Berlaku",
-  },
-];
-
-const CATEGORIES = [
-  "Semua",
-  "Undang-Undang",
-  "Peraturan Pemerintah",
-  "Peraturan Menteri",
-  "Peraturan DJP",
-  "Keputusan KMK",
-];
+import {
+  StoredRegulationItem,
+  REGULATION_CATEGORIES,
+  getStoredRegulations,
+  REGULATIONS_EVENT,
+  StoredKmkData,
+  DEFAULT_KMK_DATA,
+  getStoredKmkRates,
+  KMK_RATES_EVENT,
+} from "@/data/regulasiStorage";
 
 export default function PeraturanPage() {
+  const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
+  const [kmkData, setKmkData] = useState<StoredKmkData>(DEFAULT_KMK_DATA);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("Semua");
+  const [selectedStatus, setSelectedStatus] = useState<string>("Semua");
   const [currentPage, setCurrentPage] = useState(1);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
 
   const itemsPerPage = 5;
 
-  // Filter regulations based on category and search query
+  // Load from localStorage or defaults and listen to updates from Admin CRUD & KMK
+  useEffect(() => {
+    setRegulations(getStoredRegulations());
+    setKmkData(getStoredKmkRates());
+
+    const handleUpdate = () => {
+      setRegulations(getStoredRegulations());
+      setKmkData(getStoredKmkRates());
+    };
+
+    window.addEventListener(REGULATIONS_EVENT, handleUpdate);
+    window.addEventListener(KMK_RATES_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(REGULATIONS_EVENT, handleUpdate);
+      window.removeEventListener(KMK_RATES_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  // Total count per category for badge counters
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      Semua: regulations.length,
+    };
+    REGULATION_CATEGORIES.forEach((cat) => {
+      if (cat !== "Semua") {
+        counts[cat] = regulations.filter((r) => r.category === cat).length;
+      }
+    });
+    return counts;
+  }, [regulations]);
+
+  const handleResetFilters = () => {
+    setSelectedCategory("Semua");
+    setSelectedStatus("Semua");
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
+
+  // Filter regulations based on category, status, and search query
   const filteredRegulations = useMemo(() => {
-    return REGULATIONS_LIST.filter((item) => {
+    return regulations.filter((item) => {
       const matchCategory =
         selectedCategory === "Semua" || item.category === selectedCategory;
+      const matchStatus =
+        selectedStatus === "Semua" || item.status === selectedStatus;
       const q = searchQuery.toLowerCase().trim();
       const matchQuery =
         q === "" ||
         item.docNumber.toLowerCase().includes(q) ||
         item.title.toLowerCase().includes(q) ||
         item.scope.toLowerCase().includes(q);
-      return matchCategory && matchQuery;
+      return matchCategory && matchStatus && matchQuery;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [regulations, searchQuery, selectedCategory, selectedStatus]);
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredRegulations.length / itemsPerPage) || 1;
@@ -217,32 +123,7 @@ export default function PeraturanPage() {
       {/* 1. Header Navbar */}
       <Navbar />
 
-      <main id="main-content" className="flex-grow">
-        {/* 2. Breadcrumb Navigation */}
-        <nav
-          aria-label="Breadcrumb"
-          className="bg-surface border-b border-primary-light py-3"
-        >
-          <div className="container-custom">
-            <ol className="flex items-center space-x-2 text-xs text-text-secondary font-medium">
-              <li>
-                <Link
-                  href="/"
-                  className="hover:text-primary transition-colors duration-150"
-                >
-                  Beranda
-                </Link>
-              </li>
-              <li className="flex items-center space-x-2">
-                <ChevronRightIcon className="text-[9px] text-silver" />
-                <span className="text-primary font-semibold">
-                  Peraturan Perpajakan &amp; Kurs KMK
-                </span>
-              </li>
-            </ol>
-          </div>
-        </nav>
-
+      <main id="main-content" className="flex-1 flex flex-col">
         {/* Download Notification Alert */}
         {downloadNotice && (
           <div className="bg-success text-white py-2.5 px-4 text-xs font-medium text-center shadow-md animate-in fade-in transition-all">
@@ -251,245 +132,139 @@ export default function PeraturanPage() {
           </div>
         )}
 
-        {/* 3. Interactive Search & Category Filter Section */}
-        <section className="py-8 bg-surface border-b border-primary-light">
-          <div className="container-custom space-y-5">
-            <div className="space-y-1.5">
+        {/* 2. Top Section: Arsip Regulasi Perpajakan Resmi (Pencarian & Tabel Peraturan) */}
+        <section id="unduh-peraturan" className="py-12 md:py-16 bg-surface border-b border-primary-light">
+          <div className="container-custom space-y-6">
+            <nav aria-label="Breadcrumb">
+              <ol className="flex items-center space-x-2 text-xs text-text-secondary font-medium">
+                <li>
+                  <Link
+                    href="/"
+                    className="hover:text-primary transition-colors duration-150"
+                  >
+                    Beranda
+                  </Link>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <ChevronRightIcon className="text-[9px] text-silver" />
+                  <span className="text-primary font-semibold">
+                    Peraturan Perpajakan &amp; Kurs KMK
+                  </span>
+                </li>
+              </ol>
+            </nav>
+
+            <div className="space-y-2">
               <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
-                Pusat Regulasi
+                Pusat Regulasi Perpajakan
               </Badge>
-              <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-                Peraturan Perpajakan &amp; Kurs Pajak Mingguan KMK
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
+                Daftar Arsip Regulasi Perpajakan Resmi
               </h1>
+              <p className="text-body-regular text-text-secondary max-w-4xl leading-relaxed">
+                Akses langsung ke regulasi induk perpajakan nasional, harmonisasi UU HPP, dan petunjuk teknis implementasi perpajakan yang dapat disaring dan diunduh langsung.
+              </p>
             </div>
 
-            {/* Search bar */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative w-full flex-grow">
-                <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-silver text-sm" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Cari nomor peraturan, topik, kata kunci (misal: TER 21, Coretax, PPN, KMK)..."
-                  className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-white border border-primary-light rounded-md text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary shadow-sm"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery("");
+            {/* Filter & Pencarian Dokumen Regulasi */}
+            <div className="bg-white p-4 rounded-xl border border-primary-light space-y-3.5 shadow-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-8 relative">
+                  <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-silver text-xs" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary hover:text-text-primary px-1.5 py-0.5 rounded hover:bg-surface cursor-pointer transition-colors"
-                    title="Hapus pencarian"
-                  >
-                    Hapus
-                  </button>
-                )}
-              </div>
+                    placeholder="Saring cepat nomor dokumen, judul, atau ruang lingkup peraturan..."
+                    className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-primary-light rounded-lg text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary shadow-2xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setCurrentPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-text-secondary hover:text-text-primary p-1 cursor-pointer"
+                      title="Hapus pencarian"
+                    >
+                      <CloseIcon className="text-[10px]" />
+                    </button>
+                  )}
+                </div>
 
-              <div className="w-full sm:w-auto flex items-center gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full sm:w-auto text-xs px-5 py-2.5 font-semibold justify-center shadow-sm"
-                  onClick={() => setCurrentPage(1)}
-                >
-                  <SearchIcon className="mr-1.5" />
-                  Cari Dokumen
-                </Button>
-              </div>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mr-1 flex items-center">
-                <FilterIcon className="mr-1 text-[10px]" /> Kategori:
-              </span>
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory(cat);
-                    setCurrentPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-full font-semibold transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] ${
-                    selectedCategory === cat
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-white text-text-secondary border border-primary-light hover:border-primary hover:text-primary hover:bg-surface"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 5. Highlight Section (2 Cards Side-by-Side as in Figma) */}
-        <section id="kurs-pajak" className="py-10 bg-white border-b border-primary-light">
-          <div className="container-custom">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Highlight Card 1: Kurs Pajak Mingguan KMK */}
-              <Card className="border border-primary-light shadow-sm hover:border-primary transition-all">
-                <CardHeader className="pb-3 border-b border-primary-light bg-surface/50">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="text-[10px] font-bold">
-                      KMK No. 38/KM.10/2026
-                    </Badge>
-                    <span className="text-[11px] text-text-secondary flex items-center">
-                      <ClockIcon className="mr-1 text-[10px]" /> 15 – 21 Sep 2026
-                    </span>
-                  </div>
-                  <CardTitle className="text-base font-bold text-primary mt-1">
-                    Kurs Pajak Mingguan KMK Terkini
-                  </CardTitle>
-                  <CardDescription className="text-xs text-text-secondary">
-                    Nilai kurs resmi Kementerian Keuangan RI untuk perhitungan dasar pelunasan Bea Masuk, PPN, dan PPh.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {WEEKLY_RATES.slice(0, 6).map((item) => (
-                      <div
-                        key={item.currency}
-                        className="p-2.5 rounded-md bg-surface border border-primary-light"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-primary">{item.currency}</span>
-                          <span
-                            className={`text-[10px] font-semibold ${
-                              item.trend === "up"
-                                ? "text-success"
-                                : item.trend === "down"
-                                ? "text-error"
-                                : "text-text-secondary"
-                            }`}
-                          >
-                            {item.change}
-                          </span>
-                        </div>
-                        <div className="text-xs font-semibold text-text-primary mt-1">
-                          {item.rate}
-                        </div>
-                        <div className="text-[10px] text-text-secondary truncate mt-0.5">
-                          {item.name}
-                        </div>
-                      </div>
-                    ))}
+                <div className="sm:col-span-4 flex items-center gap-2">
+                  <div className="w-full">
+                    <Select
+                      value={selectedStatus}
+                      onChange={(e) => {
+                        setSelectedStatus(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="text-xs h-9 py-1 px-3"
+                    >
+                      <option value="Semua">Semua Status</option>
+                      <option value="Berlaku">Status: Berlaku</option>
+                      <option value="Pembaruan">Status: Pembaruan</option>
+                    </Select>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between">
+                  {(selectedCategory !== "Semua" || selectedStatus !== "Semua" || searchQuery) && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownload("KMK No. 38/2026", "Tabel Kurs Valas Mingguan Lengkap")}
-                      className="text-xs font-semibold w-full sm:w-auto"
+                      onClick={handleResetFilters}
+                      className="text-xs px-3 h-9 shrink-0 text-text-secondary hover:text-error hover:border-error"
+                      title="Reset semua filter"
                     >
-                      Unduh Salinan KMK (PDF)
+                      Reset
                     </Button>
-                    <span className="hidden sm:inline text-[11px] text-text-secondary">
-                      Sumber: Badan Kebijakan Fiskal
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                  )}
+                </div>
+              </div>
 
-              {/* Highlight Card 2: Pembaruan Regulasi & Coretax Ready */}
-              <Card className="border border-primary-light shadow-sm hover:border-primary transition-all">
-                <CardHeader className="pb-3 border-b border-primary-light bg-surface/50">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="success" className="text-[10px] font-bold">
-                      Coretax Ready 2026
-                    </Badge>
-                    <span className="text-[11px] text-text-secondary flex items-center">
-                      <CalendarIcon className="mr-1 text-[10px]" /> Berlaku Nasional
-                    </span>
-                  </div>
-                  <CardTitle className="text-base font-bold text-primary mt-1">
-                    Pembaruan Sistem Regulasi &amp; SP2DK DJP
-                  </CardTitle>
-                  <CardDescription className="text-xs text-text-secondary">
-                    Ketetapan regulasi transformasi digital perpajakan nasional dan mitigasi surat pengawasan fiskal KPP.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3">
-                  <div className="space-y-2 text-xs text-text-secondary">
-                    <div className="p-3 rounded-md bg-surface border border-primary-light space-y-1">
-                      <div className="font-semibold text-primary flex items-center justify-between">
-                        <span>PMK No. 81 Tahun 2024 (Sistem Inti DJP)</span>
-                        <span className="text-[10px] text-success font-bold">Resmi</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        Mewajibkan pemadanan NIK-NPWP 16 digit, pembuatan bukti potong unifikasi terpadu, dan akun deposit pajak wajib pajak.
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-md bg-surface border border-primary-light space-y-1">
-                      <div className="font-semibold text-primary flex items-center justify-between">
-                        <span>Asistensi Permintaan Penjelasan SP2DK KPP</span>
-                        <span className="text-[10px] text-primary font-bold">Layanan Prioritas</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        Panduan penanganan surat teguran dan ekualisasi omzet data pihak ketiga (ILAP) bersama konsultan BKP Zhou Consulting.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      asChild
-                      className="text-xs font-semibold w-full sm:w-auto"
-                    >
-                      <Link href="/layanan/tax-service">
-                        Layanan Pajak
-                      </Link>
-                    </Button>
-                    <a
-                      href="https://pajak.go.id"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hidden sm:inline text-[11px] text-primary hover:underline font-semibold"
-                    >
-                      Situs DJP Online
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Category Pills directly above table */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-primary-light/60 pb-1 text-xs">
+                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mr-1 shrink-0 flex items-center">
+                  <FilterIcon className="mr-1 text-[10px]" /> Kategori:
+                </span>
+                {REGULATION_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-3 py-1.5 rounded-full font-semibold transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] text-xs ${
+                      selectedCategory === cat
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-surface text-text-secondary border border-primary-light hover:border-primary hover:text-primary hover:bg-white"
+                    }`}
+                  >
+                    {cat} <span className="opacity-80 text-[10px]">({categoryCounts[cat] || 0})</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
 
-        {/* 6. Comprehensive Interactive Regulations Table Section */}
-        <section id="unduh-peraturan" className="py-12 bg-white">
-          <div className="container-custom space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-primary-light pb-4">
+            {/* Header info tabel regulasi */}
+            <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-primary">
-                  Daftar Arsip Regulasi Perpajakan Resmi
-                </h2>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  Menampilkan {filteredRegulations.length} dokumen hukum perpajakan yang dapat diunduh langsung.
-                </p>
+                Menampilkan <span className="font-semibold text-text-primary">{filteredRegulations.length}</span> dari {regulations.length} dokumen hukum perpajakan resmi.
               </div>
-
-              <div className="text-xs text-text-secondary flex items-center gap-2">
-                <span>Filter aktif:</span>
-                <Badge variant="outline" className="text-primary font-semibold text-[11px]">
-                  {selectedCategory}
-                </Badge>
-              </div>
+              {(selectedCategory !== "Semua" || selectedStatus !== "Semua" || searchQuery) && (
+                <div className="flex items-center gap-1">
+                  <span>Filter: <strong>{selectedCategory}</strong> ({selectedStatus})</span>
+                </div>
+              )}
             </div>
 
-            {/* Table */}
-            <div className="border border-primary-light rounded-lg overflow-hidden shadow-sm">
+            {/* Tabel Arsip Peraturan */}
+            <div className="border border-primary-light rounded-lg overflow-hidden shadow-sm bg-white">
               <Table>
                 <TableHeader className="bg-surface">
                   <TableRow>
@@ -529,9 +304,15 @@ export default function PeraturanPage() {
                           </div>
                         </TableCell>
                         <TableCell className="align-top">
-                          <Badge variant="outline" className="text-[10px] font-medium">
-                            {item.category}
-                          </Badge>
+                          {item.category === "Regulasi Zhou" ? (
+                            <Badge variant="primary" className="text-[10px] font-bold bg-primary text-white border-primary shadow-2xs">
+                              {item.category}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] font-medium">
+                              {item.category}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs text-text-secondary align-top whitespace-nowrap">
                           {item.effectiveDate}
@@ -559,8 +340,16 @@ export default function PeraturanPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-text-secondary text-xs">
-                        Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter kategori saat ini.
+                      <TableCell colSpan={6} className="text-center py-12 text-text-secondary text-xs space-y-3">
+                        <p>Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter saat ini.</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResetFilters}
+                          className="text-xs mt-2 font-semibold"
+                        >
+                          Reset Pencarian &amp; Filter
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )}
@@ -587,55 +376,114 @@ export default function PeraturanPage() {
           </div>
         </section>
 
-        {/* 7. Consultation Advisory Callout Section */}
-        <section className="py-14 bg-surface border-t border-primary-light">
-          <div className="container-custom">
-            <div className="p-8 rounded-xl bg-primary-dark text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-2 max-w-2xl">
-                <Badge
-                  variant="outline"
-                  className="border-white/20 text-silver bg-white/5 uppercase tracking-wider text-[10px]"
-                >
-                  Telaah Kepatuhan Hukum Fiskal
-                </Badge>
-                <h3 className="text-xl sm:text-2xl font-bold text-white">
-                  Butuh Penelaahan Regulasi Khusus untuk Masalah Pajak Perusahaan?
-                </h3>
-                <p className="text-xs sm:text-sm text-silver leading-relaxed">
-                  Konsultan pajak beregister BKP Zhou Consulting siap memberikan opini fiskal komprehensif, mitigasi denda sanksi keterlambatan SPT, dan asistensi pendampingan SP2DK secara profesional.
-                </p>
+        {/* 3. Bottom Section: Kurs Pajak Mingguan Menteri Keuangan (KMK) */}
+        <section id="kurs-pajak" className="py-14 md:py-20 bg-white flex-1">
+          <div className="container-custom space-y-6">
+            <div className="space-y-2">
+              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
+                Kurs Pajak Mingguan KMK
+              </Badge>
+              <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                Kurs Pajak Mingguan Menteri Keuangan (KMK)
+              </h2>
+              <p className="text-xs sm:text-sm text-text-secondary max-w-4xl leading-relaxed">
+                Nilai kurs resmi Kementerian Keuangan Republik Indonesia sebagai acuan dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN), dan PPh Pasal 22 Impor yang terupdate berkala.
+              </p>
+            </div>
+
+            {/* Tabel Kurs KMK (Lebar Presisi Penuh Kontainer) */}
+            <div className="space-y-4">
+              <div className="rounded-lg border border-primary-light bg-white overflow-hidden shadow-sm">
+                <div className="bg-surface px-5 py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-primary">
+                        Kurs Menteri Keuangan (KMK)
+                      </h3>
+                      <Badge variant="secondary" size="sm">
+                        {kmkData.kmkNumber}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-text-secondary mt-0.5 block">
+                      Periode Aktif: {kmkData.period}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={kmkData.officialDjpUrl || "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary-light bg-white text-primary text-xs font-semibold hover:border-primary hover:bg-surface transition-all shadow-2xs"
+                      title="Buka portal resmi Kurs Pajak Badan Kebijakan Fiskal / DJP di tab baru"
+                    >
+                      <span>Lihat Kurs Resmi DJP</span>
+                      <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(kmkData.kmkNumber, "Tabel Kurs Valas Mingguan Lengkap")}
+                      className="text-xs font-semibold hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                    >
+                      Unduh Salinan KMK (PDF)
+                    </Button>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="py-3 px-5">Mata Uang</TableHead>
+                      <TableHead className="py-3 px-5">Nama Valuta</TableHead>
+                      <TableHead className="py-3 px-5 text-right">Nilai Kurs (IDR)</TableHead>
+                      <TableHead className="py-3 px-5 text-right">Fluktuasi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {kmkData.rates.map((item) => (
+                      <TableRow key={item.currency} className="hover:bg-surface/50">
+                        <TableCell className="py-3 px-5 font-bold text-primary">
+                          {item.currency}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                          {item.name}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                          {item.rate}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right text-xs">
+                          <span
+                            className={
+                              item.trend === "up"
+                                ? "text-success font-semibold inline-flex items-center gap-1"
+                                : "text-text-secondary font-medium inline-flex items-center gap-1"
+                            }
+                          >
+                            {item.change}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                <Button
-                  variant="silver"
-                  size="default"
-                  asChild
-                  className="font-semibold text-xs px-6 py-3 w-full sm:w-auto justify-center"
-                >
-                  <Link href="/login">
-                    Area Klien
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="default"
-                  asChild
-                  className="border-white/30 text-white hover:bg-white/10 font-semibold text-xs px-6 py-3 w-full sm:w-auto justify-center"
-                >
-                  <a
-                    href="https://wa.me/6281234567890?text=Halo%20Zhou%20Consulting,%20saya%20ingin%20konsultasi%20telaah%20regulasi%20perpajakan%20perusahaan"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <WhatsappIcon className="mr-2 text-sm text-success" />
-                    WhatsApp Konsultan
-                  </a>
-                </Button>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-text-secondary gap-2">
+                <p>
+                  * Nilai kurs KMK digunakan sebagai dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN) Barang dan Jasa, serta Pajak Penghasilan (PPh) Pasal 22 Impor.
+                </p>
+                <div className="flex items-center gap-1.5 shrink-0 text-text-secondary">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success inline-block"></span>
+                  <span>Terupdate berkala pada website Zhou (Rilis: {kmkData.lastUpdated})</span>
+                </div>
               </div>
             </div>
           </div>
         </section>
+
       </main>
 
       {/* 8. Footer */}

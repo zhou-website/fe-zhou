@@ -67,7 +67,7 @@ const INITIAL_REPORTS: ReportItem[] = [
     amount: "Rp 8.500.000",
     billingStatus: "Menunggu Verifikasi",
     uploadDate: "16 Sep 2026",
-    consultant: "Tasya Anggraeni Firdaus, SE.",
+    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     sha256: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
   },
   {
@@ -99,7 +99,7 @@ const INITIAL_REPORTS: ReportItem[] = [
     amount: "Rp 12.000.000",
     billingStatus: "Lunas",
     uploadDate: "12 Sep 2026",
-    consultant: "Muhamad Dekhsa Afnan, SH.",
+    consultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
     sha256: "1f8ac10f23c5b5bc1167bda84b833e5c057a77d2ec3f674da153e7b1ff6ca182",
   },
   {
@@ -115,7 +115,7 @@ const INITIAL_REPORTS: ReportItem[] = [
     amount: "Rp 5.000.000",
     billingStatus: "Lunas",
     uploadDate: "08 Sep 2026",
-    consultant: "Tasya Anggraeni Firdaus, SE.",
+    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     sha256: "b10a8db164e0754105b7a99be72e3fe57f83b1657ff1fc53b92dc18148a1d65d",
   },
 ];
