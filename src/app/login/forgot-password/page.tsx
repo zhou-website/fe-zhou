@@ -204,13 +204,6 @@ export default function ForgotPasswordPage() {
             </Button>
           </div>
 
-          {/* Security notice */}
-          <div className="pt-2 text-center text-[11px] text-text-secondary border-t border-primary-light">
-            <div className="flex items-center justify-center gap-1.5 text-success">
-              <CheckCircleIcon className="text-[10px]" />
-              <span>Koneksi SSL 256-bit terenkripsi berstandar kerahasiaan klien (NDA)</span>
-            </div>
-          </div>
         </div>
       </main>
 

@@ -452,11 +452,7 @@ function RegisterFormContent() {
               />
 
               {/* Footer Links */}
-              <div className="pt-2 text-center text-[11px] text-text-secondary space-y-2 border-t border-primary-light/60">
-                <div className="flex items-center justify-center gap-1.5 text-success">
-                  <CheckCircleIcon className="text-xs" />
-                  <span>Koneksi SSL 256-bit berstandar kerahasiaan klien (NDA)</span>
-                </div>
+              <div className="pt-2 text-center text-[11px] text-text-secondary border-t border-primary-light/60">
                 <p>
                   Sudah memiliki akun layanan?{" "}
                   <Link
