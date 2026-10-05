@@ -4,6 +4,18 @@
  * Handles JWT authentication, automatic token injection, error handling, and type-safe endpoints.
  */
 
+export function getApiBaseUrl(): string {
+  // Jika berjalan di browser pada koneksi HTTPS (misal deploy Vercel),
+  // gunakan URL relatif "" agar permintaan diarahkan ke same-origin /api/...
+  // yang di-proxy oleh Next.js rewrites untuk mencegah blokir Insecure Mixed Content.
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    return "";
+  }
+  return (process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162")
+    .replace(/\/+$/, "")
+    .replace(/\/api\/?$/, "");
+}
+
 export const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162"
 ).replace(/\/+$/, "").replace(/\/api\/?$/, "");
@@ -63,7 +75,8 @@ export async function apiFetch<T = unknown>(
 ): Promise<ApiResponse<T>> {
   const { params, skipAuth = false, headers = {}, ...rest } = options;
 
-  let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  const baseUrl = getApiBaseUrl();
+  let url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
   if (params) {
     const searchParams = new URLSearchParams();
