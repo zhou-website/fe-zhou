@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,118 +26,99 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import {
-  DownloadIcon,
   CheckCircleIcon,
   ClockIcon,
   CalendarIcon,
+  BookIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
-
-interface Article {
-  id: string;
-  title: string;
-  category: "Transformasi Digital" | "Kepatuhan Pajak" | "Akuntansi Bisnis";
-  categoryKey: "transformasi" | "kepatuhan" | "akuntansi";
-  date: string;
-  readTime: string;
-  summary: string;
-  takeaways: string[];
-  content: string[];
-}
-
-const ARTICLES: Article[] = [
-  {
-    id: "coretax-transisi",
-    title: "Navigasi Coretax: Strategi Transisi Pelaporan Pajak Digital bagi Badan Usaha",
-    category: "Transformasi Digital",
-    categoryKey: "transformasi",
-    date: "September 2026",
-    readTime: "5 menit baca",
-    summary:
-      "Panduan komprehensif memahami pergeseran alur kerja pelaporan SPT tahunan, sinkronisasi Deposit Pajak, dan validasi faktur elektronik terpadu.",
-    takeaways: [
-      "Konsolidasi akun wajib pajak dan mekanisme Deposit Pajak mempermudah alokasi saldo lintas jenis pajak.",
-      "Prapengisian (pre-populated data) bukti potong unifikasi langsung dari sistem pihak ketiga dan DJP.",
-      "Kebutuhan audit validitas NPWP 16 digit/NITKU karyawan dan mitra rekanan bisnis.",
-    ],
-    content: [
-      "Sistem Informasi Perpajakan Terpadu (Coretax) dari Direktorat Jenderal Pajak (DJP) membawa revolusi menyeluruh terhadap cara wajib pajak badan mengelola kewajiban fiskal nasional.",
-      "Perubahan mendasar mencakup konsolidasi akun wajib pajak (Taxpayer Account Management), integrasi pembuatan bukti potong unifikasi langsung ke modul akuntansi, serta otomatisasi prapengisian SPT Tahunan.",
-      "Zhou Consulting menyarankan setiap entitas bisnis untuk segera melakukan validasi data master perpajakan dan memberikan pelatihan operasional kepada tim akuntansi guna mencegah sanksi administratif akibat ketidaksiapan sistem.",
-    ],
-  },
-  {
-    id: "mitigasi-sp2dk",
-    title: "Manajemen Kepatuhan PPh Badan dan Mitigasi Risiko Penerbitan SP2DK",
-    category: "Kepatuhan Pajak",
-    categoryKey: "kepatuhan",
-    date: "Agustus 2026",
-    readTime: "7 menit baca",
-    summary:
-      "Langkah-langkah preventif dalam penataan bukti potong, rekonsiliasi fiskal berkala, dan penyusunan kertas kerja ekualisasi omzet.",
-    takeaways: [
-      "Ekualisasi berkala antara omzet SPT Masa PPN dengan peredaran bruto SPT Tahunan PPh Badan.",
-      "Pencocokan biaya gaji, upah, dan honorarium dengan dasar pemotongan PPh Pasal 21 bulanan.",
-      "Penyusunan tanggapan tertulis SP2DK berbasis data komparatif yang terverifikasi konsultan terdaftar.",
-    ],
-    content: [
-      "Surat Permintaan Penjelasan atas Data dan/atau Keterangan (SP2DK) umumnya terbit akibat anomali data perbandingan laporan keuangan wajib pajak dengan data eksternal pihak ketiga yang dihimpun DJP.",
-      "Area paling rentan terhadap pengujian fiskus meliputi selisih omzet PPN vs PPh Badan, ekualisasi biaya tenaga kerja dengan PPh Pasal 21, serta transaksi afiliasi dengan pemegang saham.",
-      "Penyusunan kertas kerja rekonsiliasi fiskal yang terdokumentasi rapi sejak awal tahun buku merupakan langkah mitigasi perusahaan dalam memberikan respon sanggahan yang terstruktur dan akuntabel.",
-    ],
-  },
-  {
-    id: "pembukuan-sak-umkm",
-    title: "Pentingnya Pembukuan SAK bagi Kelayakan Pembiayaan Perbankan UMKM",
-    category: "Akuntansi Bisnis",
-    categoryKey: "akuntansi",
-    date: "Juli 2026",
-    readTime: "4 menit baca",
-    summary:
-      "Bagaimana laporan keuangan terstandar SAK Entitas Privat meningkatkan solvabilitas dan membuka fasilitas kredit investasi institusional.",
-    takeaways: [
-      "Pemisahan mutlak rekening bank pribadi pemilik dan rekening operasional entitas usaha.",
-      "Penyajian rasio keuangan utama: Debt to Equity Ratio (DER) dan Debt Service Coverage Ratio (DSCR).",
-      "Kredibilitas laporan keuangan yang diawasi oleh Akuntan Berpraktik (State Registered Accountant).",
-    ],
-    content: [
-      "Banyak entitas usaha potensial mengalami hambatan saat mengajukan plafon kredit modal kerja ke perbankan karena pembukuan internal yang masih bersifat kas sederhana dan belum mengacu standar SAK.",
-      "Penerapan sistem pencatatan berpasangan (double-entry) dan penyusunan neraca serta laporan laba rugi berkala membuktikan transparansi arus kas operasional entitas kepada komite kredit bank.",
-      "Dengan pendampingan penyusunan laporan keuangan terstandar dari Zhou Consulting, perusahaan dapat mempercepat persetujuan fasilitas kredit dengan tingkat bunga yang jauh lebih efisien.",
-    ],
-  },
-  {
-    id: "pmk-168-ter-pph21",
-    title: "Penerapan Tarif Efektif Rata-Rata (TER) PPh 21 Berdasarkan PMK 168/2023",
-    category: "Kepatuhan Pajak",
-    categoryKey: "kepatuhan",
-    date: "Juni 2026",
-    readTime: "6 menit baca",
-    summary:
-      "Penerapan skema TER Kategori A, B, C untuk pemotongan bulanan dan teknik perhitungan kembali pada masa pajak terakhir (Desember).",
-    takeaways: [
-      "Klasifikasi PTKP menentukan penetapan Kategori TER (A, B, atau C) untuk setiap pegawai tetap.",
-      "Pemotongan bulanan Januari hingga November menggunakan persentase TER langsung dikalikan penghasilan bruto.",
-      "Penghitungan masa Desember tetap mengacu pada tarif progresif Pasal 17 UU PPh untuk penyesuaian akhir.",
-    ],
-    content: [
-      "Peraturan Menteri Keuangan Nomor 168/PMK.03/2023 menyederhanakan mekanisme pemotongan PPh Pasal 21 dengan memperkenalkan metode Tarif Efektif Rata-Rata (TER) bulanan dan harian.",
-      "Meskipun skema TER mempermudah kalkulasi payroll bulanan, divisi personalia dan keuangan wajib berhati-hati dalam mengantisipasi lonjakan beban pajak pada masa pajak Desember saat dilakukan perhitungan ulang dengan tarif progresif.",
-      "Zhou Consulting mendampingi perusahaan dalam merancang template kalkulator payroll otomatis yang mematuhi ketentuan PMK 168 tanpa mengganggu likuiditas insentif akhir tahun karyawan.",
-    ],
-  },
-];
+import { ZhouArticle } from "@/data/edukasiData";
+import {
+  getStoredZhouArticles,
+  ZHOU_ARTICLES_EVENT,
+} from "@/data/edukasiStorage";
+import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
   const { t } = useLanguage();
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [articles, setArticles] = useState<ZhouArticle[]>([]);
+  const [selectedArticle, setSelectedArticle] = useState<ZhouArticle | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("semua");
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    setArticles(getStoredZhouArticles());
+
+    const handleUpdate = (e: Event) => {
+      const custom = e as CustomEvent<ZhouArticle[]>;
+      if (custom.detail) {
+        setArticles(custom.detail);
+      } else {
+        setArticles(getStoredZhouArticles());
+      }
+    };
+
+    window.addEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
+
+    // Fetch from live backend API
+    publicApi
+      .getEducation()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+            const rawBody = item.body || item.title || "";
+            return {
+              id: `be-${item.id}`,
+              title: item.title,
+              category: item.category || "Coretax DJP 2026",
+              categoryKey: (item.category?.toLowerCase().includes("pph")
+                ? "kepatuhan"
+                : item.category?.toLowerCase().includes("akuntansi")
+                ? "akuntansi"
+                : "transformasi"),
+              date: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              }),
+              readTime: "5 menit baca",
+              author: "Tim Konsultan Zhou Consulting",
+              summary: rawBody.slice(0, 160) + (rawBody.length > 160 ? "..." : ""),
+              takeaways: [
+                "Kepatuhan regulasi perpajakan nasional dan mitigasi risiko.",
+                "Penyelarasan bukti potong dan rekonsiliasi data fiskal berkala.",
+              ],
+              content: [rawBody],
+              status: "Published",
+              isFeatured: true,
+            };
+          });
+
+          setArticles((prev) => {
+            const titles = new Set(apiArticles.map((a) => a.title.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
+            return [...apiArticles, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getEducation fallback in EducationSection:", err);
+      });
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
+    };
+  }, []);
+
+  const publishedArticles = articles.filter((a) => a.status !== "Draft");
+
   const filteredArticles =
     activeCategory === "semua"
-      ? ARTICLES
-      : ARTICLES.filter((a) => a.categoryKey === activeCategory);
+      ? publishedArticles
+      : publishedArticles.filter((a) => a.categoryKey === activeCategory);
 
   const handleDownload = () => {
     setDownloadSuccess(true);
@@ -163,201 +144,181 @@ export function EducationSection() {
               {t.education.subheading}
             </p>
           </div>
-
-
         </div>
 
         {/* Category Filter Tabs */}
-        <div className="flex items-center justify-start overflow-x-auto pb-2">
-          <Tabs
-            value={activeCategory}
-            onValueChange={setActiveCategory}
-            className="w-auto"
-          >
-            <TabsList className="bg-white">
-              <TabsTrigger value="semua" className="text-xs">
-                Semua Topik ({ARTICLES.length})
-              </TabsTrigger>
-              <TabsTrigger value="transformasi" className="text-xs">
-                Coretax &amp; Digital
-              </TabsTrigger>
-              <TabsTrigger value="kepatuhan" className="text-xs">
-                Kepatuhan Pajak
-              </TabsTrigger>
-              <TabsTrigger value="akuntansi" className="text-xs">
-                Akuntansi Bisnis
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        {publishedArticles.length > 0 && (
+          <div className="flex items-center justify-start overflow-x-auto pb-2">
+            <Tabs
+              value={activeCategory}
+              onValueChange={setActiveCategory}
+              className="w-auto"
+            >
+              <TabsList className="bg-white">
+                <TabsTrigger value="semua" className="text-xs">
+                  Semua Topik ({publishedArticles.length})
+                </TabsTrigger>
+                <TabsTrigger value="transformasi" className="text-xs">
+                  Coretax &amp; Digital
+                </TabsTrigger>
+                <TabsTrigger value="kepatuhan" className="text-xs">
+                  Kepatuhan Pajak
+                </TabsTrigger>
+                <TabsTrigger value="akuntansi" className="text-xs">
+                  Akuntansi Bisnis
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
 
         {/* Articles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredArticles.map((article) => (
-            <Card
-              key={article.id}
-              className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white"
-            >
-              <CardHeader className="space-y-3 pb-3">
-                <div className="flex items-center justify-end text-xs text-text-secondary gap-2">
-                  <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary whitespace-nowrap">
-                    <CalendarIcon className="text-[10px]" />
-                    {article.date}
-                  </span>
-                </div>
+          {filteredArticles.length > 0 ? (
+            filteredArticles.map((article) => (
+              <Card
+                key={article.id}
+                className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white"
+              >
+                <CardHeader className="space-y-3 pb-3">
+                  <div className="flex items-center justify-end text-xs text-text-secondary gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary whitespace-nowrap">
+                      <CalendarIcon className="text-[10px]" />
+                      {article.date}
+                    </span>
+                  </div>
 
-                <CardTitle
-                  onClick={() => setSelectedArticle(article)}
-                  className="text-[15px] font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer leading-snug line-clamp-2"
-                >
-                  {article.title}
-                </CardTitle>
+                  <CardTitle
+                    onClick={() => setSelectedArticle(article)}
+                    className="text-[15px] font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer leading-snug line-clamp-2"
+                  >
+                    {article.title}
+                  </CardTitle>
 
-                <CardDescription className="text-xs text-text-secondary line-clamp-3 leading-relaxed">
-                  {article.summary}
-                </CardDescription>
-              </CardHeader>
+                  <CardDescription className="text-xs text-text-secondary line-clamp-3 leading-relaxed">
+                    {article.summary}
+                  </CardDescription>
+                </CardHeader>
 
-              <CardFooter className="pt-3 border-t border-primary-light flex items-center justify-between mt-2">
-                <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
-                  <ClockIcon className="text-[11px]" />
-                  <span>{article.readTime}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedArticle(article)}
-                  className="text-xs font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded px-1.5 py-0.5"
-                >
-                  <span>Selengkapnya</span>
-                </button>
-              </CardFooter>
-            </Card>
-          ))}
+                <CardFooter className="pt-3 border-t border-primary-light flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
+                    <ClockIcon className="text-[11px]" />
+                    <span>{article.readTime}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedArticle(article)}
+                    className="text-xs font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded px-1.5 py-0.5"
+                  >
+                    <span>Selengkapnya</span>
+                  </button>
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-full py-12 px-6 rounded-xl bg-white border border-primary-light text-center space-y-2.5">
+              <BookIcon className="mx-auto text-silver text-3xl" />
+              <h3 className="text-sm font-bold text-primary">Belum Ada Artikel Edukasi</h3>
+              <p className="text-xs text-text-secondary max-w-md mx-auto">
+                Modul dan artikel edukasi perpajakan resmi akan tampil otomatis setelah dipublikasikan oleh tim konsultan melalui dashboard.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Link to Full Education Portal */}
-        <div className="flex justify-center -mt-2">
-          <Button
-            variant="outline"
-            size="default"
-            asChild
-            className="text-xs font-bold gap-2 hover:border-primary"
-          >
-            <Link href="/edukasi">
-              <span>Semua Artikel</span>
-            </Link>
-          </Button>
-        </div>
-
-
+        {publishedArticles.length > 0 && (
+          <div className="flex justify-center -mt-2">
+            <Button
+              variant="outline"
+              size="default"
+              asChild
+              className="text-xs font-bold gap-2 hover:border-primary"
+            >
+              <Link href="/edukasi">
+                <span>Semua Artikel</span>
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Accessible Reader Dialog */}
+      {/* Article Detail Reading Dialog */}
       <Dialog
         open={Boolean(selectedArticle)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedArticle(null);
-        }}
+        onOpenChange={(open) => !open && setSelectedArticle(null)}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedArticle && (
             <>
-              <DialogHeader className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-                  <Badge variant="silver" size="sm" className="font-bold uppercase tracking-wider">
+              <DialogHeader className="space-y-3 border-b border-primary-light pb-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" size="sm">
                     {selectedArticle.category}
                   </Badge>
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarIcon className="text-[10px]" />
+                  <span className="text-xs text-text-secondary flex items-center gap-1">
+                    <CalendarIcon className="text-[11px]" />
                     {selectedArticle.date}
                   </span>
-                  <span>&bull;</span>
-                  <span className="inline-flex items-center gap-1">
-                    <ClockIcon className="text-[10px]" />
+                  <span className="text-xs text-text-secondary flex items-center gap-1">
+                    <ClockIcon className="text-[11px]" />
                     {selectedArticle.readTime}
                   </span>
                 </div>
-
-                <DialogTitle className="text-lg sm:text-xl font-bold text-primary leading-snug">
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-primary leading-snug">
                   {selectedArticle.title}
                 </DialogTitle>
-
-                <DialogDescription className="text-xs text-text-secondary leading-relaxed">
-                  {selectedArticle.summary}
+                <DialogDescription className="text-xs text-text-secondary font-medium">
+                  Disusun oleh {selectedArticle.author || "Tim Konsultan Zhou Consulting"}
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-4 py-3 border-y border-primary-light">
-                {/* Key Takeaways Box */}
-                <div className="p-4 rounded-lg bg-surface border border-primary-light space-y-2">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider block">
-                    Poin Kunci Wajib Pajak:
-                  </span>
-                  <ul className="space-y-1.5">
-                    {selectedArticle.takeaways.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="text-xs text-text-secondary flex items-start gap-2 leading-relaxed"
-                      >
-                        <CheckCircleIcon className="text-success text-xs mt-0.5 shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="space-y-6 py-4 text-xs sm:text-sm text-text leading-relaxed">
+                {selectedArticle.takeaways && selectedArticle.takeaways.length > 0 && (
+                  <div className="p-4 rounded-lg bg-surface border border-primary-light space-y-2.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                      Poin Kunci Pembahasan
+                    </h4>
+                    <ul className="space-y-2 text-xs">
+                      {selectedArticle.takeaways.map((point, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                {/* Article Body */}
-                <div className="space-y-3 text-xs sm:text-sm text-text leading-relaxed">
-                  {selectedArticle.content.map((paragraph, pIdx) => (
-                    <p key={pIdx}>{paragraph}</p>
+                <div className="space-y-4">
+                  {selectedArticle.content?.map((paragraph, idx) => (
+                    <p key={idx} className="leading-relaxed">
+                      {paragraph}
+                    </p>
                   ))}
                 </div>
+
+                {downloadSuccess && (
+                  <div className="p-3 bg-success text-white text-xs font-medium rounded-lg text-center">
+                    Modul bacaan &quot;{selectedArticle.title}&quot; berhasil diunduh.
+                  </div>
+                )}
               </div>
 
-              {/* Notification on Download */}
-              {downloadSuccess && (
-                <div className="p-3 rounded-md bg-success/10 border border-success/30 text-success text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-                  <CheckCircleIcon className="text-xs" />
-                  <span>Berkas ringkasan panduan PDF berhasil diunduh.</span>
-                </div>
-              )}
-
-              <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3">
-                <div className="text-[11px] text-text-secondary text-center sm:text-left">
-                  Disusun oleh <strong>Divisi Riset Fiskal Zhou Consulting</strong>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <DialogClose asChild>
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none text-xs">
-                      Tutup
-                    </Button>
-                  </DialogClose>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownload}
-                    className="flex-1 sm:flex-none text-xs inline-flex items-center gap-1.5 hover:border-primary"
-                  >
-                    <DownloadIcon className="text-xs" />
-                    <span>Unduh PDF</span>
+              <DialogFooter className="border-t border-primary-light pt-4 flex flex-row items-center justify-between gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="text-xs gap-1.5"
+                >
+                  Unduh Salinan PDF
+                </Button>
+                <DialogClose asChild>
+                  <Button variant="primary" size="sm" className="text-xs">
+                    Tutup Bacaan
                   </Button>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    asChild
-                    className="flex-1 sm:flex-none text-xs shadow-sm"
-                  >
-                    <Link
-                      href="/konsultasi"
-                      onClick={() => setSelectedArticle(null)}
-                    >
-                      Konsultasikan Topik
-                    </Link>
-                  </Button>
-                </div>
+                </DialogClose>
               </DialogFooter>
             </>
           )}

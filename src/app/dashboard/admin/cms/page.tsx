@@ -24,6 +24,9 @@ import {
   FilterIcon,
 } from "@/components/icons";
 import { adminCmsApi } from "@/lib/api";
+import { addZhouArticle } from "@/data/edukasiStorage";
+import { addRegulation, RegulationCategory } from "@/data/regulasiStorage";
+import { getStoredCareerSettings, saveStoredCareerSettings } from "@/data/karirStorage";
 import {
   ZHOU_ARTICLES,
   BELAJAR_PAJAK_LINKS,
@@ -92,68 +95,7 @@ const INITIAL_BELAJAR_CMS: CMSItem[] = BELAJAR_PAJAK_LINKS.map((b) => ({
 }));
 
 // Standard initial CMS items
-const INITIAL_OTHER_CMS: CMSItem[] = [
-  {
-    id: "CMS-01",
-    section: "hero",
-    title: "Headline Hero Utama: Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial",
-    category: "Hero Banner",
-    lastUpdated: "17 Sep 2026",
-    editor: "Staf Konsultan",
-    status: "Published",
-    summary: "Headline pembuka beranda korporat menonjolkan kepatuhan Coretax 2026 dan akreditasi BKP/CA.",
-  },
-  {
-    id: "CMS-02",
-    section: "kurs",
-    title: "Tabel Kurs Pajak Mingguan KMK No. 38/KM.10/2026 (7 Valuta Utama)",
-    category: "Kurs Pajak",
-    lastUpdated: "17 Sep 2026",
-    editor: "Staf Konsultan",
-    status: "Published",
-    summary: "Tarif konversi resmi valuta asing untuk pelaporan faktur pajak dan bukti potong DJP.",
-  },
-  {
-    id: "CMS-03",
-    section: "regulasi",
-    title: "PMK No. 81/2024: Tata Cara Pelaksanaan Hak dan Kewajiban Perpajakan Coretax",
-    category: "Regulasi",
-    lastUpdated: "15 Sep 2026",
-    editor: "Staf Konsultan",
-    status: "Published",
-    summary: "Regulasi integrasi Coretax DJP, faktur pajak elektronik, dan bukti potong terpadu.",
-  },
-  {
-    id: "CMS-04",
-    section: "regulasi",
-    title: "UU No. 7/2021: Harmonisasi Peraturan Perpajakan (UU HPP)",
-    category: "Regulasi",
-    lastUpdated: "12 Sep 2026",
-    editor: "Staf Konsultan",
-    status: "Published",
-    summary: "Ketentuan umum perpajakan, tarif PPh Badan 22%, batasan omzet PT KP, dan PPN 11-12%.",
-  },
-  {
-    id: "CMS-08",
-    section: "karir",
-    title: "Lowongan: Senior Tax Consultant (Coretax & SP2DK Specialist)",
-    category: "Karir",
-    lastUpdated: "11 Sep 2026",
-    editor: "HR & Operasional",
-    status: "Published",
-    summary: "Kebutuhan tenaga ahli bersertifikat Brevet C / BKP dengan pengalaman pendampingan sengketa.",
-  },
-  {
-    id: "CMS-09",
-    section: "karir",
-    title: "Lowongan: Junior Auditor SAK & Kompilasi Laporan Keuangan",
-    category: "Karir",
-    lastUpdated: "05 Sep 2026",
-    editor: "HR & Operasional",
-    status: "Published",
-    summary: "Peluang bagi sarjana akuntansi untuk pendampingan audit komersial dan rekonsiliasi.",
-  },
-];
+const INITIAL_OTHER_CMS: CMSItem[] = [];
 
 const INITIAL_CMS_ITEMS: CMSItem[] = [
   ...INITIAL_ZHOU_CMS,
@@ -222,7 +164,7 @@ function AdminCMSPageContent() {
   // Kurs KMK Form State
   const [kursForm, setKursForm] = useState({
     kmkNumber: "KMK No. 38/KM.10/2026",
-    period: "17 September 2026 – 23 September 2026",
+    period: "17 September 2026 - 23 September 2026",
     rates: [
       { currency: "USD", name: "Dolar Amerika Serikat", rate: "Rp 15.825,00", flag: "US" },
       { currency: "EUR", name: "Euro Uni Eropa", rate: "Rp 16.940,00", flag: "EU" },
@@ -374,9 +316,22 @@ function AdminCMSPageContent() {
       };
     }
 
-    // Attempt to persist to Backend API with safe fallback
+    // Attempt to persist to Backend API and local storages for dynamic landing updates
     try {
       if (newItemForm.section === "edukasi-zhou") {
+        addZhouArticle({
+          id: createdItem.id,
+          title: createdItem.title,
+          category: createdItem.category,
+          categoryKey: "coretax",
+          date: createdItem.lastUpdated,
+          author: createdItem.author || "Tim Konsultan BKP Zhou Consulting",
+          readTime: createdItem.readTime || "5 menit baca",
+          summary: createdItem.summary,
+          status: createdItem.status,
+          takeaways: createdItem.takeaways || [],
+          content: createdItem.content || [createdItem.summary],
+        });
         const formData = new FormData();
         formData.append("title", createdItem.title);
         formData.append("category", createdItem.category);
@@ -387,6 +342,15 @@ function AdminCMSPageContent() {
           console.warn("adminCmsApi.createEducation fallback:", err);
         });
       } else if (newItemForm.section === "regulasi") {
+        addRegulation({
+          docNumber: `REG-${Date.now().toString().slice(-4)}`,
+          title: createdItem.title,
+          category: (createdItem.category as RegulationCategory) || "Regulasi Perpajakan",
+          effectiveDate: createdItem.lastUpdated,
+          scope: createdItem.summary,
+          fileSize: "PDF 1.2 MB",
+          status: "Berlaku",
+        });
         const formData = new FormData();
         formData.append("title", createdItem.title);
         formData.append("category", createdItem.category);
@@ -396,6 +360,27 @@ function AdminCMSPageContent() {
           console.warn("adminCmsApi.createRegulation fallback:", err);
         });
       } else if (newItemForm.section === "karir") {
+        const curSettings = getStoredCareerSettings();
+        const newPos = {
+          id: `job-${Date.now()}`,
+          title: createdItem.title,
+          department: createdItem.category || "Konsultasi",
+          deptKey: "all" as const,
+          type: "Full-Time (Hybrid)",
+          location: "Menara Sudirman, Jakarta Selatan",
+          experience: "Min. 1-3 tahun",
+          compensation: "Kompensasi Kompetitif + BPJS",
+          summary: createdItem.summary,
+          responsibilities: ["Melaksanakan penugasan profesional."],
+          qualifications: ["Pendidikan relevan S1."],
+          benefits: ["BPJS dan pelatihan berkala."],
+          skills: ["Kompetensi Terkait"],
+        };
+        saveStoredCareerSettings({
+          ...curSettings,
+          isOpen: true,
+          positions: [newPos, ...(curSettings.positions || [])],
+        });
         adminCmsApi
           .createCareer({
             position_code: `CAR-${Date.now()}`,

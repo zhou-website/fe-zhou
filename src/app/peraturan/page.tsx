@@ -396,15 +396,17 @@ export default function PeraturanPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-12 text-text-secondary text-xs space-y-3">
-                        <p>Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter saat ini.</p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleResetFilters}
-                          className="text-xs mt-2 font-semibold"
-                        >
-                          Reset Pencarian &amp; Filter
-                        </Button>
+                        <p>{regulations.length === 0 ? "Belum ada dokumen regulasi atau SOP perpajakan yang tersedia saat ini." : "Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter saat ini."}</p>
+                        {regulations.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="text-xs mt-2 font-semibold"
+                          >
+                            Reset Pencarian &amp; Filter
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
@@ -495,30 +497,38 @@ export default function PeraturanPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {kmkData.rates.map((item) => (
-                      <TableRow key={item.currency} className="hover:bg-surface/50">
-                        <TableCell className="py-3 px-5 font-bold text-primary">
-                          {item.currency}
-                        </TableCell>
-                        <TableCell className="py-3 px-5 text-text-secondary text-xs">
-                          {item.name}
-                        </TableCell>
-                        <TableCell className="py-3 px-5 text-right font-semibold text-text">
-                          {item.rate}
-                        </TableCell>
-                        <TableCell className="py-3 px-5 text-right text-xs">
-                          <span
-                            className={
-                              item.trend === "up"
-                                ? "text-success font-semibold inline-flex items-center gap-1"
-                                : "text-text-secondary font-medium inline-flex items-center gap-1"
-                            }
-                          >
-                            {item.change}
-                          </span>
+                    {kmkData.rates.length > 0 ? (
+                      kmkData.rates.map((item) => (
+                        <TableRow key={item.currency} className="hover:bg-surface/50">
+                          <TableCell className="py-3 px-5 font-bold text-primary">
+                            {item.currency}
+                          </TableCell>
+                          <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                            {item.name}
+                          </TableCell>
+                          <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                            {item.rate}
+                          </TableCell>
+                          <TableCell className="py-3 px-5 text-right text-xs">
+                            <span
+                              className={
+                                item.trend === "up"
+                                  ? "text-success font-semibold inline-flex items-center gap-1"
+                                  : "text-text-secondary font-medium inline-flex items-center gap-1"
+                              }
+                            >
+                              {item.change}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-8 px-5 text-center text-xs text-text-secondary">
+                          Belum ada data penetapan kurs KMK yang diunggah oleh admin.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>

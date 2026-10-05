@@ -2,12 +2,12 @@
 
 import { ZHOU_ARTICLES, ZhouArticle } from "./edukasiData";
 
-export const ZHOU_ARTICLES_STORAGE_KEY = "zhou_articles_data";
+export const ZHOU_ARTICLES_STORAGE_KEY = "zhou_articles_data_v2";
 export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
 
 /**
  * Mendapatkan daftar artikel/modul edukasi Zhou Consulting.
- * Jika tersedia di localStorage, gunakan data tersebut. Jika belum, gunakan data default.
+ * Jika tersedia di localStorage, gunakan data tersebut. Jika belum, gunakan data default (kosong).
  */
 export function getStoredZhouArticles(): ZhouArticle[] {
   if (typeof window === "undefined") {
@@ -17,21 +17,16 @@ export function getStoredZhouArticles(): ZhouArticle[] {
   try {
     const raw = localStorage.getItem(ZHOU_ARTICLES_STORAGE_KEY);
     if (!raw) {
-      // Inisialisasi awal ke localStorage
-      localStorage.setItem(ZHOU_ARTICLES_STORAGE_KEY, JSON.stringify(ZHOU_ARTICLES));
       return ZHOU_ARTICLES;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed.map((item, idx) => ({
         ...item,
         isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
       }));
     }
-    return ZHOU_ARTICLES.map((item, idx) => ({
-      ...item,
-      isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
-    }));
+    return ZHOU_ARTICLES;
   } catch (error) {
     console.error("Gagal membaca zhou_articles_data dari localStorage:", error);
     return ZHOU_ARTICLES;

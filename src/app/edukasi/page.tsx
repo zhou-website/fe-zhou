@@ -272,174 +272,176 @@ function EducationPortalContent() {
         {/* ========================================================= */}
         {/* BAGIAN 1: PUBLIKASI UNGGULAN ZHOU CAROUSEL SHOWCASE       */}
         {/* ========================================================= */}
-        <section
-          aria-label="Publikasi Unggulan Zhou Carousel"
-          className="py-14 md:py-20 bg-surface border-b border-primary-light"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
-          <div className="container-custom space-y-8">
-            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
-              <Link href="/" className="hover:text-primary transition-colors">
-                Beranda
-              </Link>
-              <span>/</span>
-              <span className="text-primary font-semibold">
-                Pusat Edukasi Pajak
-              </span>
-            </nav>
+        {featuredArticles.length > 0 && currentFeatured && (
+          <section
+            aria-label="Publikasi Unggulan Zhou Carousel"
+            className="py-14 md:py-20 bg-surface border-b border-primary-light"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            <div className="container-custom space-y-8">
+              <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
+                <Link href="/" className="hover:text-primary transition-colors">
+                  Beranda
+                </Link>
+                <span>/</span>
+                <span className="text-primary font-semibold">
+                  Pusat Edukasi Pajak
+                </span>
+              </nav>
 
-            <div className="max-w-3xl space-y-3">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
-                Pusat Edukasi Pajak &amp; Belajar Mandiri
-              </h1>
-              <p className="text-body-regular text-text-secondary leading-relaxed">
-                Panduan praktis, analisis regulasi terbaru, dan materi literasi perpajakan komprehensif dari konsultan Zhou Consulting.
-              </p>
-            </div>
-
-            {/* Top Carousel Navigation Bar */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
-                  Publikasi Unggulan Zhou
-                </Badge>
+              <div className="max-w-3xl space-y-3">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
+                  Pusat Edukasi Pajak &amp; Belajar Mandiri
+                </h1>
+                <p className="text-body-regular text-text-secondary leading-relaxed">
+                  Panduan praktis, analisis regulasi terbaru, dan materi literasi perpajakan komprehensif dari konsultan Zhou Consulting.
+                </p>
               </div>
 
-              {/* Prev / Next Buttons & Counter */}
-              {featuredArticles.length > 1 && (
+              {/* Top Carousel Navigation Bar */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-semibold text-text-secondary mr-1">
-                    {carouselIndex + 1} / {featuredArticles.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handlePrevSlide}
-                    aria-label="Artikel sebelumnya"
-                    className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                  >
-                    <ChevronLeftIcon className="text-xs" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextSlide}
-                    aria-label="Artikel berikutnya"
-                    className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                  >
-                    <ChevronRightIcon className="text-xs" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Slide Container with Swipe Touch Listeners */}
-            <div
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              className="bg-white rounded-2xl border border-primary-light p-6 md:p-8 lg:p-10 shadow-sm relative overflow-hidden transition-all duration-300"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                {/* Visual Cover Kolom Kiri */}
-                <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none">
-                  <Image
-                    src="/images/education-featured.jpg"
-                    alt={currentFeatured.title}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 40vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4">
-                    <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
-                      {currentFeatured.category}
-                    </Badge>
-                  </div>
+                  <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
+                    Publikasi Unggulan Zhou
+                  </Badge>
                 </div>
 
-                {/* Info & Konten Kolom Kanan */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-                    <Badge variant="success" size="sm" dot>
-                      {currentFeatured.category}
-                    </Badge>
-                    <span>&bull;</span>
-                    <span className="flex items-center gap-1">
-                      <CalendarIcon className="text-[10px]" />
-                      {currentFeatured.date}
+                {/* Prev / Next Buttons & Counter */}
+                {featuredArticles.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-semibold text-text-secondary mr-1">
+                      {carouselIndex + 1} / {featuredArticles.length}
                     </span>
-                    <span>&bull;</span>
-                    <span className="flex items-center gap-1">
-                      <ClockIcon className="text-[10px]" />
-                      {currentFeatured.readTime}
-                    </span>
-                  </div>
-
-                  <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-primary leading-snug">
-                    {currentFeatured.title}
-                  </h2>
-
-                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-                    {currentFeatured.summary}
-                  </p>
-
-                  <div className="pt-2">
-                    <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
-                      Poin Kunci Transisi:
-                    </div>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text">
-                      {currentFeatured.takeaways.slice(0, 4).map((pt, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
-                          <span className="leading-snug">{pt}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="pt-4 flex flex-wrap items-center gap-3">
-                    <Button
-                      variant="primary"
-                      onClick={() => setActiveArticleModal(currentFeatured)}
-                      className="text-xs font-semibold px-5 shadow-sm"
+                    <button
+                      type="button"
+                      onClick={handlePrevSlide}
+                      aria-label="Artikel sebelumnya"
+                      className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                     >
-                      <span>Baca Artikel</span>
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      onClick={() => handleDownloadPdf(currentFeatured.title)}
-                      className="text-xs font-semibold px-4 border-primary/30 hover:border-primary text-primary inline-flex items-center gap-2"
+                      <ChevronLeftIcon className="text-xs" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNextSlide}
+                      aria-label="Artikel berikutnya"
+                      className="w-8 h-8 rounded-full border border-primary-light bg-white hover:bg-primary hover:text-white text-primary flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                     >
-                      <DownloadIcon className="text-xs" />
-                      <span>Unduh PDF</span>
-                    </Button>
+                      <ChevronRightIcon className="text-xs" />
+                    </button>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Dot Indicators at the bottom */}
-              {featuredArticles.length > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-6 border-t border-primary-light/60 mt-6">
-                  {featuredArticles.map((art, idx) => (
-                    <button
-                      key={art.id || idx}
-                      type="button"
-                      onClick={() => setCarouselIndex(idx)}
-                      aria-label={`Lihat slide ${idx + 1}: ${art.title}`}
-                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                        carouselIndex === idx
-                          ? "w-8 bg-primary shadow-xs"
-                          : "w-2 bg-primary-light hover:bg-primary/50"
-                      }`}
+              {/* Slide Container with Swipe Touch Listeners */}
+              <div
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+                className="bg-white rounded-2xl border border-primary-light p-6 md:p-8 lg:p-10 shadow-sm relative overflow-hidden transition-all duration-300"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Visual Cover Kolom Kiri */}
+                  <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none">
+                    <Image
+                      src="/images/education-featured.jpg"
+                      alt={currentFeatured.title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      priority
                     />
-                  ))}
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-4 left-4">
+                      <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
+                        {currentFeatured.category}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Info & Konten Kolom Kanan */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+                      <Badge variant="success" size="sm" dot>
+                        {currentFeatured.category}
+                      </Badge>
+                      <span>&bull;</span>
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="text-[10px]" />
+                        {currentFeatured.date}
+                      </span>
+                      <span>&bull;</span>
+                      <span className="flex items-center gap-1">
+                        <ClockIcon className="text-[10px]" />
+                        {currentFeatured.readTime}
+                      </span>
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl lg:text-[26px] font-bold text-primary leading-snug">
+                      {currentFeatured.title}
+                    </h2>
+
+                    <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                      {currentFeatured.summary}
+                    </p>
+
+                    <div className="pt-2">
+                      <div className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+                        Poin Kunci Transisi:
+                      </div>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-text">
+                        {currentFeatured.takeaways.slice(0, 4).map((pt, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
+                            <span className="leading-snug">{pt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="pt-4 flex flex-wrap items-center gap-3">
+                      <Button
+                        variant="primary"
+                        onClick={() => setActiveArticleModal(currentFeatured)}
+                        className="text-xs font-semibold px-5 shadow-sm"
+                      >
+                        <span>Baca Artikel</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDownloadPdf(currentFeatured.title)}
+                        className="text-xs font-semibold px-4 border-primary/30 hover:border-primary text-primary inline-flex items-center gap-2"
+                      >
+                        <DownloadIcon className="text-xs" />
+                        <span>Unduh PDF</span>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Dot Indicators at the bottom */}
+                {featuredArticles.length > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-6 border-t border-primary-light/60 mt-6">
+                    {featuredArticles.map((art, idx) => (
+                      <button
+                        key={art.id || idx}
+                        type="button"
+                        onClick={() => setCarouselIndex(idx)}
+                        aria-label={`Lihat slide ${idx + 1}: ${art.title}`}
+                        className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                          carouselIndex === idx
+                            ? "w-8 bg-primary shadow-xs"
+                            : "w-2 bg-primary-light hover:bg-primary/50"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
             {/* Katalog Artikel Edukasi Zhou (Filter & Grid Terpadu) */}
             <section id="katalog-artikel" className="py-14 md:py-20 bg-white border-b border-primary-light scroll-mt-20">
@@ -519,21 +521,29 @@ function EducationPortalContent() {
                 {filteredArticles.length === 0 ? (
                   <div className="p-12 text-center bg-surface rounded-xl border border-primary-light space-y-3">
                     <BookIcon className="text-3xl text-silver mx-auto" />
-                    <h3 className="text-base font-semibold text-primary">Tidak Ada Artikel yang Ditemukan</h3>
+                    <h3 className="text-base font-semibold text-primary">
+                      {articlesList.length === 0
+                        ? "Belum Ada Artikel yang Dipublikasikan"
+                        : "Tidak Ada Artikel yang Ditemukan"}
+                    </h3>
                     <p className="text-xs text-text-secondary max-w-sm mx-auto">
-                      Coba ganti kata kunci pencarian atau pilih kategori topik lain untuk melihat artikel literasi fiskal.
+                      {articlesList.length === 0
+                        ? "Modul dan materi literasi perpajakan resmi akan tampil otomatis setelah ditambahkan oleh admin melalui dashboard."
+                        : "Coba ganti kata kunci pencarian atau pilih kategori topik lain untuk melihat artikel literasi fiskal."}
                     </p>
-                    <Button
-                      variant="silver"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCategory("all");
-                        setSearchQuery("");
-                      }}
-                      className="text-xs"
-                    >
-                      Reset Filter &amp; Pencarian
-                    </Button>
+                    {articlesList.length > 0 && (
+                      <Button
+                        variant="silver"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCategory("all");
+                          setSearchQuery("");
+                        }}
+                        className="text-xs"
+                      >
+                        Reset Filter &amp; Pencarian
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

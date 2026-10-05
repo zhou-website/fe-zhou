@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,85 +12,112 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import {
-  CheckCircleIcon,
-} from "@/components/icons";
+import { CheckCircleIcon, DocumentIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  StoredRegulationItem,
+  StoredKmkData,
+  DEFAULT_KMK_DATA,
+  getStoredRegulations,
+  getStoredKmkRates,
+  REGULATIONS_EVENT,
+  KMK_RATES_EVENT,
+} from "@/data/regulasiStorage";
+import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
 export function RegulationsSection() {
   const { t } = useLanguage();
-  const taxRates = [
-    {
-      currency: "USD",
-      name: "US Dollar",
-      rate: "Rp 15.825,00",
-      change: "+0.15%",
-      status: "up",
-    },
-    {
-      currency: "EUR",
-      name: "Euro",
-      rate: "Rp 16.940,00",
-      change: "-0.08%",
-      status: "down",
-    },
-    {
-      currency: "SGD",
-      name: "Singapore Dollar",
-      rate: "Rp 11.890,00",
-      change: "+0.05%",
-      status: "up",
-    },
-    {
-      currency: "CNY",
-      name: "Chinese Yuan",
-      rate: "Rp 2.185,00",
-      change: "+0.10%",
-      status: "up",
-    },
-    {
-      currency: "JPY",
-      name: "Japanese Yen (100)",
-      rate: "Rp 10.450,00",
-      change: "-0.22%",
-      status: "down",
-    },
-    {
-      currency: "GBP",
-      name: "British Pound",
-      rate: "Rp 20.150,00",
-      change: "+0.18%",
-      status: "up",
-    },
-    {
-      currency: "AUD",
-      name: "Australian Dollar",
-      rate: "Rp 10.320,00",
-      change: "-0.05%",
-      status: "down",
-    },
-  ];
+  const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
+  const [kmkData, setKmkData] = useState<StoredKmkData>(DEFAULT_KMK_DATA);
 
-  const regulations = [
-    {
-      title: "UU No. 7 Tahun 2021 tentang HPP",
-      category: "Undang-Undang",
-      desc: "Harmonisasi Peraturan Perpajakan (PPh Badan, PPN 11%, NIK-NPWP).",
-      size: "2.4 MB",
-    },
-    {
-      title: "PMK No. 168/PMK.03/2023",
-      category: "Peraturan Menteri",
-      desc: "Petunjuk Teknis Pemotongan Pajak atas Penghasilan Pasal 21 (TER).",
-      size: "1.8 MB",
-    },
-    {
-      title: "Panduan Teknis Transisi Coretax DJP 2026",
-      category: "Panduan Resmi",
-      desc: "SOP Deposit Pajak, e-Bupot unifikasi, dan administrasi akun wajib pajak.",
-      size: "3.5 MB",
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    setRegulations(getStoredRegulations());
+    setKmkData(getStoredKmkRates());
+
+    const handleRegUpdate = (e: Event) => {
+      const custom = e as CustomEvent<StoredRegulationItem[]>;
+      if (custom.detail) {
+        setRegulations(custom.detail);
+      } else {
+        setRegulations(getStoredRegulations());
+      }
+    };
+
+    const handleKmkUpdate = () => {
+      setKmkData(getStoredKmkRates());
+    };
+
+    window.addEventListener(REGULATIONS_EVENT, handleRegUpdate);
+    window.addEventListener(KMK_RATES_EVENT, handleKmkUpdate);
+
+    // Fetch live backend regulations
+    publicApi
+      .getRegulations()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiRegs: StoredRegulationItem[] = res.data.map((item: RegulationItem) => ({
+            id: `BE-${item.id}`,
+            docNumber: item.title,
+            title: item.title,
+            category: "Peraturan Menteri",
+            effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            scope: item.regulation_type || "Regulasi kepatuhan perpajakan nasional.",
+            fileSize: item.file_size || "1.2 MB",
+            status: "Berlaku",
+            downloadUrl: item.file_path || "#",
+          }));
+
+          setRegulations((prev) => {
+            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
+            return [...apiRegs, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getRegulations fallback in RegulationsSection:", err);
+      });
+
+    // Fetch live backend tax rates
+    publicApi
+      .getLatestTaxRates()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedRates = res.data.map((r: TaxRateItem) => ({
+            currency: r.currency_code,
+            name: r.currency_code === "USD" ? "Dolar Amerika Serikat" : r.currency_code,
+            rate: `Rp ${Number(r.rate_value).toLocaleString("id-ID")},00`,
+            change: "+0,00%",
+            trend: "flat" as const,
+          }));
+
+          setKmkData((prev) => ({
+            ...prev,
+            kmkNumber: `KMK No. ${new Date().getFullYear()}`,
+            period: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
+            rates: mappedRates,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getLatestTaxRates fallback in RegulationsSection:", err);
+      });
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(REGULATIONS_EVENT, handleRegUpdate);
+      window.removeEventListener(KMK_RATES_EVENT, handleKmkUpdate);
+    };
+  }, []);
+
+  const displayRegulations = regulations.slice(0, 3);
 
   return (
     <section
@@ -119,12 +146,16 @@ export function RegulationsSection() {
                     <h3 className="text-sm font-bold text-primary">
                       Kurs Menteri Keuangan (KMK)
                     </h3>
-                    <Badge variant="secondary" size="sm">
-                      KMK No. 38/KM.10/2026
-                    </Badge>
+                    {kmkData.kmkNumber && kmkData.kmkNumber !== "-" && (
+                      <Badge variant="secondary" size="sm">
+                        {kmkData.kmkNumber}
+                      </Badge>
+                    )}
                   </div>
                   <span className="text-xs text-text-secondary mt-0.5 block">
-                    Periode Aktif: 10 September – 16 September 2026
+                    {kmkData.period && kmkData.period !== "-"
+                      ? `Periode Aktif: ${kmkData.period}`
+                      : "Pembaruan kurs mingguan resmi Kemenkeu"}
                   </span>
                 </div>
               </div>
@@ -139,30 +170,38 @@ export function RegulationsSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {taxRates.map((item) => (
-                    <TableRow key={item.currency} className="hover:bg-surface/50">
-                      <TableCell className="py-3 px-5 font-bold text-primary">
-                        {item.currency}
-                      </TableCell>
-                      <TableCell className="py-3 px-5 text-text-secondary text-xs">
-                        {item.name}
-                      </TableCell>
-                      <TableCell className="py-3 px-5 text-right font-semibold text-text">
-                        {item.rate}
-                      </TableCell>
-                      <TableCell className="py-3 px-5 text-right text-xs">
-                        <span
-                          className={
-                            item.status === "up"
-                              ? "text-success font-semibold inline-flex items-center gap-1"
-                              : "text-text-secondary font-medium inline-flex items-center gap-1"
-                          }
-                        >
-                          {item.change}
-                        </span>
+                  {kmkData.rates.length > 0 ? (
+                    kmkData.rates.map((item) => (
+                      <TableRow key={item.currency} className="hover:bg-surface/50">
+                        <TableCell className="py-3 px-5 font-bold text-primary">
+                          {item.currency}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                          {item.name}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                          {item.rate}
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right text-xs">
+                          <span
+                            className={
+                              item.trend === "up"
+                                ? "text-success font-semibold inline-flex items-center gap-1"
+                                : "text-text-secondary font-medium inline-flex items-center gap-1"
+                            }
+                          >
+                            {item.change}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-10 text-xs text-text-secondary">
+                        Belum ada penetapan kurs pajak KMK periode terbaru oleh admin.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -205,26 +244,38 @@ export function RegulationsSection() {
               <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
                 {t.regulations.docTitle}
               </span>
-              {regulations.map((reg, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-lg bg-white border border-primary-light flex items-start justify-between gap-3 text-xs hover:border-silver transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-primary">
-                        {reg.title}
-                      </span>
+              {displayRegulations.length > 0 ? (
+                displayRegulations.map((reg) => (
+                  <div
+                    key={reg.id}
+                    className="p-3.5 rounded-lg bg-white border border-primary-light flex items-start justify-between gap-3 text-xs hover:border-silver transition-colors"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-primary">
+                          {reg.docNumber || reg.title}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-secondary leading-normal line-clamp-2">
+                        {reg.title !== reg.docNumber ? reg.title : reg.scope}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-text-secondary leading-normal">
-                      {reg.desc}
-                    </p>
+                    <Badge variant="outline" size="sm" className="whitespace-nowrap flex-shrink-0">
+                      {reg.fileSize || "PDF"}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" size="sm" className="whitespace-nowrap flex-shrink-0">
-                    {reg.size}
-                  </Badge>
+                ))
+              ) : (
+                <div className="p-6 rounded-lg bg-white border border-primary-light text-center space-y-2">
+                  <DocumentIcon className="mx-auto text-silver text-2xl" />
+                  <p className="text-xs font-medium text-text-secondary">
+                    Belum ada dokumen regulasi yang dipublikasikan.
+                  </p>
+                  <p className="text-[11px] text-text-muted">
+                    Regulasi resmi akan tampil otomatis setelah ditambahkan oleh admin melalui dashboard.
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row gap-2">
@@ -262,4 +313,3 @@ export function RegulationsSection() {
     </section>
   );
 }
-

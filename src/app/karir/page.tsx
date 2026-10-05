@@ -7,6 +7,7 @@ import {
   DEFAULT_CAREER_SETTINGS,
   getStoredCareerSettings,
   CAREER_SETTINGS_EVENT,
+  JobPosition,
 } from "@/data/karirStorage";
 import { publicApi, CareerItem } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
@@ -51,156 +52,7 @@ import {
   UserIcon,
 } from "@/components/icons";
 
-interface JobPosition {
-  id: string;
-  title: string;
-  department: string;
-  deptKey: "all" | "tax" | "accounting" | "legal";
-  type: string;
-  location: string;
-  experience: string;
-  compensation: string;
-  summary: string;
-  responsibilities: string[];
-  qualifications: string[];
-  benefits: string[];
-  skills: string[];
-}
-
-const CAREER_JOBS: JobPosition[] = [
-  {
-    id: "senior-tax-coretax",
-    title: "Senior Tax Consultant (Coretax & SP2DK Specialist)",
-    department: "Tax Service Core",
-    deptKey: "tax",
-    type: "Full-Time (Hybrid)",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 3-5 tahun di KKP/KAP",
-    compensation: "Kompensasi Kompetitif + Tunjangan Kinerja & BPJS",
-    summary:
-      "Memimpin audit kepatuhan SPT Masa & Tahunan badan, memandu migrasi data klien ke ekosistem Coretax DJP 2026, dan mendampingi klarifikasi SP2DK hingga pemeriksaan DJP.",
-    responsibilities: [
-      "Mengelola portofolio kepatuhan perpajakan berkala (PPh 21/26, PPh 23/26, PPh Final, dan PPN) untuk klien multi-sektor.",
-      "Memimpin simulasi dan asistensi migrasi data perpajakan korporat ke sistem Coretax DJP 2026.",
-      "Menyusun tanggapan resmi dan strategi klarifikasi Surat Permintaan Penjelasan atas Data dan/atau Keterangan (SP2DK).",
-      "Melakukan review ekualisasi omzet vs DPP PPN dan biaya vs objek PPh pemotongan/pemungutan.",
-      "Membimbing associate junior dalam penyiapan kertas kerja kepatuhan dan rekonsiliasi fiskal.",
-    ],
-    qualifications: [
-      "Pendidikan minimal S1 Akuntansi atau Perpajakan dari universitas terakreditasi.",
-      "Memiliki sertifikasi Brevet Pajak AB & C, diutamakan memiliki sertifikat BKP (Konsultan Pajak).",
-      "Pengalaman kerja minimal 3-5 tahun di Kantor Konsultan Pajak (KKP) atau KAP ternama.",
-      "Menguasai regulasi terbaru UU HPP, PMK 81/2024, dan alur administrasi Coretax DJP.",
-      "Memiliki integritas tinggi, kemampuan komunikasi analitis, dan kemampuan representasi klien.",
-    ],
-    benefits: [
-      "Fasilitas pembiayaan berkelanjutan untuk sertifikasi profesi USKP & PPL berlisensi IKPI.",
-      "Skema kerja fleksibel hybrid (3 hari kantor / 2 hari remote).",
-      "Asuransi kesehatan swasta dan BPJS Ketenagakerjaan lengkap.",
-      "Bonus kinerja berbasis keberhasilan penanganan penugasan advisory korporat.",
-    ],
-    skills: ["Coretax DJP 2026", "Mitigasi SP2DK", "Brevet AB / BKP", "Tax Planning", "Ekualisasi SPT"],
-  },
-  {
-    id: "junior-auditor-sak",
-    title: "Junior Auditor & Financial Reporting Specialist",
-    department: "Accounting Service",
-    deptKey: "accounting",
-    type: "Full-Time (On-Site)",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 1-2 tahun / Fresh Graduate Berprestasi",
-    compensation: "Gaji Pokok + Uang Makan, Transport & BPJS",
-    summary:
-      "Bertanggung jawab atas kompilasi laporan keuangan terstandar SAK EP/IFRS, rekonsiliasi bank multi-rekening, penataan bagan akun (COA), dan asistensi kertas kerja audit KAP.",
-    responsibilities: [
-      "Menjalankan penjurnalan transaksi berpasangan harian dan rekonsiliasi rekening koran perbankan multi-valuta.",
-      "Menyusun laporan posisi keuangan, laba rugi komprehensif, dan arus kas sesuai SAK Entitas Privat (SAK EP).",
-      "Melakukan review periodik atas bagan akun standar (Chart of Accounts) klien korporat.",
-      "Menyiapkan dokumen pendukung dan kertas kerja asistensi pemeriksaan auditor eksternal (KAP).",
-      "Melakukan inventarisasi aset tetap dan perhitungan amortisasi/penyusutan fiskal vs komersial.",
-    ],
-    qualifications: [
-      "S1 Akuntansi dengan IPK minimal 3.20 dari universitas terkemuka.",
-      "Memahami standar akuntansi keuangan (SAK EP, SAK EMKM, dan pengenalan IFRS).",
-      "Mahir mengoperasikan software akuntansi korporat (Accurate, Zahir, SAP, atau Xero) dan Advanced Excel.",
-      "Memiliki pemahaman dasar mengenai keterkaitan jurnal akuntansi komersial dengan penyesuaian fiskal.",
-      "Teliti, disiplin terhadap tenggat waktu pelaporan bulanan, dan memiliki etika kerja tinggi.",
-    ],
-    benefits: [
-      "Dukungan pendaftaran dan pembiayaan ujian profesi Chartered Accountant (CA) & BAP.",
-      "Program mentoring intensif 1-on-1 bersama Akuntan Beregister CA dan Partner Senior.",
-      "Lingkungan kerja kolaboratif di kawasan sentra bisnis Sudirman, Jakarta Selatan.",
-      "Jenjang karir transparan menuju posisi Senior Financial Analyst dalam 2 tahun.",
-    ],
-    skills: ["SAK EP / IFRS", "Bank Reconciliation", "COA Review", "General Ledger", "Kertas Kerja KAP"],
-  },
-  {
-    id: "corporate-legal-contract",
-    title: "Corporate Legal & Contract Specialist",
-    department: "Legal Services",
-    deptKey: "legal",
-    type: "Full-Time (Hybrid)",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 2-3 tahun di Law Firm / Legal Korporat",
-    compensation: "Kompensasi Kompetitif + Tunjangan Legal & BPJS",
-    summary:
-      "Menangani drafting & telaah kontrak komersial korporat, perizinan berusaha OSS-RBA, kepatuhan ketenagakerjaan, serta audit tata kelola kepatuhan UU PDP No. 27 Tahun 2022.",
-    responsibilities: [
-      "Menyusun dan menelaah (drafting & reviewing) kontrak bisnis, perjanjian kerja sama (MOU), NDA, dan perjanjian kerja.",
-      "Mengurus perizinan berusaha berbasis risiko melalui sistem Online Single Submission (OSS-RBA) dan AHU Kemenkumham.",
-      "Melakukan audit kepatuhan korporat terhadap regulasi ketenagakerjaan (PP/PKB) dan UU Pelindungan Data Pribadi (UU PDP).",
-      "Menyusun legal opinion dan memo analisis risiko hukum atas restrukturisasi bisnis atau merger & akuisisi klien.",
-      "Berkoordinasi dengan instansi pemerintah, notaris, dan mitra hukum eksternal.",
-    ],
-    qualifications: [
-      "Pendidikan S1 Ilmu Hukum (Sarjana Hukum) dari perguruan tinggi terakreditasi A.",
-      "Pengalaman kerja 2-3 tahun di Law Firm korporat atau divisi legal entitas swasta skala menengah-besar.",
-      "Telah lulus Pendidikan Khusus Profesi Advokat (PKPA) dan Ujian Profesi Advokat (UPA) merupakan nilai plus.",
-      "Memiliki pemahaman mendalam tentang hukum perseroan terbatas (UU PT), ketenagakerjaan, dan OSS-RBA.",
-      "Kemampuan legal drafting dalam bahasa Indonesia dan bahasa Inggris secara lugas dan teliti.",
-    ],
-    benefits: [
-      "Dukungan keanggotaan organisasi profesi advokat (PERADI) dan continuing legal education.",
-      "Fasilitas kerja hybrid dengan fleksibilitas koordinasi dokumen digital.",
-      "Asuransi kesehatan komprehensif rawat inap & jalan.",
-      "Eksposur penanganan transaksi komersial strategis lintas industri.",
-    ],
-    skills: ["Corporate Contract", "OSS-RBA", "UU PDP 2022", "Legal Due Diligence", "Perizinan Korporat"],
-  },
-  {
-    id: "tax-compliance-associate",
-    title: "Tax Compliance Associate (PPh & PPN)",
-    department: "Tax Service Core",
-    deptKey: "tax",
-    type: "Full-Time (On-Site)",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 1 tahun / Fresh Graduate Brevet A/B",
-    compensation: "Gaji Pokok + Uang Makan & BPJS Ketenagakerjaan",
-    summary:
-      "Menangani administrasi teknis operasional perpajakan klien: pembuatan faktur pajak e-Faktur PPN, kalkulasi pemotongan PPh Pasal 21 skema TER, dan pengelolaan bukti potong unifikasi.",
-    responsibilities: [
-      "Mengelola penerbitan dan rekonsiliasi faktur pajak keluaran dan masukan pada aplikasi e-Faktur DJP.",
-      "Menghitung pemotongan PPh Pasal 21 pegawai tetap & bukan pegawai menggunakan skema Tarif Efektif Rata-rata (TER).",
-      "Menerbitkan bukti pemotongan PPh Unifikasi (PPh 23, 22, 15, dan PPh Final Pasal 4 ayat 2) melalui e-Bupot.",
-      "Membuat kode billing pembayaran pajak (e-Billing) dan memverifikasi Bukti Penerimaan Negara (BPN).",
-      "Menyiapkan draft SPT Masa dan mengarsipkan Bukti Penerimaan Elektronik (BPE) resmi DJP.",
-    ],
-    qualifications: [
-      "Pendidikan D3 / S1 Perpajakan atau Akuntansi.",
-      "Memiliki sertifikat Brevet Pajak A & B terverifikasi.",
-      "Memahami skema TER PMK 168/2023 dan alur kepatuhan SPT Masa PPh & PPN.",
-      "Terampil mengoperasikan sistem DJP Online, e-Faktur, dan e-Bupot Unifikasi.",
-      "Disiplin terhadap tenggat waktu pelaporan tanggal 20 dan akhir bulan fiskal.",
-    ],
-    benefits: [
-      "Pelatihan langsung dan workshop berkala simulasi operasional sistem Coretax 2026.",
-      "Jalur karir terstruktur menuju posisi Junior Tax Consultant dalam 18 bulan.",
-      "Tunjangan lembur pada periode puncak pelaporan SPT Masa/Tahunan.",
-      "Paket perlindungan BPJS Kesehatan dan BPJS Ketenagakerjaan resmi.",
-    ],
-    skills: ["TER PMK 168", "e-Bupot Unifikasi", "e-Faktur PPN", "e-Billing DJP", "SPT Masa"],
-  },
-];
+const CAREER_JOBS: JobPosition[] = [];
 
 export default function CareerPage() {
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
@@ -214,7 +66,11 @@ export default function CareerPage() {
   // Sync Career Settings with localStorage on mount & events + fetch Backend Careers
   useEffect(() => {
     let isMounted = true;
-    setCareerSettings(getStoredCareerSettings());
+    const currentSettings = getStoredCareerSettings();
+    setCareerSettings(currentSettings);
+    if (currentSettings.positions && currentSettings.positions.length > 0) {
+      setJobsList(currentSettings.positions);
+    }
 
     // Fetch live careers from Backend API
     publicApi
@@ -279,7 +135,11 @@ export default function CareerPage() {
       });
 
     const handleCareerUpdate = () => {
-      setCareerSettings(getStoredCareerSettings());
+      const updated = getStoredCareerSettings();
+      setCareerSettings(updated);
+      if (updated.positions && updated.positions.length > 0) {
+        setJobsList(updated.positions);
+      }
     };
 
     window.addEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
@@ -575,7 +435,15 @@ export default function CareerPage() {
                 </div>
 
                 {/* Grid Kartu Lowongan Kerja */}
-                {filteredJobs.length === 0 ? (
+                {jobsList.length === 0 ? (
+                  <div className="p-8 rounded-lg bg-white border border-primary-light text-center space-y-3">
+                    <BriefcaseIcon className="text-2xl text-text-secondary mx-auto opacity-50" />
+                    <h3 className="text-sm font-bold text-primary">Belum Ada Lowongan Aktif</h3>
+                    <p className="text-xs text-text-secondary max-w-md mx-auto">
+                      Saat ini belum ada formasi lowongan kerja aktif yang dibuka. Silakan pantau pembaruan berkala saat posisi baru telah diunggah oleh admin.
+                    </p>
+                  </div>
+                ) : filteredJobs.length === 0 ? (
                   <div className="p-8 rounded-lg bg-white border border-primary-light text-center space-y-3">
                     <BriefcaseIcon className="text-2xl text-text-secondary mx-auto opacity-50" />
                     <h3 className="text-sm font-bold text-primary">Tidak Ada Posisi yang Sesuai</h3>
@@ -709,7 +577,7 @@ export default function CareerPage() {
                 </div>
               </div>
               <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-                Tim People &amp; Culture kami akan melakukan penelaahan berkas dalam waktu 3–5 hari kerja. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
+                Tim People &amp; Culture kami akan melakukan penelaahan berkas dalam waktu 3-5 hari kerja. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
               </p>
               <div className="pt-2 flex justify-center gap-3">
                 <Button
@@ -1055,47 +923,53 @@ export default function CareerPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
-                    Tanggung Jawab Utama
-                  </h4>
-                  <ul className="space-y-1.5 text-text-secondary">
-                    {selectedJobModal.responsibilities.map((resp, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckIcon className="text-success text-xs mt-0.5 shrink-0" />
-                        <span className="leading-relaxed">{resp}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {selectedJobModal.responsibilities && selectedJobModal.responsibilities.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
+                      Tanggung Jawab Utama
+                    </h4>
+                    <ul className="space-y-1.5 text-text-secondary">
+                      {selectedJobModal.responsibilities.map((resp, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckIcon className="text-success text-xs mt-0.5 shrink-0" />
+                          <span className="leading-relaxed">{resp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <div className="space-y-2">
-                  <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
-                    Kualifikasi &amp; Persyaratan
-                  </h4>
-                  <ul className="space-y-1.5 text-text-secondary">
-                    {selectedJobModal.qualifications.map((qual, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckIcon className="text-primary text-xs mt-0.5 shrink-0" />
-                        <span className="leading-relaxed">{qual}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {selectedJobModal.qualifications && selectedJobModal.qualifications.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
+                      Kualifikasi &amp; Persyaratan
+                    </h4>
+                    <ul className="space-y-1.5 text-text-secondary">
+                      {selectedJobModal.qualifications.map((qual, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckIcon className="text-primary text-xs mt-0.5 shrink-0" />
+                          <span className="leading-relaxed">{qual}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <div className="space-y-2">
-                  <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
-                    Fasilitas &amp; Benefit Karyawan
-                  </h4>
-                  <ul className="space-y-1.5 text-text-secondary">
-                    {selectedJobModal.benefits.map((ben, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckIcon className="text-success text-xs mt-0.5 shrink-0" />
-                        <span className="leading-relaxed">{ben}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {selectedJobModal.benefits && selectedJobModal.benefits.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-primary text-xs uppercase tracking-wider">
+                      Fasilitas &amp; Benefit Karyawan
+                    </h4>
+                    <ul className="space-y-1.5 text-text-secondary">
+                      {selectedJobModal.benefits.map((ben, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <CheckIcon className="text-success text-xs mt-0.5 shrink-0" />
+                          <span className="leading-relaxed">{ben}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="pt-3 border-t border-primary-light flex items-center justify-between gap-3">

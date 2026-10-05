@@ -3,25 +3,43 @@
  * Memungkinkan Admin mengontrol apakah lowongan dibuka atau ditutup, serta mengubah teks pesan statis.
  */
 
+export interface JobPosition {
+  id: string;
+  title: string;
+  department: string;
+  deptKey: "all" | "tax" | "accounting" | "legal";
+  type: string;
+  location: string;
+  experience: string;
+  compensation?: string;
+  summary: string;
+  skills: string[];
+  responsibilities?: string[];
+  qualifications?: string[];
+  benefits?: string[];
+}
+
 export interface CareerSettings {
   isOpen: boolean; // true = buka lowongan, false = tidak membuka lowongan
   closedTitle: string; // Judul pengumuman statis saat lowongan belum dibuka
   closedMessage: string; // Deskripsi pesan statis
   closedPeriodNote: string; // Catatan periode / estimasi pembukaan kembali
   lastUpdated: string; // Tanggal pembaruan terakhir
+  positions?: JobPosition[]; // Daftar posisi lowongan aktif yang diinput admin
 }
 
-export const CAREER_SETTINGS_STORAGE_KEY = "zhou_career_settings_data";
+export const CAREER_SETTINGS_STORAGE_KEY = "zhou_career_settings_data_v2";
 export const CAREER_SETTINGS_EVENT = "zhou_career_settings_updated";
 
 export const DEFAULT_CAREER_SETTINGS: CareerSettings = {
-  isOpen: true,
+  isOpen: false,
   closedTitle: "Lowongan Periode Ini Belum Dibuka",
   closedMessage:
     "Saat ini seluruh posisi di Zhou Consulting telah terisi dan belum ada lowongan baru yang dibuka untuk publik. Silakan pantau halaman ini secara berkala untuk pembaruan jadwal rekrutmen berikutnya.",
   closedPeriodNote:
-    "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun LinkedIn Zhou Consulting.",
-  lastUpdated: "24 September 2026",
+    "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun media sosial resmi Zhou Consulting.",
+  lastUpdated: "-",
+  positions: [],
 };
 
 /**
@@ -35,10 +53,6 @@ export function getStoredCareerSettings(): CareerSettings {
   try {
     const raw = localStorage.getItem(CAREER_SETTINGS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(
-        CAREER_SETTINGS_STORAGE_KEY,
-        JSON.stringify(DEFAULT_CAREER_SETTINGS)
-      );
       return DEFAULT_CAREER_SETTINGS;
     }
     return JSON.parse(raw) as CareerSettings;
@@ -72,10 +86,6 @@ export function resetStoredCareerSettings(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(CAREER_SETTINGS_STORAGE_KEY);
-    localStorage.setItem(
-      CAREER_SETTINGS_STORAGE_KEY,
-      JSON.stringify(DEFAULT_CAREER_SETTINGS)
-    );
     window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
   } catch (error) {
     console.error("Gagal mereset zhou_career_settings:", error);
