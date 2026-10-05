@@ -728,25 +728,6 @@ export default function SuperadminUsersPage() {
                 </div>
               </div>
 
-              <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-2">
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={newStaffForm.twoFactorEnabled}
-                    onChange={(e) =>
-                      setNewStaffForm((prev) => ({ ...prev, twoFactorEnabled: e.target.checked }))
-                    }
-                    className="rounded border-primary-light text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-xs font-semibold text-primary">
-                    Wajibkan Autentikasi Dua Faktor (2FA OTP via WhatsApp/Email)
-                  </span>
-                </label>
-                <p className="text-[10px] text-text-muted pl-6.5">
-                  Staf wajib melakukan verifikasi OTP pada setiap sesi login sesuai standar kepatuhan UU PDP No. 27/2022.
-                </p>
-              </div>
-
               <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2">
                 <Button
                   type="button"
