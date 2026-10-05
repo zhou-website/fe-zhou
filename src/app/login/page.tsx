@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/AuthContext";
 import { GoogleAuthModal, GoogleAuthAccount } from "@/components/auth/GoogleAuthModal";
 import {
@@ -27,7 +26,6 @@ function LoginFormContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<"user" | "admin" | "superadmin">("user");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
@@ -40,8 +38,8 @@ function LoginFormContent() {
 
     try {
       const res = await loginWithApi(
-        email || "klien@perusahaan.com",
-        password || "Client123!",
+        email.trim(),
+        password,
         redirectParam
       );
 
@@ -56,28 +54,13 @@ function LoginFormContent() {
     }
   };
 
-  const handleQuickLogin = (role: "user" | "admin" | "superadmin") => {
-    setSelectedRole(role);
-    setErrorMessage("");
-    if (role === "user") {
-      setEmail("klien@perusahaan.com");
-      setPassword("Client123!");
-    } else if (role === "admin") {
-      setEmail("admin@zhouconsulting.com");
-      setPassword("Admin123!");
-    } else {
-      setEmail("superadmin@zhouconsulting.com");
-      setPassword("SuperAdmin123!");
-    }
-  };
-
   const handleGoogleLogin = () => {
     setIsGoogleModalOpen(true);
   };
 
   const handleGoogleSuccess = (account: GoogleAuthAccount) => {
     setIsGoogleLoading(true);
-    login(account.email, account.role || selectedRole, redirectParam, {
+    login(account.email, account.role || "user", redirectParam, {
       name: account.name,
       company: account.company,
       avatarText: account.avatarText,
@@ -139,52 +122,6 @@ function LoginFormContent() {
           )}
 
 
-          {/* Quick RBAC Role Switcher (Akses Cepat Demo) */}
-          <div className="p-3.5 rounded-xl bg-surface border border-primary-light space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary">
-                Akses Instan Peran (Demo RBAC):
-              </span>
-              <Badge variant="silver" className="text-[10px]">
-                {selectedRole === "user" ? "Klien" : selectedRole === "admin" ? "Staff Admin" : "Superadmin"}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("user")}
-                className={`py-2 px-2.5 rounded-lg font-semibold transition-all cursor-pointer active:scale-[0.98] ${
-                  selectedRole === "user"
-                    ? "bg-primary text-white shadow-xs"
-                    : "bg-white border border-primary-light text-text-secondary hover:text-primary hover:bg-surface"
-                }`}
-              >
-                Klien
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("admin")}
-                className={`py-2 px-2.5 rounded-lg font-semibold transition-all cursor-pointer active:scale-[0.98] ${
-                  selectedRole === "admin"
-                    ? "bg-primary text-white shadow-xs"
-                    : "bg-white border border-primary-light text-text-secondary hover:text-primary hover:bg-surface"
-                }`}
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin("superadmin")}
-                className={`py-2 px-2.5 rounded-lg font-semibold transition-all cursor-pointer active:scale-[0.98] ${
-                  selectedRole === "superadmin"
-                    ? "bg-primary text-white shadow-xs"
-                    : "bg-white border border-primary-light text-text-secondary hover:text-primary hover:bg-surface"
-                }`}
-              >
-                Superadmin
-              </button>
-            </div>
-          </div>
 
           {/* Error Notice jika autentikasi backend gagal */}
           {errorMessage && (
@@ -313,7 +250,7 @@ function LoginFormContent() {
             isOpen={isGoogleModalOpen}
             onClose={() => setIsGoogleModalOpen(false)}
             onSuccess={handleGoogleSuccess}
-            targetRole={selectedRole}
+            targetRole="user"
           />
 
           {/* Footer disclaimer */}
