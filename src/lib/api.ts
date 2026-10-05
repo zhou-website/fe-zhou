@@ -175,6 +175,15 @@ export interface LoginResponseData {
   user: UserProfileResponse;
 }
 
+export interface GoogleAuthResponseData {
+  token: string;
+  user?: UserProfileResponse;
+}
+
+export interface GoogleAuthPayload {
+  credential: string;
+}
+
 export const authApi = {
   register: (payload: RegisterPayload) =>
     apiFetch<UserProfileResponse>("/api/v1/auth/register", {
@@ -190,12 +199,14 @@ export const authApi = {
       skipAuth: true,
     }),
 
-  google: (token: string) =>
-    apiFetch<LoginResponseData>("/api/v1/auth/google", {
+  google: (payload: GoogleAuthPayload | { credential: string } | string) => {
+    const credential = typeof payload === "string" ? payload : payload.credential;
+    return apiFetch<GoogleAuthResponseData>("/api/v1/auth/google", {
       method: "POST",
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ credential }),
       skipAuth: true,
-    }),
+    });
+  },
 
   forgotPassword: (email: string) =>
     apiFetch("/api/v1/auth/forgot-password", {

@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
-import { GoogleAuthModal, GoogleAuthAccount } from "@/components/auth/GoogleAuthModal";
+import { authApi, setAuthToken } from "@/lib/api";
 import {
   LockIcon,
   EnvelopeIcon,
@@ -17,6 +17,7 @@ import {
 } from "@/components/icons";
 
 function LoginFormContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect");
   const { login, loginWithApi } = useAuth();
@@ -27,8 +28,8 @@ function LoginFormContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,19 +54,101 @@ function LoginFormContent() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    setIsGoogleModalOpen(true);
-  };
+  const handleGoogleCredentialResponse = React.useCallback(
+    async (response: { credential?: string }) => {
+      if (!response?.credential) {
+        setErrorMessage("Kredensial login Google tidak ditemukan.");
+        return;
+      }
 
-  const handleGoogleSuccess = (account: GoogleAuthAccount) => {
-    setIsGoogleLoading(true);
-    login(account.email, account.role || "user", redirectParam, {
-      name: account.name,
-      company: account.company,
-      avatarText: account.avatarText,
-      avatarUrl: account.avatarUrl,
-      provider: "google",
-    });
+      setIsGoogleLoading(true);
+      setErrorMessage("");
+
+      try {
+        // Kirim ID Token (credential) hasil login Google ke Backend
+        const res = await authApi.google({ credential: response.credential });
+
+        if (res.success && res.data?.token) {
+          // Simpan token JWT dari response backend
+          localStorage.setItem("token", res.data.token);
+          setAuthToken(res.data.token);
+
+          if (res.data.user) {
+            const role = (res.data.user.role?.toLowerCase() === "superadmin"
+              ? "superadmin"
+              : res.data.user.role?.toLowerCase() === "admin"
+              ? "admin"
+              : "user") as "user" | "admin" | "superadmin";
+
+            login(res.data.user.email, role, redirectParam || "/dashboard", {
+              name: res.data.user.name,
+              company: res.data.user.company_name,
+              avatarUrl: res.data.user.avatar_url || undefined,
+              provider: "google",
+              token: res.data.token,
+            });
+          } else {
+            // Redirect ke dashboard
+            router.push(redirectParam || "/dashboard");
+          }
+        } else {
+          setErrorMessage(
+            res.message || "Gagal melakukan autentikasi Google dengan server backend."
+          );
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat memverifikasi autentikasi Google.";
+        setErrorMessage(message);
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    [login, redirectParam, router]
+  );
+
+  useEffect(() => {
+    const initGoogle = () => {
+      if (typeof window === "undefined" || !window.google?.accounts?.id) return;
+      const clientId =
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+        "437117810752-udkb6njkiujm5md6b5v1o145celqes9m.apps.googleusercontent.com";
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse,
+        cancel_on_tap_outside: true,
+      });
+
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: "outline",
+          size: "large",
+          width: 380,
+          text: "signin_with",
+        });
+      }
+    };
+
+    if (typeof window !== "undefined" && window.google?.accounts?.id) {
+      initGoogle();
+    } else {
+      const timer = setInterval(() => {
+        if (typeof window !== "undefined" && window.google?.accounts?.id) {
+          clearInterval(timer);
+          initGoogle();
+        }
+      }, 200);
+      return () => clearInterval(timer);
+    }
+  }, [handleGoogleCredentialResponse]);
+
+  const handleGoogleLogin = () => {
+    if (typeof window !== "undefined" && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    }
   };
 
   return (
@@ -225,32 +308,32 @@ function LoginFormContent() {
           </div>
 
           {/* Google OAuth Button */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isLoading || isGoogleLoading}
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-primary-light hover:bg-surface text-xs font-semibold text-text transition-all shadow-xs cursor-pointer active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-          >
-            {isGoogleLoading ? (
-              <span className="flex items-center gap-2">
-                <span className="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-primary border-t-transparent" />
-                <span>Menghubungkan akun Google...</span>
-              </span>
-            ) : (
-              <>
-                <GoogleColorIcon className="w-4 h-4" />
-                <span>Masuk dengan Google</span>
-              </>
-            )}
-          </button>
-
-          {/* Google Authentication Account Picker Modal */}
-          <GoogleAuthModal
-            isOpen={isGoogleModalOpen}
-            onClose={() => setIsGoogleModalOpen(false)}
-            onSuccess={handleGoogleSuccess}
-            targetRole="user"
-          />
+          <div className="relative w-full">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isLoading || isGoogleLoading}
+              className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-primary-light hover:bg-surface text-xs font-semibold text-text transition-all shadow-xs cursor-pointer active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+            >
+              {isGoogleLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="inline-block animate-spin rounded-full h-3.5 w-3.5 border-2 border-primary border-t-transparent" />
+                  <span>Menghubungkan akun Google...</span>
+                </span>
+              ) : (
+                <>
+                  <GoogleColorIcon className="w-4 h-4" />
+                  <span>Masuk dengan Google</span>
+                </>
+              )}
+            </button>
+            <div
+              ref={googleBtnRef}
+              className="absolute inset-0 opacity-0 overflow-hidden cursor-pointer pointer-events-auto flex items-center justify-center [&>div]:w-full [&>div]:h-full [&_iframe]:w-full! [&_iframe]:h-full!"
+              aria-hidden="true"
+              title="Masuk dengan Google"
+            />
+          </div>
 
           {/* Footer disclaimer */}
           <div className="pt-2 text-center text-[11px] text-text-secondary border-t border-primary-light/60">
