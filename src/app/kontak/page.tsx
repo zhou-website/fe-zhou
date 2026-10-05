@@ -114,9 +114,6 @@ export default function ContactPage() {
             </nav>
 
             <div className="max-w-3xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Saluran Resmi
-              </Badge>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Hubungi Kantor Pusat Zhou Consulting
               </h1>

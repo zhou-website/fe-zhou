@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/context/LanguageContext";
 
 export function AboutSection() {
@@ -15,16 +14,8 @@ export function AboutSection() {
     >
       <div className="container-custom">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Sisi Kiri: Badge, Headline Utama */}
+          {/* Sisi Kiri: Headline Utama */}
           <div className="lg:col-span-6 space-y-5">
-            <div className="inline-flex items-center gap-2">
-              <Badge
-                variant="silver"
-                className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
-              >
-                {t.about.badge}
-              </Badge>
-            </div>
 
             <h2 className="text-[18px] leading-[28px] sm:text-[20px] sm:leading-[32px] lg:text-[22px] lg:leading-[36px] font-medium text-primary tracking-tight text-balance">
               {t.about.headline}

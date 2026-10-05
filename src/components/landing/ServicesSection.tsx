@@ -31,9 +31,6 @@ export function ServicesSection() {
       <div className="container-custom space-y-10 md:space-y-12">
         {/* Section Header */}
         <div className="max-w-3xl space-y-3">
-          <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-            {t.services.badge}
-          </Badge>
           <h2 className="text-[22px] leading-[30px] sm:text-[26px] sm:leading-[34px] lg:text-[32px] lg:leading-[40px] font-bold text-primary tracking-tight text-balance">
             {t.services.headline}
           </h2>

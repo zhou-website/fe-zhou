@@ -176,12 +176,6 @@ export function CareerSection() {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="max-w-3xl space-y-3">
-            <Badge
-              variant="silver"
-              className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
-            >
-              <span>{t.career.badge}</span>
-            </Badge>
             <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
               {t.career.headline}
             </h2>

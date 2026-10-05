@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingWhatsAppCTA } from "@/components/landing/FloatingWhatsAppCTA";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -143,9 +142,6 @@ export default function AccountingServicePage() {
             </nav>
 
             <div className="max-w-3xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Ruang Lingkup
-              </Badge>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Cakupan Layanan Accounting Service
               </h1>
@@ -193,9 +189,6 @@ export default function AccountingServicePage() {
         <section className="py-16 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-12">
             <div className="text-center max-w-2xl mx-auto space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Metodologi Kerja
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 4 Tahapan Sistematis Pelaksanaan Jasa Akuntansi
               </h2>
@@ -231,9 +224,6 @@ export default function AccountingServicePage() {
         <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="max-w-2xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Output Kertas Kerja
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 Luaran Nyata yang Diterima Klien
               </h2>
@@ -294,9 +284,6 @@ export default function AccountingServicePage() {
         <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom max-w-3xl space-y-10">
             <div className="text-center space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Pertanyaan Umum
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 Seputar Jasa Accounting Service
               </h2>

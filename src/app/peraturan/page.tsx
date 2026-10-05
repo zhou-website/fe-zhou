@@ -213,9 +213,6 @@ export default function PeraturanPage() {
             </nav>
 
             <div className="space-y-2">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
-                Pusat Regulasi Perpajakan
-              </Badge>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Daftar Arsip Regulasi Perpajakan Resmi
               </h1>
@@ -438,9 +435,6 @@ export default function PeraturanPage() {
         <section id="kurs-pajak" className="py-14 md:py-20 bg-white flex-1">
           <div className="container-custom space-y-6">
             <div className="space-y-2">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
-                Kurs Pajak Mingguan KMK
-              </Badge>
               <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
                 Kurs Pajak Mingguan Menteri Keuangan (KMK)
               </h2>

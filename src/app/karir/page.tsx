@@ -476,9 +476,6 @@ export default function CareerPage() {
             </nav>
 
             <div className="max-w-3xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Talenta &amp; Karir
-              </Badge>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Peluang Karir &amp; Rekrutmen Zhou Consulting
               </h1>
@@ -494,9 +491,6 @@ export default function CareerPage() {
                   <ClockIcon />
                 </div>
                 <div className="space-y-2.5">
-                  <Badge variant="silver" className="text-xs uppercase tracking-wider font-semibold py-1 px-3">
-                    Status: Rekrutmen Belum Dibuka
-                  </Badge>
                   <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
                     {careerSettings.closedTitle}
                   </h2>
@@ -743,9 +737,6 @@ export default function CareerPage() {
             <>
               <DialogHeader className="space-y-2 pb-4 border-b border-primary-light text-left">
                 <div className="flex items-center gap-2">
-                  <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-0.5 px-2.5">
-                    Pendaftaran Online
-                  </Badge>
                   {selectedJobToApply && (
                     <Badge variant="primary" size="sm" className="text-xs">
                       {selectedJobToApply.department}

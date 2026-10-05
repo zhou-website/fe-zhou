@@ -101,12 +101,6 @@ export function RegulationsSection() {
       <div className="container-custom space-y-12">
         {/* Section Header */}
         <div className="max-w-3xl space-y-3">
-          <Badge
-            variant="silver"
-            className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
-          >
-            {t.regulations.badge}
-          </Badge>
           <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight text-balance">
             {t.regulations.headline}
           </h2>

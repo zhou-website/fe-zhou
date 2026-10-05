@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon } from "@/components/icons";
 export function ContactSection() {
@@ -14,13 +13,6 @@ export function ContactSection() {
     >
       <div className="container-custom">
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <Badge
-            variant="silver"
-            className="uppercase tracking-wider text-badge font-semibold py-1 px-3"
-          >
-            Hubungi Kami
-          </Badge>
-          
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight text-balance">
             Konsultasikan Kebutuhan Bisnis Anda
           </h2>

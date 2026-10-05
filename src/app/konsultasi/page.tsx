@@ -411,12 +411,6 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
         {/* Page Header Clean */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
           <div className="space-y-1.5">
-            <Badge
-              variant="outline"
-              className="bg-primary/5 text-primary border-primary/20 text-xs px-2.5 py-0.5"
-            >
-              Layanan Permohonan Resmi
-            </Badge>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
               Reservasi Jadwal &amp; Permohonan Konsultasi Ahli
             </h1>

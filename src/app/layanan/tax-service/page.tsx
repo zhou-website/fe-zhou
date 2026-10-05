@@ -234,9 +234,6 @@ export default function TaxServicePage() {
             </nav>
 
             <div className="max-w-3xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Ruang Lingkup
-              </Badge>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Cakupan Layanan Tax Service Core
               </h1>
@@ -288,11 +285,6 @@ export default function TaxServicePage() {
         >
           <div className="container-custom space-y-12">
             <div className="max-w-3xl space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                  Modul Terintegrasi
-                </Badge>
-              </div>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 Sub-Layanan Pajak: Otomasi &amp; Administrasi Lengkap
               </h2>
@@ -373,9 +365,6 @@ export default function TaxServicePage() {
         <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-12">
             <div className="text-center max-w-2xl mx-auto space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Metodologi Kepatuhan
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 4 Langkah Sistematis Pengelolaan Perpajakan
               </h2>
@@ -411,9 +400,6 @@ export default function TaxServicePage() {
         <section className="py-16 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="max-w-2xl space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Output Kertas Kerja
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 Luaran Kepatuhan yang Diterima Klien
               </h2>
@@ -474,9 +460,6 @@ export default function TaxServicePage() {
         <section className="py-16 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom max-w-3xl space-y-10">
             <div className="text-center space-y-3">
-              <Badge variant="silver" className="uppercase tracking-wider text-badge font-semibold py-1 px-3">
-                Pertanyaan Umum
-              </Badge>
               <h2 className="text-[20px] leading-[28px] sm:text-[21px] sm:leading-[29px] lg:text-section-heading font-bold text-primary tracking-tight">
                 Seputar Layanan Tax Service Core
               </h2>
