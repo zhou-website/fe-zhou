@@ -93,7 +93,7 @@ export function SuperadminSidebar() {
 
       {/* Persistent Superadmin Sidebar (Desktop + Mobile Drawer) */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-primary-dark text-white flex flex-col justify-between border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-primary-dark text-white flex flex-col justify-between border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
