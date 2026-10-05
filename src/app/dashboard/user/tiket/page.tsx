@@ -68,236 +68,9 @@ interface Ticket {
   correspondences: Correspondence[];
 }
 
-const INITIAL_TICKETS: Ticket[] = [
-  {
-    id: "TK-2026-089",
-    title: "Pelaporan SPT Tahunan Badan 1771 & Ekualisasi Fiskal",
-    category: "Tax Service Core",
-    consultant: "Linda David, S.Ak., BKP",
-    status: "In Progress",
-    progress: 75,
-    createdAt: "12 Sep 2026",
-    estimatedCompletion: "22 Sep 2026",
-    milestones: [
-      {
-        step: "01",
-        title: "Verifikasi Berkas & Bukti Potong",
-        status: "completed",
-        date: "14 Sep 2026",
-        description: "Dokumen bukti potong 1721-A1, PPh 23, dan e-Faktur PPN telah dicocokkan 100% lengkap.",
-      },
-      {
-        step: "02",
-        title: "Analisis & Rekonsiliasi Fiskal",
-        status: "in_progress",
-        date: "17 Sep 2026",
-        description: "Penyusunan koreksi fiskal positif/negatif dan penyesuaian beban biaya non-deductible PMK 81/2024.",
-      },
-      {
-        step: "03",
-        title: "Finalisasi & Penerbitan BPE DJP",
-        status: "pending",
-        date: "Estimasi 22 Sep 2026",
-        description: "Pengiriman draft final ke manajemen PT MMS, submit formulir 1771 Coretax, dan penerbitan BPE resmi.",
-      },
-    ],
-    deliverables: [
-      {
-        name: "Kertas_Kerja_Ekualisasi_Fiskal_2026_PT_MMS.xlsx",
-        size: "2.4 MB",
-        format: "XLSX",
-        date: "16 Sep 2026",
-      },
-      {
-        name: "Draft_SPT_Tahunan_Badan_Form_1771_Review.pdf",
-        size: "4.1 MB",
-        format: "PDF",
-        date: "16 Sep 2026",
-      },
-    ],
-    correspondences: [
-      {
-        id: "msg-1",
-        sender: "Linda David, S.Ak., BKP (Lead Tax Consultant)",
-        role: "Konsultan",
-        date: "16 Sep 2026 &bull; 14:30 WIB",
-        message:
-          "Selamat siang Pak Budi. Kami telah menyelesaikan rekonsiliasi peredaran bruto dan ekualisasi PPh 21 dengan PPN. Koreksi fiskal positif atas beban natura dan representasi telah kami sesuaikan dengan regulasi PMK terbaru. Berkas kertas kerja telah diunggah untuk ditinjau.",
-      },
-      {
-        id: "msg-2",
-        sender: "Linda David, S.Ak., BKP (Lead Tax Consultant)",
-        role: "Konsultan",
-        date: "16 Sep 2026 &bull; 17:15 WIB",
-        message:
-          "Kertas kerja ekualisasi dan rekonsiliasi fiskal telah diverifikasi lengkap. Penugasan dilanjutkan ke tahap finalisasi draf pelaporan SPT Tahunan Badan Form 1771 pada sistem Coretax DJP.",
-      },
-    ],
-  },
-  {
-    id: "TK-2026-042",
-    title: "Kompilasi Laporan Keuangan Berstandar SAK EP Q2 2026",
-    category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    status: "Completed",
-    progress: 100,
-    createdAt: "18 Agu 2026",
-    estimatedCompletion: "28 Agu 2026",
-    milestones: [
-      {
-        step: "01",
-        title: "Pemeriksaan Rekening Koran & Mutasi",
-        status: "completed",
-        date: "20 Agu 2026",
-        description: "Rekonsiliasi transaksi 3 rekening bank korporat dan mutasi kas kecil.",
-      },
-      {
-        step: "02",
-        title: "Penyesuaian Jurnal Akrual & Penyusutan",
-        status: "completed",
-        date: "24 Agu 2026",
-        description: "Perhitungan depresiasi aset tetap dan penyesuaian pos beban dibayar di muka.",
-      },
-      {
-        step: "03",
-        title: "Penerbitan Laporan Audit SAK",
-        status: "completed",
-        date: "28 Agu 2026",
-        description: "Laporan Neraca, Laba Rugi, dan Arus Kas Q2 2026 disetujui tanpa catatan anomali.",
-      },
-    ],
-    deliverables: [
-      {
-        name: "Laporan_Keuangan_SAK_Q2_2026_Final_Audited.pdf",
-        size: "3.8 MB",
-        format: "PDF",
-        date: "28 Agu 2026",
-      },
-      {
-        name: "Ledger_Buku_Besar_Rekonsiliasi_Bank_Q2.xlsx",
-        size: "5.1 MB",
-        format: "XLSX",
-        date: "28 Agu 2026",
-      },
-    ],
-    correspondences: [
-      {
-        id: "msg-3",
-        sender: "Tasya Anggraeni Firdaus, SE., Ak., CA (Accounting Partner)",
-        role: "Konsultan",
-        date: "28 Agu 2026 &bull; 11:00 WIB",
-        message:
-          "Seluruh kertas kerja kompilasi laporan keuangan kuartal 2 telah selesai dan berstatus final audited. Berkas deliverable resmi siap diunduh.",
-      },
-    ],
-  },
-  {
-    id: "TK-2026-015",
-    title: "Tinjauan Hukum Kontrak Vendor & Kepatuhan PPN Transaksi",
-    category: "Legal",
-    consultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    status: "Completed",
-    progress: 100,
-    createdAt: "04 Agu 2026",
-    estimatedCompletion: "10 Agu 2026",
-    milestones: [
-      {
-        step: "01",
-        title: "Telaah Klausul Perjanjian Kerjasama",
-        status: "completed",
-        date: "06 Agu 2026",
-        description: "Analisis klausul ganti rugi, yurisdiksi penyelesaian sengketa, dan termin pembayaran.",
-      },
-      {
-        step: "02",
-        title: "Harmonisasi Ketentuan Faktur Pajak PPN",
-        status: "completed",
-        date: "08 Agu 2026",
-        description: "Sinkronisasi klausul penyerahan BKP/JKP dengan mekanisme e-Faktur Pajak 11%.",
-      },
-      {
-        step: "03",
-        title: "Legal Opinion & Berita Acara Final",
-        status: "completed",
-        date: "10 Agu 2026",
-        description: "Legal opinion advokat resmi dan draf kontrak amandemen diserahkan ke klien.",
-      },
-    ],
-    deliverables: [
-      {
-        name: "Legal_Opinion_Kontrak_Vendor_Pengadaan_PT_MMS.pdf",
-        size: "1.9 MB",
-        format: "PDF",
-        date: "10 Agu 2026",
-      },
-    ],
-    correspondences: [
-      {
-        id: "msg-4",
-        sender: "Muhamad Dekhsa Afnan, SH., M.Kn. (Corporate Legal Advisor)",
-        role: "Konsultan",
-        date: "10 Agu 2026 &bull; 09:30 WIB",
-        message:
-          "Dokumen legal opinion telah selesai disusun dan ditandatangani. Klausul penagihan dan tanggung renteng PPN telah dimitigasi secara optimal.",
-      },
-    ],
-  },
-  {
-    id: "TK-2026-008",
-    title: "Studi Kelayakan Investasi & Financial Modeling Pabrik Baru",
-    category: "Business Consulting",
-    consultant: "Linda David, S.Ak., BKP",
-    status: "In Progress",
-    progress: 40,
-    createdAt: "02 Sep 2026",
-    estimatedCompletion: "30 Sep 2026",
-    milestones: [
-      {
-        step: "01",
-        title: "Pengumpulan Asumsi Makro & Proyeksi Pasar",
-        status: "completed",
-        date: "08 Sep 2026",
-        description: "Kompilasi data biaya CAPEX, OPEX, dan estimasi utilisasi kapasitas produksi.",
-      },
-      {
-        step: "02",
-        title: "Penyusunan Model Finansial NPV, IRR & Payback",
-        status: "in_progress",
-        date: "18 Sep 2026",
-        description: "Simulasi skenario sensitivitas kurs valas dan suku bunga pembiayaan perbankan.",
-      },
-      {
-        step: "03",
-        title: "Penyusunan Executive Summary & Presentasi Direksi",
-        status: "pending",
-        date: "Estimasi 30 Sep 2026",
-        description: "Penerbitan buku laporan studi kelayakan investasi komprehensif.",
-      },
-    ],
-    deliverables: [
-      {
-        name: "Draft_Preliminary_Financial_Model_Capex_2026.xlsx",
-        size: "3.2 MB",
-        format: "XLSX",
-        date: "12 Sep 2026",
-      },
-    ],
-    correspondences: [
-      {
-        id: "msg-5",
-        sender: "Linda David, S.Ak., BKP (Business Advisor)",
-        role: "Konsultan",
-        date: "12 Sep 2026 &bull; 15:15 WIB",
-        message:
-          "Draft awal financial model telah kami siapkan dengan base rate bunga 7.5%. Kami sedang menjalankan analisis sensitivitas inflasi bahan baku.",
-      },
-    ],
-  },
-];
-
 export default function ClientTicketMonitoringPage() {
-  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
-  const [selectedTicketId, setSelectedTicketId] = useState<string>("TK-2026-089");
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string>("");
   const [filterTab, setFilterTab] = useState<"all" | "in_progress" | "completed">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -389,7 +162,11 @@ export default function ClientTicketMonitoringPage() {
 
   // Selected Ticket Object
   const selectedTicket =
-    tickets.find((t) => t.id === selectedTicketId) || tickets[0];
+    tickets.find((t) => t.id === selectedTicketId) || (tickets.length > 0 ? tickets[0] : null);
+
+  const activeCount = tickets.filter((t) => t.status === "In Progress").length;
+  const completedCount = tickets.filter((t) => t.status === "Completed").length;
+  const totalDeliverablesCount = tickets.reduce((acc, t) => acc + (t.deliverables?.length || 0), 0);
 
   // Filtering Logic
   const filteredTickets = tickets.filter((ticket) => {
@@ -535,7 +312,9 @@ export default function ClientTicketMonitoringPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Konsultasi Aktif Berjalan</span>
-              <div className="text-3xl font-bold text-primary">02</div>
+              <div className="text-3xl font-bold text-primary">
+                {activeCount < 10 ? `0${activeCount}` : activeCount}
+              </div>
               <span className="text-[11px] text-text-secondary">Dalam telaah konsultan</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
@@ -543,7 +322,7 @@ export default function ClientTicketMonitoringPage() {
             </div>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
-            <div className="bg-primary h-full rounded-full" style={{ width: "65%" }} />
+            <div className="bg-primary h-full rounded-full" style={{ width: `${tickets.length > 0 ? Math.round((activeCount / tickets.length) * 100) : 0}%` }} />
           </div>
         </Card>
 
@@ -552,7 +331,9 @@ export default function ClientTicketMonitoringPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Laporan Selesai &amp; BPE</span>
-              <div className="text-3xl font-bold text-success">04</div>
+              <div className="text-3xl font-bold text-success">
+                {completedCount < 10 ? `0${completedCount}` : completedCount}
+              </div>
               <span className="text-[11px] text-text-secondary">Terverifikasi resmi</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
@@ -560,7 +341,7 @@ export default function ClientTicketMonitoringPage() {
             </div>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
-            <div className="bg-success h-full rounded-full" style={{ width: "100%" }} />
+            <div className="bg-success h-full rounded-full" style={{ width: `${tickets.length > 0 ? Math.round((completedCount / tickets.length) * 100) : 0}%` }} />
           </div>
         </Card>
 
@@ -569,7 +350,9 @@ export default function ClientTicketMonitoringPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Total Dokumen Luaran</span>
-              <div className="text-3xl font-bold text-primary">06</div>
+              <div className="text-3xl font-bold text-primary">
+                {totalDeliverablesCount < 10 ? `0${totalDeliverablesCount}` : totalDeliverablesCount}
+              </div>
               <span className="text-[11px] text-text-secondary">Tersimpan di Vault</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
@@ -577,7 +360,7 @@ export default function ClientTicketMonitoringPage() {
             </div>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
-            <div className="bg-primary h-full rounded-full" style={{ width: "80%" }} />
+            <div className="bg-primary h-full rounded-full" style={{ width: "100%" }} />
           </div>
         </Card>
       </div>
@@ -676,18 +459,30 @@ export default function ClientTicketMonitoringPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-light">
-                {filteredTickets.map((ticket) => {
-                  const isSelected = ticket.id === selectedTicket.id;
-                  return (
-                    <tr
-                      key={ticket.id}
-                      onClick={() => setSelectedTicketId(ticket.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? "bg-primary-light/40 border-l-4 border-primary font-semibold"
-                          : "hover:bg-surface/50"
-                      }`}
-                    >
+                {filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-text-muted">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-primary">Tidak Ada Tiket Konsultasi</p>
+                        <p className="text-[11px] text-text-secondary">
+                          Belum ada permohonan konsultasi. Klik tombol &quot;Buat Tiket Baru&quot; di atas untuk memulai konsultasi.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTickets.map((ticket) => {
+                    const isSelected = selectedTicket ? ticket.id === selectedTicket.id : false;
+                    return (
+                      <tr
+                        key={ticket.id}
+                        onClick={() => setSelectedTicketId(ticket.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-primary-light/40 border-l-4 border-primary font-semibold"
+                            : "hover:bg-surface/50"
+                        }`}
+                      >
                       <td className="py-3.5 px-4 font-mono font-bold text-primary">
                         {ticket.id}
                       </td>
@@ -756,16 +551,9 @@ export default function ClientTicketMonitoringPage() {
                       </td>
                     </tr>
                   );
-                })}
-
-                {filteredTickets.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-10 text-center text-text-muted">
-                      Tidak ditemukan konsultasi dengan filter yang dipilih.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+                })
+              )}
+            </tbody>
             </table>
           </div>
 
@@ -805,18 +593,19 @@ export default function ClientTicketMonitoringPage() {
       </Card>
 
       {/* DETAIL PANEL: LEMBAR KERJA & ALUR TAHAPAN TIKET TERPILIH (MASTER-DETAIL) */}
-      <div className="space-y-6 pt-2">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
-            Inspeksi Lembar Kerja:
-          </span>
-          <span className="font-mono text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded">
-            {selectedTicket.id}
-          </span>
-          <span className="text-xs text-text-secondary font-semibold">
-            &bull; {selectedTicket.category}
-          </span>
-        </div>
+      {selectedTicket ? (
+        <div className="space-y-6 pt-2">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
+              Inspeksi Lembar Kerja:
+            </span>
+            <span className="font-mono text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded">
+              {selectedTicket.id}
+            </span>
+            <span className="text-xs text-text-secondary font-semibold">
+              &bull; {selectedTicket.category}
+            </span>
+          </div>
 
         {/* Selected Ticket Overview Card */}
         <Card className="rounded-2xl border-primary-light bg-white shadow-sm p-6 space-y-6">
@@ -1032,6 +821,7 @@ export default function ClientTicketMonitoringPage() {
           </div>
         </Card>
       </div>
+      ) : null}
 
       {/* MODAL: BUAT TIKET KONSULTASI BARU */}
       {isNewTicketModalOpen && (
@@ -1044,7 +834,7 @@ export default function ClientTicketMonitoringPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-primary">Buat Konsultasi Baru</h3>
-                  <p className="text-[11px] text-text-muted">Layanan Klien PT Maju Makmur Sentosa</p>
+                  <p className="text-[11px] text-text-muted">Layanan Konsultasi Klien Zhou</p>
                 </div>
               </div>
               <button

@@ -38,91 +38,8 @@ interface ReportItem {
   sha256: string;
 }
 
-const INITIAL_REPORTS: ReportItem[] = [
-  {
-    id: "REP-01",
-    ticketId: "TK-2026-089",
-    clientName: "PT Maju Makmur Sentosa",
-    clientNpwp: "01.234.567.8-012.000",
-    fileName: "Laporan_Rekonsiliasi_Fiskal_2025_Final.pdf",
-    fileSize: "4.2 MB",
-    fileType: "PDF",
-    category: "Tax Service Core",
-    invoiceNumber: "INV-2026-089",
-    amount: "Rp 15.000.000",
-    billingStatus: "Lunas",
-    uploadDate: "17 Sep 2026",
-    consultant: "Linda David, S.Ak., BKP",
-    sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  },
-  {
-    id: "REP-02",
-    ticketId: "TK-2026-092",
-    clientName: "CV Borneo Karya Prima",
-    clientNpwp: "02.345.678.9-023.000",
-    fileName: "Kompilasi_Jurnal_Buku_Besar_Q3_SAK.xlsx",
-    fileSize: "8.1 MB",
-    fileType: "XLSX",
-    category: "Accounting Service",
-    invoiceNumber: "INV-2026-092",
-    amount: "Rp 8.500.000",
-    billingStatus: "Menunggu Verifikasi",
-    uploadDate: "16 Sep 2026",
-    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    sha256: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
-  },
-  {
-    id: "REP-03",
-    ticketId: "TK-2026-077",
-    clientName: "PT Solusi Niaga Terpadu",
-    clientNpwp: "03.456.789.0-034.000",
-    fileName: "Studi_Kelayakan_Investasi_Ekspansi_2026.pdf",
-    fileSize: "6.7 MB",
-    fileType: "PDF",
-    category: "Business Financial Consulting",
-    invoiceNumber: "INV-2026-077",
-    amount: "Rp 25.000.000",
-    billingStatus: "Terkirim",
-    uploadDate: "15 Sep 2026",
-    consultant: "Linda David, S.Ak., BKP",
-    sha256: "d41d8cd98f00b204e9800998ecf8427e99b0c44298fc1c149afbf4c8996fb924",
-  },
-  {
-    id: "REP-04",
-    ticketId: "TK-2026-061",
-    clientName: "PT Mega Cipta Pratama",
-    clientNpwp: "04.567.890.1-045.000",
-    fileName: "Legal_Opinion_Kemitraan_Bisnis_2026.pdf",
-    fileSize: "3.5 MB",
-    fileType: "PDF",
-    category: "Legal",
-    invoiceNumber: "INV-2026-061",
-    amount: "Rp 12.000.000",
-    billingStatus: "Lunas",
-    uploadDate: "12 Sep 2026",
-    consultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    sha256: "1f8ac10f23c5b5bc1167bda84b833e5c057a77d2ec3f674da153e7b1ff6ca182",
-  },
-  {
-    id: "REP-05",
-    ticketId: "TK-2026-050",
-    clientName: "Yayasan Bina Sejahtera",
-    clientNpwp: "05.678.901.2-056.000",
-    fileName: "Salinan_SKB_PPh23_Approved_DJP.pdf",
-    fileSize: "2.1 MB",
-    fileType: "PDF",
-    category: "Tax Service Core",
-    invoiceNumber: "INV-2026-050",
-    amount: "Rp 5.000.000",
-    billingStatus: "Lunas",
-    uploadDate: "08 Sep 2026",
-    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    sha256: "b10a8db164e0754105b7a99be72e3fe57f83b1657ff1fc53b92dc18148a1d65d",
-  },
-];
-
 export default function AdminUploadBillingPage() {
-  const [reports, setReports] = useState<ReportItem[]>(INITIAL_REPORTS);
+  const [reports, setReports] = useState<ReportItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [billingFilter, setBillingFilter] = useState<string>("ALL");
@@ -134,14 +51,14 @@ export default function AdminUploadBillingPage() {
   // New report modal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({
-    ticketId: "TK-2026-089",
-    clientName: "PT Maju Makmur Sentosa",
-    clientNpwp: "01.234.567.8-012.000",
+    ticketId: "",
+    clientName: "",
+    clientNpwp: "",
     fileName: "",
     category: "Tax Service Core" as ReportItem["category"],
-    amount: "Rp 15.000.000",
-    invoiceNumber: "INV-2026-095",
-    consultant: "Linda David, S.Ak., BKP",
+    amount: "",
+    invoiceNumber: "",
+    consultant: "",
     sendNotification: true,
   });
 
@@ -155,31 +72,31 @@ export default function AdminUploadBillingPage() {
     async function loadBackendDocuments() {
       try {
         const res = await adminApi.getAllDocuments();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: ReportItem[] = res.data.map((d: ClientDocumentItem, idx: number) => ({
             id: `REP-BE-${d.id}`,
             ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
             clientName: "PT Klien Terdaftar",
-            clientNpwp: "01.234.567.8-012.000",
+            clientNpwp: "-",
             fileName: d.file_name,
-            fileSize: d.file_size || "2.5 MB",
+            fileSize: d.file_size || "1.5 MB",
             fileType: d.file_type === "XLSX" ? "XLSX" : "PDF",
             category: "Tax Service Core",
             invoiceNumber: `INV-2026-0${d.id}`,
-            amount: "Rp 15.000.000",
+            amount: "-",
             billingStatus: "Lunas",
             uploadDate: new Date(d.created_at).toLocaleDateString("id-ID", {
               day: "numeric",
               month: "short",
               year: "numeric",
             }),
-            consultant: "Konsultan Zhou",
+            consultant: "Staf Konsultan",
             sha256: `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
           }));
           setReports(mapped);
         }
-      } catch (err) {
-        console.warn("Backend documents load fallback:", err);
+      } catch {
+        // silent fallback
       }
     }
     loadBackendDocuments();

@@ -46,59 +46,11 @@ interface AuditLog {
   notes: string;
 }
 
-const INITIAL_ADMINS: AdminUser[] = [
-  {
-    id: "ADM-000",
-    name: "Super Administrator Zhou",
-    email: "superadmin@zhouconsulting.com",
-    role: "Superadmin",
-    specialty: "Core Tax & Legal Compliance",
-    status: "Active",
-    taskCount: 12,
-  },
-  {
-    id: "ADM-001",
-    name: "Konsultan Senior Zhou",
-    email: "admin@zhouconsulting.com",
-    role: "Admin",
-    specialty: "Tax Service Core & Coretax",
-    status: "Active",
-    taskCount: 8,
-  },
-  {
-    id: "ADM-002",
-    name: "Linda David, S.Ak., BKP",
-    email: "linda.david@zhouconsulting.id",
-    role: "Admin",
-    specialty: "Tax Service Core & Coretax",
-    status: "Active",
-    taskCount: 18,
-  },
-  {
-    id: "ADM-003",
-    name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    email: "tasya.anggraeni@zhouconsulting.id",
-    role: "Admin",
-    specialty: "Accounting Service & SAK",
-    status: "Active",
-    taskCount: 14,
-  },
-  {
-    id: "ADM-004",
-    name: "Rian Pratama, SH.",
-    email: "rian.pratama@zhouconsulting.id",
-    role: "Admin",
-    specialty: "Legal & Corporate Compliance",
-    status: "Inactive",
-    taskCount: 0,
-  },
-];
-
 export default function SuperadminDashboard() {
   const [activeTab, setActiveTab] = useState<"admins" | "audit">("audit");
 
   // Admin Management State
-  const [admins, setAdmins] = useState<AdminUser[]>(INITIAL_ADMINS);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
 
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [newAdmin, setNewAdmin] = useState({
@@ -117,104 +69,7 @@ export default function SuperadminDashboard() {
   };
 
   // Audit Logs State (Append-Only Mutlak)
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    {
-      id: "LOG-9925",
-      timestamp: "18 Sep 2026, 10:15:20 WIB",
-      adminName: "Linda David, S.Ak., BKP",
-      adminId: "ADM-001",
-      clientId: "CL-88219 (PT Maju Makmur)",
-      ticketId: "TK-2026-089",
-      statusBefore: "In Review",
-      statusAfter: "Completed",
-      relatedFile: "Laporan_Rekonsiliasi_Fiskal_2025_Final.pdf",
-      notes: "Kertas kerja rekonsiliasi fiskal dan faktur billing INV-2026-089 diterbitkan ke Vault klien.",
-    },
-    {
-      id: "LOG-9924",
-      timestamp: "17 Sep 2026, 15:40:12 WIB",
-      adminName: "Hendro Wibowo, SE., Ak., CA",
-      adminId: "ADM-004",
-      clientId: "CL-62910 (PT Solusi Niaga)",
-      ticketId: "TK-2026-077",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "Studi_Kelayakan_Investasi_Ekspansi_2026.pdf",
-      notes: "Analisis kelayakan investasi disetujui direksi klien.",
-    },
-    {
-      id: "LOG-9923",
-      timestamp: "16 Sep 2026, 11:05:40 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-      adminId: "ADM-002",
-      clientId: "CL-74102 (CV Borneo Karya)",
-      ticketId: "TK-2026-092",
-      statusBefore: "Draft",
-      statusAfter: "In Progress",
-      relatedFile: "Kompilasi_Jurnal_Buku_Besar_Q3_SAK.xlsx",
-      notes: "Kompilasi awal jurnal buku besar Q3 dimulai.",
-    },
-    {
-      id: "LOG-9922",
-      timestamp: "15 Sep 2026, 09:20:10 WIB",
-      adminName: "Siti Nurhaliza, S.E.",
-      adminId: "ADM-005",
-      clientId: "CL-40112 (PT Cipta Sarana)",
-      ticketId: "TK-2026-058",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "BPE_SPT_Masa_PPN_1111_Agustus.pdf",
-      notes: "Pelaporan SPT PPN 1111 berhasil melalui sistem Coretax DJP.",
-    },
-    {
-      id: "LOG-9921",
-      timestamp: "14 Sep 2026, 14:30:15 WIB",
-      adminName: "Linda David, S.Ak., BKP",
-      adminId: "ADM-001",
-      clientId: "CL-88219 (PT Maju Makmur)",
-      ticketId: "TK-2026-089",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "Draft_Rekonsiliasi_Fiskal_2025_v1.pdf",
-      notes: "Seluruh 4 checklist tugas telah diselesaikan dan diverifikasi.",
-    },
-    {
-      id: "LOG-9918",
-      timestamp: "12 Sep 2026, 09:12:44 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-      adminId: "ADM-002",
-      clientId: "CL-74102 (CV Borneo Karya)",
-      ticketId: "TK-2026-042",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "Laporan_Keuangan_SAK_Q2_Final.pdf",
-      notes: "Kompilasi laporan keuangan SAK Q2 ditandatangani dan diunggah.",
-    },
-    {
-      id: "LOG-9905",
-      timestamp: "10 Sep 2026, 16:45:10 WIB",
-      adminName: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-      adminId: "ADM-SUPER",
-      clientId: "CL-51209 (PT Mega Cipta)",
-      ticketId: "TK-2026-061",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "Legal_Opinion_PT_Mega_Cipta.pdf",
-      notes: "Opini hukum perjanjian vendor diterbitkan.",
-    },
-    {
-      id: "LOG-9892",
-      timestamp: "08 Sep 2026, 11:20:00 WIB",
-      adminName: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-      adminId: "ADM-002",
-      clientId: "CL-33981 (Yayasan Bina)",
-      ticketId: "TK-2026-050",
-      statusBefore: "In Progress",
-      statusAfter: "Completed",
-      relatedFile: "SKB_PPh23_Yayasan_Approved.pdf",
-      notes: "SKB PPh 23 resmi disetujui KPP Pratama.",
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Fetch live audit logs & admins from Backend API
   useEffect(() => {
@@ -223,7 +78,7 @@ export default function SuperadminDashboard() {
       .getAuditLogs()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const mappedLogs: AuditLog[] = res.data.map((l: AuditLogItem) => ({
             id: `LOG-${l.id}`,
             timestamp:
@@ -243,31 +98,18 @@ export default function SuperadminDashboard() {
             relatedFile: l.file_name || "-",
             notes: l.description || l.action,
           }));
-          setAuditLogs((prev) => [...mappedLogs, ...prev]);
+          setAuditLogs(mappedLogs);
         }
       })
-      .catch((err) => {
-        console.warn("superadminApi.getAuditLogs fallback:", err);
+      .catch(() => {
+        // silent fallback
       });
-
-    // Load local storage cache if available
-    try {
-      const cached = localStorage.getItem("zhou_superadmin_admins");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAdmins(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal memuat cache admin:", e);
-    }
 
     superadminApi
       .getAdmins()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const mappedAdmins: AdminUser[] = res.data.map((a: AdminUserItem) => ({
             id: `ADM-${String(a.id).padStart(3, "0")}`,
             name: a.name,
@@ -277,19 +119,11 @@ export default function SuperadminDashboard() {
             status: a.is_active ? "Active" : "Inactive",
             taskCount: 0,
           }));
-          setAdmins((prev) => {
-            const apiEmails = new Set(mappedAdmins.map((m) => m.email.toLowerCase()));
-            const localOnly = prev.filter((p) => !apiEmails.has(p.email.toLowerCase()));
-            const merged = [...mappedAdmins, ...localOnly];
-            try {
-              localStorage.setItem("zhou_superadmin_admins", JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+          setAdmins(mappedAdmins);
         }
       })
-      .catch((err) => {
-        console.warn("superadminApi.getAdmins fallback:", err);
+      .catch(() => {
+        // silent fallback
       });
 
     return () => {
@@ -541,7 +375,7 @@ export default function SuperadminDashboard() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-primary font-mono">
-              28
+              {String(auditLogs.length).padStart(2, "0")}
             </span>
             <span className="text-xs text-text-secondary">Catatan</span>
           </div>
@@ -562,7 +396,7 @@ export default function SuperadminDashboard() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-success font-mono">
-              18
+              {String(auditLogs.filter((l) => l.statusAfter === "Completed").length).padStart(2, "0")}
             </span>
             <span className="text-xs text-text-secondary">Mutasi Selesai</span>
           </div>
@@ -662,8 +496,15 @@ export default function SuperadminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-primary-light text-text">
-                    {admins.map((admin) => (
-                      <tr key={admin.id} className="hover:bg-surface/50 transition-colors">
+                    {admins.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-xs text-text-muted">
+                          Belum ada akun staf administrator terdaftar.
+                        </td>
+                      </tr>
+                    ) : (
+                      admins.map((admin) => (
+                        <tr key={admin.id} className="hover:bg-surface/50 transition-colors">
                         <td className="py-4 px-5">
                           <div className="font-bold text-primary">{admin.name}</div>
                           <span className="font-mono text-[11px] text-text-secondary">{admin.id}</span>
@@ -726,7 +567,8 @@ export default function SuperadminDashboard() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>
@@ -813,8 +655,15 @@ export default function SuperadminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-primary-light text-text">
-                    {paginatedLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-surface/50 transition-colors">
+                    {paginatedLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-xs text-text-muted">
+                          Belum ada catatan log aktivitas yang terekam.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-surface/50 transition-colors">
                         <td className="py-3.5 px-4 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                           {log.timestamp}
                         </td>
@@ -848,7 +697,8 @@ export default function SuperadminDashboard() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>

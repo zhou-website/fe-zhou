@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { userApi } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,36 +37,6 @@ interface SessionLog {
   isCurrent: boolean;
 }
 
-const INITIAL_SESSIONS: SessionLog[] = [
-  {
-    id: "sess-01",
-    device: "Windows 11 PC",
-    browser: "Google Chrome 128.0",
-    ip: "182.253.12.88",
-    location: "Jakarta Selatan, Indonesia",
-    lastActive: "Sesi Ini (Aktif Sekarang)",
-    isCurrent: true,
-  },
-  {
-    id: "sess-02",
-    device: "MacBook Pro 14 (macOS Sonoma)",
-    browser: "Apple Safari 17.5",
-    ip: "36.85.22.14",
-    location: "Jakarta Pusat, Indonesia",
-    lastActive: "15 Sep 2026, 14:20 WIB",
-    isCurrent: false,
-  },
-  {
-    id: "sess-03",
-    device: "iPhone 15 Pro (iOS 18)",
-    browser: "Mobile Safari",
-    ip: "114.125.45.19",
-    location: "Tangerang Selatan, Indonesia",
-    lastActive: "12 Sep 2026, 09:15 WIB",
-    isCurrent: false,
-  },
-];
-
 interface ProfileData {
   companyName: string;
   entityType: string;
@@ -84,50 +55,80 @@ interface ProfileData {
 }
 
 const DEFAULT_PROFILE: ProfileData = {
-  companyName: "PT Maju Makmur Sentosa",
+  companyName: "Perusahaan Klien",
   entityType: "Perseroan Terbatas (PT)",
-  npwp16: "01.234.567.8-012.000",
-  joinDate: "12 Januari 2025",
-  klu: "62019 - Aktivitas Pemrograman Komputer Lainnya",
-  taxOfficeAddress: "Jl. TB Simatupang No. 88, Cilandak Barat, Jakarta Selatan 12430",
-  initials: "MMS",
-  clientCode: "ID: CL-88219",
+  npwp16: "-",
+  joinDate: "-",
+  klu: "-",
+  taxOfficeAddress: "-",
+  initials: "PK",
+  clientCode: "-",
   status: "Klien Aktif",
-  picName: "Budi Santoso, S.E.",
-  picTitle: "Finance & Tax Manager",
-  picEmail: "budi.santoso@majumakmur.co.id",
-  picPhone: "+62 811-2345-6789",
-  officeAddress: "Gedung Cyber 2 Tower Lt. 18, Jl. H.R. Rasuna Said, Jakarta Selatan 12950",
+  picName: "Nama Klien",
+  picTitle: "Penanggung Jawab",
+  picEmail: "-",
+  picPhone: "-",
+  officeAddress: "-",
 };
 
 export default function ClientProfileSecurityPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"info" | "security" | "sessions">("info");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Profile State
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
 
-  // Sync profile data with live backend
+  // Sync profile data with live auth user and live backend
   useEffect(() => {
+    if (user) {
+      const company = user.company || user.name || "Perusahaan Klien";
+      const initials = company
+        .trim()
+        .split(/\s+/)
+        .slice(0, 3)
+        .map((w: string) => w[0])
+        .join("")
+        .toUpperCase();
+
+      setProfile((prev) => ({
+        ...prev,
+        companyName: user.company || prev.companyName,
+        picName: user.name || prev.picName,
+        picEmail: user.email || prev.picEmail,
+        picPhone: user.phone || prev.picPhone,
+        initials: initials || prev.initials,
+        clientCode: user.id ? `ID: CL-${user.id}` : prev.clientCode,
+      }));
+    }
+
     async function loadBackendProfile() {
       try {
         const res = await userApi.getProfile();
         if (res.success && res.data) {
           const u = res.data;
+          const initials = (u.company_name || u.name || "PK")
+            .trim()
+            .split(/\s+/)
+            .slice(0, 3)
+            .map((w: string) => w[0])
+            .join("")
+            .toUpperCase();
           setProfile((prev) => ({
             ...prev,
             companyName: u.company_name || prev.companyName,
             picName: u.name || prev.picName,
             picEmail: u.email || prev.picEmail,
             picPhone: u.phone || prev.picPhone,
+            initials: initials || prev.initials,
           }));
         }
-      } catch (err) {
-        console.warn("Backend profile load fallback:", err);
+      } catch {
+        // silent fallback
       }
     }
     loadBackendProfile();
-  }, []);
+  }, [user]);
 
   // Profile Edit Modal State
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -146,8 +147,18 @@ export default function ClientProfileSecurityPage() {
   const [isUpdatingPw, setIsUpdatingPw] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
 
-  // Sessions State
-  const [sessions, setSessions] = useState<SessionLog[]>(INITIAL_SESSIONS);
+  // Sessions State - Only current active browser session, no dummy devices
+  const [sessions, setSessions] = useState<SessionLog[]>([
+    {
+      id: "sess-current",
+      device: "Perangkat Web Browser",
+      browser: "Browser Aktif",
+      ip: "127.0.0.1",
+      location: "Indonesia",
+      lastActive: "Sesi Ini (Aktif Sekarang)",
+      isCurrent: true,
+    },
+  ]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

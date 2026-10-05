@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { clientApi, ConsultationItem } from "@/lib/api";
+import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,97 +48,18 @@ interface ClientDocument {
   ticketRef: string;
 }
 
-const INITIAL_TICKETS: Ticket[] = [
-  {
-    id: "TK-2026-089",
-    title: "Pelaporan SPT Tahunan Badan & Ekualisasi Fiskal",
-    category: "Tax Service Core",
-    consultant: "Linda David, S.Ak., BKP",
-    status: "In Progress",
-    progress: 75,
-    updatedAt: "14 Sep 2026, 14:30 WIB",
-    checklists: [
-      { text: "Telaah awal laporan keuangan komersial & jurnal penyesuaian", done: true },
-      { text: "Kompilasi rekonsiliasi fiskal positif/negatif", done: true },
-      { text: "Verifikasi kredit pajak PPh 22, 23, 25 & bukti potong unifikasi", done: true },
-      { text: "Finalisasi draft SPT Tahunan & pengunggahan ke sistem Coretax DJP", done: false },
-    ],
-    deliverableFile: "Draft_Rekonsiliasi_Fiskal_2025_v1.pdf",
-    deliverableSize: "1.8 MB",
-  },
-  {
-    id: "TK-2026-042",
-    title: "Kompilasi Laporan Keuangan Berstandar SAK Q2 2026",
-    category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    status: "Completed",
-    progress: 100,
-    updatedAt: "08 Sep 2026, 11:15 WIB",
-    checklists: [
-      { text: "Rekonsiliasi rekening koran operasional 3 bank", done: true },
-      { text: "Pencatatan depresiasi aset tetap & amortisasi beban", done: true },
-      { text: "Penerbitan Neraca & Laporan Laba Rugi Komprehensif", done: true },
-      { text: "Penandatanganan berita acara telaah laporan akuntansi", done: true },
-    ],
-    deliverableFile: "Laporan_Keuangan_SAK_Q2_Final_Signed.pdf",
-    deliverableSize: "2.4 MB",
-  },
-  {
-    id: "TK-2026-015",
-    title: "Tinjauan Hukum Kontrak Vendor & Kepatuhan PPN Transaksi",
-    category: "Legal",
-    consultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    status: "Completed",
-    progress: 100,
-    updatedAt: "28 Agu 2026, 16:45 WIB",
-    checklists: [
-      { text: "Pemeriksaan klausul hak & kewajiban fiskal kedua belah pihak", done: true },
-      { text: "Validasi NPWP 16 digit & SPPKP rekanan", done: true },
-      { text: "Pemberian opini legal hukum perpajakan tertulis", done: true },
-    ],
-    deliverableFile: "Legal_Opinion_PPN_Kontrak_Vendor.pdf",
-    deliverableSize: "950 KB",
-  },
-];
-
-const INITIAL_DOCUMENTS: ClientDocument[] = [
-  {
-    id: "DOC-01",
-    name: "Bukti Penerimaan Elektronik (BPE) SPT Masa PPN Juli 2026",
-    category: "Pajak",
-    date: "10 Agu 2026",
-    size: "820 KB",
-    ticketRef: "TK-2026-028",
-  },
-  {
-    id: "DOC-02",
-    name: "Laporan Keuangan Neraca & Laba Rugi Q2 2026 (Final SAK)",
-    category: "Akuntansi",
-    date: "08 Sep 2026",
-    size: "2.4 MB",
-    ticketRef: "TK-2026-042",
-  },
-  {
-    id: "DOC-03",
-    name: "Dokumen Rekonsiliasi Fiskal & Ekualisasi Omzet 2025",
-    category: "Pajak",
-    date: "14 Sep 2026",
-    size: "1.8 MB",
-    ticketRef: "TK-2026-089",
-  },
-];
-
 export default function UserDashboardPage() {
-  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  // Sync consultations & overview with backend
+  // Sync consultations & documents with backend
   useEffect(() => {
     async function loadClientData() {
       try {
         const res = await clientApi.getConsultations();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: Ticket[] = res.data.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-${c.id}`,
             title: c.title,
@@ -161,8 +82,25 @@ export default function UserDashboardPage() {
           }));
           setTickets(mapped);
         }
-      } catch (err) {
-        console.warn("Backend consultation load notice (using fallback):", err);
+
+        const docRes = await clientApi.getDocuments();
+        if (docRes.success && Array.isArray(docRes.data)) {
+          const mappedDocs: ClientDocument[] = docRes.data.map((d: ClientDocumentItem) => ({
+            id: String(d.id),
+            name: d.file_name,
+            category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
+            date: new Date(d.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            size: d.file_size || "1.2 MB",
+            ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
+          }));
+          setDocuments(mappedDocs);
+        }
+      } catch {
+        // silent fallback
       }
     }
     loadClientData();
@@ -308,7 +246,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 Konsultasi Aktif Berjalan
               </div>
               <div className="text-3xl font-bold text-primary">
-                0{activeCount}
+                {activeCount < 10 ? `0${activeCount}` : activeCount}
               </div>
               <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
@@ -329,7 +267,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 Laporan &amp; Kepatuhan Selesai
               </div>
               <div className="text-3xl font-bold text-success">
-                0{completedCount + 2}
+                {completedCount < 10 ? `0${completedCount}` : completedCount}
               </div>
               <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-success inline-block"></span>
@@ -350,7 +288,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 Dokumen Pajak Tersimpan
               </div>
               <div className="text-3xl font-bold text-primary">
-                06
+                {documents.length < 10 ? `0${documents.length}` : documents.length}
               </div>
               <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
                 <ShieldTaxIcon className="text-xs text-primary" />
@@ -435,11 +373,23 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-light">
-                {filteredTickets.map((ticket) => (
-                  <tr
-                    key={ticket.id}
-                    className="hover:bg-surface/50 transition-colors"
-                  >
+                {filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-primary">Belum Ada Tiket Konsultasi Aktif</p>
+                        <p className="text-[11px] text-text-secondary">
+                          Silakan buat tiket konsultasi baru untuk memulai penugasan dengan konsultan kami.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTickets.map((ticket) => (
+                    <tr
+                      key={ticket.id}
+                      className="hover:bg-surface/50 transition-colors"
+                    >
                     <td className="py-3.5 px-4 sm:px-6 font-mono font-bold text-primary whitespace-nowrap">
                       {ticket.id}
                     </td>
@@ -494,8 +444,9 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                       </Button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                ))
+              )}
+            </tbody>
             </table>
           </div>
 
@@ -548,39 +499,47 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-light">
-                {INITIAL_DOCUMENTS.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-surface/50 transition-colors">
-                    <td className="py-3.5 px-4 sm:px-6 font-semibold text-primary">
-                      {doc.name}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                        {doc.category}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
-                      {doc.date}
-                    </td>
-                    <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
-                      {doc.size}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <code className="font-mono text-primary font-semibold text-xs">
-                        {doc.ticketRef}
-                      </code>
-                    </td>
-                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownloadSimulation(doc.name)}
-                        className="text-xs py-1 px-3.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
-                      >
-                        Unduh
-                      </Button>
+                {documents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-text-muted">
+                      <p className="font-medium text-text-secondary">Belum ada dokumen luaran atau berkas tersimpan.</p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  documents.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-surface/50 transition-colors">
+                      <td className="py-3.5 px-4 sm:px-6 font-semibold text-primary">
+                        {doc.name}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                          {doc.category}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
+                        {doc.date}
+                      </td>
+                      <td className="py-3.5 px-4 text-text-secondary whitespace-nowrap">
+                        {doc.size}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <code className="font-mono text-primary font-semibold text-xs">
+                          {doc.ticketRef}
+                        </code>
+                      </td>
+                      <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadSimulation(doc.name)}
+                          className="text-xs py-1 px-3.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
+                        >
+                          Unduh
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -42,113 +42,8 @@ interface VaultDocument {
   description: string;
 }
 
-const INITIAL_DOCUMENTS: VaultDocument[] = [
-  {
-    id: "DOC-2026-001",
-    name: "BPE SPT Masa PPN 1111.pdf",
-    category: "Pajak",
-    format: "PDF",
-    ticketRef: "TK-2026-089",
-    ticketTitle: "Pelaporan SPT Tahunan Badan & Ekualisasi Fiskal",
-    date: "16 Sep 2026",
-    year: "2026",
-    size: "1.2 MB",
-    bytes: 1258291,
-    statusBadge: "Terverifikasi BPE DJP",
-    statusType: "success",
-    sha256Hash: "8f2a9c4b1e5d7a8f3b2c1e4d5a6f7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4",
-    signatory: "Linda David, S.Ak., BKP",
-    description: "Bukti Penerimaan Elektronik resmi pelaporan SPT Masa PPN 1111 Masa Pajak Agustus 2026 dengan QR Code DJP valid.",
-  },
-  {
-    id: "DOC-2026-002",
-    name: "Kertas Kerja Fiskal 2026.xlsx",
-    category: "Pajak",
-    format: "XLSX",
-    ticketRef: "TK-2026-089",
-    ticketTitle: "Pelaporan SPT Tahunan Badan & Ekualisasi Fiskal",
-    date: "15 Sep 2026",
-    year: "2026",
-    size: "2.4 MB",
-    bytes: 2516582,
-    statusBadge: "Final Review Disetujui",
-    statusType: "success",
-    sha256Hash: "3e5a7f9b1c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0e2f4a6b8c0d2e4",
-    signatory: "Linda David, S.Ak., BKP",
-    description: "Kertas kerja rekonsiliasi peredaran bruto dan penyesuaian koreksi fiskal positif/negatif sesuai ketentuan PMK 81/2024.",
-  },
-  {
-    id: "DOC-2026-003",
-    name: "Laporan Keuangan SAK Q2.pdf",
-    category: "Akuntansi",
-    format: "PDF",
-    ticketRef: "TK-2026-042",
-    ticketTitle: "Kompilasi Laporan Keuangan Berstandar SAK EP Q2 2026",
-    date: "28 Agu 2026",
-    year: "2026",
-    size: "3.8 MB",
-    bytes: 3984588,
-    statusBadge: "Audit KAP Disetujui",
-    statusType: "success",
-    sha256Hash: "1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3",
-    signatory: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    description: "Laporan posisi keuangan neraca, laporan laba rugi, dan catatan atas laporan keuangan (CALK) standar SAK EP.",
-  },
-  {
-    id: "DOC-2026-004",
-    name: "Buku Besar Bank Q2.xlsx",
-    category: "Akuntansi",
-    format: "XLSX",
-    ticketRef: "TK-2026-042",
-    ticketTitle: "Kompilasi Laporan Keuangan Berstandar SAK EP Q2 2026",
-    date: "28 Agu 2026",
-    year: "2026",
-    size: "5.1 MB",
-    bytes: 5347737,
-    statusBadge: "Terverifikasi SAK",
-    statusType: "primary",
-    sha256Hash: "7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9",
-    signatory: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    description: "Buku besar umum rekonsiliasi tiga rekening koran korporat serta mutasi kas operasional kuartal kedua 2026.",
-  },
-  {
-    id: "DOC-2026-005",
-    name: "Legal Opinion Kontrak Vendor.pdf",
-    category: "Legal",
-    format: "PDF",
-    ticketRef: "TK-2026-015",
-    ticketTitle: "Tinjauan Hukum Kontrak Vendor & Kepatuhan PPN",
-    date: "10 Agu 2026",
-    year: "2026",
-    size: "1.9 MB",
-    bytes: 1992294,
-    statusBadge: "Tandatangan Advokat",
-    statusType: "success",
-    sha256Hash: "4d6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6",
-    signatory: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    description: "Pendapat hukum advokat terkait mitigasi klausul wanprestasi dan tanggung renteng faktur pajak pada kontrak vendor pengadaan.",
-  },
-  {
-    id: "DOC-2026-006",
-    name: "Pakta Kerahasiaan NDA 2026.pdf",
-    category: "Legal",
-    format: "PDF",
-    ticketRef: "MASTER-DOC",
-    ticketTitle: "Perjanjian Kerahasiaan Induk Zhou Consulting",
-    date: "01 Jan 2026",
-    year: "2026",
-    size: "850 KB",
-    bytes: 870400,
-    statusBadge: "Terikat UU PDP",
-    statusType: "primary",
-    sha256Hash: "9a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0b2c4e6f8a0",
-    signatory: "Zhou Consulting & PT MMS",
-    description: "Non-Disclosure Agreement resmi yang mengikat perlindungan kerahasiaan seluruh dokumen fiskal dan finansial klien.",
-  },
-];
-
 export default function ClientDocumentVaultPage() {
-  const [documents, setDocuments] = useState<VaultDocument[]>(INITIAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
@@ -161,7 +56,7 @@ export default function ClientDocumentVaultPage() {
     async function loadBackendDocuments() {
       try {
         const res = await clientApi.getDocuments();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           const mapped: VaultDocument[] = res.data.map((d: ClientDocumentItem) => ({
             id: `DOC-BE-${d.id}`,
             name: d.file_name,
@@ -185,8 +80,8 @@ export default function ClientDocumentVaultPage() {
           }));
           setDocuments(mapped);
         }
-      } catch (err) {
-        console.warn("Backend documents load notice (using fallback):", err);
+      } catch {
+        // quiet fallback
       }
     }
     loadBackendDocuments();
@@ -242,9 +137,16 @@ export default function ClientDocumentVaultPage() {
     currentPage * itemsPerPage
   );
 
+  const taxCount = documents.filter((d) => d.category === "Pajak").length;
+  const legalAuditCount = documents.filter((d) => d.category !== "Pajak").length;
+
   const handleDownloadAll = () => {
+    if (documents.length === 0) {
+      showToast("Belum ada dokumen yang tersedia untuk diunduh.");
+      return;
+    }
     showToast(
-      "Menyiapkan arsip ZIP seluruh berkas terenkripsi (Total: 6 Berkas, 15.2 MB)... Unduhan akan dimulai otomatis."
+      `Menyiapkan arsip ZIP seluruh berkas terenkripsi (Total: ${documents.length} Berkas)... Unduhan akan dimulai otomatis.`
     );
   };
 
@@ -307,7 +209,7 @@ export default function ClientDocumentVaultPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Total Dokumen Tersimpan</span>
-              <div className="text-3xl font-bold text-primary">06</div>
+              <div className="text-3xl font-bold text-primary">{String(documents.length).padStart(2, "0")}</div>
               <span className="text-[11px] text-text-secondary">Arsip aktif terenkripsi</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
@@ -320,7 +222,7 @@ export default function ClientDocumentVaultPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Dokumen Pajak &amp; BPE</span>
-              <div className="text-3xl font-bold text-success">02</div>
+              <div className="text-3xl font-bold text-success">{String(taxCount).padStart(2, "0")}</div>
               <span className="text-[11px] text-text-secondary">Terverifikasi DJP Coretax</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
@@ -333,7 +235,7 @@ export default function ClientDocumentVaultPage() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Laporan Keuangan &amp; Legal</span>
-              <div className="text-3xl font-bold text-primary">04</div>
+              <div className="text-3xl font-bold text-primary">{String(legalAuditCount).padStart(2, "0")}</div>
               <span className="text-[11px] text-text-secondary">Audit SAK &amp; Opini Advokat</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
@@ -524,8 +426,12 @@ export default function ClientDocumentVaultPage() {
           {/* Table Footer */}
           <div className="p-4 border-t border-primary-light bg-surface/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-text-muted">
             <span>
-              Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
-              {Math.min(currentPage * itemsPerPage, filteredDocuments.length)} dari {documents.length} berkas di Vault
+              {documents.length === 0
+                ? "Menampilkan 0 berkas di Vault"
+                : `Menampilkan ${(currentPage - 1) * itemsPerPage + 1} – ${Math.min(
+                    currentPage * itemsPerPage,
+                    filteredDocuments.length
+                  )} dari ${documents.length} berkas di Vault`}
             </span>
             <Pagination
               currentPage={currentPage}

@@ -37,102 +37,8 @@ export interface StaffAdmin {
   joinDate: string;
 }
 
-const INITIAL_STAFF: StaffAdmin[] = [
-  {
-    id: "STF-00",
-    name: "Super Administrator Zhou",
-    nip: "SPR-001",
-    email: "superadmin@zhouconsulting.com",
-    phone: "+62 811-9988-7766",
-    role: "Superadmin",
-    division: "IT & Operasional",
-    tasksCount: 12,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Jan 2024",
-  },
-  {
-    id: "STF-01",
-    name: "Konsultan Senior Zhou",
-    nip: "ADM-001",
-    email: "admin@zhouconsulting.com",
-    phone: "+62 812-9876-1200",
-    role: "Admin",
-    division: "Tax Service Core",
-    tasksCount: 8,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "10 Jan 2024",
-  },
-  {
-    id: "STF-02",
-    name: "Linda David, S.Ak., BKP",
-    nip: "ADM-002",
-    email: "linda.david@zhouconsulting.id",
-    phone: "+62 812-9876-1201",
-    role: "Admin",
-    division: "Tax Service Core",
-    tasksCount: 5,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "15 Jan 2024",
-  },
-  {
-    id: "STF-03",
-    name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    nip: "ADM-003",
-    email: "tasya.anggraeni@zhouconsulting.id",
-    phone: "+62 812-9876-1202",
-    role: "Admin",
-    division: "Accounting Service",
-    tasksCount: 3,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Mar 2024",
-  },
-  {
-    id: "STF-04",
-    name: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    nip: "ADM-004",
-    email: "dekhsa.afnan@zhouconsulting.id",
-    phone: "+62 812-9876-1203",
-    role: "Admin",
-    division: "Legal Compliance",
-    tasksCount: 2,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "10 Okt 2023",
-  },
-  {
-    id: "STF-05",
-    name: "Hendro Wibowo, SE., Ak., CA",
-    nip: "ADM-005",
-    email: "hendro.wibowo@zhouconsulting.id",
-    phone: "+62 812-9876-1204",
-    role: "Admin",
-    division: "Business Financial Consulting",
-    tasksCount: 4,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "20 Mei 2024",
-  },
-  {
-    id: "STF-06",
-    name: "Rian Pratama, SH.",
-    nip: "ADM-006",
-    email: "rian.pratama@zhouconsulting.id",
-    phone: "+62 812-9876-1207",
-    role: "Admin",
-    division: "Legal Compliance",
-    tasksCount: 0,
-    status: "Nonaktif",
-    twoFactorEnabled: false,
-    joinDate: "18 Des 2024",
-  },
-];
-
 export default function SuperadminUsersPage() {
-  const [staffList, setStaffList] = useState<StaffAdmin[]>(INITIAL_STAFF);
+  const [staffList, setStaffList] = useState<StaffAdmin[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -151,32 +57,19 @@ export default function SuperadminUsersPage() {
     phone: "+62 8",
     role: "admin",
     division: "Tax Service Core" as StaffAdmin["division"],
-    initialPassword: "ZhouPass" + Math.floor(1000 + Math.random() * 9000) + "!",
+    initialPassword: "",
     twoFactorEnabled: true,
   });
 
-  // Sync staff with Backend API and localStorage cache
+  // Sync staff with Backend API
   useEffect(() => {
     let isMounted = true;
-
-    // Load from local storage cache if available
-    try {
-      const cached = localStorage.getItem("zhou_superadmin_staff_list");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setStaffList(parsed);
-        }
-      }
-    } catch (e) {
-      console.warn("Gagal membaca cache staf:", e);
-    }
 
     superadminApi
       .getAdmins()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const apiStaff: StaffAdmin[] = res.data.map((adm: AdminUserItem, idx: number) => ({
             id: `STF-BE-${adm.id}`,
             name: adm.name,
@@ -195,20 +88,11 @@ export default function SuperadminUsersPage() {
             }),
           }));
 
-          // Merge without duplicate emails
-          setStaffList((prev) => {
-            const existingEmails = new Set(apiStaff.map((s) => s.email.toLowerCase()));
-            const localOnly = prev.filter((p) => !existingEmails.has(p.email.toLowerCase()));
-            const merged = [...apiStaff, ...localOnly];
-            try {
-              localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+          setStaffList(apiStaff);
         }
       })
-      .catch((err) => {
-        console.warn("superadminApi.getAdmins fallback:", err);
+      .catch(() => {
+        // silent fallback
       });
 
     return () => {

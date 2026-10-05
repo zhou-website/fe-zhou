@@ -97,57 +97,6 @@ interface AdminTicket {
   deliverableFile?: string;
   checklists: ChecklistItem[];
 }
-
-const PRESERVED_TICKETS: AdminTicket[] = [
-  {
-    id: "TK-2026-089",
-    clientName: "PT Maju Makmur Sentosa",
-    clientId: "CL-88219",
-    title: "Pelaporan SPT Tahunan Badan & Ekualisasi Fiskal 2025",
-    category: "Tax Service Core",
-    consultant: "Linda David, S.Ak., BKP",
-    status: "In Progress",
-    slaDue: "25 Sep 2026",
-    deliverableFile: "Draft_Rekonsiliasi_Fiskal_2025_v1.pdf",
-    checklists: [
-      { id: 1, text: "Telaah laporan keuangan komersial & jurnal penyesuaian", done: true },
-      { id: 2, text: "Kompilasi rekonsiliasi fiskal positif/negatif UU HPP", done: true },
-      { id: 3, text: "Verifikasi kredit pajak PPh 22, 23, 25 & bukti potong unifikasi", done: true },
-      { id: 4, text: "Finalisasi draft SPT Tahunan & pengunggahan ke sistem Coretax DJP", done: false },
-    ],
-  },
-  {
-    id: "TK-2026-092",
-    clientName: "CV Borneo Karya Prima",
-    clientId: "CL-74102",
-    title: "Penyusunan Jurnal Buku Besar & Laporan Laba Rugi Q3 SAK EP",
-    category: "Accounting Service",
-    consultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    status: "In Progress",
-    slaDue: "28 Sep 2026",
-    checklists: [
-      { id: 1, text: "Verifikasi nota transaksi pembelian & penjualan komersial", done: true },
-      { id: 2, text: "Posting jurnal umum ke buku besar standar SAK", done: false },
-      { id: 3, text: "Rekonsiliasi mutasi kas, giro, & deposito bank", done: false },
-    ],
-  },
-  {
-    id: "TK-2026-077",
-    clientName: "PT Solusi Niaga Terpadu",
-    clientId: "CL-90145",
-    title: "Studi Kelayakan Investasi & Proyeksi Finansial Ekspansi",
-    category: "Business Financial Consulting",
-    consultant: "Linda David, S.Ak., BKP",
-    status: "In Progress",
-    slaDue: "30 Sep 2026",
-    checklists: [
-      { id: 1, text: "Pengumpulan data historis arus kas 3 tahun terakhir", done: true },
-      { id: 2, text: "Perhitungan simulasi NPV, IRR, dan Payback Period", done: true },
-      { id: 3, text: "Penyusunan executive presentation kelayakan modal kerja", done: false },
-    ],
-  },
-];
-
 type AdminNavSection =
   | "overview"
   | "homepage"
@@ -208,8 +157,43 @@ function AdminDashboardContent() {
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
   const [careerSettingsSaved, setCareerSettingsSaved] = useState<boolean>(false);
   const [contactContent, setContactContent] = useState<ContactConsultationContent>(INITIAL_CONTACT_CONTENT);
-  const [ticketsList, setTicketsList] = useState<AdminTicket[]>(PRESERVED_TICKETS);
-  const [selectedTicket, setSelectedTicket] = useState<AdminTicket>(PRESERVED_TICKETS[0]);
+  const [ticketsList, setTicketsList] = useState<AdminTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
+
+  // Sync Admin operational tickets from backend consultations
+  useEffect(() => {
+    async function loadAdminTickets() {
+      try {
+        const res = await adminApi.getConsultations();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: AdminTicket[] = res.data.map((c: ConsultationItem) => ({
+            id: `TK-2026-0${c.id}`,
+            clientName: `Klien ID: CL-${c.client_id}`,
+            clientId: `CL-${c.client_id}`,
+            title: c.title || "Layanan Konsultasi Perpajakan",
+            category: "Tax Service Core",
+            consultant: "Staf Konsultan",
+            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+            slaDue: new Date(c.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            checklists: [
+              { id: 1, text: "Telaah berkas awal dan validasi data klien", done: true },
+              { id: 2, text: "Penyusunan kertas kerja dan analisis regulasi", done: false },
+              { id: 3, text: "Finalisasi hasil konsultasi dan penerbitan laporan", done: false },
+            ],
+          }));
+          setTicketsList(mapped);
+          setSelectedTicket(mapped[0]);
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    loadAdminTickets();
+  }, []);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -2645,103 +2629,117 @@ function AdminDashboardContent() {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Tickets list */}
-            <div className="space-y-3">
-              {ticketsList.map((t) => (
-                <div
-                  key={t.id}
-                  onClick={() => setSelectedTicket(t)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer text-xs space-y-2 ${
-                    selectedTicket.id === t.id
-                      ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                      : "border-primary-light bg-white hover:border-primary/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-primary">{t.id}</span>
-                    <Badge variant={t.status === "In Progress" ? "silver" : "success"} size="sm">
-                      {t.status}
-                    </Badge>
-                  </div>
-                  <h4 className="font-bold text-primary">{t.clientName}</h4>
-                  <p className="text-[11px] text-text-secondary line-clamp-1">{t.title}</p>
-                  <div className="text-[10px] text-text-muted">PIC: {t.consultant}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Ticket details & checklists */}
-            <div className="lg:col-span-2">
-              <Card className="rounded-2xl border-primary-light bg-white p-5 shadow-xs space-y-4 text-xs">
-                <div className="flex items-center justify-between pb-3 border-b border-primary-light">
-                  <div>
-                    <span className="font-mono font-bold text-primary">{selectedTicket.id}</span>
-                    <h3 className="text-base font-bold text-primary mt-0.5">{selectedTicket.title}</h3>
-                    <span className="text-[11px] text-text-muted">Klien: {selectedTicket.clientName} ({selectedTicket.clientId})</span>
-                  </div>
-                  <Badge variant={selectedTicket.status === "In Progress" ? "silver" : "success"}>
-                    {selectedTicket.status}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="font-bold text-primary block">Checklist Verifikasi Lembar Kerja:</span>
-                  <div className="space-y-2">
-                    {selectedTicket.checklists.map((chk) => (
-                      <label
-                        key={chk.id}
-                        className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white cursor-pointer transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={chk.done}
-                          onChange={() => {
-                            const updated = selectedTicket.checklists.map((c) =>
-                              c.id === chk.id ? { ...c, done: !c.done } : c
-                            );
-                            const updatedTicket = { ...selectedTicket, checklists: updated };
-                            setSelectedTicket(updatedTicket);
-                            setTicketsList((prev) =>
-                              prev.map((t) => (t.id === selectedTicket.id ? updatedTicket : t))
-                            );
-                            showToast(`Checklist task #${chk.id} diperbarui.`);
-                          }}
-                          className="w-4 h-4 rounded text-primary focus:ring-primary"
-                        />
-                        <span className={`text-xs ${chk.done ? "line-through text-text-muted" : "text-text-primary font-medium"}`}>
-                          {chk.text}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-primary-light flex items-center justify-between text-[11px]">
-                  <span className="text-text-muted">Tenggat SLA: {selectedTicket.slaDue}</span>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      const allDone = selectedTicket.checklists.every((c) => c.done);
-                      if (!allDone) {
-                        showToast("Selesaikan seluruh butir checklist sebelum mengesahkan tiket.");
-                        return;
-                      }
-                      const updated = { ...selectedTicket, status: "Completed" as const };
-                      setSelectedTicket(updated);
-                      setTicketsList((prev) => prev.map((t) => (t.id === selectedTicket.id ? updated : t)));
-                      showToast(`Tiket ${selectedTicket.id} resmi disahkan selesai.`);
-                    }}
-                    className="text-xs h-8 px-4 font-semibold"
+          {ticketsList.length === 0 ? (
+            <Card className="rounded-2xl border-primary-light bg-white p-12 text-center text-xs text-text-muted space-y-2">
+              <DocumentIcon className="text-3xl text-silver mx-auto" />
+              <p className="font-semibold text-primary">Belum ada lembar kerja atau tiket konsultasi aktif.</p>
+              <p>Tiket tugas konsultasi dari klien akan tampil di sini secara otomatis.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Tickets list */}
+              <div className="space-y-3">
+                {ticketsList.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedTicket(t)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer text-xs space-y-2 ${
+                      selectedTicket?.id === t.id
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                        : "border-primary-light bg-white hover:border-primary/50"
+                    }`}
                   >
-                    Sahkan Tiket Selesai
-                  </Button>
-                </div>
-              </Card>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-primary">{t.id}</span>
+                      <Badge variant={t.status === "In Progress" ? "silver" : "success"} size="sm">
+                        {t.status}
+                      </Badge>
+                    </div>
+                    <h4 className="font-bold text-primary">{t.clientName}</h4>
+                    <p className="text-[11px] text-text-secondary line-clamp-1">{t.title}</p>
+                    <div className="text-[10px] text-text-muted">PIC: {t.consultant}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Ticket details & checklists */}
+              <div className="lg:col-span-2">
+                {selectedTicket ? (
+                  <Card className="rounded-2xl border-primary-light bg-white p-5 shadow-xs space-y-4 text-xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+                      <div>
+                        <span className="font-mono font-bold text-primary">{selectedTicket.id}</span>
+                        <h3 className="text-base font-bold text-primary mt-0.5">{selectedTicket.title}</h3>
+                        <span className="text-[11px] text-text-muted">Klien: {selectedTicket.clientName} ({selectedTicket.clientId})</span>
+                      </div>
+                      <Badge variant={selectedTicket.status === "In Progress" ? "silver" : "success"}>
+                        {selectedTicket.status}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="font-bold text-primary block">Checklist Verifikasi Lembar Kerja:</span>
+                      <div className="space-y-2">
+                        {selectedTicket.checklists.map((chk) => (
+                          <label
+                            key={chk.id}
+                            className="flex items-center gap-2.5 p-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={chk.done}
+                              onChange={() => {
+                                const updated = selectedTicket.checklists.map((c) =>
+                                  c.id === chk.id ? { ...c, done: !c.done } : c
+                                );
+                                const updatedTicket = { ...selectedTicket, checklists: updated };
+                                setSelectedTicket(updatedTicket);
+                                setTicketsList((prev) =>
+                                  prev.map((t) => (t.id === selectedTicket.id ? updatedTicket : t))
+                                );
+                                showToast(`Checklist task #${chk.id} diperbarui.`);
+                              }}
+                              className="w-4 h-4 rounded text-primary focus:ring-primary"
+                            />
+                            <span className={`text-xs ${chk.done ? "line-through text-text-muted" : "text-text-primary font-medium"}`}>
+                              {chk.text}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-primary-light flex items-center justify-between text-[11px]">
+                      <span className="text-text-muted">Tenggat SLA: {selectedTicket.slaDue}</span>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          const allDone = selectedTicket.checklists.every((c) => c.done);
+                          if (!allDone) {
+                            showToast("Selesaikan seluruh butir checklist sebelum mengesahkan tiket.");
+                            return;
+                          }
+                          const updated = { ...selectedTicket, status: "Completed" as const };
+                          setSelectedTicket(updated);
+                          setTicketsList((prev) => prev.map((t) => (t.id === selectedTicket.id ? updated : t)));
+                          showToast(`Tiket ${selectedTicket.id} resmi disahkan selesai.`);
+                        }}
+                        className="text-xs h-8 px-4 font-semibold"
+                      >
+                        Sahkan Tiket Selesai
+                      </Button>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="rounded-2xl border-primary-light bg-white p-8 text-center text-xs text-text-muted">
+                    Pilih salah satu tiket di sebelah kiri untuk melihat rincian.
+                  </Card>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
