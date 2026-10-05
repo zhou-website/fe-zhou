@@ -1533,9 +1533,6 @@ function AdminDashboardContent() {
 
           {servicesList.length === 0 ? (
             <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-xl">
-                <PlusIcon />
-              </div>
               <div className="space-y-1">
                 <h4 className="text-base font-bold text-primary">Belum Ada Modul Layanan</h4>
                 <p className="text-xs text-text-secondary max-w-md mx-auto">

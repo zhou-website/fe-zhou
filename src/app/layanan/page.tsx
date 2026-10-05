@@ -20,7 +20,6 @@ import {
   BookIcon,
   ShieldTaxIcon,
   ArrowRightIcon,
-  BriefcaseIcon,
 } from "@/components/icons";
 import {
   StoredServiceItem,
@@ -115,9 +114,6 @@ export default function LayananIndexPage() {
             {/* Empty State */}
             {publishedServices.length === 0 ? (
               <div className="py-16 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 max-w-2xl mx-auto shadow-xs">
-                <div className="w-14 h-14 rounded-2xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-2xl">
-                  <BriefcaseIcon />
-                </div>
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-primary">Katalog Layanan Sedang Dipersiapkan</h3>
                   <p className="text-xs sm:text-sm text-text-secondary leading-relaxed max-w-md mx-auto">

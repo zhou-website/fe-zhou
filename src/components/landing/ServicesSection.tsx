@@ -15,7 +15,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircleIcon,
-  BriefcaseIcon,
   ArrowRightIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
@@ -95,9 +94,6 @@ export function ServicesSection() {
         {/* Services List / Empty State */}
         {publishedServices.length === 0 ? (
           <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 max-w-2xl mx-auto shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-xl">
-              <BriefcaseIcon />
-            </div>
             <div className="space-y-1.5">
               <h3 className="text-base font-bold text-primary">Katalog Layanan Sedang Dipersiapkan</h3>
               <p className="text-xs text-text-secondary leading-relaxed max-w-lg mx-auto">

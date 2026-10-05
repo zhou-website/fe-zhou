@@ -79,9 +79,6 @@ export default function KonsultasiHukumPage() {
           /* Empty State when no data entered by admin */
           <section className="py-20 bg-white">
             <div className="container-custom max-w-2xl text-center space-y-5">
-              <div className="w-16 h-16 rounded-2xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-3xl shadow-xs">
-                <BriefcaseIcon />
-              </div>
               <div className="space-y-2">
                 <h1 className="text-2xl font-bold text-primary tracking-tight">
                   Informasi Layanan Belum Tersedia
