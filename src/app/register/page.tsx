@@ -162,10 +162,6 @@ function RegisterFormContent() {
         <div className="w-full max-w-xl bg-white rounded-2xl border border-primary-light shadow-xl p-6 sm:p-8 space-y-6">
           {/* Header text */}
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-semibold">
-              <ShieldTaxIcon className="text-xs" />
-              <span>Registrasi Klien Terproteksi</span>
-            </div>
             <h1 className="text-2xl sm:text-[26px] font-bold text-primary tracking-tight">
               Daftar Akun Layanan
             </h1>

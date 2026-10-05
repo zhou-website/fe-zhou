@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import {
   LockIcon,
   EyeIcon,
-  ShieldTaxIcon,
   CheckCircleIcon,
 } from "@/components/icons";
 import { authApi } from "@/lib/api";
@@ -94,10 +93,6 @@ function ResetPasswordContent() {
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-8">
         <div className="w-full max-w-md bg-white rounded-2xl border border-primary-light shadow-xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-light text-primary text-[11px] font-semibold">
-              <ShieldTaxIcon className="text-xs" />
-              <span>Reset Kredensial Pengguna</span>
-            </div>
             <h1 className="text-2xl font-bold text-primary tracking-tight">
               Atur Ulang Kata Sandi
             </h1>
