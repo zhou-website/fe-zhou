@@ -20,6 +20,7 @@ import {
   LockIcon,
   UserIcon,
 } from "@/components/icons";
+import { clientApi, ChatbotTreeItem } from "@/lib/api";
 
 interface FAQItem {
   id: string;
@@ -68,10 +69,31 @@ interface ChatExchange {
 }
 
 export default function ClientChatbotPage() {
+  const [faqs, setFaqs] = useState<FAQItem[]>(FAQ_LIST);
   const [chatHistory, setChatHistory] = useState<ChatExchange[]>([]);
   const [selectedFaqId, setSelectedFaqId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Sync FAQ tree from live backend
+  useEffect(() => {
+    async function loadBackendFaq() {
+      try {
+        const res = await clientApi.getChatbotTree();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: FAQItem[] = res.data.map((item: ChatbotTreeItem, idx: number) => ({
+            id: `faq-be-${item.id || idx}`,
+            question: item.question,
+            answer: item.answer_template || "Silakan konsultasikan lebih lanjut dengan tim kami.",
+          }));
+          setFaqs(mapped);
+        }
+      } catch (err) {
+        console.warn("Backend chatbot tree load fallback:", err);
+      }
+    }
+    loadBackendFaq();
+  }, []);
 
   const getCurrentTime = () => {
     return (
@@ -91,6 +113,15 @@ export default function ClientChatbotPage() {
     setIsTyping(true);
 
     const currentTime = getCurrentTime();
+
+    try {
+      clientApi.escalateChatbot({
+        message: `Inquiry FAQ: ${faq.question}`,
+        category: "Chatbot",
+      });
+    } catch {
+      // non-blocking
+    }
 
     setTimeout(() => {
       const newExchange: ChatExchange = {
@@ -192,7 +223,7 @@ export default function ClientChatbotPage() {
                 </span>
 
                 <div className="space-y-2">
-                  {FAQ_LIST.map((faq) => {
+                  {faqs.map((faq) => {
                     const isSelected = selectedFaqId === faq.id;
                     return (
                       <button

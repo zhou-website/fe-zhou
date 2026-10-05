@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { clientApi, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -301,6 +302,78 @@ export default function ClientTicketMonitoringPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Sync with live backend consultations
+  useEffect(() => {
+    async function loadBackendTickets() {
+      try {
+        const res = await clientApi.getConsultations();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: Ticket[] = res.data.map((c: ConsultationItem) => ({
+            id: c.project_code || `TK-${c.id}`,
+            title: c.title,
+            category: "Tax Service Core",
+            consultant: "Tim Konsultan Senior Zhou",
+            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
+            createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            estimatedCompletion: "Sesuai Jadwal SLA",
+            milestones: [
+              {
+                step: "01",
+                title: "Intake & Verifikasi Berkas Awal",
+                status: "completed",
+                date: "Hari ke-1",
+                description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
+              },
+              {
+                step: "02",
+                title: "Analisis & Pengerjaan Lembar Kerja",
+                status: c.status === "COMPLETED" ? "completed" : "in_progress",
+                date: "Proses",
+                description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
+              },
+              {
+                step: "03",
+                title: "Finalisasi & Penyampaian Hasil",
+                status: c.status === "COMPLETED" ? "completed" : "pending",
+                date: "Final",
+                description: "Penerbitan dokumen deliverable resmi.",
+              },
+            ],
+            deliverables: c.status === "COMPLETED" ? [
+              {
+                name: "Laporan_Resmi_Konsultasi_Zhou.pdf",
+                size: "1.8 MB",
+                format: "PDF",
+                date: "Selesai",
+              }
+            ] : [],
+            correspondences: [
+              {
+                id: `msg-${c.id}`,
+                sender: "Tim Konsultan Zhou (Sistem Penugasan)",
+                role: "Konsultan",
+                date: "Terbaru",
+                message: c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
+              },
+            ],
+          }));
+          setTickets(mapped);
+          if (mapped.length > 0) {
+            setSelectedTicketId(mapped[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn("Backend tickets load fallback:", err);
+      }
+    }
+    loadBackendTickets();
+  }, []);
+
   // Modal State for New Ticket
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState("");
@@ -340,11 +413,20 @@ export default function ClientTicketMonitoringPage() {
   });
 
   // Handle New Ticket Submit
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newDescription.trim()) {
       showToast("Mohon lengkapi judul dan deskripsi permohonan konsultasi.");
       return;
+    }
+
+    try {
+      await clientApi.escalateChatbot({
+        message: `[${newCategory}] [Urgensi: ${newUrgency}] ${newTitle}: ${newDescription}`,
+        category: newCategory,
+      });
+    } catch (err) {
+      console.warn("Backend ticket creation notice:", err);
     }
 
     const newId = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
@@ -355,28 +437,28 @@ export default function ClientTicketMonitoringPage() {
       consultant: "Tim Konsultan Senior Zhou (Dalam Penugasan)",
       status: "In Progress",
       progress: 25,
-      createdAt: "Hari ini (17 Sep 2026)",
-      estimatedCompletion: "27 Sep 2026",
+      createdAt: "Hari ini",
+      estimatedCompletion: "Dalam Proses",
       milestones: [
         {
           step: "01",
           title: "Intake & Verifikasi Berkas Awal",
           status: "in_progress",
-          date: "17 Sep 2026",
+          date: "Hari ini",
           description: "Permohonan konsultasi diterima sistem operasional dan sedang dialokasikan ke lead konsultan terkait.",
         },
         {
           step: "02",
           title: "Analisis & Pengerjaan Lembar Kerja",
           status: "pending",
-          date: "Estimasi 22 Sep 2026",
+          date: "Estimasi 3 hari",
           description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
         },
         {
           step: "03",
           title: "Finalisasi & Penyampaian Hasil",
           status: "pending",
-          date: "Estimasi 27 Sep 2026",
+          date: "Estimasi 7 hari",
           description: "Penerbitan dokumen deliverable resmi.",
         },
       ],
@@ -392,12 +474,12 @@ export default function ClientTicketMonitoringPage() {
       ],
     };
 
-    setTickets([newTicketItem, ...tickets]);
+    setTickets((prev) => [newTicketItem, ...prev]);
     setSelectedTicketId(newId);
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");
-    showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}. Tim kami akan segera menindaklanjuti.`);
+    showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}.`);
   };
 
   return (

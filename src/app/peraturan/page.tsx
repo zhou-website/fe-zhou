@@ -35,6 +35,7 @@ import {
   getStoredKmkRates,
   KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
+import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
 export default function PeraturanPage() {
   const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
@@ -49,8 +50,64 @@ export default function PeraturanPage() {
 
   // Load from localStorage or defaults and listen to updates from Admin CRUD & KMK
   useEffect(() => {
+    let isMounted = true;
     setRegulations(getStoredRegulations());
     setKmkData(getStoredKmkRates());
+
+    // Fetch from live Backend API with fallback
+    publicApi
+      .getRegulations()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiRegs: StoredRegulationItem[] = res.data.map((item: RegulationItem) => ({
+            id: `BE-${item.id}`,
+            docNumber: item.title,
+            title: item.title,
+            category: "Peraturan Menteri",
+            effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            scope: item.regulation_type || "Regulasi kepatuhan perpajakan nasional.",
+            fileSize: item.file_size || "1.2 MB",
+            status: "Berlaku",
+            downloadUrl: item.file_path || "#",
+          }));
+
+          setRegulations((prev) => {
+            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
+            return [...apiRegs, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getRegulations fallback:", err);
+      });
+
+    publicApi
+      .getLatestTaxRates()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedRates = res.data.map((r: TaxRateItem) => ({
+            currency: r.currency_code,
+            name: r.currency_code === "USD" ? "Dolar Amerika Serikat" : r.currency_code,
+            rate: `Rp ${Number(r.rate_value).toLocaleString("id-ID")},00`,
+            change: "+0,00%",
+            trend: "flat" as const,
+          }));
+          setKmkData((prev) => ({
+            ...prev,
+            rates: mappedRates,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getLatestTaxRates fallback:", err);
+      });
 
     const handleUpdate = () => {
       setRegulations(getStoredRegulations());
@@ -61,6 +118,7 @@ export default function PeraturanPage() {
     window.addEventListener(KMK_RATES_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
+      isMounted = false;
       window.removeEventListener(REGULATIONS_EVENT, handleUpdate);
       window.removeEventListener(KMK_RATES_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);

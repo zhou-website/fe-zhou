@@ -36,8 +36,9 @@ export function setAuthToken(token: string): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    document.cookie = `${TOKEN_STORAGE_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
   } catch (err) {
-    console.error("Gagal menyimpan token ke localStorage:", err);
+    console.error("Gagal menyimpan token ke localStorage/cookie:", err);
   }
 }
 
@@ -45,8 +46,9 @@ export function removeAuthToken(): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    document.cookie = `${TOKEN_STORAGE_KEY}=; path=/; max-age=0; SameSite=Lax`;
   } catch (err) {
-    console.error("Gagal menghapus token dari localStorage:", err);
+    console.error("Gagal menghapus token dari localStorage/cookie:", err);
   }
 }
 
@@ -331,6 +333,15 @@ export const adminApi = {
       `/api/v1/admin/consultations/${consultationId}/documents`
     ),
 
+  uploadDocument: (consultationId: number | string, formData: FormData) =>
+    apiFetch<ClientDocumentItem>(
+      `/api/v1/admin/consultations/${consultationId}/documents`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    ),
+
   getAllDocuments: () => apiFetch<ClientDocumentItem[]>("/api/v1/admin/documents"),
 };
 
@@ -367,6 +378,31 @@ export const adminCmsApi = {
     effective_end_date: string;
   }) =>
     apiFetch("/api/v1/admin/cms/tax-rates", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  createRegulation: (formData: FormData) =>
+    apiFetch("/api/v1/admin/cms/regulations", {
+      method: "POST",
+      body: formData,
+    }),
+
+  createEducation: (formData: FormData) =>
+    apiFetch("/api/v1/admin/cms/education", {
+      method: "POST",
+      body: formData,
+    }),
+
+  createCareer: (payload: {
+    position_code: string;
+    position_title: string;
+    level: string;
+    location: string;
+    description?: string;
+    is_active?: boolean;
+  }) =>
+    apiFetch("/api/v1/admin/cms/careers", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
@@ -429,6 +465,20 @@ export interface PublicCareerItem {
   description?: string;
   is_active?: boolean;
 }
+
+export interface ChatbotTreeItem {
+  id: number;
+  category?: string;
+  question: string;
+  answer_template?: string;
+  answer?: string;
+  parent_id?: number | null;
+}
+
+export type RegulationItem = PublicRegulationItem;
+export type TaxRateItem = PublicTaxRateItem;
+export type EducationItem = PublicEducationItem;
+export type CareerItem = PublicCareerItem;
 
 export const publicApi = {
   getCompanyProfiles: () =>

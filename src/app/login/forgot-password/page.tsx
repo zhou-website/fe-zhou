@@ -13,13 +13,15 @@ import {
   PhoneIcon,
 } from "@/components/icons";
 
+import { authApi } from "@/lib/api";
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -35,18 +37,30 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
 
-    // Simulate verification dispatch
-    setTimeout(() => {
+    try {
+      const res = await authApi.forgotPassword(email);
+      if (res.success) {
+        setIsSubmitted(true);
+      } else {
+        setErrorMessage(res.message || "Gagal mengirim email pemulihan. Pastikan email terdaftar.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menghubungi server live backend.";
+      setErrorMessage(msg);
+    } finally {
       setIsLoading(false);
-      setIsSubmitted(true);
-    }, 600);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      await authApi.forgotPassword(email);
+    } catch {
+      // fallback
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (

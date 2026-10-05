@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { clientApi, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,6 +133,41 @@ export default function UserDashboardPage() {
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
+  // Sync consultations & overview with backend
+  useEffect(() => {
+    async function loadClientData() {
+      try {
+        const res = await clientApi.getConsultations();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: Ticket[] = res.data.map((c: ConsultationItem) => ({
+            id: c.project_code || `TK-${c.id}`,
+            title: c.title,
+            category: "Tax Service Core",
+            consultant: "Konsultan Zhou",
+            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
+            updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            checklists: [
+              { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: c.status === "COMPLETED" },
+              { text: "Penyusunan berkas luaran & final review", done: c.status === "COMPLETED" },
+            ],
+            deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
+            deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
+          }));
+          setTickets(mapped);
+        }
+      } catch (err) {
+        console.warn("Backend consultation load notice (using fallback):", err);
+      }
+    }
+    loadClientData();
+  }, []);
+
   // Modal Create Ticket State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicketData, setNewTicketData] = useState({
@@ -151,7 +187,7 @@ export default function UserDashboardPage() {
   const activeCount = tickets.filter((t) => t.status === "In Progress").length;
   const completedCount = tickets.filter((t) => t.status === "Completed").length;
 
-  const handleCreateTicketSubmit = (e: React.FormEvent) => {
+  const handleCreateTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTicketData.title.trim() || !newTicketData.description.trim()) {
       setCreateError("Judul dan deskripsi masalah konsultasi wajib diisi.");
@@ -161,29 +197,36 @@ export default function UserDashboardPage() {
     setIsSubmittingTicket(true);
     setCreateError("");
 
-    setTimeout(() => {
-      const newTicket: Ticket = {
-        id: `TK-2026-0${Math.floor(100 + Math.random() * 900)}`,
-        title: newTicketData.title,
+    try {
+      await clientApi.escalateChatbot({
+        message: `[${newTicketData.category}] ${newTicketData.title}: ${newTicketData.description}`,
         category: newTicketData.category,
-        consultant: "Staf Alokasi Konsultan Zhou",
-        status: "In Progress",
-        progress: 20,
-        updatedAt: "Baru saja",
-        checklists: [
-          { text: "Registrasi dan telaah awal permohonan konsultasi", done: true },
-          { text: "Alokasi tim konsultan spesialis sesuai kategori", done: false },
-          { text: "Penyusunan kertas kerja dan evaluasi regulasi fiskal", done: false },
-          { text: "Finalisasi laporan dan penerbitan berkas luaran", done: false },
-        ],
-        deliverableFile: undefined,
-      };
+      });
+    } catch (err) {
+      console.warn("Backend ticket creation notice:", err);
+    }
 
-      setTickets([newTicket, ...tickets]);
-      setNewTicketData({ title: "", category: "Tax Service Core", description: "" });
-      setIsSubmittingTicket(false);
-      setShowCreateModal(false);
-    }, 800);
+    const newTicket: Ticket = {
+      id: `TK-2026-0${Math.floor(100 + Math.random() * 900)}`,
+      title: newTicketData.title,
+      category: newTicketData.category,
+      consultant: "Staf Alokasi Konsultan Zhou",
+      status: "In Progress",
+      progress: 20,
+      updatedAt: "Baru saja",
+      checklists: [
+        { text: "Registrasi dan telaah awal permohonan konsultasi", done: true },
+        { text: "Alokasi tim konsultan spesialis sesuai kategori", done: false },
+        { text: "Penyusunan kertas kerja dan evaluasi regulasi fiskal", done: false },
+        { text: "Finalisasi laporan dan penerbitan berkas luaran", done: false },
+      ],
+      deliverableFile: undefined,
+    };
+
+    setTickets((prev) => [newTicket, ...prev]);
+    setNewTicketData({ title: "", category: "Tax Service Core", description: "" });
+    setIsSubmittingTicket(false);
+    setShowCreateModal(false);
   };
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);

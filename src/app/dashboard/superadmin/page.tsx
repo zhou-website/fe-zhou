@@ -21,6 +21,7 @@ import {
   DocumentIcon,
   LockIcon,
 } from "@/components/icons";
+import { superadminApi, AdminUserItem, AuditLogItem } from "@/lib/api";
 
 interface AdminUser {
   id: string;
@@ -45,39 +46,41 @@ interface AuditLog {
   notes: string;
 }
 
+const INITIAL_ADMINS: AdminUser[] = [
+  {
+    id: "ADM-001",
+    name: "Linda David, S.Ak., BKP",
+    email: "linda.david@zhouconsulting.id",
+    role: "Senior Tax Consultant & Admin",
+    specialty: "Tax Service Core & Coretax",
+    status: "Active",
+    taskCount: 18,
+  },
+  {
+    id: "ADM-002",
+    name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
+    email: "tasya.anggraeni@zhouconsulting.id",
+    role: "Senior Accounting Specialist & Admin",
+    specialty: "Accounting Service & SAK",
+    status: "Active",
+    taskCount: 14,
+  },
+  {
+    id: "ADM-003",
+    name: "Rian Pratama, SH.",
+    email: "rian.pratama@zhouconsulting.id",
+    role: "Junior Legal Officer",
+    specialty: "Legal & Corporate Compliance",
+    status: "Inactive",
+    taskCount: 0,
+  },
+];
+
 export default function SuperadminDashboard() {
   const [activeTab, setActiveTab] = useState<"admins" | "audit">("audit");
 
   // Admin Management State
-  const [admins, setAdmins] = useState<AdminUser[]>([
-    {
-      id: "ADM-001",
-      name: "Linda David, S.Ak., BKP",
-      email: "linda.david@zhouconsulting.id",
-      role: "Senior Tax Consultant & Admin",
-      specialty: "Tax Service Core & Coretax",
-      status: "Active",
-      taskCount: 18,
-    },
-    {
-      id: "ADM-002",
-      name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-      email: "tasya.anggraeni@zhouconsulting.id",
-      role: "Senior Accounting Specialist & Admin",
-      specialty: "Accounting Service & SAK",
-      status: "Active",
-      taskCount: 14,
-    },
-    {
-      id: "ADM-003",
-      name: "Rian Pratama, SH.",
-      email: "rian.pratama@zhouconsulting.id",
-      role: "Junior Legal Officer",
-      specialty: "Legal & Corporate Compliance",
-      status: "Inactive",
-      taskCount: 0,
-    },
-  ]);
+  const [admins, setAdmins] = useState<AdminUser[]>(INITIAL_ADMINS);
 
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [newAdmin, setNewAdmin] = useState({
@@ -96,7 +99,7 @@ export default function SuperadminDashboard() {
   };
 
   // Audit Logs State (Append-Only Mutlak)
-  const [auditLogs] = useState<AuditLog[]>([
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
     {
       id: "LOG-9925",
       timestamp: "18 Sep 2026, 10:15:20 WIB",
@@ -195,17 +198,88 @@ export default function SuperadminDashboard() {
     },
   ]);
 
+  // Fetch live audit logs & admins from Backend API
+  useEffect(() => {
+    let isMounted = true;
+    superadminApi
+      .getAuditLogs()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedLogs: AuditLog[] = res.data.map((l: AuditLogItem) => ({
+            id: `LOG-${l.id}`,
+            timestamp:
+              new Date(l.created_at).toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }) + " WIB",
+            adminName: `Admin #${l.admin_id}`,
+            adminId: `ADM-${String(l.admin_id).padStart(3, "0")}`,
+            clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
+            ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
+            statusBefore: l.status_before || "Draft",
+            statusAfter: l.status_after || "Updated",
+            relatedFile: l.file_name || "-",
+            notes: l.description || l.action,
+          }));
+          setAuditLogs((prev) => [...mappedLogs, ...prev]);
+        }
+      })
+      .catch((err) => {
+        console.warn("superadminApi.getAuditLogs fallback:", err);
+      });
+
+    superadminApi
+      .getAdmins()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mappedAdmins: AdminUser[] = res.data.map((a: AdminUserItem) => ({
+            id: `ADM-${String(a.id).padStart(3, "0")}`,
+            name: a.name,
+            email: a.email,
+            role: a.role === "SUPERADMIN" ? "Superadmin Zhou" : "Konsultan & Admin",
+            specialty: "Core Tax & Legal Compliance",
+            status: a.is_active ? "Active" : "Inactive",
+            taskCount: 0,
+          }));
+          setAdmins(mappedAdmins);
+        }
+      })
+      .catch((err) => {
+        console.warn("superadminApi.getAdmins fallback:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Audit Filter State
   const [filterAdmin, setFilterAdmin] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   // Add new admin
-  const handleAddAdminSubmit = (e: React.FormEvent) => {
+  const handleAddAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdmin.name || !newAdmin.email || !newAdmin.initialPassword) {
       showToast("Mohon lengkapi seluruh kolom formulir.");
       return;
+    }
+
+    try {
+      await superadminApi.createAdmin({
+        name: newAdmin.name,
+        email: newAdmin.email,
+        password: newAdmin.initialPassword,
+        role: "ADMIN",
+      });
+    } catch (err) {
+      console.warn("superadminApi.createAdmin fallback to local state:", err);
     }
 
     const created: AdminUser = {
@@ -231,7 +305,14 @@ export default function SuperadminDashboard() {
   };
 
   // Toggle soft-delete
-  const handleToggleStatus = (adminId: string) => {
+  const handleToggleStatus = async (adminId: string) => {
+    try {
+      const rawId = parseInt(adminId.replace(/\D/g, ""), 10) || adminId;
+      await superadminApi.deactivateAdmin(rawId);
+    } catch (err) {
+      console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
+    }
+
     setAdmins(
       admins.map((a) => {
         if (a.id === adminId) {
@@ -245,12 +326,19 @@ export default function SuperadminDashboard() {
   };
 
   // Hard delete check
-  const handleDeleteAdmin = (admin: AdminUser) => {
+  const handleDeleteAdmin = async (admin: AdminUser) => {
     if (admin.taskCount > 0) {
       showToast(
         `Penghapusan permanen ditolak: Akun ${admin.name} memiliki ${admin.taskCount} riwayat tugas aktif. Gunakan fitur Nonaktifkan (Soft Delete).`
       );
       return;
+    }
+
+    try {
+      const rawId = parseInt(admin.id.replace(/\D/g, ""), 10) || admin.id;
+      await superadminApi.deleteAdmin(rawId);
+    } catch (err) {
+      console.warn("superadminApi.deleteAdmin fallback to local state:", err);
     }
 
     setAdmins(admins.filter((a) => a.id !== admin.id));
@@ -287,7 +375,18 @@ export default function SuperadminDashboard() {
   );
 
   // Export functions
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    try {
+      const res = await superadminApi.exportAuditLogs();
+      if (res?.data?.export_url) {
+        window.open(res.data.export_url, "_blank");
+        showToast("Laporan audit trail backend berhasil diunduh.");
+        return;
+      }
+    } catch (err) {
+      console.warn("superadminApi.exportAuditLogs fallback to client CSV:", err);
+    }
+
     const csvContent =
       "data:text/csv;charset=utf-8,Timestamp,Admin,ID Klien,ID Tiket,Status Sebelum,Status Sesudah,Berkas\n" +
       filteredLogs

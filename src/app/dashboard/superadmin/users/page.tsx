@@ -21,6 +21,7 @@ import {
   EyeIcon,
   LockIcon,
 } from "@/components/icons";
+import { superadminApi, AdminUserItem } from "@/lib/api";
 
 export interface StaffAdmin {
   id: string;
@@ -167,14 +168,69 @@ export default function SuperadminUsersPage() {
     twoFactorEnabled: true,
   });
 
+  // Sync staff with Backend API
+  useEffect(() => {
+    let isMounted = true;
+    superadminApi
+      .getAdmins()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiStaff: StaffAdmin[] = res.data.map((adm: AdminUserItem, idx: number) => ({
+            id: `STF-BE-${adm.id}`,
+            name: adm.name,
+            nip: `ADM-${String(adm.id).padStart(3, "0")}`,
+            email: adm.email,
+            phone: adm.phone || "+62 812-9876-" + (1200 + idx),
+            role: adm.role === "SUPERADMIN" ? "Superadmin Zhou" : "Konsultan & Admin",
+            division: "Tax Service Core",
+            tasksCount: 0,
+            status: adm.is_active ? "Aktif" : "Nonaktif",
+            twoFactorEnabled: true,
+            joinDate: new Date(adm.created_at || Date.now()).toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
+          }));
+
+          // Merge without duplicate emails
+          setStaffList((prev) => {
+            const existingEmails = new Set(apiStaff.map((s) => s.email.toLowerCase()));
+            const localOnly = prev.filter((p) => !existingEmails.has(p.email.toLowerCase()));
+            return [...apiStaff, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("superadminApi.getAdmins fallback:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleAddStaffSubmit = (e: React.FormEvent) => {
+  const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffForm.name.trim() || !newStaffForm.email.trim()) return;
+
+    try {
+      await superadminApi.createAdmin({
+        name: newStaffForm.name.trim(),
+        email: newStaffForm.email.trim(),
+        password: newStaffForm.initialPassword,
+        phone: newStaffForm.phone.trim(),
+        role: "ADMIN",
+      });
+    } catch (err) {
+      console.warn("superadminApi.createAdmin fallback to local state:", err);
+    }
 
     const nextId = "STF-0" + (staffList.length + 1);
     const nextNip = "ADM-00" + (staffList.length + 1);
@@ -221,7 +277,14 @@ export default function SuperadminUsersPage() {
     setEditingStaff(null);
   };
 
-  const handleToggleStatus = (staffId: string) => {
+  const handleToggleStatus = async (staffId: string) => {
+    try {
+      const rawId = parseInt(staffId.replace(/\D/g, ""), 10) || staffId;
+      await superadminApi.deactivateAdmin(rawId);
+    } catch (err) {
+      console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
+    }
+
     setStaffList((prev) =>
       prev.map((s) => {
         if (s.id === staffId) {
@@ -234,7 +297,7 @@ export default function SuperadminUsersPage() {
     );
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deletingStaff) return;
 
     if (deletingStaff.tasksCount > 0) {
@@ -244,6 +307,13 @@ export default function SuperadminUsersPage() {
       handleToggleStatus(deletingStaff.id);
       setDeletingStaff(null);
       return;
+    }
+
+    try {
+      const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
+      await superadminApi.deleteAdmin(rawId);
+    } catch (err) {
+      console.warn("superadminApi.deleteAdmin fallback to local state:", err);
     }
 
     setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));

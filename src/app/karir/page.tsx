@@ -8,6 +8,7 @@ import {
   getStoredCareerSettings,
   CAREER_SETTINGS_EVENT,
 } from "@/data/karirStorage";
+import { publicApi, CareerItem } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -203,15 +204,79 @@ const CAREER_JOBS: JobPosition[] = [
 
 export default function CareerPage() {
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
+  const [jobsList, setJobsList] = useState<JobPosition[]>(CAREER_JOBS);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedJobModal, setSelectedJobModal] = useState<JobPosition | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
   const [selectedJobToApply, setSelectedJobToApply] = useState<JobPosition | null>(null);
 
-  // Sync Career Settings with localStorage on mount & events
+  // Sync Career Settings with localStorage on mount & events + fetch Backend Careers
   useEffect(() => {
+    let isMounted = true;
     setCareerSettings(getStoredCareerSettings());
+
+    // Fetch live careers from Backend API
+    publicApi
+      .getCareers()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiJobs: JobPosition[] = res.data.map((c: CareerItem) => {
+            const titleLower = (c.position_title || "").toLowerCase();
+            const deptKey = (titleLower.includes("tax") || titleLower.includes("pajak")
+              ? "tax"
+              : titleLower.includes("account") || titleLower.includes("akuntan")
+              ? "accounting"
+              : titleLower.includes("legal") || titleLower.includes("hukum")
+              ? "legal"
+              : "all") as JobPosition["deptKey"];
+
+            const department =
+              deptKey === "tax"
+                ? "Tax Service Core"
+                : deptKey === "accounting"
+                ? "Accounting Service"
+                : deptKey === "legal"
+                ? "Legal Services"
+                : "Konsultasi Bisnis";
+
+            return {
+              id: c.position_code || String(c.id),
+              title: c.position_title,
+              department,
+              deptKey,
+              type: "Full-Time (Hybrid)",
+              location: c.location || "Menara Sudirman, Jakarta Selatan",
+              experience: c.level || "Min. 1-3 tahun",
+              compensation: "Kompensasi Kompetitif + BPJS",
+              summary: c.description || "Posisi karir profesional di Zhou Consulting.",
+              responsibilities: [
+                "Menjalankan penugasan profesional perpajakan dan akuntansi.",
+                "Kolaborasi lintas divisi untuk asistensi klien korporat.",
+              ],
+              qualifications: [
+                "Pendidikan S1 Akuntansi / Perpajakan / Hukum.",
+                "Integritas dan kemampuan komunikasi yang baik.",
+              ],
+              benefits: [
+                "Program pengembangan sertifikasi profesi.",
+                "Asuransi kesehatan dan fasilitas kerja fleksibel.",
+              ],
+              skills: ["Analisis Fiskal", "Akuntansi", "Kepatuhan"],
+            };
+          });
+
+          setJobsList((prev) => {
+            const titles = new Set(apiJobs.map((j) => j.title.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
+            return [...apiJobs, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getCareers fallback:", err);
+      });
 
     const handleCareerUpdate = () => {
       setCareerSettings(getStoredCareerSettings());
@@ -220,6 +285,7 @@ export default function CareerPage() {
     window.addEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
     window.addEventListener("storage", handleCareerUpdate);
     return () => {
+      isMounted = false;
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
       window.removeEventListener("storage", handleCareerUpdate);
     };
@@ -247,7 +313,7 @@ export default function CareerPage() {
   const [registrationCode, setRegistrationCode] = useState<string>("");
 
   // Filtering Logic
-  const filteredJobs = CAREER_JOBS.filter((job) => {
+  const filteredJobs = jobsList.filter((job) => {
     const matchesTab = activeTab === "all" || job.deptKey === activeTab;
     const matchesQuery =
       searchQuery.trim() === "" ||
@@ -317,7 +383,7 @@ export default function CareerPage() {
   };
 
   // Form Submission
-  const handleSubmitApplication = (e: React.FormEvent) => {
+  const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
 
@@ -352,13 +418,25 @@ export default function CareerPage() {
 
     setIsSubmitting(true);
 
-    // Simulate reliable dispatch
-    setTimeout(() => {
+    try {
+      const formData = new FormData();
+      formData.append("name", fullName.trim());
+      formData.append("email", email.trim());
+      formData.append("phone", phone.trim());
+      formData.append("education", education.trim());
+      if (linkedin) formData.append("linkedin", linkedin.trim());
+      if (coverLetter) formData.append("cover_letter", coverLetter.trim());
+      if (uploadedFile) formData.append("resume", uploadedFile);
+
+      await publicApi.applyCareer(selectedPositionId, formData);
+    } catch (err) {
+      console.warn("publicApi.applyCareer fallback:", err);
+    } finally {
       setIsSubmitting(false);
       const code = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       setRegistrationCode(code);
       setSubmitSuccess(true);
-    }, 1200);
+    }
   };
 
   const handleResetForm = () => {

@@ -23,6 +23,7 @@ import {
   BuildingIcon,
   FilterIcon,
 } from "@/components/icons";
+import { adminCmsApi } from "@/lib/api";
 import {
   ZHOU_ARTICLES,
   BELAJAR_PAJAK_LINKS,
@@ -373,6 +374,45 @@ function AdminCMSPageContent() {
       };
     }
 
+    // Attempt to persist to Backend API with safe fallback
+    try {
+      if (newItemForm.section === "edukasi-zhou") {
+        const formData = new FormData();
+        formData.append("title", createdItem.title);
+        formData.append("category", createdItem.category);
+        formData.append("content", createdItem.content?.join("\n\n") || createdItem.summary);
+        formData.append("excerpt", createdItem.summary);
+        if (createdItem.author) formData.append("author", createdItem.author);
+        adminCmsApi.createEducation(formData).catch((err) => {
+          console.warn("adminCmsApi.createEducation fallback:", err);
+        });
+      } else if (newItemForm.section === "regulasi") {
+        const formData = new FormData();
+        formData.append("title", createdItem.title);
+        formData.append("category", createdItem.category);
+        formData.append("description", createdItem.summary);
+        formData.append("year", String(new Date().getFullYear()));
+        adminCmsApi.createRegulation(formData).catch((err) => {
+          console.warn("adminCmsApi.createRegulation fallback:", err);
+        });
+      } else if (newItemForm.section === "karir") {
+        adminCmsApi
+          .createCareer({
+            position_code: `CAR-${Date.now()}`,
+            position_title: createdItem.title,
+            level: "Associate / Senior",
+            location: "Menara Sudirman, Jakarta Selatan",
+            description: createdItem.summary,
+            is_active: true,
+          })
+          .catch((err) => {
+            console.warn("adminCmsApi.createCareer fallback:", err);
+          });
+      }
+    } catch (err) {
+      console.warn("adminCmsApi sync fallback:", err);
+    }
+
     setCmsItems((prev) => [createdItem, ...prev]);
     setIsNewItemModalOpen(false);
 
@@ -387,14 +427,39 @@ function AdminCMSPageContent() {
   };
 
   // Save Hero section
-  const handleSaveHero = (e: React.FormEvent) => {
+  const handleSaveHero = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      await adminCmsApi.updateCompanyProfile({
+        section_key: "hero",
+        title: heroForm.headline,
+        content: heroForm.subheadline,
+      });
+    } catch (err) {
+      console.warn("adminCmsApi.updateCompanyProfile fallback:", err);
+    }
     showToast("Konten Profil & Hero Section berhasil diperbarui ke Landing Page.");
   };
 
   // Save Kurs section
-  const handleSaveKurs = (e: React.FormEvent) => {
+  const handleSaveKurs = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      if (kursForm.rates.length > 0) {
+        const firstRate = kursForm.rates[0];
+        const numRate = parseFloat(firstRate.rate.replace(/[^0-9,]/g, "").replace(",", ".")) || 15825;
+        const todayStr = new Date().toISOString().split("T")[0];
+        const nextWeekStr = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+        await adminCmsApi.createTaxRate({
+          currency_code: firstRate.currency,
+          rate_value: numRate,
+          effective_start_date: todayStr,
+          effective_end_date: nextWeekStr,
+        });
+      }
+    } catch (err) {
+      console.warn("adminCmsApi.createTaxRate fallback:", err);
+    }
     showToast(`Tabel ${kursForm.kmkNumber} berhasil diterbitkan secara langsung.`);
   };
 

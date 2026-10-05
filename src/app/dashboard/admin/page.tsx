@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { adminApi, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -292,6 +293,42 @@ function AdminDashboardContent() {
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
       window.removeEventListener("storage", handleCareerUpdate);
     };
+  }, []);
+
+  // Sync consultations & tickets from live backend
+  useEffect(() => {
+    async function loadAdminConsultations() {
+      try {
+        const res = await adminApi.getConsultations();
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped: AdminTicket[] = res.data.map((c: ConsultationItem) => ({
+            id: c.project_code || `ZHOU-${c.id}`,
+            clientName: "Klien Terdaftar",
+            clientId: `CL-${c.id}`,
+            category: "Tax Service Core",
+            title: c.title,
+            consultant: "Konsultan Senior Zhou",
+            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+            slaDue: new Date(c.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            checklists: [
+              { id: 1, text: "Verifikasi kelengkapan berkas", done: true },
+              { id: 2, text: "Kompilasi kertas kerja perpajakan", done: c.status === "COMPLETED" },
+            ],
+          }));
+          setTicketsList(mapped);
+          if (mapped.length > 0) {
+            setSelectedTicket(mapped[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Backend admin consultations load notice:", err);
+      }
+    }
+    loadAdminConsultations();
   }, []);
 
   const handleToggleCareerOpenStatus = () => {
