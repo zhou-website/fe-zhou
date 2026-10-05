@@ -170,7 +170,7 @@ export default function PeraturanPage() {
   }, [filteredRegulations, currentPage]);
 
   const handleDownload = (docNumber: string, title: string) => {
-    setDownloadNotice(`Mengunduh salinan resmi: ${docNumber} — ${title}...`);
+    setDownloadNotice(`Mengunduh salinan resmi: ${docNumber} - ${title}...`);
     setTimeout(() => {
       setDownloadNotice(null);
     }, 4000);

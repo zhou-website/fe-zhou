@@ -3,7 +3,7 @@ import { AdminSidebar } from "@/components/dashboard/AdminSidebar";
 import { DashboardGuard } from "@/components/auth/DashboardGuard";
 
 export const metadata = {
-  title: "Admin Portal — Zhou Consulting",
+  title: "Admin Portal - Zhou Consulting",
   description:
     "Pusat pengelolaan dan kurasi seluruh konten publik, informasi layanan, regulasi, materi edukasi, dan karir Zhou Consulting.",
 };

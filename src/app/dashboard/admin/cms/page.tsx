@@ -988,7 +988,7 @@ function AdminCMSPageContent() {
                   <span className="text-xs text-silver">&bull; Publikasi Mandiri Zhou</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                  Edukasi Zhou — Konten &amp; Artikel Unggahan Internal
+                  Edukasi Zhou - Konten &amp; Artikel Unggahan Internal
                 </h2>
                 <p className="text-xs sm:text-sm text-silver leading-relaxed">
                   Kelola dan publikasikan materi edukasi perpajakan yang disusun oleh tim konsultan
@@ -1209,7 +1209,7 @@ function AdminCMSPageContent() {
                   <span className="text-xs text-amber-100">&bull; DJP &amp; Kemenkeu RI</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                  Belajar Pajak — Katalog Link Edukasi Resmi Kemenkeu &amp; DJP
+                  Belajar Pajak - Katalog Link Edukasi Resmi Kemenkeu &amp; DJP
                 </h2>
                 <p className="text-xs sm:text-sm text-amber-100 leading-relaxed">
                   Kelola tautan situs pembelajaran resmi dari Direktorat Jenderal Pajak (DJP) dan
@@ -1814,10 +1814,10 @@ function AdminCMSPageContent() {
                   className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
                 >
                   <option value="edukasi-zhou">
-                    1. Edukasi Zhou — Konten yang dapat di-upload Zhou
+                    1. Edukasi Zhou - Konten yang dapat di-upload Zhou
                   </option>
                   <option value="belajar-pajak">
-                    2. Belajar Pajak — Link Edukasi dari Kemenkeu atau DJP
+                    2. Belajar Pajak - Link Edukasi dari Kemenkeu atau DJP
                   </option>
                   <option value="regulasi">Pusat Regulasi (/peraturan)</option>
                   <option value="karir">Karir &amp; Rekrutmen (/karir)</option>

@@ -543,7 +543,7 @@ export interface ContactConsultationContent {
 }
 
 export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
-  officeName: "Menara Sudirman — Kantor Pusat Zhou Consulting",
+  officeName: "Menara Sudirman - Kantor Pusat Zhou Consulting",
   address: "Jl. Jenderal Sudirman Kav. 21, Karet Semanggi, Setiabudi",
   floorBuilding: "Lantai 12, Unit 1205",
   city: "Jakarta Selatan, DKI Jakarta 12930",
@@ -618,7 +618,7 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
     items.push({
       id: `PUB-${srv.id}`,
       section: "services",
-      sectionLabel: `Layanan — ${srv.name}`,
+      sectionLabel: `Layanan - ${srv.name}`,
       publicRoute: srv.route,
       title: srv.name,
       category: srv.categoryKey.toUpperCase(),

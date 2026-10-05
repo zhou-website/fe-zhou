@@ -858,7 +858,7 @@ export default function AdminUploadBillingPage() {
               <div className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-text-primary">
-                    {selectedInvoice.category} &mdash; Penugasan {selectedInvoice.ticketId}
+                    {selectedInvoice.category} - Penugasan {selectedInvoice.ticketId}
                   </span>
                   <span className="font-mono font-bold text-primary">
                     {selectedInvoice.amount}

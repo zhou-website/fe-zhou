@@ -3,7 +3,7 @@ import { SuperadminSidebar } from "@/components/dashboard/SuperadminSidebar";
 import { DashboardGuard } from "@/components/auth/DashboardGuard";
 
 export const metadata = {
-  title: "Superadmin Portal — Zhou Consulting",
+  title: "Superadmin Portal - Zhou Consulting",
   description:
     "Konsol otoritas eksekutif superadmin untuk manajemen akun staf konsultan, hak akses RBAC, dan audit trail sistem Zhou Consulting.",
 };

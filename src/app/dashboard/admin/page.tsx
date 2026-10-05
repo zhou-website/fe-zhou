@@ -815,7 +815,7 @@ function AdminDashboardContent() {
             <span className="text-primary font-bold">Public Website Content Management</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Admin Portal — Pengelolaan Konten Website Publik
+            Admin Portal - Pengelolaan Konten Website Publik
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-3xl">
             Kelola seluruh konten, informasi, regulasi, materi edukasi, dan layanan yang ditayangkan pada website publik
@@ -2866,8 +2866,8 @@ function AdminDashboardContent() {
                 >
                   <option value="services">Layanan (/layanan/*)</option>
                   <option value="regulations">Peraturan &amp; Putusan (/peraturan)</option>
-                  <option value="education-zhou">Edukasi Zhou — Upload Artikel (/edukasi)</option>
-                  <option value="education-gov">Belajar Pajak — Link Kemenkeu/DJP (/edukasi)</option>
+                  <option value="education-zhou">Edukasi Zhou - Upload Artikel (/edukasi)</option>
+                  <option value="education-gov">Belajar Pajak - Link Kemenkeu/DJP (/edukasi)</option>
                   <option value="careers">Karir &amp; Rekrutmen (/karir)</option>
                   <option value="contact">Informasi Kontak (/kontak)</option>
                 </select>
