@@ -799,7 +799,7 @@ export default function CareerPage() {
                       <Input
                         id="modal-applicant-name"
                         type="text"
-                        placeholder="cth. Hendra Wijaya, S.E."
+                        placeholder="Nama Lengkap & Gelar"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                         className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
@@ -817,7 +817,7 @@ export default function CareerPage() {
                       <Input
                         id="modal-applicant-email"
                         type="email"
-                        placeholder="cth. hendra.wijaya@email.com"
+                        placeholder="nama@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
@@ -838,7 +838,7 @@ export default function CareerPage() {
                       <Input
                         id="modal-applicant-phone"
                         type="tel"
-                        placeholder="cth. 081234567890"
+                        placeholder="08xxxxxxxxxx"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
@@ -854,7 +854,7 @@ export default function CareerPage() {
                     <Input
                       id="modal-applicant-education"
                       type="text"
-                      placeholder="cth. S1 Akuntansi - PTN/PTS"
+                      placeholder="S1 Akuntansi / Perpajakan / Jurusan Terkait"
                       value={education}
                       onChange={(e) => setEducation(e.target.value)}
                       className="text-xs bg-white border-primary-light focus-visible:ring-primary"
@@ -871,7 +871,7 @@ export default function CareerPage() {
                   <Input
                     id="modal-applicant-linkedin"
                     type="url"
-                    placeholder="cth. https://linkedin.com/in/hendrawijaya"
+                    placeholder="https://linkedin.com/in/username"
                     value={linkedin}
                     onChange={(e) => setLinkedin(e.target.value)}
                     className="text-xs bg-white border-primary-light focus-visible:ring-primary"

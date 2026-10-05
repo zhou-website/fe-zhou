@@ -1070,7 +1070,7 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                             </Label>
                             <Input
                               id="picName"
-                              placeholder="Contoh: Hendra Wijaya"
+                              placeholder="Nama Lengkap PIC Pemohon"
                               value={clientData.picName}
                               onChange={(e) => setClientData({ ...clientData, picName: e.target.value })}
                               className={formErrors.picName ? "border-error focus:ring-error" : ""}
@@ -1086,7 +1086,7 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                             </Label>
                             <Input
                               id="picTitle"
-                              placeholder="Contoh: Direktur Keuangan / Tax Manager"
+                              placeholder="Jabatan / Posisi dalam Entitas"
                               value={clientData.picTitle}
                               onChange={(e) => setClientData({ ...clientData, picTitle: e.target.value })}
                             />
@@ -1101,7 +1101,7 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                             </Label>
                             <Input
                               id="companyName"
-                              placeholder="Contoh: PT Surya Pratama Logistik"
+                              placeholder="Nama Perusahaan / Entitas Bisnis"
                               value={clientData.companyName}
                               onChange={(e) => setClientData({ ...clientData, companyName: e.target.value })}
                               className={formErrors.companyName ? "border-error focus:ring-error" : ""}
@@ -1118,7 +1118,7 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                             </Label>
                             <Input
                               id="npwp"
-                              placeholder="Contoh: 0123456789012345 (16 angka)"
+                              placeholder="16 Digit NPWP / NITKU"
                               maxLength={16}
                               value={clientData.npwp}
                               onChange={(e) => setClientData({ ...clientData, npwp: e.target.value.replace(/\D/g, "") })}

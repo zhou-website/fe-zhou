@@ -171,7 +171,7 @@ export default function UserDashboardPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const handleDownloadSimulation = (fileName: string) => {
-    const dummyContent = `======================================================
+    const fileContent = `======================================================
 ZHOU CONSULTING - DIGITAL CLIENT VAULT
 ======================================================
 Berkas Resmi : ${fileName}
@@ -181,7 +181,7 @@ Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
 Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
 Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
 ======================================================`;
-    const blob = new Blob([dummyContent], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -699,7 +699,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                 </Label>
                 <Input
                   id="ticketTitle"
-                  placeholder="Contoh: Klarifikasi SP2DK Pajak Masukan Masa Mei"
+                  placeholder="Subjek permohonan / kasus konsultasi"
                   value={newTicketData.title}
                   onChange={(e) => setNewTicketData({ ...newTicketData, title: e.target.value })}
                 />

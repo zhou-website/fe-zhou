@@ -734,7 +734,7 @@ export default function SuperadminDashboard() {
                   id="admin-name"
                   value={newAdmin.name}
                   onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                  placeholder="Contoh: Ahmad Rizki, S.Ak., BKP"
+                  placeholder="Nama Lengkap & Gelar"
                   required
                 />
               </div>
@@ -746,7 +746,7 @@ export default function SuperadminDashboard() {
                   type="email"
                   value={newAdmin.email}
                   onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                  placeholder="ahmad.rizki@zhouconsulting.id"
+                  placeholder="nama@perusahaan.com"
                   required
                 />
               </div>

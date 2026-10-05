@@ -283,7 +283,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, name: e.target.value });
                               if (formErrors.name) setFormErrors({ ...formErrors, name: "" });
                             }}
-                            placeholder="cth. Nama Lengkap Anda"
+                            placeholder="Nama Lengkap Anda"
                             error={Boolean(formErrors.name)}
                             className="pl-8 text-xs bg-white"
                           />
@@ -303,7 +303,7 @@ export default function ContactPage() {
                             id="contact-company"
                             value={formData.company}
                             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                            placeholder="cth. PT Maju Bersama Makmur"
+                            placeholder="Nama Perusahaan / Entitas Bisnis"
                             className="pl-8 text-xs bg-white"
                           />
                         </div>
@@ -326,7 +326,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, email: e.target.value });
                               if (formErrors.email) setFormErrors({ ...formErrors, email: "" });
                             }}
-                            placeholder="cth. nama@perusahaan.co.id"
+                            placeholder="nama@perusahaan.co.id"
                             error={Boolean(formErrors.email)}
                             className="pl-8 text-xs bg-white"
                           />
@@ -350,7 +350,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, phone: e.target.value });
                               if (formErrors.phone) setFormErrors({ ...formErrors, phone: "" });
                             }}
-                            placeholder="cth. 081234567890"
+                            placeholder="08xxxxxxxxxx"
                             error={Boolean(formErrors.phone)}
                             className="pl-8 text-xs bg-white"
                           />

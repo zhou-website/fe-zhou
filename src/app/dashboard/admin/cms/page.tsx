@@ -1870,7 +1870,7 @@ function AdminCMSPageContent() {
                         onChange={(e) =>
                           setNewItemForm((prev) => ({ ...prev, author: e.target.value }))
                         }
-                        placeholder="Contoh: Tim Konsultan Zhou"
+                        placeholder="Nama Penulis / Tim"
                         className="text-xs h-9 bg-surface border-primary-light focus:bg-white"
                       />
                     </div>

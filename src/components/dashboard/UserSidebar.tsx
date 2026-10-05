@@ -210,7 +210,7 @@ export function UserSidebar() {
                   {user?.name || "Klien Terdaftar"}
                 </div>
                 <div className="text-[10px] text-silver truncate">
-                  {user?.email || "klien@perusahaan.com"}
+                  {user?.email || ""}
                 </div>
               </div>
             </div>

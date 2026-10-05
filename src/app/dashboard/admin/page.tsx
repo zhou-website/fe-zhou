@@ -2322,7 +2322,7 @@ function AdminDashboardContent() {
                         closedTitle: e.target.value,
                       })
                     }
-                    placeholder="cth. Lowongan Periode Ini Belum Dibuka"
+                    placeholder="Lowongan Periode Ini Belum Dibuka"
                     className="text-xs bg-surface border-primary-light"
                     required
                   />
@@ -2345,7 +2345,7 @@ function AdminDashboardContent() {
                         closedPeriodNote: e.target.value,
                       })
                     }
-                    placeholder="cth. Jadwal penerimaan periode baru akan diumumkan melalui portal resmi."
+                    placeholder="Jadwal penerimaan periode baru akan diumumkan melalui portal resmi."
                     className="text-xs bg-surface border-primary-light"
                   />
                   <p className="text-[11px] text-text-muted">
@@ -3029,7 +3029,7 @@ function AdminDashboardContent() {
                 <Input
                   type="text"
                   required
-                  placeholder="Contoh: Panduan Implementasi Bukti Potong Unifikasi Coretax 2026"
+                  placeholder="Judul modul / materi panduan"
                   value={zhouForm.title}
                   onChange={(e) => setZhouForm((prev) => ({ ...prev, title: e.target.value }))}
                   className="text-xs h-9 bg-surface border-primary-light focus:bg-white"
@@ -3189,7 +3189,7 @@ function AdminDashboardContent() {
                       <span className="text-[10px] font-semibold text-text-secondary">Nama File Dokumen</span>
                       <Input
                         type="text"
-                        placeholder="Contoh: Modul_Panduan_Coretax_2026.pdf"
+                        placeholder="nama_berkas_modul.pdf"
                         value={zhouForm.attachmentName}
                         onChange={(e) => setZhouForm((prev) => ({ ...prev, attachmentName: e.target.value }))}
                         className="text-xs h-8 bg-white border-primary-light font-mono"
@@ -3490,7 +3490,7 @@ function AdminDashboardContent() {
                   <Input
                     type="text"
                     required
-                    placeholder="Contoh: SOP-ZHOU/TAX/2026/01 atau PMK No. 81/2024"
+                    placeholder="Nomor regulasi / ketetapan resmi"
                     value={regForm.docNumber}
                     onChange={(e) => setRegForm((prev) => ({ ...prev, docNumber: e.target.value }))}
                     className="text-xs h-9 bg-surface border-primary-light focus:bg-white font-mono"
@@ -3516,7 +3516,7 @@ function AdminDashboardContent() {
                 <Input
                   type="text"
                   required
-                  placeholder="Contoh: 1 Januari 2026 atau 15 Juli 2025"
+                  placeholder="Tanggal mulai berlaku"
                   value={regForm.effectiveDate}
                   onChange={(e) => setRegForm((prev) => ({ ...prev, effectiveDate: e.target.value }))}
                   className="text-xs h-9 bg-surface border-primary-light focus:bg-white"

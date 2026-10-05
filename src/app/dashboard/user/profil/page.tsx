@@ -915,7 +915,7 @@ export default function ClientProfileSecurityPage() {
                         }));
                       }}
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="Contoh: PT Nama Perusahaan"
+                      placeholder="Nama Perusahaan"
                     />
                   </div>
 
@@ -1030,7 +1030,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picName: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="Contoh: Nama Lengkap Penanggung Jawab"
+                      placeholder="Nama Lengkap Penanggung Jawab"
                     />
                   </div>
 

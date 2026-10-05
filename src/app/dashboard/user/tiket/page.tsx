@@ -851,7 +851,7 @@ export default function ClientTicketMonitoringPage() {
                 </Label>
                 <Input
                   id="title"
-                  placeholder="Contoh: Pendampingan Respon SP2DK Pajak Masukan 2025"
+                  placeholder="Subjek permohonan / kebutuhan konsultasi"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="text-xs h-9"

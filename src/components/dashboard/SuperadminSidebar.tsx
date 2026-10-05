@@ -6,12 +6,10 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { BackendStatusBadge } from "@/components/common/BackendStatusBadge";
 import {
-  DocumentIcon,
   UserIcon,
   LogoutIcon,
   MenuIcon,
   CloseIcon,
-  BuildingIcon,
   ShieldTaxIcon,
 } from "@/components/icons";
 
@@ -31,19 +29,6 @@ const SUPERADMIN_NAV_ITEMS: NavItem[] = [
     label: "Kelola Admin & Staf",
     href: "/dashboard/superadmin/users",
     icon: UserIcon,
-  },
-];
-
-const QUICK_SWITCH_ITEMS: NavItem[] = [
-  {
-    label: "Admin Portal",
-    href: "/dashboard/admin",
-    icon: BuildingIcon,
-  },
-  {
-    label: "Dashboard Saya",
-    href: "/dashboard/user",
-    icon: DocumentIcon,
   },
 ];
 
@@ -164,27 +149,6 @@ export function SuperadminSidebar() {
               );
             })}
           </div>
-
-          {/* Quick Cross-Portal Switcher Links */}
-          <div className="px-3 py-3 border-t border-white/10 space-y-1">
-            <div className="px-3 pb-1 text-[10px] uppercase font-bold text-silver/50 tracking-wider">
-              Akses Portal Lain
-            </div>
-            {QUICK_SWITCH_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-3 px-3.5 py-2 rounded-lg text-xs text-silver hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <Icon className="text-xs text-silver/70 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
         </div>
 
         {/* Superadmin Profile & Logout Footer */}
@@ -198,7 +162,7 @@ export function SuperadminSidebar() {
                 {user?.name || "Super Administrator"}
               </span>
               <span className="text-[10px] text-silver truncate">
-                {user?.email || "superadmin@zhou.co.id"}
+                {user?.email || ""}
               </span>
             </div>
           </div>

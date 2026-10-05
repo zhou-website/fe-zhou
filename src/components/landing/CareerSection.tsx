@@ -332,7 +332,7 @@ export function CareerSection() {
                         id="app-name"
                         value={applicantName}
                         onChange={(e) => setApplicantName(e.target.value)}
-                        placeholder="Contoh: Nama Lengkap Anda, Gelar"
+                        placeholder="Nama Lengkap & Gelar"
                         required
                         className="text-xs"
                       />

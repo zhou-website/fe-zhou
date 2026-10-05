@@ -206,7 +206,7 @@ export function AdminSidebar() {
                 {user?.name || "Staff Administrator"}
               </span>
               <span className="text-[10px] text-silver block truncate">
-                {user?.email || "admin@zhou.co.id"}
+                {user?.email || ""}
               </span>
             </div>
           </div>

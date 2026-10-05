@@ -60,53 +60,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_STORAGE_KEY = "zhou_auth_user";
 
-const DEMO_SEEDS: Record<
-  string,
-  {
-    passwords: string[];
-    role: "user" | "admin" | "superadmin";
-    name: string;
-    company: string;
-  }
-> = {
-  "klien@perusahaan.com": {
-    passwords: ["Client123!", "klienpassword"],
-    role: "user",
-    name: "Akun Klien",
-    company: "Perusahaan Klien",
-  },
-  "klien@korporat.com": {
-    passwords: ["Client123!", "klienpassword"],
-    role: "user",
-    name: "Akun Klien",
-    company: "Perusahaan Klien",
-  },
-  "admin@zhouconsulting.com": {
-    passwords: ["Admin123!", "adminpassword"],
-    role: "admin",
-    name: "Staff Administrator",
-    company: "Zhou Consulting Internal",
-  },
-  "staff.admin@zhouconsulting.id": {
-    passwords: ["Admin123!", "adminpassword"],
-    role: "admin",
-    name: "Staff Administrator",
-    company: "Zhou Consulting Internal",
-  },
-  "superadmin@zhouconsulting.com": {
-    passwords: ["SuperAdmin123!", "superadminpassword"],
-    role: "superadmin",
-    name: "Super Administrator",
-    company: "Zhou Consulting Eksekutif",
-  },
-  "superadmin@zhouconsulting.id": {
-    passwords: ["SuperAdmin123!", "superadminpassword"],
-    role: "superadmin",
-    name: "Super Administrator",
-    company: "Zhou Consulting Eksekutif",
-  },
-};
-
 function normalizeRole(backendRole: string): "user" | "admin" | "superadmin" {
   const lower = backendRole.toLowerCase();
   if (lower.includes("super")) return "superadmin";
@@ -244,49 +197,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     redirectUrl?: string | null
   ): Promise<{ success: boolean; message?: string }> => {
     setIsLoading(true);
-    const cleanEmail = email.toLowerCase().trim();
-    const matchedSeed = DEMO_SEEDS[cleanEmail];
-    const isSeedMatch = Boolean(matchedSeed && matchedSeed.passwords.includes(password));
 
     try {
       const res = await authApi.login({ email, password });
 
       if (!res.success || !res.data) {
-        // Fallback jika backend database sedang down/terputus
-        if (isSeedMatch && matchedSeed) {
-          console.warn("Backend database offline/terputus. Mengaktifkan sesi demo peran:", matchedSeed.role);
-          const demoJwt = `demo_token_${matchedSeed.role}_${Date.now()}`;
-          const authData: AuthUser = {
-            id: 1,
-            name: matchedSeed.name,
-            email: cleanEmail,
-            role: matchedSeed.role,
-            company: matchedSeed.company,
-            phone: "+62 812-9876-5432",
-            avatarText: getInitials(matchedSeed.name),
-            provider: "credentials",
-            token: demoJwt,
-          };
-
-          setAuthToken(demoJwt);
-          setTokenState(demoJwt);
-          try {
-            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
-          } catch (err) {
-            console.error("Gagal menyimpan sesi auth:", err);
-          }
-
-          setUser(authData);
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          navigateByRole(matchedSeed.role, redirectUrl);
-
-          return {
-            success: true,
-            message: "Login berhasil",
-          };
-        }
-
         setIsLoading(false);
         return {
           success: false,
@@ -329,41 +244,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         message: res.message || "Login berhasil",
       };
     } catch (err: unknown) {
-      // Fallback jika terjadi network error / Failed to fetch (Mixed Content)
-      if (isSeedMatch && matchedSeed) {
-        console.warn("Koneksi API gagal. Mengaktifkan sesi demo peran:", matchedSeed.role);
-        const demoJwt = `demo_token_${matchedSeed.role}_${Date.now()}`;
-        const authData: AuthUser = {
-          id: 1,
-          name: matchedSeed.name,
-          email: cleanEmail,
-          role: matchedSeed.role,
-          company: matchedSeed.company,
-          phone: "+62 812-9876-5432",
-          avatarText: getInitials(matchedSeed.name),
-          provider: "credentials",
-          token: demoJwt,
-        };
-
-        setAuthToken(demoJwt);
-        setTokenState(demoJwt);
-        try {
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
-        } catch {
-          // ignore
-        }
-
-        setUser(authData);
-        setIsAuthenticated(true);
-        setIsLoading(false);
-        navigateByRole(matchedSeed.role, redirectUrl);
-
-        return {
-          success: true,
-          message: "Login berhasil",
-        };
-      }
-
       const message = err instanceof Error ? err.message : "Gagal menghubungi server backend.";
       setIsLoading(false);
       return {
