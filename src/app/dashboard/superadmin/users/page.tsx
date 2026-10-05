@@ -29,7 +29,7 @@ export interface StaffAdmin {
   nip: string;
   email: string;
   phone: string;
-  role: string;
+  role: "Admin" | "Superadmin" | string;
   division: "Tax Service Core" | "Accounting Service" | "Business Financial Consulting" | "Legal Compliance" | "IT & Operasional";
   tasksCount: number;
   status: "Aktif" | "Nonaktif";
@@ -39,12 +39,38 @@ export interface StaffAdmin {
 
 const INITIAL_STAFF: StaffAdmin[] = [
   {
+    id: "STF-00",
+    name: "Super Administrator Zhou",
+    nip: "SPR-001",
+    email: "superadmin@zhouconsulting.com",
+    phone: "+62 811-9988-7766",
+    role: "Superadmin",
+    division: "IT & Operasional",
+    tasksCount: 12,
+    status: "Aktif",
+    twoFactorEnabled: true,
+    joinDate: "01 Jan 2024",
+  },
+  {
     id: "STF-01",
-    name: "Linda David, S.Ak., BKP",
+    name: "Konsultan Senior Zhou",
     nip: "ADM-001",
+    email: "admin@zhouconsulting.com",
+    phone: "+62 812-9876-1200",
+    role: "Admin",
+    division: "Tax Service Core",
+    tasksCount: 8,
+    status: "Aktif",
+    twoFactorEnabled: true,
+    joinDate: "10 Jan 2024",
+  },
+  {
+    id: "STF-02",
+    name: "Linda David, S.Ak., BKP",
+    nip: "ADM-002",
     email: "linda.david@zhouconsulting.id",
     phone: "+62 812-9876-1201",
-    role: "Senior Tax Consultant & Admin",
+    role: "Admin",
     division: "Tax Service Core",
     tasksCount: 5,
     status: "Aktif",
@@ -52,12 +78,12 @@ const INITIAL_STAFF: StaffAdmin[] = [
     joinDate: "15 Jan 2024",
   },
   {
-    id: "STF-02",
+    id: "STF-03",
     name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    nip: "ADM-002",
+    nip: "ADM-003",
     email: "tasya.anggraeni@zhouconsulting.id",
     phone: "+62 812-9876-1202",
-    role: "Senior Accounting Specialist",
+    role: "Admin",
     division: "Accounting Service",
     tasksCount: 3,
     status: "Aktif",
@@ -65,12 +91,12 @@ const INITIAL_STAFF: StaffAdmin[] = [
     joinDate: "01 Mar 2024",
   },
   {
-    id: "STF-03",
+    id: "STF-04",
     name: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-    nip: "ADM-003",
+    nip: "ADM-004",
     email: "dekhsa.afnan@zhouconsulting.id",
     phone: "+62 812-9876-1203",
-    role: "Corporate Legal Partner",
+    role: "Admin",
     division: "Legal Compliance",
     tasksCount: 2,
     status: "Aktif",
@@ -78,12 +104,12 @@ const INITIAL_STAFF: StaffAdmin[] = [
     joinDate: "10 Okt 2023",
   },
   {
-    id: "STF-04",
+    id: "STF-05",
     name: "Hendro Wibowo, SE., Ak., CA",
-    nip: "ADM-004",
+    nip: "ADM-005",
     email: "hendro.wibowo@zhouconsulting.id",
     phone: "+62 812-9876-1204",
-    role: "Lead Financial Analyst",
+    role: "Admin",
     division: "Business Financial Consulting",
     tasksCount: 4,
     status: "Aktif",
@@ -91,56 +117,17 @@ const INITIAL_STAFF: StaffAdmin[] = [
     joinDate: "20 Mei 2024",
   },
   {
-    id: "STF-05",
-    name: "Siti Nurhaliza, S.E.",
-    nip: "ADM-005",
-    email: "siti.nurhaliza@zhouconsulting.id",
-    phone: "+62 812-9876-1205",
-    role: "Tax Compliance Specialist",
-    division: "Tax Service Core",
-    tasksCount: 2,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "12 Jul 2024",
-  },
-  {
     id: "STF-06",
-    name: "Ahmad Fauzi, S.Ak.",
-    nip: "ADM-006",
-    email: "ahmad.fauzi@zhouconsulting.id",
-    phone: "+62 812-9876-1206",
-    role: "Junior Auditor SAK",
-    division: "Accounting Service",
-    tasksCount: 1,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "05 Nov 2024",
-  },
-  {
-    id: "STF-07",
     name: "Rian Pratama, SH.",
-    nip: "ADM-007",
+    nip: "ADM-006",
     email: "rian.pratama@zhouconsulting.id",
     phone: "+62 812-9876-1207",
-    role: "Junior Legal Officer",
+    role: "Admin",
     division: "Legal Compliance",
     tasksCount: 0,
     status: "Nonaktif",
     twoFactorEnabled: false,
     joinDate: "18 Des 2024",
-  },
-  {
-    id: "STF-08",
-    name: "Dewi Lestari, S.Kom.",
-    nip: "ADM-008",
-    email: "dewi.lestari@zhouconsulting.id",
-    phone: "+62 812-9876-1208",
-    role: "System & Operations Admin",
-    division: "IT & Operasional",
-    tasksCount: 1,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "02 Feb 2025",
   },
 ];
 
@@ -162,15 +149,29 @@ export default function SuperadminUsersPage() {
     name: "",
     email: "",
     phone: "+62 8",
-    role: "Junior Consultant",
+    role: "admin",
     division: "Tax Service Core" as StaffAdmin["division"],
     initialPassword: "ZhouPass" + Math.floor(1000 + Math.random() * 9000) + "!",
     twoFactorEnabled: true,
   });
 
-  // Sync staff with Backend API
+  // Sync staff with Backend API and localStorage cache
   useEffect(() => {
     let isMounted = true;
+
+    // Load from local storage cache if available
+    try {
+      const cached = localStorage.getItem("zhou_superadmin_staff_list");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setStaffList(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal membaca cache staf:", e);
+    }
+
     superadminApi
       .getAdmins()
       .then((res) => {
@@ -179,10 +180,10 @@ export default function SuperadminUsersPage() {
           const apiStaff: StaffAdmin[] = res.data.map((adm: AdminUserItem, idx: number) => ({
             id: `STF-BE-${adm.id}`,
             name: adm.name,
-            nip: `ADM-${String(adm.id).padStart(3, "0")}`,
+            nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
             email: adm.email,
             phone: adm.phone || "+62 812-9876-" + (1200 + idx),
-            role: adm.role === "SUPERADMIN" ? "Superadmin Zhou" : "Konsultan & Admin",
+            role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
             division: "Tax Service Core",
             tasksCount: 0,
             status: adm.is_active ? "Aktif" : "Nonaktif",
@@ -198,7 +199,11 @@ export default function SuperadminUsersPage() {
           setStaffList((prev) => {
             const existingEmails = new Set(apiStaff.map((s) => s.email.toLowerCase()));
             const localOnly = prev.filter((p) => !existingEmails.has(p.email.toLowerCase()));
-            return [...apiStaff, ...localOnly];
+            const merged = [...apiStaff, ...localOnly];
+            try {
+              localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(merged));
+            } catch {}
+            return merged;
           });
         }
       })
@@ -218,22 +223,33 @@ export default function SuperadminUsersPage() {
 
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStaffForm.name.trim() || !newStaffForm.email.trim()) return;
+    if (!newStaffForm.name.trim() || !newStaffForm.email.trim()) {
+      showToast("Nama dan email wajib diisi.");
+      return;
+    }
+
+    const normalizedRole = newStaffForm.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
+    const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
 
     try {
-      await superadminApi.createAdmin({
+      const res = await superadminApi.createAdmin({
         name: newStaffForm.name.trim(),
         email: newStaffForm.email.trim(),
         password: newStaffForm.initialPassword,
         phone: newStaffForm.phone.trim(),
-        role: "ADMIN",
+        role: normalizedRole,
       });
+
+      if (!res.success && res.message) {
+        console.warn("Backend createAdmin notice:", res.message);
+      }
     } catch (err) {
       console.warn("superadminApi.createAdmin fallback to local state:", err);
     }
 
-    const nextId = "STF-0" + (staffList.length + 1);
-    const nextNip = "ADM-00" + (staffList.length + 1);
+    const nextIndex = staffList.length + 1;
+    const nextId = "STF-" + String(nextIndex).padStart(2, "0");
+    const nextNip = (normalizedRole === "SUPERADMIN" ? "SPR-" : "ADM-") + String(nextIndex).padStart(3, "0");
 
     const created: StaffAdmin = {
       id: nextId,
@@ -241,28 +257,39 @@ export default function SuperadminUsersPage() {
       nip: nextNip,
       email: newStaffForm.email.trim(),
       phone: newStaffForm.phone.trim(),
-      role: newStaffForm.role,
+      role: displayRole,
       division: newStaffForm.division,
       tasksCount: 0,
       status: "Aktif",
       twoFactorEnabled: newStaffForm.twoFactorEnabled,
-      joinDate: "18 Sep 2026",
+      joinDate: new Date().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
     };
 
-    setStaffList((prev) => [created, ...prev]);
+    setStaffList((prev) => {
+      const updated = [created, ...prev.filter((p) => p.email.toLowerCase() !== created.email.toLowerCase())];
+      try {
+        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     setIsAddModalOpen(false);
     setNewStaffForm({
       name: "",
       email: "",
       phone: "+62 8",
-      role: "Junior Consultant",
+      role: "admin",
       division: "Tax Service Core",
       initialPassword: "ZhouPass" + Math.floor(1000 + Math.random() * 9000) + "!",
       twoFactorEnabled: true,
     });
 
     showToast(
-      `Akun staf ${created.name} (${created.nip}) berhasil dibuat. Akses kredensial dikirimkan via email.`
+      `Akun ${displayRole} ${created.name} (${created.nip}) berhasil dibuat.`
     );
   };
 
@@ -270,9 +297,13 @@ export default function SuperadminUsersPage() {
     e.preventDefault();
     if (!editingStaff) return;
 
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === editingStaff.id ? editingStaff : s))
-    );
+    setStaffList((prev) => {
+      const updated = prev.map((s) => (s.id === editingStaff.id ? editingStaff : s));
+      try {
+        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     showToast(`Data akun ${editingStaff.name} berhasil diperbarui.`);
     setEditingStaff(null);
   };
@@ -285,16 +316,21 @@ export default function SuperadminUsersPage() {
       console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
     }
 
-    setStaffList((prev) =>
-      prev.map((s) => {
+    setStaffList((prev) => {
+      const updated = prev.map((s) => {
         if (s.id === staffId) {
-          const nextStatus = s.status === "Aktif" ? "Nonaktif" : "Aktif";
+          const nextStatus: "Aktif" | "Nonaktif" =
+            s.status === "Aktif" ? "Nonaktif" : "Aktif";
           showToast(`Status akun ${s.name} diubah menjadi ${nextStatus}.`);
           return { ...s, status: nextStatus };
         }
         return s;
-      })
-    );
+      });
+      try {
+        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   const handleConfirmDelete = async () => {
@@ -316,7 +352,13 @@ export default function SuperadminUsersPage() {
       console.warn("superadminApi.deleteAdmin fallback to local state:", err);
     }
 
-    setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));
+    setStaffList((prev) => {
+      const updated = prev.filter((s) => s.id !== deletingStaff.id);
+      try {
+        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     showToast(`Akun ${deletingStaff.name} berhasil dihapus permanen dari sistem.`);
     setDeletingStaff(null);
   };
@@ -325,7 +367,9 @@ export default function SuperadminUsersPage() {
   const filteredStaff = staffList.filter((s) => {
     const matchesDiv = divisionFilter === "ALL" || s.division === divisionFilter;
     const matchesStatus = statusFilter === "ALL" || s.status === statusFilter;
-    const matchesRole = roleFilter === "ALL" || s.role.includes(roleFilter);
+    const matchesRole =
+      roleFilter === "ALL" ||
+      s.role.toLowerCase() === roleFilter.toLowerCase();
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       s.name.toLowerCase().includes(q) ||
@@ -516,10 +560,8 @@ export default function SuperadminUsersPage() {
             className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
           >
             <option value="ALL">Semua Peran</option>
-            <option value="Senior">Senior Specialist</option>
-            <option value="Partner">Partner &amp; Lead</option>
-            <option value="Specialist">Specialist</option>
-            <option value="Junior">Junior Officer</option>
+            <option value="Admin">Admin</option>
+            <option value="Superadmin">Superadmin</option>
           </select>
         </div>
       </div>
@@ -540,11 +582,11 @@ export default function SuperadminUsersPage() {
             <thead>
               <tr className="bg-surface border-b border-primary-light text-text-muted font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3.5 px-4">Staf &amp; NIP</th>
-                <th className="py-3.5 px-4">Email &amp; WhatsApp</th>
-                <th className="py-3.5 px-4">Divisi &amp; Peran RBAC</th>
-                <th className="py-3.5 px-4 text-center">Beban Tugas</th>
-                <th className="py-3.5 px-4 text-center">Status Akun</th>
+                <th className="py-3.5 px-4">Divisi Penugasan</th>
+                <th className="py-3.5 px-4">Peran RBAC</th>
+                <th className="py-3.5 px-4">Kontak Resmi</th>
                 <th className="py-3.5 px-4 text-center">Keamanan 2FA</th>
+                <th className="py-3.5 px-4 text-center">Status Akun</th>
                 <th className="py-3.5 px-4 text-right">Aksi Superadmin</th>
               </tr>
             </thead>
@@ -586,11 +628,9 @@ export default function SuperadminUsersPage() {
                     <td className="py-3.5 px-4">
                       <Badge
                         variant={
-                          staff.role.includes("Superadmin")
+                          staff.role.toLowerCase().includes("superadmin")
                             ? "primary"
-                            : staff.role.includes("Lead")
-                            ? "secondary"
-                            : "outline"
+                            : "secondary"
                         }
                         size="sm"
                         className="font-medium"
@@ -796,14 +836,8 @@ export default function SuperadminUsersPage() {
                     }
                     className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
                   >
-                    <option value="Senior Tax Consultant & Admin">Senior Tax Consultant &amp; Admin</option>
-                    <option value="Senior Accounting Specialist">Senior Accounting Specialist</option>
-                    <option value="Corporate Legal Partner">Corporate Legal Partner</option>
-                    <option value="Lead Financial Analyst">Lead Financial Analyst</option>
-                    <option value="Tax Compliance Specialist">Tax Compliance Specialist</option>
-                    <option value="Junior Consultant">Junior Consultant</option>
-                    <option value="Junior Auditor SAK">Junior Auditor SAK</option>
-                    <option value="System & Operations Admin">System &amp; Operations Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
                   </select>
                 </div>
 
@@ -930,16 +964,20 @@ export default function SuperadminUsersPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Peran RBAC</Label>
-                  <Input
-                    type="text"
-                    required
-                    value={editingStaff.role}
+                  <Label className="text-xs font-semibold text-primary">Peran / Hak Akses (RBAC)</Label>
+                  <select
+                    value={editingStaff.role.toLowerCase().includes("superadmin") ? "superadmin" : "admin"}
                     onChange={(e) =>
-                      setEditingStaff({ ...editingStaff, role: e.target.value })
+                      setEditingStaff({
+                        ...editingStaff,
+                        role: e.target.value === "superadmin" ? "Superadmin" : "Admin",
+                      })
                     }
-                    className="text-xs h-9 bg-white border-primary-light"
-                  />
+                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">

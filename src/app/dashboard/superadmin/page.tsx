@@ -48,28 +48,46 @@ interface AuditLog {
 
 const INITIAL_ADMINS: AdminUser[] = [
   {
+    id: "ADM-000",
+    name: "Super Administrator Zhou",
+    email: "superadmin@zhouconsulting.com",
+    role: "Superadmin",
+    specialty: "Core Tax & Legal Compliance",
+    status: "Active",
+    taskCount: 12,
+  },
+  {
     id: "ADM-001",
+    name: "Konsultan Senior Zhou",
+    email: "admin@zhouconsulting.com",
+    role: "Admin",
+    specialty: "Tax Service Core & Coretax",
+    status: "Active",
+    taskCount: 8,
+  },
+  {
+    id: "ADM-002",
     name: "Linda David, S.Ak., BKP",
     email: "linda.david@zhouconsulting.id",
-    role: "Senior Tax Consultant & Admin",
+    role: "Admin",
     specialty: "Tax Service Core & Coretax",
     status: "Active",
     taskCount: 18,
   },
   {
-    id: "ADM-002",
+    id: "ADM-003",
     name: "Tasya Anggraeni Firdaus, SE., Ak., CA",
     email: "tasya.anggraeni@zhouconsulting.id",
-    role: "Senior Accounting Specialist & Admin",
+    role: "Admin",
     specialty: "Accounting Service & SAK",
     status: "Active",
     taskCount: 14,
   },
   {
-    id: "ADM-003",
+    id: "ADM-004",
     name: "Rian Pratama, SH.",
     email: "rian.pratama@zhouconsulting.id",
-    role: "Junior Legal Officer",
+    role: "Admin",
     specialty: "Legal & Corporate Compliance",
     status: "Inactive",
     taskCount: 0,
@@ -86,7 +104,7 @@ export default function SuperadminDashboard() {
   const [newAdmin, setNewAdmin] = useState({
     name: "",
     email: "",
-    role: "Staf Konsultan & Admin",
+    role: "admin",
     specialty: "Tax Service Core",
     initialPassword: "",
   });
@@ -232,6 +250,19 @@ export default function SuperadminDashboard() {
         console.warn("superadminApi.getAuditLogs fallback:", err);
       });
 
+    // Load local storage cache if available
+    try {
+      const cached = localStorage.getItem("zhou_superadmin_admins");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAdmins(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal memuat cache admin:", e);
+    }
+
     superadminApi
       .getAdmins()
       .then((res) => {
@@ -241,12 +272,20 @@ export default function SuperadminDashboard() {
             id: `ADM-${String(a.id).padStart(3, "0")}`,
             name: a.name,
             email: a.email,
-            role: a.role === "SUPERADMIN" ? "Superadmin Zhou" : "Konsultan & Admin",
+            role: a.role === "SUPERADMIN" ? "Superadmin" : "Admin",
             specialty: "Core Tax & Legal Compliance",
             status: a.is_active ? "Active" : "Inactive",
             taskCount: 0,
           }));
-          setAdmins(mappedAdmins);
+          setAdmins((prev) => {
+            const apiEmails = new Set(mappedAdmins.map((m) => m.email.toLowerCase()));
+            const localOnly = prev.filter((p) => !apiEmails.has(p.email.toLowerCase()));
+            const merged = [...mappedAdmins, ...localOnly];
+            try {
+              localStorage.setItem("zhou_superadmin_admins", JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
       })
       .catch((err) => {
@@ -271,37 +310,51 @@ export default function SuperadminDashboard() {
       return;
     }
 
+    const normalizedRole = newAdmin.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
+    const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
+
     try {
-      await superadminApi.createAdmin({
+      const res = await superadminApi.createAdmin({
         name: newAdmin.name,
         email: newAdmin.email,
         password: newAdmin.initialPassword,
-        role: "ADMIN",
+        role: normalizedRole,
       });
+
+      if (!res.success && res.message) {
+        console.warn("Backend createAdmin notice:", res.message);
+      }
     } catch (err) {
       console.warn("superadminApi.createAdmin fallback to local state:", err);
     }
 
     const created: AdminUser = {
-      id: `ADM-00${admins.length + 1}`,
+      id: (displayRole === "Superadmin" ? "SPR-00" : "ADM-00") + (admins.length + 1),
       name: newAdmin.name,
       email: newAdmin.email,
-      role: newAdmin.role,
+      role: displayRole,
       specialty: newAdmin.specialty,
       status: "Active",
       taskCount: 0,
     };
 
-    setAdmins([...admins, created]);
+    setAdmins((prev) => {
+      const updated = [...prev.filter((a) => a.email.toLowerCase() !== created.email.toLowerCase()), created];
+      try {
+        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     setShowAddAdminModal(false);
     setNewAdmin({
       name: "",
       email: "",
-      role: "Staf Konsultan & Admin",
+      role: "admin",
       specialty: "Tax Service Core",
       initialPassword: "",
     });
-    showToast(`Admin ${created.name} berhasil ditambahkan.`);
+    showToast(`Akun ${displayRole} ${created.name} berhasil ditambahkan.`);
   };
 
   // Toggle soft-delete
@@ -313,16 +366,20 @@ export default function SuperadminDashboard() {
       console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
     }
 
-    setAdmins(
-      admins.map((a) => {
+    setAdmins((prev) => {
+      const updated = prev.map((a) => {
         if (a.id === adminId) {
-          const next = a.status === "Active" ? "Inactive" : "Active";
+          const next: "Active" | "Inactive" = a.status === "Active" ? "Inactive" : "Active";
           showToast(`Status admin ${a.name} diubah menjadi ${next}.`);
           return { ...a, status: next };
         }
         return a;
-      })
-    );
+      });
+      try {
+        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
   };
 
   // Hard delete check
@@ -341,7 +398,13 @@ export default function SuperadminDashboard() {
       console.warn("superadminApi.deleteAdmin fallback to local state:", err);
     }
 
-    setAdmins(admins.filter((a) => a.id !== admin.id));
+    setAdmins((prev) => {
+      const updated = prev.filter((a) => a.id !== admin.id);
+      try {
+        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     showToast(`Akun admin ${admin.name} berhasil dihapus permanen.`);
   };
 
@@ -591,6 +654,7 @@ export default function SuperadminDashboard() {
                     <tr>
                       <th className="py-3 px-5">ID &amp; Nama Admin</th>
                       <th className="py-3 px-5">Email Resmi</th>
+                      <th className="py-3 px-5">Peran RBAC</th>
                       <th className="py-3 px-5">Spesialisasi</th>
                       <th className="py-3 px-5 text-center">Status</th>
                       <th className="py-3 px-5 text-center">Riwayat Tugas</th>
@@ -605,6 +669,14 @@ export default function SuperadminDashboard() {
                           <span className="font-mono text-[11px] text-text-secondary">{admin.id}</span>
                         </td>
                         <td className="py-4 px-5 text-text-secondary">{admin.email}</td>
+                        <td className="py-4 px-5">
+                          <Badge
+                            variant={admin.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
+                            className="text-[10px]"
+                          >
+                            {admin.role}
+                          </Badge>
+                        </td>
                         <td className="py-4 px-5 font-medium">{admin.specialty}</td>
                         <td className="py-4 px-5 text-center">
                           <Badge
@@ -839,6 +911,19 @@ export default function SuperadminDashboard() {
                   placeholder="ahmad.rizki@zhouconsulting.id"
                   required
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="admin-role">Peran / Hak Akses (RBAC)</Label>
+                <select
+                  id="admin-role"
+                  value={newAdmin.role}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
+                  className="w-full h-10 px-3 rounded-md border border-primary-light bg-white text-text text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                >
+                  <option value="admin">Admin</option>
+                  <option value="superadmin">Superadmin</option>
+                </select>
               </div>
 
               <div className="space-y-1">

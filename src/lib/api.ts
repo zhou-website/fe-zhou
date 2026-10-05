@@ -584,12 +584,21 @@ export const superadminApi = {
     email: string;
     password: string;
     phone?: string;
-    role?: "ADMIN" | "SUPERADMIN";
-  }) =>
-    apiFetch<AdminUserItem>("/api/v1/superadmin/admins", {
+    role?: "ADMIN" | "SUPERADMIN" | string;
+  }) => {
+    const formattedPayload = {
+      ...payload,
+      role: payload.role
+        ? payload.role.toUpperCase() === "SUPERADMIN"
+          ? "SUPERADMIN"
+          : "ADMIN"
+        : "ADMIN",
+    };
+    return apiFetch<AdminUserItem>("/api/v1/superadmin/admins", {
       method: "POST",
-      body: JSON.stringify(payload),
-    }),
+      body: JSON.stringify(formattedPayload),
+    });
+  },
 
   deactivateAdmin: (id: number | string) =>
     apiFetch(`/api/v1/superadmin/admins/${id}/deactivate`, {
