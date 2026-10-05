@@ -125,10 +125,10 @@ interface TimeSlot {
 }
 
 const DAILY_TIME_SLOTS: TimeSlot[] = [
-  { id: "slot-1", time: "09.00 – 10.30 WIB", label: "Sesi Pagi I", isAvailable: true },
-  { id: "slot-2", time: "10.45 – 12.15 WIB", label: "Sesi Pagi II", isAvailable: true },
-  { id: "slot-3", time: "13.30 – 15.00 WIB", label: "Sesi Siang I", isAvailable: true },
-  { id: "slot-4", time: "15.30 – 17.00 WIB", label: "Sesi Siang II", isAvailable: false },
+  { id: "slot-1", time: "09.00 - 10.30 WIB", label: "Sesi Pagi I", isAvailable: true },
+  { id: "slot-2", time: "10.45 - 12.15 WIB", label: "Sesi Pagi II", isAvailable: true },
+  { id: "slot-3", time: "13.30 - 15.00 WIB", label: "Sesi Siang I", isAvailable: true },
+  { id: "slot-4", time: "15.30 - 17.00 WIB", label: "Sesi Siang II", isAvailable: false },
 ];
 
 export default function ConsultationPage() {
@@ -884,7 +884,7 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                           Tentukan Tanggal &amp; Sesi Waktu Konsultasi
                         </CardTitle>
                         <CardDescription className="text-xs text-text-secondary">
-                          Pilih hari kerja aktif (Senin – Jumat) dan slot waktu yang sesuai dengan agenda manajemen Anda.
+                          Pilih hari kerja aktif (Senin - Jumat) dan slot waktu yang sesuai dengan agenda manajemen Anda.
                         </CardDescription>
                       </CardHeader>
 
@@ -1470,11 +1470,11 @@ Keamanan Data  : Terproteksi Pakta Kerahasiaan (NDA) & SSL 256-bit
                   <div className="pt-2 border-t border-navy-light space-y-1.5 text-[11px]">
                     <div className="flex items-center justify-between">
                       <span>Jam Operasional Sesi:</span>
-                      <strong className="text-text-primary">08.30 – 17.30 WIB</strong>
+                      <strong className="text-text-primary">08.30 - 17.30 WIB</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Hari Kerja:</span>
-                      <strong className="text-text-primary">Senin – Jumat</strong>
+                      <strong className="text-text-primary">Senin - Jumat</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Akses Transportasi:</span>

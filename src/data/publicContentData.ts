@@ -171,100 +171,8 @@ export interface ServiceItemContent {
   lastUpdated: string;
 }
 
-export const INITIAL_SERVICES: ServiceItemContent[] = [
-  {
-    id: "SRV-HUKUM",
-    categoryKey: "hukum",
-    name: "Konsultasi Hukum Korporat & Legal",
-    subtitle: "Perlindungan hukum komprehensif untuk kontrak bisnis, perizinan OSS RBA, dan kepatuhan regulasi.",
-    route: "/layanan/hukum",
-    leadConsultant: "Muhamad Dekhsa Afnan, SH., M.Kn. (Advokat PERADI)",
-    pillars: [
-      { title: "Review & Drafting Kontrak Komersial", description: "Pemeriksaan klausul kontrak kerja sama, NDA, perjanjian sewa, dan pengadaan barang/jasa." },
-      { title: "Perizinan Berusaha & Legalitas Korporat", description: "Pengurusan NIB, sertifikasi standar, izin operasional OSS RBA, dan perubahan AD/ART melalui AHU." },
-      { title: "Pemeriksaan Kepatuhan Hukum (Legal Audit)", description: "Uji tuntas kepatuhan hukum perusahaan guna memitigasi risiko sengketa perdata maupun pidana bisnis." },
-      { title: "Pendampingan Sengketa & Mediasi Bisnis", description: "Asistensi penyelesaian perselisihan komersial di luar pengadilan melalui jalur musyawarah mediasi." },
-    ],
-    workflow: [
-      "Pemeriksaan dokumen awal & legal review",
-      "Penyusunan telaah risiko hukum (Legal Opinion)",
-      "Kompilasi berkas perbaikan klausul kontrak",
-      "Penyerahan dokumen sah bertanda tangan advokat",
-    ],
-    deliverables: ["Legal Opinion Resmi", "Draft Kontrak Tervalidasi", "Notulensi Mediasi", "Surat Keterangan Kepatuhan Hukum"],
-    status: "Published",
-    lastUpdated: "16 Sep 2026",
-  },
-  {
-    id: "SRV-BISNIS",
-    categoryKey: "bisnis",
-    name: "Konsultasi Finansial & Bisnis Strategis",
-    subtitle: "Analisis kelayakan investasi, perencanaan arus kas, dan proyeksi keuangan untuk ekspansi bisnis.",
-    route: "/layanan/bisnis",
-    leadConsultant: "Linda David, S.Ak., BKP",
-    pillars: [
-      { title: "Studi Kelayakan Bisnis (Feasibility Study)", description: "Evaluasi kelayakan proyek baru, perhitungan NPV, IRR, Payback Period, dan analisis risiko operasional." },
-      { title: "Pemodelan Finansial & Proyeksi Arus Kas", description: "Penyusunan anggaran belanja modal (CAPEX), proyeksi pendapatan, dan simulasi skenario sensitivitas." },
-      { title: "Health Check Keuangan Korporat", description: "Diagnosis rasio likuiditas, solvabilitas, profitabilitas, dan efisiensi struktur modal kerja." },
-      { title: "Valuasi Bisnis & Restrukturisasi Finansial", description: "Penilaian nilai wajar perusahaan untuk keperluan akuisisi, merger, atau suntikan modal investor." },
-    ],
-    workflow: [
-      "Pengumpulan data historis keuangan 3 tahun",
-      "Pemodelan proyeksi finansial 5 tahun ke depan",
-      "Simulasi skenario sensitivitas (Best, Base, Worst)",
-      "Penyusunan executive report & presentasi kelayakan",
-    ],
-    deliverables: ["Executive Feasibility Study Report", "Financial Model Workbook (.xlsx)", "Slide Presentasi Direksi", "Rekomendasi Struktur Modal"],
-    status: "Published",
-    lastUpdated: "15 Sep 2026",
-  },
-  {
-    id: "SRV-AKUNTANSI",
-    categoryKey: "akuntansi",
-    name: "Accounting Services Standar SAK EP / IFRS",
-    subtitle: "Penyusunan laporan keuangan komersial yang tertib, akurat, dan siap diaudit oleh KAP independen.",
-    route: "/layanan/akuntansi",
-    leadConsultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-    pillars: [
-      { title: "Kompilasi Laporan Keuangan Standar SAK", description: "Penyusunan Neraca, Laba Rugi Komprehensif, Perubahan Ekuitas, Arus Kas, dan Catatan atas Laporan Keuangan (CALK)." },
-      { title: "Pembukuan Rutin & Jurnal Penyesuaian", description: "Pencatatan mutasi transaksi harian, rekonsiliasi bank, kartu aktiva tetap, dan penyusunan buku besar." },
-      { title: "Review & Restrukturisasi Bagan Akun (COA)", description: "Standardisasi Chart of Accounts sesuai industri untuk menghasilkan laporan manajerial yang relevan." },
-      { title: "Pendampingan Audit Eksternal KAP", description: "Penyiapan berkas pendukung (audit package), konfirmasi saldo pihak ketiga, dan koordinasi dengan auditor independen." },
-    ],
-    workflow: [
-      "Verifikasi bukti transaksi dan faktur komersial",
-      "Posting jurnal buku besar dan rekonsiliasi kas/bank",
-      "Penyusunan kertas kerja penutupan buku bulanan",
-      "Penerbitan laporan keuangan standar SAK EP",
-    ],
-    deliverables: ["Laporan Keuangan SAK Lengkap (PDF)", "Kertas Kerja Trial Balance", "Rekonsiliasi Bank Bulanan", "Daftar Penyusutan Aset Tetap"],
-    status: "Published",
-    lastUpdated: "14 Sep 2026",
-  },
-  {
-    id: "SRV-PAJAK",
-    categoryKey: "tax-service",
-    name: "Tax Services & Kepatuhan Coretax 2026",
-    subtitle: "Pengelolaan kewajiban SPT Masa & Tahunan, administrasi e-Faktur/e-Bupot, dan mitigasi risiko SP2DK.",
-    route: "/layanan/tax-service",
-    leadConsultant: "Linda David, S.Ak., BKP",
-    pillars: [
-      { title: "Kepatuhan SPT Masa & Tahunan PPh/PPN", description: "Perhitungan, penyetoran, dan pelaporan SPT PPh 21, 23, 25, 4(2), PPN 1111, dan SPT Tahunan Badan 1771." },
-      { title: "Administrasi e-Faktur & e-Bupot Unifikasi", description: "Penerbitan faktur pajak elektronik, approval faktur masukan, dan pembuatan bukti potong unifikasi terpadu." },
-      { title: "Perencanaan Pajak Strategis (Tax Planning)", description: "Optimalisasi beban pajak secara legal berlandaskan UU Harmonisasi Peraturan Perpajakan (UU HPP)." },
-      { title: "Asistensi SP2DK & Pendampingan Pemeriksaan", description: "Penyusunan kertas kerja ekualisasi dan surat klarifikasi resmi kepada Account Representative (AR) KPP." },
-    ],
-    workflow: [
-      "Ekualisasi omzet komersial vs SPT Masa PPN",
-      "Rekonsiliasi biaya gaji dan kredit pajak PPh 21/23",
-      "Validasi kode billing SSP & penyetoran kas negara",
-      "Pelaporan online dan penerbitan Bukti Penerimaan Elektronik (BPE)",
-    ],
-    deliverables: ["Bukti Penerimaan Elektronik (BPE) DJP", "Kertas Kerja Rekonsiliasi Fiskal", "Draft Sanggahan SP2DK Resmi", "Arsip Induk SPT Tahunan 1771"],
-    status: "Published",
-    lastUpdated: "17 Sep 2026",
-  },
-];
+export const INITIAL_SERVICES: ServiceItemContent[] = [];
+
 
 // 4. Regulations Content
 export interface RegulationContentItem {
@@ -364,7 +272,7 @@ export interface KmkRatesContent {
 
 export const INITIAL_KMK_RATES: KmkRatesContent = {
   kmkNumber: "KMK No. 38/KM.10/2026",
-  period: "17 September 2026 – 23 September 2026",
+  period: "17 September 2026 - 23 September 2026",
   effectiveUntil: "23 September 2026",
   rates: [
     { currency: "USD", name: "Dolar Amerika Serikat", rate: "Rp 15.825,00", change: "+0.15%", trend: "up", flag: "US" },
@@ -549,7 +457,7 @@ export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
   city: "Jakarta Selatan, DKI Jakarta 12930",
   email: "consultingzhou@gmail.com",
   phone: "(021) 522-8890",
-  operatingHours: "Senin – Jumat: 08.30 – 17.30 WIB (Sabtu, Minggu & Libur Nasional Tutup)",
+  operatingHours: "Senin - Jumat: 08.30 - 17.30 WIB (Sabtu, Minggu & Libur Nasional Tutup)",
   transitAccess: "Stasiun MRT Bendungan Hilir (250m) & Halte TransJakarta Karet Sudirman (150m)",
   whatsappHotlines: [
     {
@@ -572,10 +480,10 @@ export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
     },
   ],
   consultationSlots: [
-    { session: "Sesi Pagi I", time: "09.00 – 10.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Pagi II", time: "11.00 – 12.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Siang I", time: "13.30 – 15.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Siang II", time: "15.30 – 17.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
+    { session: "Sesi Pagi I", time: "09.00 - 10.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
+    { session: "Sesi Pagi II", time: "11.00 - 12.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
+    { session: "Sesi Siang I", time: "13.30 - 15.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
+    { session: "Sesi Siang II", time: "15.30 - 17.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
   ],
   status: "Published",
   lastUpdated: "18 Sep 2026",

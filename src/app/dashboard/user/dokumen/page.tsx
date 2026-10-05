@@ -425,7 +425,7 @@ export default function ClientDocumentVaultPage() {
             <span>
               {documents.length === 0
                 ? "Menampilkan 0 berkas di Vault"
-                : `Menampilkan ${(currentPage - 1) * itemsPerPage + 1} – ${Math.min(
+                : `Menampilkan ${(currentPage - 1) * itemsPerPage + 1} - ${Math.min(
                     currentPage * itemsPerPage,
                     filteredDocuments.length
                   )} dari ${documents.length} berkas di Vault`}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -20,103 +20,38 @@ import {
   BookIcon,
   ShieldTaxIcon,
   ArrowRightIcon,
+  BriefcaseIcon,
 } from "@/components/icons";
-
-interface ServiceCardItem {
-  id: string;
-  category: "akuntansi" | "pajak" | "bisnis" | "hukum";
-  badge: string;
-  title: string;
-  desc: string;
-  features: string[];
-  href: string;
-  accent: string;
-}
-
-const SERVICES_LIST: ServiceCardItem[] = [
-  {
-    id: "akuntansi",
-    category: "akuntansi",
-    badge: "SAK EP / IFRS",
-    title: "Accounting Services",
-    desc: "Penyusunan pembukuan presisi, jurnal periodik, dan laporan keuangan komprehensif berstandar SAK Entitas Privat dan IFRS.",
-    features: [
-      "Kompilasi Neraca, Laba Rugi & Arus Kas",
-      "Rekonsiliasi Bank Bulanan & Petty Cash",
-      "Penyusunan Catatan atas Laporan Keuangan (CALK)",
-      "Pendampingan Audit Eksternal KAP",
-    ],
-    href: "/layanan/akuntansi",
-    accent: "text-primary",
-  },
-  {
-    id: "pajak",
-    category: "pajak",
-    badge: "BKP Terdaftar & Coretax",
-    title: "Tax Consulting & Compliance",
-    desc: "Perencanaan pajak terukur, pelaporan SPT Masa/Tahunan terpadu, dan kepatuhan penuh ekosistem Coretax DJP.",
-    features: [
-      "Pelaporan SPT Masa PPh & PPN terintegrasi",
-      "e-Faktur, e-Bupot 21/26 & Unifikasi",
-      "Pendampingan SP2DK & Pemeriksaan Pajak DJP",
-      "Review Ekualisasi Peredaran Usaha & Biaya",
-    ],
-    href: "/layanan/tax-service",
-    accent: "text-primary",
-  },
-  {
-    id: "bisnis",
-    category: "bisnis",
-    badge: "Advisory & Restrukturisasi",
-    title: "Business & Financial Advisory",
-    desc: "Studi kelayakan finansial, analisis restrukturisasi utang modal kerja, serta optimalisasi cash flow korporat.",
-    features: [
-      "Financial Due Diligence & Valuasi Bisnis",
-      "Perencanaan Arus Kas (Cash Flow Forecasting)",
-      "Advisory Tata Kelola Finansial Perusahaan",
-      "Restrukturisasi Permodalan & Pembiayaan",
-    ],
-    href: "/layanan/bisnis",
-    accent: "text-primary",
-  },
-  {
-    id: "hukum",
-    category: "hukum",
-    badge: "Advokat PERADI",
-    title: "Legal & Corporate Law",
-    desc: "Penyusunan perjanjian komersial, perizinan berusaha OSS RBA, dan mitigasi risiko sengketa perdata bisnis.",
-    features: [
-      "Review & Drafting Kontrak Komersial / NDA",
-      "Legal Compliance & Perizinan OSS Berbasis Risiko",
-      "Pendampingan Hukum Sengketa Bisnis",
-      "Advisory Struktur Holding & Merger",
-    ],
-    href: "/layanan/hukum",
-    accent: "text-primary",
-  },
-  {
-    id: "coretax",
-    category: "pajak",
-    badge: "Sistem Terpadu DJP",
-    title: "Coretax Implementation & Support",
-    desc: "Asistensi komprehensif bagi perusahaan dalam adaptasi dan migrasi sistem perpajakan terbaru DJP Coretax.",
-    features: [
-      "Pemetaan Modul Administrasi Coretax DJP",
-      "Pelatihan Staf Akuntansi & Keuangan Klien",
-      "Penyelarasan Data Master NPWP 16 Digit & NIK",
-      "Uji Coba Simulator Pelaporan Faktur & Bukti Potong",
-    ],
-    href: "/layanan/coretax",
-    accent: "text-primary",
-  },
-];
+import {
+  StoredServiceItem,
+  getStoredServices,
+  SERVICES_EVENT,
+} from "@/data/layananStorage";
 
 export default function LayananIndexPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [services, setServices] = useState<StoredServiceItem[]>([]);
 
-  const filteredServices = SERVICES_LIST.filter((s) => {
+  useEffect(() => {
+    setServices(getStoredServices());
+
+    const handleUpdate = () => {
+      setServices(getStoredServices());
+    };
+
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
+  const publishedServices = services.filter((s) => s.status === "Published");
+
+  const filteredServices = publishedServices.filter((s) => {
     if (activeCategory === "all") return true;
-    return s.category === activeCategory;
+    return s.categoryKey.toLowerCase() === activeCategory.toLowerCase();
   });
 
   return (
@@ -141,18 +76,9 @@ export default function LayananIndexPage() {
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
               <Link href="/konsultasi">
                 <Button variant="secondary" size="default" className="font-semibold shadow-md">
-                  Jadwalkan Konsultasi Gratis
+                  Jadwalkan Konsultasi
                 </Button>
               </Link>
-              <a
-                href="https://wa.me/6281234567890?text=Halo%20Admin%20Zhou%20Consulting,%20saya%20ingin%20berkonsultasi%20mengenai%20layanan"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" size="default" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
-                  Hubungi via WhatsApp
-                </Button>
-              </a>
             </div>
           </div>
         </section>
@@ -160,76 +86,98 @@ export default function LayananIndexPage() {
         {/* Services Directory Section */}
         <section className="py-12 md:py-16">
           <div className="container-custom space-y-8">
-            {/* Filter Tabs */}
-            <div className="flex flex-wrap items-center justify-center gap-2 pb-4">
-              {[
-                { key: "all", label: "Semua Layanan" },
-                { key: "akuntansi", label: "Akuntansi & Pembukuan" },
-                { key: "pajak", label: "Perpajakan & Coretax" },
-                { key: "bisnis", label: "Advisory Bisnis" },
-                { key: "hukum", label: "Hukum Korporat" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveCategory(tab.key)}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
-                    activeCategory === tab.key
-                      ? "bg-primary text-white shadow-xs"
-                      : "bg-white border border-primary-light text-text-secondary hover:text-primary hover:border-primary"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            {/* Filter Tabs if services exist */}
+            {publishedServices.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pb-4">
+                {[
+                  { key: "all", label: "Semua Layanan" },
+                  { key: "akuntansi", label: "Akuntansi & Pembukuan" },
+                  { key: "tax-service", label: "Perpajakan & Coretax" },
+                  { key: "bisnis", label: "Advisory Bisnis" },
+                  { key: "hukum", label: "Hukum Korporat" },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveCategory(tab.key)}
+                    className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                      activeCategory === tab.key
+                        ? "bg-primary text-white shadow-xs"
+                        : "bg-white border border-primary-light text-text-secondary hover:text-primary hover:border-primary"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {/* Service Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredServices.map((service) => (
-                <Card
-                  key={service.id}
-                  className="bg-white border-primary-light hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between"
-                >
-                  <CardHeader className="space-y-3 pb-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="silver" size="sm">
-                        {service.badge}
-                      </Badge>
-                      <BookIcon className="text-primary opacity-60 text-sm" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base sm:text-lg font-bold text-primary">
-                        {service.title}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                        {service.desc}
-                      </CardDescription>
-                    </div>
-                  </CardHeader>
+            {/* Empty State */}
+            {publishedServices.length === 0 ? (
+              <div className="py-16 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 max-w-2xl mx-auto shadow-xs">
+                <div className="w-14 h-14 rounded-2xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-2xl">
+                  <BriefcaseIcon />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-primary">Katalog Layanan Sedang Dipersiapkan</h3>
+                  <p className="text-xs sm:text-sm text-text-secondary leading-relaxed max-w-md mx-auto">
+                    Daftar divisi dan rincian modul layanan Zhou Consulting akan segera diperbarui oleh tim administrator melalui Admin Dashboard.
+                  </p>
+                </div>
+                <div className="pt-2 flex items-center justify-center gap-3">
+                  <Button variant="primary" size="sm" asChild className="text-xs">
+                    <Link href="/konsultasi">Konsultasi Langsung</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* Service Cards Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredServices.map((service) => (
+                  <Card
+                    key={service.id}
+                    className="bg-white border-primary-light hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                  >
+                    <CardHeader className="space-y-3 pb-3">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="silver" size="sm">
+                          {service.badge || service.categoryKey.toUpperCase()}
+                        </Badge>
+                        <BookIcon className="text-primary opacity-60 text-sm" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base sm:text-lg font-bold text-primary">
+                          {service.name}
+                        </CardTitle>
+                        <CardDescription className="text-xs text-text-secondary mt-1.5 leading-relaxed line-clamp-2">
+                          {service.subtitle}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
 
-                  <CardContent className="space-y-2 text-xs text-text-primary flex-1 pt-0">
-                    <div className="pt-2 border-t border-gray-100 space-y-2">
-                      {service.features.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
-                          <span className="leading-snug text-text-secondary">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
+                    <CardContent className="space-y-2 text-xs text-text-primary flex-1 pt-0">
+                      <div className="pt-2 border-t border-gray-100 space-y-2">
+                        {service.pillars?.map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
+                            <span className="leading-snug text-text-secondary line-clamp-1">{item.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
 
-                  <CardFooter className="pt-3 border-t border-primary-light">
-                    <Link href={service.href} className="w-full">
-                      <Button variant="outline" size="sm" className="w-full text-xs font-semibold justify-between group">
-                        <span>Lihat Detail Layanan</span>
-                        <ArrowRightIcon className="text-[10px] group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                    <CardFooter className="pt-3 border-t border-primary-light">
+                      <Link href={service.route || `/layanan/${service.categoryKey}`} className="w-full">
+                        <Button variant="outline" size="sm" className="w-full text-xs font-semibold justify-between group">
+                          <span>Lihat Detail Layanan</span>
+                          <ArrowRightIcon className="text-[10px] group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -248,7 +196,7 @@ export default function LayananIndexPage() {
               <div className="flex items-center gap-3">
                 <Link href="/konsultasi">
                   <Button variant="primary" size="default" className="font-semibold text-xs sm:text-sm shadow-xs">
-                    Hubungi Konsultan Sekarang
+                    Hubungi Konsultan Kami
                   </Button>
                 </Link>
               </div>

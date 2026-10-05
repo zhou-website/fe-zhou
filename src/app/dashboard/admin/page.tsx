@@ -34,13 +34,11 @@ import {
   buildInitialPublicCMSItems,
   INITIAL_HOMEPAGE_CONTENT,
   INITIAL_COMPANY_PROFILE,
-  INITIAL_SERVICES,
   INITIAL_KMK_RATES,
   INITIAL_CAREERS,
   INITIAL_CONTACT_CONTENT,
   HomepageContent,
   CompanyProfileContent,
-  ServiceItemContent,
   KmkRatesContent,
   CareerJobItem,
   ContactConsultationContent,
@@ -77,6 +75,14 @@ import {
   resetStoredCareerSettings,
   CAREER_SETTINGS_EVENT,
 } from "@/data/karirStorage";
+import {
+  StoredServiceItem,
+  getStoredServices,
+  addStoredService,
+  updateStoredService,
+  deleteStoredService,
+  SERVICES_EVENT,
+} from "@/data/layananStorage";
 
 // Operational tickets (Preserved from existing functionality)
 interface ChecklistItem {
@@ -122,7 +128,7 @@ function AdminDashboardContent() {
   // Specific state for sections
   const [homepageContent, setHomepageContent] = useState<HomepageContent>(INITIAL_HOMEPAGE_CONTENT);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfileContent>(INITIAL_COMPANY_PROFILE);
-  const [servicesList] = useState<ServiceItemContent[]>(INITIAL_SERVICES);
+  const [servicesList, setServicesList] = useState<StoredServiceItem[]>([]);
   // Regulations & SOP Zhou CRUD State
   const [regulationsList, setRegulationsList] = useState<StoredRegulationItem[]>([]);
   const [regSearchQuery, setRegSearchQuery] = useState("");
@@ -276,6 +282,22 @@ function AdminDashboardContent() {
     return () => {
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
       window.removeEventListener("storage", handleCareerUpdate);
+    };
+  }, []);
+
+  // Sync Services with localStorage on mount & events
+  useEffect(() => {
+    setServicesList(getStoredServices());
+
+    const handleServiceUpdate = () => {
+      setServicesList(getStoredServices());
+    };
+
+    window.addEventListener(SERVICES_EVENT, handleServiceUpdate);
+    window.addEventListener("storage", handleServiceUpdate);
+    return () => {
+      window.removeEventListener(SERVICES_EVENT, handleServiceUpdate);
+      window.removeEventListener("storage", handleServiceUpdate);
     };
   }, []);
 
@@ -640,6 +662,13 @@ function AdminDashboardContent() {
 
   // Toggle Content Status (Draft <-> Published)
   const handleToggleStatus = (id: string) => {
+    const srvId = id.replace("PUB-", "");
+    const existingSrv = servicesList.find((s) => s.id === srvId);
+    if (existingSrv) {
+      const nextStatus: ContentStatus = existingSrv.status === "Published" ? "Draft" : "Published";
+      updateStoredService(existingSrv.id, { status: nextStatus });
+    }
+
     setCmsItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -655,6 +684,9 @@ function AdminDashboardContent() {
   // Confirm delete item
   const handleConfirmDelete = () => {
     if (!itemToDelete) return;
+    if (itemToDelete.section === "services") {
+      deleteStoredService(itemToDelete.id.replace("PUB-", ""));
+    }
     setCmsItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
     showToast(`Konten "${itemToDelete.title.substring(0, 25)}..." berhasil dihapus dari direktori CMS.`);
     setItemToDelete(null);
@@ -701,6 +733,39 @@ function AdminDashboardContent() {
         break;
       default:
         route = "/";
+    }
+
+    if (newItemForm.section === "services") {
+      const catLower = newItemForm.category.toLowerCase();
+      const catKey = catLower.includes("akuntansi")
+        ? "akuntansi"
+        : catLower.includes("hukum")
+        ? "hukum"
+        : catLower.includes("bisnis")
+        ? "bisnis"
+        : "tax-service";
+
+      addStoredService({
+        name: newItemForm.title.trim(),
+        subtitle: newItemForm.summary.trim() || "Deskripsi layanan komprehensif.",
+        categoryKey: catKey,
+        route: `/layanan/${catKey}`,
+        leadConsultant: newItemForm.author,
+        pillars: [
+          {
+            title: newItemForm.title.trim(),
+            description: newItemForm.summary.trim() || "Cakupan penugasan profesional.",
+          },
+        ],
+        workflow: [
+          "Konsultasi awal & asesmen kebutuhan",
+          "Analisis teknis & penyusunan rencana kerja",
+          "Pengerjaan berkas & rekonsiliasi",
+          "Penerbitan laporan final & briefing",
+        ],
+        deliverables: ["Laporan / Dokumen Resmi Penugasan"],
+        status: newItemForm.status,
+      });
     }
 
     const createdItem: PublicCMSItem = {
@@ -1466,69 +1531,110 @@ function AdminDashboardContent() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {servicesList.map((srv) => (
-              <Card
-                key={srv.id}
-                className="rounded-2xl border-primary-light bg-white p-5 shadow-xs hover:border-primary/50 transition-all flex flex-col justify-between space-y-4"
+          {servicesList.length === 0 ? (
+            <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 shadow-xs">
+              <div className="w-12 h-12 rounded-xl bg-primary-light/50 text-primary mx-auto flex items-center justify-center text-xl">
+                <PlusIcon />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-primary">Belum Ada Modul Layanan</h4>
+                <p className="text-xs text-text-secondary max-w-md mx-auto">
+                  Belum ada divisi atau modul layanan yang terdaftar. Klik &quot;Tambah Modul Layanan&quot; untuk menambahkan layanan baru yang akan tampil pada website publik.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setNewItemForm({
+                    section: "services",
+                    title: "",
+                    category: "Akuntansi",
+                    summary: "",
+                    status: "Published",
+                    author: "Staf Konsultan",
+                    url: "",
+                    institution: "DJP",
+                    mediaType: "Situs Web",
+                  });
+                  setIsNewItemModalOpen(true);
+                }}
+                className="text-xs shadow-xs"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-primary bg-primary-light px-2.5 py-0.5 rounded">
-                      {srv.id}
-                    </span>
-                    <Badge variant={srv.status === "Published" ? "success" : "silver"} size="sm" dot>
-                      {srv.status}
-                    </Badge>
+                <PlusIcon className="text-xs mr-1" />
+                Tambah Layanan Pertama
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {servicesList.map((srv) => (
+                <Card
+                  key={srv.id}
+                  className="rounded-2xl border-primary-light bg-white p-5 shadow-xs hover:border-primary/50 transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-bold text-primary bg-primary-light px-2.5 py-0.5 rounded">
+                        {srv.id}
+                      </span>
+                      <Badge variant={srv.status === "Published" ? "success" : "silver"} size="sm" dot>
+                        {srv.status}
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <h4 className="text-base font-bold text-primary">{srv.name}</h4>
+                      <p className="text-xs text-text-secondary mt-1">{srv.subtitle}</p>
+                      {srv.leadConsultant && (
+                        <div className="text-[11px] text-primary font-semibold mt-2">
+                          PIC: {srv.leadConsultant}
+                        </div>
+                      )}
+                    </div>
+
+                    {srv.pillars && srv.pillars.length > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-primary-light/60">
+                        <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
+                          Cakupan Layanan:
+                        </span>
+                        <ul className="text-[11px] text-text-secondary space-y-1">
+                          {srv.pillars.map((p, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <CheckIcon className="text-emerald-600 text-[10px] mt-0.5 shrink-0" />
+                              <span>{p.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <h4 className="text-base font-bold text-primary">{srv.name}</h4>
-                    <p className="text-xs text-text-secondary mt-1">{srv.subtitle}</p>
-                    <div className="text-[11px] text-primary font-semibold mt-2">
-                      PIC: {srv.leadConsultant}
+                  <div className="flex items-center justify-between pt-3 border-t border-primary-light/60">
+                    <span className="text-[10px] text-text-muted">Rute: {srv.route}</span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={srv.route}
+                        target="_blank"
+                        className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1 transition-colors"
+                      >
+                        <span>Lihat Halaman</span>
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleStatus(`PUB-${srv.id}`)}
+                        className="text-xs h-8 px-2.5"
+                      >
+                        {srv.status === "Published" ? "Draft" : "Terbitkan"}
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="space-y-1.5 pt-2 border-t border-primary-light/60">
-                    <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
-                      4 Bidang Layanan:
-                    </span>
-                    <ul className="text-[11px] text-text-secondary space-y-1">
-                      {srv.pillars.map((p, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <CheckIcon className="text-emerald-600 text-[10px] mt-0.5 shrink-0" />
-                          <span>{p.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-primary-light/60">
-                  <span className="text-[10px] text-text-muted">Rute: {srv.route}</span>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={srv.route}
-                      target="_blank"
-                      className="text-xs h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1 transition-colors"
-                    >
-                      <span>Lihat Halaman</span>
-                    </Link>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleStatus(`PUB-${srv.id}`)}
-                      className="text-xs h-8 px-2.5"
-                    >
-                      {srv.status === "Published" ? "Draft" : "Terbitkan"}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

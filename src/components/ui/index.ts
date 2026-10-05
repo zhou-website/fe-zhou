@@ -1,5 +1,5 @@
 /**
- * Zhou Consulting – UI Design System Component Barrel
+ * Zhou Consulting - UI Design System Component Barrel
  * Centralized, tree-shakeable exports for all design system primitives.
  */
 
