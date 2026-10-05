@@ -28,6 +28,11 @@ import { addZhouArticle } from "@/data/edukasiStorage";
 import { addRegulation, RegulationCategory } from "@/data/regulasiStorage";
 import { getStoredCareerSettings, saveStoredCareerSettings } from "@/data/karirStorage";
 import {
+  getStoredServices,
+  saveStoredServices,
+  StoredServiceItem,
+} from "@/data/layananStorage";
+import {
   ZHOU_ARTICLES,
   BELAJAR_PAJAK_LINKS,
   BelajarPajakLink,
@@ -35,7 +40,7 @@ import {
 
 export interface CMSItem {
   id: string;
-  section: "hero" | "kurs" | "regulasi" | "edukasi-zhou" | "belajar-pajak" | "karir";
+  section: "hero" | "kurs" | "regulasi" | "edukasi-zhou" | "belajar-pajak" | "karir" | "services";
   title: string;
   category: string;
   lastUpdated: string;
@@ -207,6 +212,11 @@ function AdminCMSPageContent() {
   // Delete item
   const handleDeleteItem = (id: string) => {
     setCmsItems((prev) => prev.filter((item) => item.id !== id));
+    // Hubungkan penghapusan langsung ke API Backend
+    adminCmsApi.deleteEducation(id).catch(() => {});
+    adminCmsApi.deleteRegulation(id).catch(() => {});
+    adminCmsApi.deleteService(id).catch(() => {});
+    adminCmsApi.deleteCareer(id).catch(() => {});
     showToast("Konten berhasil dihapus dari direktori CMS.");
   };
 
@@ -332,15 +342,18 @@ function AdminCMSPageContent() {
           takeaways: createdItem.takeaways || [],
           content: createdItem.content || [createdItem.summary],
         });
-        const formData = new FormData();
-        formData.append("title", createdItem.title);
-        formData.append("category", createdItem.category);
-        formData.append("content", createdItem.content?.join("\n\n") || createdItem.summary);
-        formData.append("excerpt", createdItem.summary);
-        if (createdItem.author) formData.append("author", createdItem.author);
-        adminCmsApi.createEducation(formData).catch((err) => {
-          console.warn("adminCmsApi.createEducation fallback:", err);
-        });
+        adminCmsApi
+          .createEducation({
+            title: createdItem.title,
+            category: createdItem.category || "Pajak",
+            body: createdItem.content?.join("\n\n") || createdItem.summary,
+            content_type: "ARTICLE",
+            author: createdItem.author || "Tim Konsultan BKP Zhou Consulting",
+            excerpt: createdItem.summary,
+          })
+          .catch((err) => {
+            console.warn("adminCmsApi.createEducation fallback:", err);
+          });
       } else if (newItemForm.section === "regulasi") {
         addRegulation({
           docNumber: `REG-${Date.now().toString().slice(-4)}`,
@@ -351,14 +364,51 @@ function AdminCMSPageContent() {
           fileSize: "PDF 1.2 MB",
           status: "Berlaku",
         });
-        const formData = new FormData();
-        formData.append("title", createdItem.title);
-        formData.append("category", createdItem.category);
-        formData.append("description", createdItem.summary);
-        formData.append("year", String(new Date().getFullYear()));
-        adminCmsApi.createRegulation(formData).catch((err) => {
-          console.warn("adminCmsApi.createRegulation fallback:", err);
-        });
+        adminCmsApi
+          .createRegulation({
+            title: createdItem.title,
+            regulation_type: createdItem.category || "Regulasi Perpajakan",
+            description: createdItem.summary,
+            file_path: "/docs/regulasi.pdf",
+            file_size: "1.2 MB",
+          })
+          .catch((err) => {
+            console.warn("adminCmsApi.createRegulation fallback:", err);
+          });
+      } else if (newItemForm.section === "services") {
+        const curServices = getStoredServices();
+        const newSvc: StoredServiceItem = {
+          id: `svc-${Date.now()}`,
+          code: `SVC-${Date.now().toString().slice(-4)}`,
+          name: createdItem.title,
+          subtitle: createdItem.summary,
+          categoryKey: createdItem.category.toLowerCase().includes("akuntansi")
+            ? "akuntansi"
+            : createdItem.category.toLowerCase().includes("hukum")
+            ? "hukum"
+            : createdItem.category.toLowerCase().includes("bisnis")
+            ? "bisnis"
+            : "tax-service",
+          route: "/layanan",
+          leadConsultant: createdItem.editor || "Tim Konsultan Zhou",
+          pillars: [{ title: createdItem.title, description: createdItem.summary }],
+          workflow: ["Konsultasi awal", "Analisis teknis", "Pelaksanaan", "Laporan"],
+          deliverables: ["Laporan / Dokumen Penugasan"],
+          status: createdItem.status,
+          lastUpdated: createdItem.lastUpdated,
+        };
+        saveStoredServices([newSvc, ...curServices]);
+        adminCmsApi
+          .createService({
+            service_code: newSvc.code || `SVC-${Date.now().toString().slice(-4)}`,
+            service_name: createdItem.title,
+            category: createdItem.category || "Layanan",
+            description: createdItem.summary,
+            is_active: createdItem.status === "Published",
+          })
+          .catch((err) => {
+            console.warn("adminCmsApi.createService fallback:", err);
+          });
       } else if (newItemForm.section === "karir") {
         const curSettings = getStoredCareerSettings();
         const newPos = {

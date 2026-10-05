@@ -372,6 +372,42 @@ export const adminApi = {
 // ----------------------------------------------------
 // Modul CMS Admin (Admin CMS)
 // ----------------------------------------------------
+export interface CreateRegulationPayload {
+  title: string;
+  regulation_type: string;
+  file_path?: string;
+  file_size?: string;
+  category?: string;
+  description?: string;
+}
+
+export interface CreateEducationPayload {
+  title: string;
+  category: string;
+  body: string;
+  content_type?: "ARTICLE" | "GUIDE" | string;
+  file_path?: string;
+  author?: string;
+  excerpt?: string;
+}
+
+export interface CreateServicePayload {
+  service_code: string;
+  service_name: string;
+  category: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface CreateCareerPayload {
+  position_code: string;
+  position_title: string;
+  level: string;
+  location: string;
+  description?: string;
+  is_active?: boolean;
+}
+
 export const adminCmsApi = {
   updateCompanyProfile: (payload: {
     section_key: string;
@@ -383,16 +419,21 @@ export const adminCmsApi = {
       body: JSON.stringify(payload),
     }),
 
-  createService: (payload: {
-    service_code: string;
-    service_name: string;
-    category: string;
-    description?: string;
-    is_active?: boolean;
-  }) =>
+  createService: (payload: CreateServicePayload) =>
     apiFetch("/api/v1/admin/cms/services", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  updateService: (id: number | string, payload: Partial<CreateServicePayload>) =>
+    apiFetch(`/api/v1/admin/cms/services/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteService: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/services/${id}`, {
+      method: "DELETE",
     }),
 
   createTaxRate: (payload: {
@@ -406,29 +447,55 @@ export const adminCmsApi = {
       body: JSON.stringify(payload),
     }),
 
-  createRegulation: (formData: FormData) =>
+  createRegulation: (payload: CreateRegulationPayload) =>
     apiFetch("/api/v1/admin/cms/regulations", {
       method: "POST",
-      body: formData,
+      body: JSON.stringify(payload),
     }),
 
-  createEducation: (formData: FormData) =>
+  updateRegulation: (id: number | string, payload: Partial<CreateRegulationPayload>) =>
+    apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteRegulation: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
+      method: "DELETE",
+    }),
+
+  createEducation: (payload: CreateEducationPayload) =>
     apiFetch("/api/v1/admin/cms/education", {
       method: "POST",
-      body: formData,
+      body: JSON.stringify(payload),
     }),
 
-  createCareer: (payload: {
-    position_code: string;
-    position_title: string;
-    level: string;
-    location: string;
-    description?: string;
-    is_active?: boolean;
-  }) =>
+  updateEducation: (id: number | string, payload: Partial<CreateEducationPayload>) =>
+    apiFetch(`/api/v1/admin/cms/education/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteEducation: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/education/${id}`, {
+      method: "DELETE",
+    }),
+
+  createCareer: (payload: CreateCareerPayload) =>
     apiFetch("/api/v1/admin/cms/careers", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+
+  updateCareer: (id: number | string, payload: Partial<CreateCareerPayload>) =>
+    apiFetch(`/api/v1/admin/cms/careers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteCareer: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/careers/${id}`, {
+      method: "DELETE",
     }),
 
   getJobApplications: () => apiFetch("/api/v1/admin/cms/job-applications"),

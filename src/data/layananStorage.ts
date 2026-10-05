@@ -1,6 +1,7 @@
 "use client";
 
 import { ContentStatus } from "./publicContentData";
+import { adminCmsApi } from "@/lib/api";
 
 export interface ServicePillar {
   title: string;
@@ -14,6 +15,7 @@ export interface ServiceFAQ {
 
 export interface StoredServiceItem {
   id: string;
+  code?: string;
   categoryKey: "hukum" | "bisnis" | "akuntansi" | "tax-service" | string;
   name: string;
   subtitle: string;
@@ -108,6 +110,20 @@ export function addStoredService(
 
   const updated = [newService, ...current];
   saveStoredServices(updated);
+
+  // Sambungkan penambahan ke Backend API
+  adminCmsApi
+    .createService({
+      service_code: newService.id,
+      service_name: newService.name,
+      category: newService.categoryKey,
+      description: newService.subtitle,
+      is_active: newService.status === "Published",
+    })
+    .catch((err) => {
+      console.warn("adminCmsApi.createService fallback:", err);
+    });
+
   return newService;
 }
 
@@ -139,6 +155,19 @@ export function updateStoredService(
   updatedList[index] = updatedItem;
 
   saveStoredServices(updatedList);
+
+  // Sambungkan pembaruan ke Backend API
+  adminCmsApi
+    .updateService(id, {
+      service_name: updatedItem.name,
+      category: updatedItem.categoryKey,
+      description: updatedItem.subtitle,
+      is_active: updatedItem.status === "Published",
+    })
+    .catch((err) => {
+      console.warn("adminCmsApi.updateService fallback:", err);
+    });
+
   return updatedItem;
 }
 
@@ -152,6 +181,12 @@ export function deleteStoredService(id: string): boolean {
   if (filtered.length === current.length) return false;
 
   saveStoredServices(filtered);
+
+  // Sambungkan penghapusan ke Backend API
+  adminCmsApi.deleteService(id).catch((err) => {
+    console.warn("adminCmsApi.deleteService fallback:", err);
+  });
+
   return true;
 }
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { adminApi, ConsultationItem } from "@/lib/api";
+import { adminApi, adminCmsApi, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -416,8 +416,26 @@ function AdminDashboardContent() {
 
     if (regItemToEdit) {
       updateRegulation(regItemToEdit.id, regForm);
+      adminCmsApi
+        .updateRegulation(regItemToEdit.id, {
+          title: regForm.title.trim(),
+          regulation_type: regForm.category,
+          description: regForm.scope,
+          file_path: "/docs/regulasi.pdf",
+          file_size: regForm.fileSize || "1.8 MB",
+        })
+        .catch((err) => console.warn("adminCmsApi.updateRegulation fallback:", err));
     } else {
       addRegulation(regForm);
+      adminCmsApi
+        .createRegulation({
+          title: regForm.title.trim(),
+          regulation_type: regForm.category,
+          description: regForm.scope,
+          file_path: "/docs/regulasi.pdf",
+          file_size: regForm.fileSize || "1.8 MB",
+        })
+        .catch((err) => console.warn("adminCmsApi.createRegulation fallback:", err));
     }
     setIsRegModalOpen(false);
     setRegItemToEdit(null);
@@ -426,6 +444,9 @@ function AdminDashboardContent() {
   const handleConfirmDeleteRegulation = () => {
     if (!regItemToDelete) return;
     deleteRegulation(regItemToDelete.id);
+    adminCmsApi
+      .deleteRegulation(regItemToDelete.id)
+      .catch((err) => console.warn("adminCmsApi.deleteRegulation fallback:", err));
     setRegItemToDelete(null);
   };
 
@@ -542,6 +563,16 @@ function AdminDashboardContent() {
         attachment,
       });
       setZhouArticles(updated);
+      adminCmsApi
+        .updateEducation(zhouItemToEdit.id, {
+          title: zhouForm.title.trim(),
+          category: zhouForm.category,
+          body: content.length > 0 ? content.join("\n\n") : zhouForm.summary.trim(),
+          content_type: "ARTICLE",
+          author: zhouForm.author.trim(),
+          excerpt: zhouForm.summary.trim(),
+        })
+        .catch((err) => console.warn("adminCmsApi.updateEducation fallback:", err));
       showToast(`Materi "${zhouForm.title.substring(0, 25)}..." berhasil diperbarui.`);
     } else {
       const todayStr = zhouForm.date.trim() || new Date().toLocaleDateString("id-ID", {
@@ -564,6 +595,16 @@ function AdminDashboardContent() {
         attachment,
       });
       setZhouArticles((prev) => [newArticle, ...prev]);
+      adminCmsApi
+        .createEducation({
+          title: zhouForm.title.trim(),
+          category: zhouForm.category,
+          body: content.length > 0 ? content.join("\n\n") : zhouForm.summary.trim(),
+          content_type: "ARTICLE",
+          author: zhouForm.author.trim() || "Tim Konsultan BKP Zhou Consulting",
+          excerpt: zhouForm.summary.trim(),
+        })
+        .catch((err) => console.warn("adminCmsApi.createEducation fallback:", err));
       showToast(`Modul/materi "${newArticle.title.substring(0, 25)}..." berhasil di-upload.`);
     }
 
@@ -575,6 +616,9 @@ function AdminDashboardContent() {
     if (!zhouItemToDelete) return;
     const updated = deleteZhouArticle(zhouItemToDelete.id);
     setZhouArticles(updated);
+    adminCmsApi
+      .deleteEducation(zhouItemToDelete.id)
+      .catch((err) => console.warn("adminCmsApi.deleteEducation fallback:", err));
     showToast(`Materi "${zhouItemToDelete.title.substring(0, 25)}..." berhasil dihapus.`);
     setZhouItemToDelete(null);
   };
@@ -667,6 +711,9 @@ function AdminDashboardContent() {
     if (existingSrv) {
       const nextStatus: ContentStatus = existingSrv.status === "Published" ? "Draft" : "Published";
       updateStoredService(existingSrv.id, { status: nextStatus });
+      adminCmsApi
+        .updateService(existingSrv.id, { is_active: nextStatus === "Published" })
+        .catch((err) => console.warn("adminCmsApi.updateService fallback:", err));
     }
 
     setCmsItems((prev) =>
@@ -685,7 +732,9 @@ function AdminDashboardContent() {
   const handleConfirmDelete = () => {
     if (!itemToDelete) return;
     if (itemToDelete.section === "services") {
-      deleteStoredService(itemToDelete.id.replace("PUB-", ""));
+      const srvId = itemToDelete.id.replace("PUB-", "");
+      deleteStoredService(srvId);
+      adminCmsApi.deleteService(srvId).catch((err) => console.warn("adminCmsApi.deleteService fallback:", err));
     }
     setCmsItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
     showToast(`Konten "${itemToDelete.title.substring(0, 25)}..." berhasil dihapus dari direktori CMS.`);
@@ -766,6 +815,48 @@ function AdminDashboardContent() {
         deliverables: ["Laporan / Dokumen Resmi Penugasan"],
         status: newItemForm.status,
       });
+
+      adminCmsApi
+        .createService({
+          service_code: `SVC-${Date.now().toString().slice(-4)}`,
+          service_name: newItemForm.title.trim(),
+          category: newItemForm.category,
+          description: newItemForm.summary.trim(),
+          is_active: newItemForm.status === "Published",
+        })
+        .catch((err) => console.warn("adminCmsApi.createService fallback:", err));
+    } else if (newItemForm.section === "regulations") {
+      adminCmsApi
+        .createRegulation({
+          title: newItemForm.title.trim(),
+          regulation_type: newItemForm.category,
+          description: newItemForm.summary.trim(),
+          file_path: "/docs/regulasi.pdf",
+          file_size: "1.5 MB",
+        })
+        .catch((err) => console.warn("adminCmsApi.createRegulation fallback:", err));
+    } else if (newItemForm.section === "education-zhou") {
+      adminCmsApi
+        .createEducation({
+          title: newItemForm.title.trim(),
+          category: newItemForm.category,
+          body: newItemForm.summary.trim(),
+          content_type: "ARTICLE",
+          author: newItemForm.author,
+          excerpt: newItemForm.summary.trim(),
+        })
+        .catch((err) => console.warn("adminCmsApi.createEducation fallback:", err));
+    } else if (newItemForm.section === "careers") {
+      adminCmsApi
+        .createCareer({
+          position_code: `CAR-${Date.now().toString().slice(-4)}`,
+          position_title: newItemForm.title.trim(),
+          level: "Associate / Senior",
+          location: "Menara Sudirman, Jakarta Selatan",
+          description: newItemForm.summary.trim(),
+          is_active: true,
+        })
+        .catch((err) => console.warn("adminCmsApi.createCareer fallback:", err));
     }
 
     const createdItem: PublicCMSItem = {
@@ -1319,6 +1410,13 @@ function AdminDashboardContent() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                adminCmsApi
+                  .updateCompanyProfile({
+                    section_key: "hero",
+                    title: homepageContent.headline,
+                    content: homepageContent.subheadline,
+                  })
+                  .catch((err) => console.warn("adminCmsApi.updateCompanyProfile fallback:", err));
                 showToast("Konten Hero & Beranda berhasil diperbarui dan dipublikasikan.");
               }}
               className="space-y-4 text-xs"
@@ -1448,6 +1546,13 @@ function AdminDashboardContent() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                adminCmsApi
+                  .updateCompanyProfile({
+                    section_key: "about",
+                    title: companyProfile.legalEntity,
+                    content: companyProfile.profileStatement,
+                  })
+                  .catch((err) => console.warn("adminCmsApi.updateCompanyProfile fallback:", err));
                 showToast("Profil Perusahaan berhasil diperbarui.");
               }}
               className="space-y-4 text-xs"
