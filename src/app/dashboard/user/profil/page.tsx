@@ -911,11 +911,11 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({
                           ...prev,
                           companyName: newName,
-                          initials: initials || "MMS",
+                          initials: initials || "PK",
                         }));
                       }}
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="Contoh: PT Maju Makmur Sentosa"
+                      placeholder="Contoh: PT Nama Perusahaan"
                     />
                   </div>
 
@@ -1030,7 +1030,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picName: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="Budi Santoso, S.E."
+                      placeholder="Contoh: Nama Lengkap Penanggung Jawab"
                     />
                   </div>
 
@@ -1063,7 +1063,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picEmail: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="budi.santoso@majumakmur.co.id"
+                      placeholder="pic@perusahaan.co.id"
                     />
                   </div>
 

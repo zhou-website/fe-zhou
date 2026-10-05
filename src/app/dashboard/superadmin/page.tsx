@@ -621,9 +621,11 @@ export default function SuperadminDashboard() {
                   className="h-9 px-3 rounded-md border border-primary-light bg-surface text-text text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                 >
                   <option value="ALL">Semua Admin</option>
-                  <option value="Linda David">Linda David</option>
-                  <option value="Tasya Anggraeni">Tasya Anggraeni</option>
-                  <option value="Muhamad Dekhsa">Muhamad Dekhsa</option>
+                  {admins.map((a) => (
+                    <option key={a.id} value={a.name}>
+                      {a.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

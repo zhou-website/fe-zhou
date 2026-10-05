@@ -99,7 +99,7 @@ const INITIAL_OTHER_CMS: CMSItem[] = [
     title: "Headline Hero Utama: Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial",
     category: "Hero Banner",
     lastUpdated: "17 Sep 2026",
-    editor: "Linda David, S.Ak., BKP",
+    editor: "Staf Konsultan",
     status: "Published",
     summary: "Headline pembuka beranda korporat menonjolkan kepatuhan Coretax 2026 dan akreditasi BKP/CA.",
   },
@@ -109,7 +109,7 @@ const INITIAL_OTHER_CMS: CMSItem[] = [
     title: "Tabel Kurs Pajak Mingguan KMK No. 38/KM.10/2026 (7 Valuta Utama)",
     category: "Kurs Pajak",
     lastUpdated: "17 Sep 2026",
-    editor: "Linda David, S.Ak., BKP",
+    editor: "Staf Konsultan",
     status: "Published",
     summary: "Tarif konversi resmi valuta asing untuk pelaporan faktur pajak dan bukti potong DJP.",
   },
@@ -119,7 +119,7 @@ const INITIAL_OTHER_CMS: CMSItem[] = [
     title: "PMK No. 81/2024: Tata Cara Pelaksanaan Hak dan Kewajiban Perpajakan Coretax",
     category: "Regulasi",
     lastUpdated: "15 Sep 2026",
-    editor: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    editor: "Staf Konsultan",
     status: "Published",
     summary: "Regulasi integrasi Coretax DJP, faktur pajak elektronik, dan bukti potong terpadu.",
   },
@@ -129,7 +129,7 @@ const INITIAL_OTHER_CMS: CMSItem[] = [
     title: "UU No. 7/2021: Harmonisasi Peraturan Perpajakan (UU HPP)",
     category: "Regulasi",
     lastUpdated: "12 Sep 2026",
-    editor: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    editor: "Staf Konsultan",
     status: "Published",
     summary: "Ketentuan umum perpajakan, tarif PPh Badan 22%, batasan omzet PT KP, dan PPN 11-12%.",
   },
@@ -193,7 +193,7 @@ function AdminCMSPageContent() {
     category: "Coretax DJP 2026",
     author: "Tim Konsultan BKP Zhou Consulting",
     readTime: "6 menit baca",
-    editor: "Linda David, S.Ak., BKP",
+    editor: "Staf Konsultan",
     status: "Published" as CMSItem["status"],
     summary: "",
     takeawaysRaw: "",
@@ -1886,7 +1886,7 @@ function AdminCMSPageContent() {
                         onChange={(e) =>
                           setNewItemForm((prev) => ({ ...prev, author: e.target.value }))
                         }
-                        placeholder="e.g. Linda David, S.Ak., BKP"
+                        placeholder="Contoh: Tim Konsultan Zhou"
                         className="text-xs h-9 bg-surface border-primary-light focus:bg-white"
                       />
                     </div>

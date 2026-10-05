@@ -22,18 +22,18 @@ interface GoogleAuthModalProps {
 
 const PRESET_ACCOUNTS: GoogleAuthAccount[] = [
   {
-    name: "Budi Santoso, S.E.",
-    email: "budi.santoso@majumakmur.co.id",
+    name: "Akun Google Klien",
+    email: "klien.bisnis@gmail.com",
     role: "user",
-    company: "PT Maju Makmur Sentosa",
-    avatarText: "BS",
+    company: "Perusahaan Klien",
+    avatarText: "GK",
   },
   {
-    name: "Citra Kirana, SE.",
-    email: "citra.kirana@gmail.com",
+    name: "Akun Google Konsultan",
+    email: "konsultan@gmail.com",
     role: "user",
-    company: "CV Surya Kencana",
-    avatarText: "CK",
+    company: "Mitra Konsultan",
+    avatarText: "AK",
   },
   {
     name: "Staff Internal Zhou",

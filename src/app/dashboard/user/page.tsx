@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ interface ClientDocument {
 }
 
 export default function UserDashboardPage() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
@@ -174,8 +176,8 @@ export default function UserDashboardPage() {
 ZHOU CONSULTING - DIGITAL CLIENT VAULT
 ======================================================
 Berkas Resmi : ${fileName}
-Entitas      : PT Maju Makmur Sentosa (CL-88219)
-PIC Klien    : Budi Santoso, S.E. (Finance & Tax Manager)
+Entitas      : ${user?.company || "Perusahaan Klien"}
+PIC Klien    : ${user?.name || "Klien Terdaftar"}
 Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
 Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
 Kerahasiaan  : Dokumen ini bersifat rahasia profesional.

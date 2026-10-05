@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { adminApi, ClientDocumentItem } from "@/lib/api";
+import { adminApi, ClientDocumentItem, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,17 +48,20 @@ export default function AdminUploadBillingPage() {
   // Selected invoice for detail modal
   const [selectedInvoice, setSelectedInvoice] = useState<ReportItem | null>(null);
 
+  // Available tickets from backend
+  const [availableTickets, setAvailableTickets] = useState<{ id: string; clientName: string }[]>([]);
+
   // New report modal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     ticketId: "",
     clientName: "",
-    clientNpwp: "",
+    clientNpwp: "-",
     fileName: "",
     category: "Tax Service Core" as ReportItem["category"],
     amount: "",
     invoiceNumber: "",
-    consultant: "",
+    consultant: "Staf Konsultan",
     sendNotification: true,
   });
 
@@ -71,9 +74,13 @@ export default function AdminUploadBillingPage() {
   useEffect(() => {
     async function loadBackendDocuments() {
       try {
-        const res = await adminApi.getAllDocuments();
-        if (res.success && Array.isArray(res.data)) {
-          const mapped: ReportItem[] = res.data.map((d: ClientDocumentItem, idx: number) => ({
+        const [docRes, consultRes] = await Promise.allSettled([
+          adminApi.getAllDocuments(),
+          adminApi.getConsultations(),
+        ]);
+
+        if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
+          const mapped: ReportItem[] = docRes.value.data.map((d: ClientDocumentItem, idx: number) => ({
             id: `REP-BE-${d.id}`,
             ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
             clientName: "PT Klien Terdaftar",
@@ -94,6 +101,21 @@ export default function AdminUploadBillingPage() {
             sha256: `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
           }));
           setReports(mapped);
+        }
+
+        if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
+          const list = consultRes.value.data.map((c: ConsultationItem) => ({
+            id: c.project_code || `TK-2026-0${c.id}`,
+            clientName: c.title || "Klien Terdaftar",
+          }));
+          setAvailableTickets(list);
+          if (list.length > 0) {
+            setUploadForm((prev) => ({
+              ...prev,
+              ticketId: prev.ticketId || list[0].id,
+              clientName: prev.clientName || list[0].clientName,
+            }));
+          }
         }
       } catch {
         // silent fallback
@@ -135,14 +157,14 @@ export default function AdminUploadBillingPage() {
     setReports((prev) => [newReport, ...prev]);
     setIsUploadModalOpen(false);
     setUploadForm({
-      ticketId: "TK-2026-089",
-      clientName: "PT Maju Makmur Sentosa",
-      clientNpwp: "01.234.567.8-012.000",
+      ticketId: availableTickets[0]?.id || "",
+      clientName: availableTickets[0]?.clientName || "",
+      clientNpwp: "-",
       fileName: "",
       category: "Tax Service Core",
-      amount: "Rp 15.000.000",
-      invoiceNumber: "INV-2026-" + Math.floor(100 + Math.random() * 900),
-      consultant: "Linda David, S.Ak., BKP",
+      amount: "",
+      invoiceNumber: "",
+      consultant: "Staf Konsultan",
       sendNotification: true,
     });
 
@@ -541,28 +563,26 @@ export default function AdminUploadBillingPage() {
                     value={uploadForm.ticketId}
                     onChange={(e) => {
                       const tId = e.target.value;
-                      if (tId === "TK-2026-089") {
-                        setUploadForm((prev) => ({
-                          ...prev,
-                          ticketId: tId,
-                          clientName: "PT Maju Makmur Sentosa",
-                          clientNpwp: "01.234.567.8-012.000",
-                          category: "Tax Service Core",
-                        }));
-                      } else {
-                        setUploadForm((prev) => ({
-                          ...prev,
-                          ticketId: tId,
-                          clientName: "CV Borneo Karya Prima",
-                          clientNpwp: "02.345.678.9-023.000",
-                          category: "Accounting Service",
-                        }));
-                      }
+                      const matched = availableTickets.find((t) => t.id === tId);
+                      setUploadForm((prev) => ({
+                        ...prev,
+                        ticketId: tId,
+                        clientName: matched ? matched.clientName : (tId ? "Klien Terdaftar" : ""),
+                        clientNpwp: "-",
+                      }));
                     }}
                     className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none font-mono"
                   >
-                    <option value="TK-2026-089">TK-2026-089 (PT Maju Makmur Sentosa)</option>
-                    <option value="TK-2026-092">TK-2026-092 (CV Borneo Karya Prima)</option>
+                    <option value="">-- Pilih Tiket Penugasan --</option>
+                    {availableTickets.length > 0 ? (
+                      availableTickets.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.id} ({t.clientName})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="TK-2026-001">TK-2026-001 (Tiket Konsultasi Klien)</option>
+                    )}
                   </select>
                 </div>
 
@@ -868,28 +888,26 @@ export default function AdminUploadBillingPage() {
                     value={uploadForm.ticketId}
                     onChange={(e) => {
                       const tId = e.target.value;
-                      if (tId === "TK-2026-089") {
-                        setUploadForm((prev) => ({
-                          ...prev,
-                          ticketId: tId,
-                          clientName: "PT Maju Makmur Sentosa",
-                          clientNpwp: "01.234.567.8-012.000",
-                          category: "Tax Service Core",
-                        }));
-                      } else {
-                        setUploadForm((prev) => ({
-                          ...prev,
-                          ticketId: tId,
-                          clientName: "CV Borneo Karya Prima",
-                          clientNpwp: "02.345.678.9-023.000",
-                          category: "Accounting Service",
-                        }));
-                      }
+                      const matched = availableTickets.find((t) => t.id === tId);
+                      setUploadForm((prev) => ({
+                        ...prev,
+                        ticketId: tId,
+                        clientName: matched ? matched.clientName : (tId ? "Klien Terdaftar" : ""),
+                        clientNpwp: "-",
+                      }));
                     }}
                     className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none font-mono"
                   >
-                    <option value="TK-2026-089">TK-2026-089 (PT Maju Makmur Sentosa)</option>
-                    <option value="TK-2026-092">TK-2026-092 (CV Borneo Karya Prima)</option>
+                    <option value="">-- Pilih Tiket Penugasan --</option>
+                    {availableTickets.length > 0 ? (
+                      availableTickets.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.id} ({t.clientName})
+                        </option>
+                      ))
+                    ) : (
+                      <option value="TK-2026-001">TK-2026-001 (Tiket Konsultasi Klien)</option>
+                    )}
                   </select>
                 </div>
 

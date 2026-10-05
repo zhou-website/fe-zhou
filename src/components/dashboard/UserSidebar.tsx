@@ -203,14 +203,14 @@ export function UserSidebar() {
           <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-xs">
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="w-7 h-7 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs">
-                {user?.avatarText || (user?.name ? user.name.slice(0, 2).toUpperCase() : "BS")}
+                {user?.avatarText || (user?.name ? user.name.slice(0, 2).toUpperCase() : "KL")}
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-white truncate">
-                  {user?.name || "Budi Santoso, S.E."}
+                  {user?.name || "Klien Terdaftar"}
                 </div>
                 <div className="text-[10px] text-silver truncate">
-                  {user?.email || "budi.santoso@majumakmur.co.id"}
+                  {user?.email || "klien@perusahaan.com"}
                 </div>
               </div>
             </div>

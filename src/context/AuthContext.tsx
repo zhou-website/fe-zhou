@@ -72,37 +72,37 @@ const DEMO_SEEDS: Record<
   "klien@perusahaan.com": {
     passwords: ["Client123!", "klienpassword"],
     role: "user",
-    name: "Budi Santoso (Klien)",
-    company: "PT Maju Makmur Sentosa",
+    name: "Akun Klien",
+    company: "Perusahaan Klien",
   },
   "klien@korporat.com": {
     passwords: ["Client123!", "klienpassword"],
     role: "user",
-    name: "Budi Santoso (Klien)",
-    company: "PT Maju Makmur Sentosa",
+    name: "Akun Klien",
+    company: "Perusahaan Klien",
   },
   "admin@zhouconsulting.com": {
     passwords: ["Admin123!", "adminpassword"],
     role: "admin",
-    name: "Linda David, S.Ak., BKP",
+    name: "Staff Administrator",
     company: "Zhou Consulting Internal",
   },
   "staff.admin@zhouconsulting.id": {
     passwords: ["Admin123!", "adminpassword"],
     role: "admin",
-    name: "Linda David, S.Ak., BKP",
+    name: "Staff Administrator",
     company: "Zhou Consulting Internal",
   },
   "superadmin@zhouconsulting.com": {
     passwords: ["SuperAdmin123!", "superadminpassword"],
     role: "superadmin",
-    name: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    name: "Super Administrator",
     company: "Zhou Consulting Eksekutif",
   },
   "superadmin@zhouconsulting.id": {
     passwords: ["SuperAdmin123!", "superadminpassword"],
     role: "superadmin",
-    name: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    name: "Super Administrator",
     company: "Zhou Consulting Eksekutif",
   },
 };
@@ -417,9 +417,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     redirectUrl?: string | null,
     customData?: Partial<AuthUser>
   ) => {
-    let name = "Budi Pratama (Direktur)";
-    let company = "PT Maju Makmur Sentosa";
-    let avatarText = "BP";
+    let name = "Klien Terdaftar";
+    let company = "Perusahaan Klien";
+    let avatarText = "KL";
 
     if (role === "admin") {
       name = "Konsultan Senior Zhou";

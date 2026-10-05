@@ -195,7 +195,7 @@ export function SuperadminSidebar() {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-bold text-white truncate">
-                {user?.name || "Muhamad Dekhsa Afnan, SH., M.Kn."}
+                {user?.name || "Super Administrator"}
               </span>
               <span className="text-[10px] text-silver truncate">
                 {user?.email || "superadmin@zhou.co.id"}

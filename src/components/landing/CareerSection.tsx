@@ -338,7 +338,7 @@ export function CareerSection() {
                         id="app-name"
                         value={applicantName}
                         onChange={(e) => setApplicantName(e.target.value)}
-                        placeholder="Contoh: Budi Santoso, S.Ak."
+                        placeholder="Contoh: Nama Lengkap Anda, Gelar"
                         required
                         className="text-xs"
                       />
@@ -354,7 +354,7 @@ export function CareerSection() {
                           type="email"
                           value={applicantEmail}
                           onChange={(e) => setApplicantEmail(e.target.value)}
-                          placeholder="budi@example.com"
+                          placeholder="pelamar@email.com"
                           required
                           className="text-xs"
                         />

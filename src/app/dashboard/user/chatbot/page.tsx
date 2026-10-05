@@ -55,9 +55,9 @@ const FAQ_LIST: FAQItem[] = [
   },
   {
     id: "faq-5",
-    question: "Apakah perusahaan kami bisa mengajukan restitusi PPN luar negeri untuk transaksi di Singapura?",
+    question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
     answer:
-      "Pertanyaan Anda mengenai perlakuan khusus pajak lintas batas memerlukan telaah mendalam. Topik perpajakan lintas batas yurisdiksi Singapura dalam skema restitusi memerlukan pemeriksaan mendalam terhadap tax treaty (P3B) dan bukti potong legal Anda.",
+      "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi atau tombol 'Buka Konsultasi / Projects' di halaman ini. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung yang diperlukan.",
   },
 ];
 

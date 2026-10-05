@@ -644,7 +644,7 @@ export default function SuperadminUsersPage() {
                   <Input
                     type="text"
                     required
-                    placeholder="e.g. Linda David, S.Ak., BKP"
+                    placeholder="Contoh: Nama Lengkap, Gelar"
                     value={newStaffForm.name}
                     onChange={(e) =>
                       setNewStaffForm((prev) => ({ ...prev, name: e.target.value }))
