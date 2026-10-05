@@ -639,10 +639,6 @@ function AdminCMSPageContent() {
             </span>
             <span className="text-xs text-text-secondary">Artikel</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <CheckIcon className="text-[9px] text-emerald-600" />
-            <span>Konten dapat di-upload Zhou</span>
-          </div>
         </Card>
 
         {/* Card 2: Belajar Pajak */}
@@ -667,10 +663,6 @@ function AdminCMSPageContent() {
               {belajarItems.length}
             </span>
             <span className="text-xs text-text-secondary">Link Edukasi</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-800 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-            <span>Resmi DJP &amp; Kemenkeu RI</span>
           </div>
         </Card>
 
@@ -697,10 +689,6 @@ function AdminCMSPageContent() {
             </span>
             <span className="text-xs text-text-secondary">Terbit ({draftCount} Draft)</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-            <CheckIcon className="text-[9px]" />
-            <span>Aktif di web publik real-time</span>
-          </div>
         </Card>
 
         {/* Card 4: Kurs Pajak KMK */}
@@ -724,10 +712,6 @@ function AdminCMSPageContent() {
             <span className="text-base font-bold text-primary font-mono truncate">
               {kursForm.kmkNumber}
             </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span>7 Valuta Asing Terbit</span>
           </div>
         </Card>
       </div>

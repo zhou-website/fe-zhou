@@ -315,7 +315,6 @@ export default function ClientTicketMonitoringPage() {
               <div className="text-3xl font-bold text-primary">
                 {activeCount < 10 ? `0${activeCount}` : activeCount}
               </div>
-              <span className="text-[11px] text-text-secondary">Dalam telaah konsultan</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
               <ClockIcon />
@@ -334,7 +333,6 @@ export default function ClientTicketMonitoringPage() {
               <div className="text-3xl font-bold text-success">
                 {completedCount < 10 ? `0${completedCount}` : completedCount}
               </div>
-              <span className="text-[11px] text-text-secondary">Terverifikasi resmi</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
               <CheckCircleIcon />
@@ -353,7 +351,6 @@ export default function ClientTicketMonitoringPage() {
               <div className="text-3xl font-bold text-primary">
                 {totalDeliverablesCount < 10 ? `0${totalDeliverablesCount}` : totalDeliverablesCount}
               </div>
-              <span className="text-[11px] text-text-secondary">Tersimpan di Vault</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
               <DocumentIcon />

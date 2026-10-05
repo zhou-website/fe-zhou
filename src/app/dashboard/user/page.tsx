@@ -24,7 +24,6 @@ import {
   CheckIcon,
   CloseIcon,
   DownloadIcon,
-  ShieldTaxIcon,
 } from "@/components/icons";
 
 interface Ticket {
@@ -250,10 +249,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
               <div className="text-3xl font-bold text-primary">
                 {activeCount < 10 ? `0${activeCount}` : activeCount}
               </div>
-              <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-                <span>Dalam proses telaah konsultan</span>
-              </div>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <ClockIcon className="text-lg" />
@@ -271,10 +266,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
               <div className="text-3xl font-bold text-success">
                 {completedCount < 10 ? `0${completedCount}` : completedCount}
               </div>
-              <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-success inline-block"></span>
-                <span>Laporan disetujui &amp; BPE terbit</span>
-              </div>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
               <CheckCircleIcon className="text-lg" />
@@ -291,10 +282,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
               </div>
               <div className="text-3xl font-bold text-primary">
                 {documents.length < 10 ? `0${documents.length}` : documents.length}
-              </div>
-              <div className="text-[11px] text-text-secondary mt-1 flex items-center gap-1">
-                <ShieldTaxIcon className="text-xs text-primary" />
-                <span>Terproteksi enkripsi 256-bit</span>
               </div>
             </div>
             <div className="w-12 h-12 rounded-xl bg-surface text-primary border border-navy-light flex items-center justify-center shrink-0">

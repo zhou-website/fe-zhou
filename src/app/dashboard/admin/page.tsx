@@ -877,10 +877,6 @@ function AdminDashboardContent() {
             <span className="text-3xl font-bold text-primary font-mono">{totalPublished}</span>
             <span className="text-xs text-text-secondary">Terbit ({totalDrafts} Draft)</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-            <CheckIcon className="text-[9px]" />
-            <span>100% Ditayangkan ke Pengunjung</span>
-          </div>
         </Card>
 
         {/* Metric 2 */}
@@ -903,10 +899,6 @@ function AdminDashboardContent() {
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-primary font-mono">{servicesList.length}</span>
             <span className="text-xs text-text-secondary">Divisi Layanan</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>Hukum, Bisnis, Akuntansi &amp; Pajak</span>
           </div>
         </Card>
 
@@ -931,10 +923,6 @@ function AdminDashboardContent() {
             <span className="text-3xl font-bold text-amber-900 font-mono">{zhouEduCount + govEduCount}</span>
             <span className="text-xs text-text-secondary">Materi ({zhouEduCount} Zhou / {govEduCount} Gov)</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-800 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
-            <span>Artikel Zhou &amp; Link Kemenkeu/DJP</span>
-          </div>
         </Card>
 
         {/* Metric 4 */}
@@ -956,10 +944,6 @@ function AdminDashboardContent() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-base font-bold text-primary font-mono truncate">{kmkRates.kmkNumber}</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span>Berlaku s/d {kmkRates.effectiveUntil}</span>
           </div>
         </Card>
       </div>

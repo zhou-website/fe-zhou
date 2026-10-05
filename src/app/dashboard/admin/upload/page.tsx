@@ -284,10 +284,6 @@ export default function AdminUploadBillingPage() {
             </span>
             <span className="text-xs text-text-secondary">Berkas</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <ShieldTaxIcon className="text-xs text-emerald-500" />
-            <span>Terverifikasi SHA-256</span>
-          </div>
         </Card>
 
         {/* Card 2 */}
@@ -305,10 +301,6 @@ export default function AdminUploadBillingPage() {
               0{pendingPaymentCount}
             </span>
             <span className="text-xs text-text-secondary">Tagihan</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-muted font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-silver" />
-            <span>Nominal Rp 38.500.000</span>
           </div>
         </Card>
 
@@ -328,10 +320,6 @@ export default function AdminUploadBillingPage() {
             </span>
             <span className="text-xs text-text-secondary">Faktur</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-success font-medium">
-            <CheckIcon className="text-[9px]" />
-            <span>100% terekonsiliasi rekening</span>
-          </div>
         </Card>
 
         {/* Card 4 */}
@@ -349,10 +337,6 @@ export default function AdminUploadBillingPage() {
               1.2
             </span>
             <span className="text-xs text-text-secondary">Hari Kerja</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span>Tepat waktu sesuai SLA Klien</span>
           </div>
         </Card>
       </div>

@@ -210,7 +210,6 @@ export default function ClientDocumentVaultPage() {
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Total Dokumen Tersimpan</span>
               <div className="text-3xl font-bold text-primary">{String(documents.length).padStart(2, "0")}</div>
-              <span className="text-[11px] text-text-secondary">Arsip aktif terenkripsi</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
               <DocumentIcon />
@@ -223,7 +222,6 @@ export default function ClientDocumentVaultPage() {
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Dokumen Pajak &amp; BPE</span>
               <div className="text-3xl font-bold text-success">{String(taxCount).padStart(2, "0")}</div>
-              <span className="text-[11px] text-text-secondary">Terverifikasi DJP Coretax</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
               <ShieldTaxIcon />
@@ -236,7 +234,6 @@ export default function ClientDocumentVaultPage() {
             <div className="space-y-1">
               <span className="text-xs text-text-muted font-medium">Laporan Keuangan &amp; Legal</span>
               <div className="text-3xl font-bold text-primary">{String(legalAuditCount).padStart(2, "0")}</div>
-              <span className="text-[11px] text-text-secondary">Audit SAK &amp; Opini Advokat</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
               <BriefcaseIcon />

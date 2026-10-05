@@ -19,7 +19,6 @@ import {
   EditIcon,
   TrashIcon,
   EyeIcon,
-  LockIcon,
 } from "@/components/icons";
 import { superadminApi, AdminUserItem } from "@/lib/api";
 
@@ -350,10 +349,6 @@ export default function SuperadminUsersPage() {
             </span>
             <span className="text-xs text-text-secondary">Staf Terdaftar</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>4 Divisi Layanan Utama</span>
-          </div>
         </Card>
 
         {/* Card 2 */}
@@ -372,10 +367,6 @@ export default function SuperadminUsersPage() {
             </span>
             <span className="text-xs text-text-secondary">Akun Aktif</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-text-muted font-medium">
-            <CheckIcon className="text-[9px] text-success" />
-            <span>{totalStaffCount - activeStaffCount} Akun Ditangguhkan (Nonaktif)</span>
-          </div>
         </Card>
 
         {/* Card 3 */}
@@ -393,10 +384,6 @@ export default function SuperadminUsersPage() {
               {twoFactorPercentage}%
             </span>
             <span className="text-xs text-text-secondary">Terproteksi</span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
-            <LockIcon className="text-[9px]" />
-            <span>Standar Enkripsi SHA-256 &bull; UU PDP</span>
           </div>
         </Card>
       </div>

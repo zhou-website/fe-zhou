@@ -16,8 +16,6 @@ import {
   EyeIcon,
   TrashIcon,
   CheckCircleIcon,
-  CheckIcon,
-  ShieldTaxIcon,
   DocumentIcon,
   LockIcon,
 } from "@/components/icons";
@@ -379,10 +377,6 @@ export default function SuperadminDashboard() {
             </span>
             <span className="text-xs text-text-secondary">Catatan</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-primary font-medium">
-            <ShieldTaxIcon className="text-xs text-emerald-500" />
-            <span>Append-Only Mutlak</span>
-          </div>
         </Card>
 
         <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
@@ -400,10 +394,6 @@ export default function SuperadminDashboard() {
             </span>
             <span className="text-xs text-text-secondary">Mutasi Selesai</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-success font-medium">
-            <CheckIcon className="text-[9px]" />
-            <span>100% Terverifikasi Konsultan</span>
-          </div>
         </Card>
 
         <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
@@ -419,10 +409,6 @@ export default function SuperadminDashboard() {
             <span className="text-3xl font-bold text-primary font-mono">
               SHA-256
             </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-600 font-medium">
-            <CheckIcon className="text-[9px]" />
-            <span>Kepatuhan UU PDP No. 27/2022</span>
           </div>
         </Card>
       </div>
