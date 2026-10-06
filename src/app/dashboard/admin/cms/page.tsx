@@ -1010,116 +1010,116 @@ function AdminCMSPageContent() {
         </p>
       </div>
 
-      {/* 2. CONSOLIDATED TOOLBAR (Search, Double Dropdown Kategori & Subkategori, Status Filter, and Action Button) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-primary-light shadow-2xs">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1">
-          {/* Search Box */}
-          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-            <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
-            <Input
-              type="text"
-              placeholder="Cari konten, ID, atau kata kunci..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
-            />
-          </div>
-
-          {/* Dropdown Filter Kategori Utama (Hanya Kategori Utama, Tanpa Subkategori) */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setSubcategoryFilter("ALL");
-            }}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[160px]"
-          >
-            <option value="ALL">Semua Kategori</option>
-            {MASTER_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
-          >
-            <option value="ALL">Semua Status</option>
-            <option value="Published">Published</option>
-            <option value="Draft">Draft</option>
-          </select>
-
-          {/* Reset Filters button if any filter applied */}
-          {(searchQuery || categoryFilter !== "ALL" || subcategoryFilter !== "ALL" || statusFilter !== "ALL") && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setCategoryFilter("ALL");
-                setSubcategoryFilter("ALL");
-                setStatusFilter("ALL");
-              }}
-              className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
-            >
-              Reset Filter
-            </button>
-          )}
-        </div>
-
-        {/* Action Button: Tambah Konten Baru on Toolbar Right */}
-        <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap">
-          {categoryFilter === "Kurs KMK" && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsBatchKursModalOpen(true)}
-              className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white text-primary"
-            >
-              Kelola Batch 7 Kurs Valas
-            </Button>
-          )}
-
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              const catMap: Record<string, "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs"> = {
-                Edukasi: "edukasi",
-                Layanan: "services",
-                Regulasi: "regulasi",
-                "Kurs KMK": "kurs",
-                Karir: "karir",
-                "FAQ Chatbot": "faqs",
-              };
-              openAddModal(catMap[categoryFilter] || "edukasi");
-            }}
-            className="text-xs font-semibold h-9 px-4 shadow-sm"
-          >
-            + Tambah Konten Baru
-          </Button>
-        </div>
-      </div>
-
-      {/* 3. MASTER CONTENT MANAGEMENT TABLE */}
+      {/* 2. SATU CARD UTAMA CONTENT MANAGEMENT (Header, Toolbar, & Master Table) */}
       <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-        {/* Table Title and Count */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary-light">
+        {/* A. Header: Title, Deskripsi, dan Jumlah Konten */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-primary">Daftar Seluruh Konten</h2>
+            <h2 className="text-base sm:text-lg font-bold text-primary">Daftar Seluruh Konten</h2>
             <p className="text-xs text-text-secondary mt-0.5">
-              Seluruh publikasi website (Layanan, Edukasi, Regulasi, Kurs KMK, Karir, Lamaran, FAQ, Profil) terkelola dalam satu tabel master terpadu.
+              Seluruh publikasi website terkelola dalam satu tabel master terpadu.
             </p>
           </div>
-          <div className="text-xs text-text-muted font-medium bg-surface px-3 py-1 rounded-lg border border-primary-light">
+          <div className="text-xs text-text-muted font-medium bg-surface px-3 py-1.5 rounded-lg border border-primary-light shrink-0 self-start sm:self-auto">
             Menampilkan <span className="font-bold text-primary">{filteredItems.length}</span> dari{" "}
             <span className="font-bold text-primary">{cmsItems.length}</span> konten
+          </div>
+        </div>
+
+        {/* B. Toolbar: Search, Filter Kategori, Filter Status, dan Button Tambah Konten */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {/* Search Box */}
+            <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+              <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
+              <Input
+                type="text"
+                placeholder="Cari konten, ID, atau kata kunci..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
+              />
+            </div>
+
+            {/* Dropdown Filter Kategori Utama (Hanya Kategori Utama, Tanpa Subkategori) */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setSubcategoryFilter("ALL");
+              }}
+              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[160px]"
+            >
+              <option value="ALL">Semua Kategori</option>
+              {MASTER_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            >
+              <option value="ALL">Semua Status</option>
+              <option value="Published">Published</option>
+              <option value="Draft">Draft</option>
+            </select>
+
+            {/* Reset Filters button if any filter applied */}
+            {(searchQuery || categoryFilter !== "ALL" || subcategoryFilter !== "ALL" || statusFilter !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCategoryFilter("ALL");
+                  setSubcategoryFilter("ALL");
+                  setStatusFilter("ALL");
+                }}
+                className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
+              >
+                Reset Filter
+              </button>
+            )}
+          </div>
+
+          {/* Action Button: Tambah Konten Baru on Toolbar Right */}
+          <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap">
+            {(categoryFilter === "Kurs Pajak" || categoryFilter === "Kurs KMK") && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBatchKursModalOpen(true)}
+                className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white text-primary"
+              >
+                Kelola Batch 7 Kurs Valas
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                const catMap: Record<string, "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs"> = {
+                  Edukasi: "edukasi",
+                  Layanan: "services",
+                  Regulasi: "regulasi",
+                  "Kurs Pajak": "kurs",
+                  "Kurs KMK": "kurs",
+                  Karir: "karir",
+                  "FAQ Chatbot": "faqs",
+                };
+                openAddModal(catMap[categoryFilter] || "edukasi");
+              }}
+              className="text-xs font-semibold h-9 px-4 shadow-sm"
+            >
+              + Tambah Konten Baru
+            </Button>
           </div>
         </div>
 
