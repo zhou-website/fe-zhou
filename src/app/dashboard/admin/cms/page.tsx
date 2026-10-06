@@ -102,11 +102,7 @@ const INITIAL_BELAJAR_CMS: CMSItem[] = BELAJAR_PAJAK_LINKS.map((b) => ({
 // Standard initial CMS items
 const INITIAL_OTHER_CMS: CMSItem[] = [];
 
-const INITIAL_CMS_ITEMS: CMSItem[] = [
-  ...INITIAL_ZHOU_CMS,
-  ...INITIAL_BELAJAR_CMS,
-  ...INITIAL_OTHER_CMS,
-];
+const INITIAL_CMS_ITEMS: CMSItem[] = [];
 
 type CMSTab =
   | "all"
@@ -163,22 +159,14 @@ function AdminCMSPageContent() {
     metric3: "Asistensi Regulasi Fiskal",
     metric4: "Konsultan BKP & CA Berlisensi",
     boardroomCaption:
-      "Rapat konsultasi strategis perpajakan & kepatuhan fiskal di Menara Sudirman Kav. 21 Lt. 12, Jakarta Selatan.",
+      "Rapat konsultasi strategis perpajakan & kepatuhan fiskal bersama tim konsultan berlisensi.",
   });
 
   // Kurs KMK Form State
   const [kursForm, setKursForm] = useState({
-    kmkNumber: "KMK No. 38/KM.10/2026",
-    period: "17 September 2026 - 23 September 2026",
-    rates: [
-      { currency: "USD", name: "Dolar Amerika Serikat", rate: "Rp 15.825,00", flag: "US" },
-      { currency: "EUR", name: "Euro Uni Eropa", rate: "Rp 16.940,00", flag: "EU" },
-      { currency: "SGD", name: "Dolar Singapura", rate: "Rp 11.890,00", flag: "SG" },
-      { currency: "JPY", name: "Yen Jepang (100 Yen)", rate: "Rp 10.540,00", flag: "JP" },
-      { currency: "GBP", name: "Pound Sterling Inggris", rate: "Rp 20.150,00", flag: "GB" },
-      { currency: "AUD", name: "Dolar Australia", rate: "Rp 10.420,00", flag: "AU" },
-      { currency: "CNY", name: "Yuan Renminbi Tiongkok", rate: "Rp 2.190,00", flag: "CN" },
-    ],
+    kmkNumber: "-",
+    period: "-",
+    rates: [] as { currency: string; name: string; rate: string; flag: string }[],
   });
 
   // Sync tab from URL if it changes

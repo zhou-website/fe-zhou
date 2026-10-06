@@ -26,6 +26,7 @@ import {
   ClockIcon,
   CalendarIcon,
 } from "@/components/icons";
+import { isDummyTicket } from "@/context/AuthContext";
 
 import {
   PublicSectionKey,
@@ -307,7 +308,8 @@ function AdminDashboardContent() {
       try {
         const res = await adminApi.getConsultations();
         if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: AdminTicket[] = res.data.map((c: ConsultationItem) => ({
+          const valid = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          const mapped: AdminTicket[] = valid.map((c: ConsultationItem) => ({
             id: c.project_code || `ZHOU-${c.id}`,
             clientName: "Klien Terdaftar",
             clientId: `CL-${c.id}`,
@@ -1110,9 +1112,9 @@ function AdminDashboardContent() {
           { id: "overview", label: "Overview CMS", badge: `${cmsItems.length}` },
           { id: "homepage", label: "1. Beranda / Hero" },
           { id: "company", label: "2. Profil Perusahaan" },
-          { id: "services", label: "3. Layanan (4 Divisi)", badge: "4" },
+          { id: "services", label: `3. Layanan (${servicesList.length} Divisi)`, badge: `${servicesList.length}` },
           { id: "regulations", label: "4. Peraturan & Regulasi Zhou", badge: `${regulationsList.length}` },
-          { id: "kurs", label: "5. Kurs KMK (7 Valuta)" },
+          { id: "kurs", label: `5. Kurs KMK (${kmkRates.rates?.length || 0} Valuta)` },
           { id: "education", label: "6. Edukasi Pajak (2 Menu)", badge: `${zhouEduCount + govEduCount}` },
           { id: "careers", label: "7. Karir & Rekrutmen", badge: `${careersList.length}` },
           { id: "contact", label: "8. Kontak & Konsultasi" },
@@ -1157,14 +1159,14 @@ function AdminDashboardContent() {
                 title: "Homepage / Beranda",
                 route: "/",
                 status: homepageContent.status,
-                itemsCount: "5 Komponen Utama",
+                itemsCount: "0 Komponen Utama",
                 linkSection: "homepage",
               },
               {
                 title: "Profil Perusahaan",
                 route: "/#profil",
                 status: companyProfile.status,
-                itemsCount: "Legalitas & Profil Entitas",
+                itemsCount: "-",
                 linkSection: "company",
               },
               {
@@ -1178,7 +1180,7 @@ function AdminDashboardContent() {
                 title: "Peraturan & Kurs KMK",
                 route: "/peraturan",
                 status: "Published",
-                itemsCount: `${regulationsList.length} Regulasi & 7 Valuta`,
+                itemsCount: `${regulationsList.length} Regulasi & ${kmkRates.rates?.length || 0} Valuta`,
                 linkSection: "regulations",
               },
               {
@@ -1206,7 +1208,7 @@ function AdminDashboardContent() {
                 title: "Kontak & Konsultasi",
                 route: "/kontak",
                 status: contactContent.status,
-                itemsCount: "Menara Sudirman & 4 Slot",
+                itemsCount: `${contactContent.consultationSlots?.length || 0} Slot Konsultasi`,
                 linkSection: "contact",
               },
             ].map((p, idx) => (

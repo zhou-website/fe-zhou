@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { adminApi, ClientDocumentItem, ConsultationItem } from "@/lib/api";
+import { isDummyTicket } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +105,8 @@ export default function AdminUploadBillingPage() {
         }
 
         if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
-          const list = consultRes.value.data.map((c: ConsultationItem) => ({
+          const valid = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          const list = valid.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-2026-0${c.id}`,
             clientName: c.title || "Klien Terdaftar",
           }));
@@ -334,7 +336,7 @@ export default function AdminUploadBillingPage() {
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-primary font-mono">
-              1.2
+              {totalReportsCount > 0 ? "1.2" : "0"}
             </span>
             <span className="text-xs text-text-secondary">Hari Kerja</span>
           </div>
@@ -565,7 +567,7 @@ export default function AdminUploadBillingPage() {
                         </option>
                       ))
                     ) : (
-                      <option value="TK-2026-001">TK-2026-001 (Tiket Konsultasi Klien)</option>
+                      <option value="" disabled>Belum ada tiket penugasan tersedia</option>
                     )}
                   </select>
                 </div>
@@ -599,7 +601,7 @@ export default function AdminUploadBillingPage() {
                   <Input
                     type="text"
                     required
-                    placeholder="e.g. Laporan_Audit_SAK_Final_2026.pdf"
+                    placeholder="Masukkan nama berkas deliverable"
                     value={uploadForm.fileName}
                     onChange={(e) =>
                       setUploadForm((prev) => ({ ...prev, fileName: e.target.value }))

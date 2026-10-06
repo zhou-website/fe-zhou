@@ -271,20 +271,12 @@ export interface KmkRatesContent {
 }
 
 export const INITIAL_KMK_RATES: KmkRatesContent = {
-  kmkNumber: "KMK No. 38/KM.10/2026",
-  period: "17 September 2026 - 23 September 2026",
-  effectiveUntil: "23 September 2026",
-  rates: [
-    { currency: "USD", name: "Dolar Amerika Serikat", rate: "Rp 15.825,00", change: "+0.15%", trend: "up", flag: "US" },
-    { currency: "EUR", name: "Euro Uni Eropa", rate: "Rp 16.940,00", change: "-0.08%", trend: "down", flag: "EU" },
-    { currency: "SGD", name: "Dolar Singapura", rate: "Rp 11.890,00", change: "+0.05%", trend: "up", flag: "SG" },
-    { currency: "CNY", name: "Yuan Renminbi Tiongkok", rate: "Rp 2.185,00", change: "+0.10%", trend: "up", flag: "CN" },
-    { currency: "JPY", name: "Yen Jepang (100 Yen)", rate: "Rp 10.450,00", change: "-0.22%", trend: "down", flag: "JP" },
-    { currency: "GBP", name: "Pound Sterling Inggris", rate: "Rp 20.150,00", change: "+0.18%", trend: "up", flag: "GB" },
-    { currency: "AUD", name: "Dolar Australia", rate: "Rp 10.320,00", change: "-0.05%", trend: "down", flag: "AU" },
-  ],
-  status: "Published",
-  lastUpdated: "17 Sep 2026",
+  kmkNumber: "-",
+  period: "-",
+  effectiveUntil: "-",
+  rates: [],
+  status: "Draft",
+  lastUpdated: "-",
 };
 
 // 6. Careers Content
@@ -306,7 +298,8 @@ export interface CareerJobItem {
   lastUpdated: string;
 }
 
-export const INITIAL_CAREERS: CareerJobItem[] = [
+export const INITIAL_CAREERS: CareerJobItem[] = [];
+const _unusedCareers: CareerJobItem[] = [
   {
     id: "career-tax-senior",
     title: "Senior Tax Consultant (Coretax & SP2DK Specialist)",
@@ -423,6 +416,7 @@ export const INITIAL_CAREERS: CareerJobItem[] = [
     lastUpdated: "12 Sep 2026",
   },
 ];
+void _unusedCareers;
 
 // 7. Contact & Consultation Content
 export interface ContactConsultationContent {
@@ -451,47 +445,24 @@ export interface ContactConsultationContent {
 }
 
 export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
-  officeName: "Menara Sudirman - Kantor Pusat Zhou Consulting",
-  address: "Jl. Jenderal Sudirman Kav. 21, Karet Semanggi, Setiabudi",
-  floorBuilding: "Lantai 12, Unit 1205",
-  city: "Jakarta Selatan, DKI Jakarta 12930",
-  email: "consultingzhou@gmail.com",
-  phone: "(021) 522-8890",
-  operatingHours: "Senin - Jumat: 08.30 - 17.30 WIB (Sabtu, Minggu & Libur Nasional Tutup)",
-  transitAccess: "Stasiun MRT Bendungan Hilir (250m) & Halte TransJakarta Karet Sudirman (150m)",
-  whatsappHotlines: [
-    {
-      division: "Divisi Konsultasi Pajak (BKP)",
-      personInCharge: "Linda David, S.Ak., BKP",
-      number: "+62 812-3456-7890",
-      badge: "SLA 15 Menit",
-    },
-    {
-      division: "Divisi Akuntansi & SAK",
-      personInCharge: "Tasya Anggraeni Firdaus, SE., Ak., CA",
-      number: "+62 813-8890-1234",
-      badge: "SLA 30 Menit",
-    },
-    {
-      division: "Divisi Hukum Korporat",
-      personInCharge: "Muhamad Dekhsa Afnan, SH., M.Kn.",
-      number: "+62 811-9988-7766",
-      badge: "SLA 30 Menit",
-    },
-  ],
-  consultationSlots: [
-    { session: "Sesi Pagi I", time: "09.00 - 10.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Pagi II", time: "11.00 - 12.30 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Siang I", time: "13.30 - 15.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-    { session: "Sesi Siang II", time: "15.30 - 17.00 WIB", quotaPerDay: 2, format: "Tatap Muka & Daring" },
-  ],
-  status: "Published",
-  lastUpdated: "18 Sep 2026",
+  officeName: "-",
+  address: "-",
+  floorBuilding: "-",
+  city: "-",
+  email: "-",
+  phone: "-",
+  operatingHours: "-",
+  transitAccess: "-",
+  whatsappHotlines: [],
+  consultationSlots: [],
+  status: "Draft",
+  lastUpdated: "-",
 };
 
 // Unified items mapping for master table in Admin Overview
 export function buildInitialPublicCMSItems(): PublicCMSItem[] {
   const items: PublicCMSItem[] = [];
+  return items;
 
   // Homepage item
   items.push({
