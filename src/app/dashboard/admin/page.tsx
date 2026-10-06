@@ -17,7 +17,6 @@ import {
   BuildingIcon,
   SearchIcon,
   CloseIcon,
-  EditIcon,
   ClockIcon,
   UserIcon,
 } from "@/components/icons";
@@ -210,48 +209,7 @@ function AdminDashboardContent() {
         </Card>
       </div>
 
-      {/* CALLOUT BANNER: PUSAT MANAJEMEN CMS SATU PINTU */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-[#0B1533] to-[#172652] text-white p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1.5 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-semibold">
-            <EditIcon className="text-[10px]" />
-            <span>Pusat Manajemen Konten Terpadu</span>
-          </div>
-          <h2 className="text-base sm:text-lg font-bold">
-            Kelola Seluruh Publikasi Website di Pusat CMS
-          </h2>
-          <p className="text-xs text-silver leading-relaxed">
-            Pusat manajemen konten publik telah disatukan dalam satu halaman terstruktur: Materi Edukasi, Katalog Layanan, Regulasi DJP, Kurs Pajak KMK, Lowongan Karir, Pelamar Masuk, FAQ Chatbot, dan Profil &amp; Kontak.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1 text-[11px]">
-            <Link href="/dashboard/admin/cms?tab=services" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Katalog Layanan
-            </Link>
-            <Link href="/dashboard/admin/cms?tab=edukasi" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Edukasi Pajak
-            </Link>
-            <Link href="/dashboard/admin/cms?tab=regulasi" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Regulasi DJP
-            </Link>
-            <Link href="/dashboard/admin/cms?tab=kurs" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Kurs KMK
-            </Link>
-            <Link href="/dashboard/admin/cms?tab=karir" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Lowongan Karir
-            </Link>
-            <Link href="/dashboard/admin/cms?tab=applications" className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-medium transition-colors">
-              + Pelamar Masuk
-            </Link>
-          </div>
-        </div>
 
-        <Link
-          href="/dashboard/admin/cms"
-          className="self-start md:self-center shrink-0 px-5 py-2.5 rounded-xl bg-white text-[#0B1533] font-bold text-xs hover:bg-silver/90 transition-all shadow-md active:scale-95"
-        >
-          Buka Manajemen CMS &rarr;
-        </Link>
-      </div>
 
       {/* OPERATIONAL CONSULTATIONS TABLE */}
       <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">

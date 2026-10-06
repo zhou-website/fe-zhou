@@ -13,7 +13,6 @@ import {
   CheckCircleIcon,
   SearchIcon,
   CloseIcon,
-  EyeIcon,
   TrashIcon,
 } from "@/components/icons";
 import {
@@ -649,17 +648,6 @@ function AdminCMSPageContent() {
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={loadAllCMS}
-            disabled={isLoading}
-            className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white"
-          >
-            {isLoading ? "Memuat..." : "Refresh Data"}
-          </Button>
-
-          <Button
-            type="button"
             variant="primary"
             size="sm"
             onClick={() =>
@@ -671,17 +659,8 @@ function AdminCMSPageContent() {
             }
             className="text-xs font-semibold h-9 px-4 shadow-sm"
           >
-            + Tambah Konten Baru
+            Tambah Konten Baru
           </Button>
-
-          <Link
-            href="/"
-            target="_blank"
-            className="text-xs font-semibold h-9 px-3.5 rounded-xl border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1.5 transition-colors"
-          >
-            <EyeIcon className="text-xs" />
-            <span>Lihat Website</span>
-          </Link>
         </div>
       </div>
 
@@ -849,7 +828,7 @@ function AdminCMSPageContent() {
               onClick={() => openAddModal("kurs")}
               className="text-xs h-9 px-3.5"
             >
-              + Tambah Kurs Tunggal
+              Tambah Kurs Tunggal
             </Button>
           </div>
 
@@ -988,7 +967,7 @@ function AdminCMSPageContent() {
               onClick={() => openAddModal("faqs")}
               className="text-xs h-8 px-3"
             >
-              + Tambah FAQ Bot
+              Tambah FAQ Bot
             </Button>
           </div>
 
