@@ -30,8 +30,96 @@ export interface StoredServiceItem {
   lastUpdated: string;
 }
 
-// Default kosong agar murni dinamis menunggu input dari admin
-export const DEFAULT_SERVICES: StoredServiceItem[] = [];
+export const DEFAULT_SERVICES: StoredServiceItem[] = [
+  {
+    id: "SRV-TAX-CORE",
+    code: "TAX_CORE",
+    categoryKey: "tax-service",
+    name: "Tax Service Core & Kepatuhan Pajak",
+    subtitle: "Layanan pemenuhan kewajiban perpajakan rutin, SPT Masa, dan SPT Tahunan Badan terstandar Coretax DJP.",
+    badge: "TAX COMPLIANCE",
+    route: "/layanan/tax-service",
+    leadConsultant: "Tim Konsultan Pajak BKP Zhou Consulting",
+    pillars: [
+      { title: "SPT Tahunan & Masa", description: "Penyusunan dan pelaporan SPT Masa PPh, PPN, dan SPT Tahunan Badan akurat." },
+      { title: "Kesiapan Coretax 2026", description: "Asistensi adaptasi akun deposit pajak, e-Faktur Coretax, dan rekonsiliasi data fiskal." },
+      { title: "Mitigasi SP2DK", description: "Penyusunan tanggapan formal dan klarifikasi pengawasan fiskal sebelum audit." },
+    ],
+    workflow: ["Pengumpulan Bukti Potong & Dokumen", "Rekonsiliasi Fiskal & Ekualisasi", "Validasi Draft & Konfirmasi PIC", "Submit Pelaporan Coretax DJP"],
+    deliverables: ["Buku Laporan Kepatuhan Pajak", "Bukti Penerimaan Elektronik (BPE)", "Kertas Kerja Ekualisasi PPh & PPN"],
+    faqs: [
+      { q: "Apakah layanan ini mencakup transisi Coretax DJP 2026?", a: "Ya, seluruh proses perpajakan disesuaikan dengan protokol akun deposit pajak dan sistem baru DJP." },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+  },
+  {
+    id: "SRV-ACC-SERV",
+    code: "ACC_SERV",
+    categoryKey: "akuntansi",
+    name: "Accounting & Financial Reporting SAK",
+    subtitle: "Penyusunan laporan keuangan PSAK komprehensif, neraca, laba rugi, dan rekonsiliasi bank berkala.",
+    badge: "FINANCIAL REPORTING",
+    route: "/layanan/akuntansi",
+    leadConsultant: "Praktisi Akuntan Berlisensi CA (Chartered Accountant)",
+    pillars: [
+      { title: "Pembukuan & Jurnal Rutin", description: "Pencatatan transaksi harian, buku besar, dan rekonsiliasi kas bank berstandar SAK." },
+      { title: "Laporan Keuangan Komprehensif", description: "Neraca, Laporan Laba Rugi, Perubahan Modal, dan Arus Kas bulanan/tahunan." },
+      { title: "Standardisasi PSAK / SAK EP", description: "Penataan bagan akun (COA) dan implementasi kebijakan akuntansi entitas." },
+    ],
+    workflow: ["Verifikasi Dokumen Transaksi", "Penjurnalan & Posting Buku Besar", "Penyusunan Trial Balance & Koreksi", "Penerbitan Laporan Keuangan Final"],
+    deliverables: ["Laporan Neraca & Laba Rugi", "Laporan Arus Kas", "Rekonsiliasi Bank & Ledger Lengkap"],
+    faqs: [
+      { q: "Apakah laporan keuangan dapat digunakan untuk pengajuan kredit bank / audit eksternal?", a: "Tentu, laporan disusun mengacu pada SAK Entitas Privat/PSAK resmi yang siap diaudit." },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+  },
+  {
+    id: "SRV-FIN-CONS",
+    code: "FIN_CONS",
+    categoryKey: "bisnis",
+    name: "Business Financial Consulting & Advisory",
+    subtitle: "Konsultasi restrukturisasi bisnis, perencanaan keuangan strategis, dan manajemen arus kas perusahaan.",
+    badge: "BUSINESS ADVISORY",
+    route: "/layanan/bisnis",
+    leadConsultant: "Konsultan Keuangan & Advisory Bisnis Zhou Consulting",
+    pillars: [
+      { title: "Perencanaan Pajak Strategis", description: "Efisiensi struktur beban pajak tanpa melanggar ketentuan hukum (Tax Planning)." },
+      { title: "Analisis Arus Kas & Anggaran", description: "Pemodelan proyeksi finansial dan pengelolaan likuiditas korporasi." },
+      { title: "Kelayakan Bisnis & Restrukturisasi", description: "Evaluasi finansial merger, akuisisi, atau ekspansi lini usaha baru." },
+    ],
+    workflow: ["Diagnostik Finansial & Operasional", "Pemodelan Strategis & Skenario", "Rekomendasi Kebijakan Bisnis", "Pendampingan Implementasi"],
+    deliverables: ["Dokumen Rekomendasi Advisory Finansial", "Model Proyeksi Cashflow 3 Tahun", "Executive Summary Dewan Direksi"],
+    faqs: [
+      { q: "Bagaimana tahapan awal konsultasi bisnis?", a: "Kami memulai dengan sesi diagnosa komprehensif untuk memetakan tantangan fiskal dan finansial perusahaan Anda." },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+  },
+  {
+    id: "SRV-LEGAL-TAX",
+    code: "LEGAL_TAX",
+    categoryKey: "hukum",
+    name: "Tax Audit & Legal Dispute Advisory",
+    subtitle: "Pendampingan pemeriksaan pajak, klarifikasi SP2DK, keberatan, banding, serta mitigasi risiko regulasi.",
+    badge: "LEGAL & DISPUTE",
+    route: "/layanan/hukum",
+    leadConsultant: "Tim Kuasa Hukum Pajak & Advokat PERADI Zhou Consulting",
+    pillars: [
+      { title: "Pendampingan Pemeriksaan Pajak", description: "Asistensi tatap muka dengan fungsional pemeriksa dan penyusunan berkas tanggapan SPHP." },
+      { title: "Keberatan & Banding Pengadilan Pajak", description: "Penyusunan surat keberatan formal dan pendampingan di Pengadilan Pajak." },
+      { title: "Kepatuhan Hukum & Kontrak Komersial", description: "Review kontrak bisnis dari aspek hukum perdata, ketenagakerjaan, dan implikasi pajak." },
+    ],
+    workflow: ["Analisis Surat Klarifikasi / Pemeriksaan", "Penyusunan Bukti & Argumen Hukum", "Asistensi Pembahasan Akhir (Closing)", "Evaluasi Tindak Lanjut"],
+    deliverables: ["Risalah Tanggapan Hukum & SPHP", "Surat Keberatan / Memori Banding", "Legal Opinion Kepatuhan Regulasi"],
+    faqs: [
+      { q: "Kapan perusahaan harus meminta pendampingan sengketa?", a: "Sebaiknya segera setelah menerima surat klarifikasi (SP2DK) atau Surat Pemberitahuan Pemeriksaan Lapangan (SP2)." },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+  },
+];
 
 export const SERVICES_STORAGE_KEY = "zhou_services_data_v1";
 export const SERVICES_EVENT = "zhou_services_updated";
@@ -50,7 +138,7 @@ export function getStoredServices(): StoredServiceItem[] {
       return DEFAULT_SERVICES;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
+    if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
     }
     return DEFAULT_SERVICES;

@@ -26,6 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -35,10 +36,6 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
-import {
-  getStoredZhouArticles,
-  ZHOU_ARTICLES_EVENT,
-} from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
@@ -46,6 +43,7 @@ export function EducationSection() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [articles, setArticles] = useState<ZhouArticle[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedArticle, setSelectedArticle] = useState<ZhouArticle | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("semua");
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
@@ -65,20 +63,8 @@ export function EducationSection() {
 
   useEffect(() => {
     let isMounted = true;
-    setArticles(getStoredZhouArticles());
 
-    const handleUpdate = (e: Event) => {
-      const custom = e as CustomEvent<ZhouArticle[]>;
-      if (custom.detail) {
-        setArticles(custom.detail);
-      } else {
-        setArticles(getStoredZhouArticles());
-      }
-    };
-
-    window.addEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
-
-    // Fetch from live backend API
+    // Fetch from live backend API only (no mock data fallback)
     publicApi
       .getEducation()
       .then((res) => {
@@ -113,20 +99,23 @@ export function EducationSection() {
             };
           });
 
-          setArticles((prev) => {
-            const titles = new Set(apiArticles.map((a) => a.title.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
-            return [...apiArticles, ...localOnly];
-          });
+          setArticles(apiArticles);
+        } else {
+          setArticles([]);
         }
       })
       .catch((err) => {
-        console.warn("publicApi.getEducation fallback in EducationSection:", err);
+        console.warn("publicApi.getEducation in EducationSection:", err);
+        setArticles([]);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
       isMounted = false;
-      window.removeEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
     };
   }, []);
 
@@ -164,7 +153,14 @@ export function EducationSection() {
         </div>
 
         {/* Category Filter Tabs */}
-        {publishedArticles.length > 0 && (
+        {/* Category Filter Tabs or Skeleton */}
+        {isLoading ? (
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-32 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </div>
+        ) : publishedArticles.length > 0 ? (
           <div className="flex items-center justify-start overflow-x-auto pb-2">
             <Tabs
               value={activeCategory}
@@ -187,12 +183,38 @@ export function EducationSection() {
               </TabsList>
             </Tabs>
           </div>
-        )}
+        ) : null}
 
-        {/* Articles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredArticles.length > 0 ? (
-            filteredArticles.map((article) => (
+        {/* Articles Grid / Skeleton / Empty State */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in duration-200">
+            {[1, 2, 3, 4].map((i) => (
+              <Card
+                key={i}
+                className="flex flex-col justify-between bg-white border-primary-light p-5 space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-end">
+                    <Skeleton className="h-3.5 w-20" />
+                  </div>
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-5 w-4/5" />
+                  <div className="space-y-1.5 pt-1">
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3.5 w-3/4" />
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-primary-light flex items-center justify-between">
+                  <Skeleton className="h-3.5 w-16" />
+                  <Skeleton className="h-3.5 w-20" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : filteredArticles.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredArticles.map((article) => (
               <Card
                 key={article.id}
                 className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white"
@@ -231,20 +253,20 @@ export function EducationSection() {
                   </button>
                 </CardFooter>
               </Card>
-            ))
-          ) : (
-            <div className="col-span-full py-12 px-6 rounded-xl bg-white border border-primary-light text-center space-y-2.5">
-              <BookIcon className="mx-auto text-silver text-3xl" />
-              <h3 className="text-sm font-bold text-primary">Belum Ada Artikel Edukasi</h3>
-              <p className="text-xs text-text-secondary max-w-md mx-auto">
-                Modul dan artikel edukasi perpajakan resmi akan tampil otomatis setelah dipublikasikan oleh tim konsultan melalui dashboard.
-              </p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="col-span-full py-12 px-6 rounded-xl bg-white border border-primary-light text-center space-y-2.5">
+            <BookIcon className="mx-auto text-silver text-3xl" />
+            <h3 className="text-sm font-bold text-primary">Belum Ada Artikel Edukasi</h3>
+            <p className="text-xs text-text-secondary max-w-md mx-auto">
+              Modul dan artikel edukasi perpajakan resmi akan tampil otomatis setelah dipublikasikan oleh tim konsultan melalui dashboard.
+            </p>
+          </div>
+        )}
 
         {/* Link to Full Education Portal */}
-        {publishedArticles.length > 0 && (
+        {!isLoading && publishedArticles.length > 0 && (
           <div className="flex justify-center -mt-2">
             <Button
               variant="outline"

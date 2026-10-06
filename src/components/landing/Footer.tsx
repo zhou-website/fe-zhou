@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   LocationIcon,
   PhoneIcon,
@@ -22,12 +23,42 @@ import {
   InstagramIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth } from "@/context/AuthContext";
+import { publicApi, parseContactSettings } from "@/lib/api";
 
 export function Footer() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [legalModalType, setLegalModalType] = useState<"privasi" | "syarat" | "kepatuhan" | null>(null);
+  const [contact, setContact] = useState<{
+    companyName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    whatsapp?: string;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    publicApi
+      .getContactSettings()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          setContact(parseContactSettings(res.data));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const getAuthHref = (target: string) => {
     if (isAuthenticated) return target;
@@ -69,25 +100,48 @@ export function Footer() {
             </p>
 
             {/* Contact Details */}
-            <div className="space-y-2.5 text-xs text-silver/90 pt-2 border-t border-white/10">
-              <div className="flex items-start gap-2.5">
-                <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
-                <span className="leading-relaxed">-</span>
+            {isLoading ? (
+              <div className="space-y-2.5 text-xs text-silver/90 pt-2 border-t border-white/10 animate-in fade-in duration-200">
+                <div className="flex items-start gap-2.5">
+                  <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
+                  <Skeleton className="h-3.5 w-60 bg-white/10" />
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <PhoneIcon className="text-silver text-xs shrink-0" />
+                  <Skeleton className="h-3.5 w-36 bg-white/10" />
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <EnvelopeIcon className="text-silver text-xs shrink-0" />
+                  <Skeleton className="h-3.5 w-44 bg-white/10" />
+                </div>
               </div>
-              <div className="flex items-center gap-2.5">
-                <PhoneIcon className="text-silver text-xs shrink-0" />
-                <span>-</span>
+            ) : contact ? (
+              <div className="space-y-2.5 text-xs text-silver/90 pt-2 border-t border-white/10">
+                {contact.address && (
+                  <div className="flex items-start gap-2.5">
+                    <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{contact.address}</span>
+                  </div>
+                )}
+                {contact.phone && (
+                  <div className="flex items-center gap-2.5">
+                    <PhoneIcon className="text-silver text-xs shrink-0" />
+                    <span>{contact.phone}</span>
+                  </div>
+                )}
+                {contact.email && (
+                  <div className="flex items-center gap-2.5">
+                    <EnvelopeIcon className="text-silver text-xs shrink-0" />
+                    <span>{contact.email}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2.5">
-                <EnvelopeIcon className="text-silver text-xs shrink-0" />
-                <span>-</span>
-              </div>
-            </div>
+            ) : null}
 
             {/* Social Icons */}
             <div className="flex items-center gap-3 pt-2">
               <a
-                href="https://wa.me/6281234567890"
+                href={`https://wa.me/${contact?.whatsapp ? contact.whatsapp.replace(/[^0-9]/g, "") : ""}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp Zhou Consulting"

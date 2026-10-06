@@ -26,12 +26,14 @@ import {
   getStoredServices,
   SERVICES_EVENT,
 } from "@/data/layananStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 export default function LayananIndexPage() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [services, setServices] = useState<StoredServiceItem[]>([]);
 
   useEffect(() => {
+    let isMounted = true;
     setServices(getStoredServices());
 
     const handleUpdate = () => {
@@ -40,7 +42,75 @@ export default function LayananIndexPage() {
 
     window.addEventListener(SERVICES_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
+
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiServices: StoredServiceItem[] = res.data.map((item: PublicServiceItem) => {
+            const catLower = (item.category || "").toLowerCase();
+            const codeUpper = (item.service_code || "").toUpperCase();
+            const catKey =
+              catLower.includes("akuntansi") || codeUpper.includes("ACC")
+                ? "akuntansi"
+                : catLower.includes("bisnis") || codeUpper.includes("FIN") || catLower.includes("konsultasi")
+                ? "bisnis"
+                : catLower.includes("hukum") || codeUpper.includes("LEGAL") || catLower.includes("sengketa")
+                ? "hukum"
+                : "tax-service";
+
+            const route =
+              catKey === "akuntansi"
+                ? "/layanan/akuntansi"
+                : catKey === "bisnis"
+                ? "/layanan/bisnis"
+                : catKey === "hukum"
+                ? "/layanan/hukum"
+                : "/layanan/tax-service";
+
+            return {
+              id: `BE-${item.id}`,
+              code: item.service_code,
+              categoryKey: catKey,
+              name: item.service_name,
+              subtitle: item.description || "Layanan profesional terintegrasi Zhou Consulting.",
+              badge: item.category?.toUpperCase() || "LAYANAN",
+              route,
+              leadConsultant: "Tim Konsultan Spesialis Zhou Consulting",
+              pillars: [
+                {
+                  title: item.service_name,
+                  description: item.description || "Asistensi kepatuhan dan pelaporan profesional terintegrasi.",
+                },
+              ],
+              workflow: [
+                "Konsultasi Kebutuhan Awal",
+                "Analisis Teknis & Regulasi",
+                "Eksekusi Penugasan",
+                "Penyampaian Laporan Final",
+              ],
+              deliverables: ["Laporan Hasil Kerja & Risalah Penugasan Resmi"],
+              status: item.is_active ? "Published" : "Draft",
+              lastUpdated: item.created_at
+                ? new Date(item.created_at).toLocaleDateString("id-ID", { month: "short", year: "numeric" })
+                : "Oktober 2026",
+            };
+          });
+
+          setServices((prev) => {
+            const apiCodes = new Set(apiServices.map((s) => (s.code || s.name).toLowerCase()));
+            const localOnly = prev.filter((p) => !apiCodes.has((p.code || p.name).toLowerCase()));
+            return [...apiServices, ...localOnly];
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getServices fallback in LayananIndexPage:", err);
+      });
+
     return () => {
+      isMounted = false;
       window.removeEventListener(SERVICES_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };

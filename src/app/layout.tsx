@@ -31,7 +31,7 @@ export default function RootLayout({
         </AuthProvider>
         <Script
           src="https://accounts.google.com/gsi/client"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
       </body>
     </html>

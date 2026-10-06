@@ -12,17 +12,13 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CheckCircleIcon, DocumentIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   StoredRegulationItem,
   StoredKmkData,
-  DEFAULT_KMK_DATA,
-  getStoredRegulations,
-  getStoredKmkRates,
-  REGULATIONS_EVENT,
-  KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
 import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
@@ -30,7 +26,16 @@ export function RegulationsSection() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
-  const [kmkData, setKmkData] = useState<StoredKmkData>(DEFAULT_KMK_DATA);
+  const [kmkData, setKmkData] = useState<StoredKmkData>({
+    kmkNumber: "",
+    period: "",
+    effectiveUntil: "",
+    officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
+    lastUpdated: "",
+    rates: [],
+  });
+  const [isLoadingRegs, setIsLoadingRegs] = useState<boolean>(true);
+  const [isLoadingKmk, setIsLoadingKmk] = useState<boolean>(true);
 
   const getAuthHref = (target: string) => {
     if (isAuthenticated) return target;
@@ -39,24 +44,6 @@ export function RegulationsSection() {
 
   useEffect(() => {
     let isMounted = true;
-    setRegulations(getStoredRegulations());
-    setKmkData(getStoredKmkRates());
-
-    const handleRegUpdate = (e: Event) => {
-      const custom = e as CustomEvent<StoredRegulationItem[]>;
-      if (custom.detail) {
-        setRegulations(custom.detail);
-      } else {
-        setRegulations(getStoredRegulations());
-      }
-    };
-
-    const handleKmkUpdate = () => {
-      setKmkData(getStoredKmkRates());
-    };
-
-    window.addEventListener(REGULATIONS_EVENT, handleRegUpdate);
-    window.addEventListener(KMK_RATES_EVENT, handleKmkUpdate);
 
     // Fetch live backend regulations
     publicApi
@@ -80,15 +67,19 @@ export function RegulationsSection() {
             downloadUrl: item.file_path || "#",
           }));
 
-          setRegulations((prev) => {
-            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
-            return [...apiRegs, ...localOnly];
-          });
+          setRegulations(apiRegs);
+        } else {
+          setRegulations([]);
         }
       })
       .catch((err) => {
-        console.warn("publicApi.getRegulations fallback in RegulationsSection:", err);
+        console.warn("publicApi.getRegulations in RegulationsSection:", err);
+        setRegulations([]);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingRegs(false);
+        }
       });
 
     // Fetch live backend tax rates
@@ -105,22 +96,44 @@ export function RegulationsSection() {
             trend: "flat" as const,
           }));
 
-          setKmkData((prev) => ({
-            ...prev,
+          setKmkData({
             kmkNumber: `KMK No. ${new Date().getFullYear()}`,
             period: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
+            effectiveUntil: "-",
+            officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
+            lastUpdated: new Date().toISOString(),
             rates: mappedRates,
-          }));
+          });
+        } else {
+          setKmkData({
+            kmkNumber: "",
+            period: "",
+            effectiveUntil: "",
+            officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
+            lastUpdated: "",
+            rates: [],
+          });
         }
       })
       .catch((err) => {
-        console.warn("publicApi.getLatestTaxRates fallback in RegulationsSection:", err);
+        console.warn("publicApi.getLatestTaxRates in RegulationsSection:", err);
+        setKmkData({
+          kmkNumber: "",
+          period: "",
+          effectiveUntil: "",
+          officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
+          lastUpdated: "",
+          rates: [],
+        });
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingKmk(false);
+        }
       });
 
     return () => {
       isMounted = false;
-      window.removeEventListener(REGULATIONS_EVENT, handleRegUpdate);
-      window.removeEventListener(KMK_RATES_EVENT, handleKmkUpdate);
     };
   }, []);
 
@@ -153,16 +166,22 @@ export function RegulationsSection() {
                     <h3 className="text-sm font-bold text-primary">
                       Kurs Menteri Keuangan (KMK)
                     </h3>
-                    {kmkData.kmkNumber && kmkData.kmkNumber !== "-" && (
+                    {isLoadingKmk ? (
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    ) : kmkData.kmkNumber && kmkData.kmkNumber !== "-" ? (
                       <Badge variant="secondary" size="sm">
                         {kmkData.kmkNumber}
                       </Badge>
-                    )}
+                    ) : null}
                   </div>
                   <span className="text-xs text-text-secondary mt-0.5 block">
-                    {kmkData.period && kmkData.period !== "-"
-                      ? `Periode Aktif: ${kmkData.period}`
-                      : "Pembaruan kurs mingguan resmi Kemenkeu"}
+                    {isLoadingKmk ? (
+                      <Skeleton className="h-3.5 w-44 mt-1" />
+                    ) : kmkData.period && kmkData.period !== "-" ? (
+                      `Periode Aktif: ${kmkData.period}`
+                    ) : (
+                      "Pembaruan kurs mingguan resmi Kemenkeu"
+                    )}
                   </span>
                 </div>
               </div>
@@ -177,7 +196,24 @@ export function RegulationsSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {kmkData.rates.length > 0 ? (
+                  {isLoadingKmk ? (
+                    [1, 2, 3, 4, 5].map((i) => (
+                      <TableRow key={i}>
+                        <TableCell className="py-3 px-5">
+                          <Skeleton className="h-4 w-12" />
+                        </TableCell>
+                        <TableCell className="py-3 px-5">
+                          <Skeleton className="h-4 w-32" />
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right">
+                          <Skeleton className="h-4 w-24 ml-auto" />
+                        </TableCell>
+                        <TableCell className="py-3 px-5 text-right">
+                          <Skeleton className="h-4 w-14 ml-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : kmkData.rates.length > 0 ? (
                     kmkData.rates.map((item) => (
                       <TableRow key={item.currency} className="hover:bg-surface/50">
                         <TableCell className="py-3 px-5 font-bold text-primary">
@@ -251,7 +287,21 @@ export function RegulationsSection() {
               <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
                 {t.regulations.docTitle}
               </span>
-              {displayRegulations.length > 0 ? (
+              {isLoadingRegs ? (
+                [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-lg bg-white border border-primary-light space-y-2"
+                  >
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-4 w-12 rounded-sm" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                  </div>
+                ))
+              ) : displayRegulations.length > 0 ? (
                 displayRegulations.map((reg) => (
                   <div
                     key={reg.id}

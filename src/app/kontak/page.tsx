@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { publicApi } from "@/lib/api";
+import { publicApi, parseContactSettings } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,31 @@ import {
 } from "@/components/icons";
 
 export default function ContactPage() {
+  const [contactInfo, setContactInfo] = useState({
+    companyName: "Zhou Consulting",
+    email: "contact@zhouconsulting.com",
+    phone: "+62 21 555 8899",
+    address: "Sudirman Central Business District (SCBD) Lot 28, Jakarta Selatan",
+    whatsapp: "+6281298765432",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    publicApi
+      .getContactSettings()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          setContactInfo(parseContactSettings(res.data));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const [formData, setFormData] = useState({
     name: "",
     company: "",
@@ -132,10 +157,10 @@ export default function ContactPage() {
                       Kantor Pusat
                     </Badge>
                     <h2 className="text-lg sm:text-xl font-bold text-primary">
-                      -
+                      {contactInfo.companyName}
                     </h2>
                     <p className="text-xs text-text-secondary leading-relaxed">
-                      -
+                      {contactInfo.address}
                     </p>
                   </div>
 
@@ -147,7 +172,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">Telepon Kantor (Hunting)</span>
-                        <span className="font-semibold text-text-muted">-</span>
+                        <span className="font-semibold text-primary">{contactInfo.phone}</span>
                       </div>
                     </div>
 
@@ -157,17 +182,24 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">Email Korespondensi Resmi</span>
-                        <span className="font-semibold text-text-muted">-</span>
+                        <span className="font-semibold text-primary">{contactInfo.email}</span>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white border border-primary-light text-text-secondary flex items-center justify-center shrink-0 text-xs mt-0.5">
+                      <div className="w-8 h-8 rounded-full bg-white border border-primary-light text-success flex items-center justify-center shrink-0 text-xs mt-0.5">
                         <WhatsappIcon />
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">WhatsApp Business Helpdesk</span>
-                        <span className="font-semibold text-text-muted">-</span>
+                        <a
+                          href={`https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, "") || "6281298765432"}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-success hover:underline"
+                        >
+                          {contactInfo.whatsapp}
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -182,11 +214,11 @@ export default function ContactPage() {
                   <div className="space-y-1.5 text-xs text-text-secondary">
                     <div className="flex justify-between items-center">
                       <span>Senin &ndash; Jumat:</span>
-                      <span className="font-semibold text-text-muted">-</span>
+                      <span className="font-semibold text-primary">08.30 &ndash; 17.30 WIB</span>
                     </div>
                     <div className="flex justify-between items-center text-[11px]">
                       <span>Sabtu, Minggu &amp; Libur:</span>
-                      <span className="font-semibold text-text-muted">-</span>
+                      <span className="font-semibold text-text-muted">Tutup (Online Helpdesk via WA)</span>
                     </div>
                   </div>
                 </div>

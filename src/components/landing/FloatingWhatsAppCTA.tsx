@@ -2,10 +2,34 @@
 
 import React, { useState, useEffect } from "react";
 import { WhatsappIcon, CloseIcon } from "@/components/icons";
+import { publicApi, parseContactSettings } from "@/lib/api";
 
 export function FloatingWhatsAppCTA() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [waNumber, setWaNumber] = useState<string>(
+    process.env.NEXT_PUBLIC_WA_PHONE || ""
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    publicApi
+      .getContactSettings()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const cfg = parseContactSettings(res.data);
+          if (cfg.whatsapp) {
+            setWaNumber(cfg.whatsapp.replace(/[^0-9]/g, ""));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Show after scrolling down 200px
   useEffect(() => {
@@ -81,7 +105,7 @@ export function FloatingWhatsAppCTA() {
               {quickMessages.map((item, idx) => (
                 <a
                   key={idx}
-                  href={`https://wa.me/6281234567890?text=${encodeURIComponent(item.text)}`}
+                  href={`https://wa.me/${waNumber}?text=${encodeURIComponent(item.text)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-center justify-between p-2.5 rounded-md bg-white border border-primary-light hover:border-success hover:bg-success/5 transition-all text-[11px] font-medium text-primary shadow-xs"
