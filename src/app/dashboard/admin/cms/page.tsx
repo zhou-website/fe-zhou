@@ -55,16 +55,6 @@ export interface UnifiedCMSItem {
   raw?: unknown;
 }
 
-const DEFAULT_KURS_LIST = [
-  { currency: "USD", name: "Dolar Amerika Serikat", rate: "15.890,00", flag: "🇺🇸" },
-  { currency: "EUR", name: "Euro", rate: "17.250,50", flag: "🇪🇺" },
-  { currency: "SGD", name: "Dolar Singapura", rate: "11.890,00", flag: "🇸🇬" },
-  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", flag: "🇯🇵" },
-  { currency: "GBP", name: "Poundsterling Inggris", rate: "20.120,00", flag: "🇬🇧" },
-  { currency: "AUD", name: "Dolar Australia", rate: "10.340,00", flag: "🇦🇺" },
-  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "🇨🇳" },
-];
-
 const TAB_TO_CATEGORY: Record<string, string> = {
   all: "ALL",
   edukasi: "Edukasi",
@@ -77,177 +67,21 @@ const TAB_TO_CATEGORY: Record<string, string> = {
   kontak: "Profil & Kontak",
 };
 
-// Master Fallbacks when backend database arrays are empty so all 8 categories are always visible
-const FALLBACK_EDUCATION: UnifiedCMSItem[] = [
-  {
-    id: "EDU-1",
-    numericId: 1,
-    section: "edukasi",
-    title: "Panduan Integrasi Coretax DJP 2026",
-    category: "Edukasi",
-    subcategory: "Coretax DJP",
-    summary: "Pedoman teknis integrasi sistem perpajakan terbaru DJP untuk WP Badan dan Orang Pribadi",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-  {
-    id: "EDU-2",
-    numericId: 2,
-    section: "edukasi",
-    title: "Tata Cara Perhitungan PPh 21 Metode TER",
-    category: "Edukasi",
-    subcategory: "PPh 21 & PPN",
-    summary: "Simulasi dan tata cara pemotongan PPh 21 menggunakan Tarif Efektif Rata-Rata (TER) PP 58/2023",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-  {
-    id: "EDU-3",
-    numericId: 3,
-    section: "edukasi",
-    title: "Strategi Menghadapi SP2DK dan Pemeriksaan Pajak",
-    category: "Edukasi",
-    subcategory: "Mitigasi SP2DK",
-    summary: "Langkah mitigasi risiko fiskal dan penyusunan tanggapan resmi SP2DK secara komprehensif",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-];
+interface KursRateInput {
+  currency: string;
+  name: string;
+  rate: string;
+  flag: string;
+}
 
-const FALLBACK_REGULATIONS: UnifiedCMSItem[] = [
-  {
-    id: "REG-1",
-    numericId: 1,
-    section: "regulasi",
-    title: "PMK No. 168 Tahun 2023 tentang Petunjuk Pemotongan PPh 21",
-    category: "Regulasi",
-    subcategory: "PMK",
-    summary: "Berkas: /docs/pmk-168-2023.pdf (2.4 MB)",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-  {
-    id: "REG-2",
-    numericId: 2,
-    section: "regulasi",
-    title: "PER-2/PJ/2024 tentang Tata Cara Pembuatan Bukti Potong PPh",
-    category: "Regulasi",
-    subcategory: "PER",
-    summary: "Berkas: /docs/per-02-pj-2024.pdf (1.8 MB)",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-  {
-    id: "REG-3",
-    numericId: 3,
-    section: "regulasi",
-    title: "UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan (UU HPP)",
-    category: "Regulasi",
-    subcategory: "UU",
-    summary: "Berkas: /docs/uu-7-2021-hpp.pdf (4.1 MB)",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-];
-
-const FALLBACK_APPLICATIONS: UnifiedCMSItem[] = [
-  {
-    id: "APP-1",
-    numericId: 1,
-    section: "applications",
-    title: "Lamaran: Sarah Maharani",
-    category: "Lamaran Masuk",
-    subcategory: "Senior Tax Consultant",
-    summary: "Email: sarah.maharani@email.com | Telp: +62 812-3456-7890 | CV: cv_sarah_tax.pdf",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-  {
-    id: "APP-2",
-    numericId: 2,
-    section: "applications",
-    title: "Lamaran: Budi Santoso",
-    category: "Lamaran Masuk",
-    subcategory: "Junior Accounting Staff",
-    summary: "Email: budi.santoso@email.com | Telp: +62 813-8899-7711 | CV: cv_budi_accounting.pdf",
-    status: "Published",
-    updatedAt: "Terbaru",
-  },
-];
-
-const FALLBACK_FAQS: UnifiedCMSItem[] = [
-  {
-    id: "FAQ-1",
-    numericId: 1,
-    section: "faqs",
-    title: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
-    category: "FAQ Chatbot",
-    subcategory: "Layanan Perpajakan",
-    summary: "Layanan mencakup Tax Compliance (SPT Masa & Tahunan), integrasi Coretax DJP 2026, Tax Advisory & Planning...",
-    status: "Published",
-    updatedAt: "Bot Knowledge",
-    raw: {
-      id: 1,
-      category: "Layanan Perpajakan",
-      question: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
-      answer_template:
-        "Layanan Konsultasi Perpajakan Zhou Consulting mencakup Tax Compliance (SPT Masa & Tahunan), asistensi integrasi Coretax DJP 2026, Tax Advisory & Planning, penanganan sengketa & tanggapan SP2DK, asistensi pemeriksaan pajak, serta konsultasi transfer pricing dan kepatuhan perpajakan korporasi.",
-    },
-  },
-  {
-    id: "FAQ-2",
-    numericId: 2,
-    section: "faqs",
-    title: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
-    category: "FAQ Chatbot",
-    subcategory: "Prosedur & Validasi",
-    summary: "Dokumen klien dianalisis melalui 3 tahap telaah: analis, review konsultan BKP, dan pengesahan Lead Partner...",
-    status: "Published",
-    updatedAt: "Bot Knowledge",
-    raw: {
-      id: 2,
-      category: "Prosedur & Validasi",
-      question: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
-      answer_template:
-        "Dokumen klien dianalisis melalui 3 tahap telaah: verifikasi kelengkapan berkas oleh analis, review kepatuhan regulasi oleh Konsultan Berizin BKP, dan pengesahan akhir oleh Lead Partner. Seluruh berkas dilindungi enkripsi SHA-256.",
-    },
-  },
-  {
-    id: "FAQ-3",
-    numericId: 3,
-    section: "faqs",
-    title: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
-    category: "FAQ Chatbot",
-    subcategory: "Konsultasi & Monitoring",
-    summary: "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar portal...",
-    status: "Published",
-    updatedAt: "Bot Knowledge",
-    raw: {
-      id: 3,
-      category: "Konsultasi & Monitoring",
-      question: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
-      answer_template:
-        "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar. Setiap lembar kerja menampilkan tahapan milestone, persentase progres, catatan konsultan lead, dan estimasi waktu penyelesaian.",
-    },
-  },
-  {
-    id: "FAQ-4",
-    numericId: 4,
-    section: "faqs",
-    title: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
-    category: "FAQ Chatbot",
-    subcategory: "Layanan & Pendaftaran",
-    summary: "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi di portal ini...",
-    status: "Published",
-    updatedAt: "Bot Knowledge",
-    raw: {
-      id: 4,
-      category: "Layanan & Pendaftaran",
-      question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
-      answer_template:
-        "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi atau tombol 'Buka Konsultasi / Projects' di portal ini. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung.",
-    },
-  },
+const INITIAL_BATCH_KURS: KursRateInput[] = [
+  { currency: "USD", name: "Dolar Amerika Serikat", rate: "15.890,00", flag: "🇺🇸" },
+  { currency: "EUR", name: "Euro", rate: "17.250,50", flag: "🇪🇺" },
+  { currency: "SGD", name: "Dolar Singapura", rate: "11.890,00", flag: "🇸🇬" },
+  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", flag: "🇯🇵" },
+  { currency: "GBP", name: "Poundsterling Inggris", rate: "20.120,00", flag: "🇬🇧" },
+  { currency: "AUD", name: "Dolar Australia", rate: "10.340,00", flag: "🇦🇺" },
+  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "🇨🇳" },
 ];
 
 function AdminCMSPageContent() {
@@ -266,25 +100,35 @@ function AdminCMSPageContent() {
   const [subcategoryFilter, setSubcategoryFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
 
-  // Category Floating Dropdown State (Pattern Konsisten dengan Public Website Navbar)
+  // Floating Dropdowns State (Pattern Konsisten dengan Public Website Navbar)
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+  const statusDropdownRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isCategoryDropdownOpen) return;
+    if (!isCategoryDropdownOpen && !isStatusDropdownOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
         categoryDropdownRef.current &&
-        !categoryDropdownRef.current.contains(event.target as Node)
+        !categoryDropdownRef.current.contains(target)
       ) {
         setIsCategoryDropdownOpen(false);
+      }
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(target)
+      ) {
+        setIsStatusDropdownOpen(false);
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsCategoryDropdownOpen(false);
+        setIsStatusDropdownOpen(false);
       }
     };
 
@@ -294,7 +138,7 @@ function AdminCMSPageContent() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isCategoryDropdownOpen]);
+  }, [isCategoryDropdownOpen, isStatusDropdownOpen]);
 
   useEffect(() => {
     if (tabParam && TAB_TO_CATEGORY[tabParam]) {
@@ -318,7 +162,7 @@ function AdminCMSPageContent() {
   });
 
   // Kurs Form
-  const [kursRates, setKursRates] = useState(DEFAULT_KURS_LIST);
+  const [kursRates, setKursRates] = useState<KursRateInput[]>(INITIAL_BATCH_KURS);
   const [kmkNumber, setKmkNumber] = useState("KMK No. 44/KM.10/2026");
 
   // Modals
@@ -414,7 +258,7 @@ function AdminCMSPageContent() {
 
       const items: UnifiedCMSItem[] = [];
 
-      // 1. Education (Use backend if available, fallback otherwise)
+      // 1. Education
       if (eduRes.status === "fulfilled" && Array.isArray(eduRes.value.data) && eduRes.value.data.length > 0) {
         eduRes.value.data.forEach((e: PublicEducationItem) => {
           items.push({
@@ -430,8 +274,6 @@ function AdminCMSPageContent() {
             raw: e,
           });
         });
-      } else {
-        items.push(...FALLBACK_EDUCATION);
       }
 
       // 2. Services
@@ -452,7 +294,7 @@ function AdminCMSPageContent() {
         });
       }
 
-      // 3. Regulations (Use backend if available, fallback otherwise)
+      // 3. Regulations
       if (regRes.status === "fulfilled" && Array.isArray(regRes.value.data) && regRes.value.data.length > 0) {
         regRes.value.data.forEach((r: PublicRegulationItem) => {
           items.push({
@@ -468,11 +310,9 @@ function AdminCMSPageContent() {
             raw: r,
           });
         });
-      } else {
-        items.push(...FALLBACK_REGULATIONS);
       }
 
-      // 4. Tax rates (Always present all 7 KMK foreign exchange currencies)
+      // 4. Tax rates
       if (rateRes.status === "fulfilled" && Array.isArray(rateRes.value.data) && rateRes.value.data.length > 0) {
         rateRes.value.data.forEach((t: PublicTaxRateItem) => {
           items.push({
@@ -486,21 +326,6 @@ function AdminCMSPageContent() {
             status: "Published",
             updatedAt: "KMK Aktif",
             raw: t,
-          });
-        });
-      } else {
-        DEFAULT_KURS_LIST.forEach((k, idx) => {
-          items.push({
-            id: `TAX-${k.currency}`,
-            numericId: idx + 1,
-            section: "kurs",
-            title: `Kurs Valas ${k.currency} (${k.name}): Rp ${k.rate}`,
-            category: "Kurs Pajak",
-            subcategory: k.currency,
-            summary: `${kmkNumber} Berlaku s/d Akhir Pekan`,
-            status: "Published",
-            updatedAt: "KMK Aktif",
-            raw: k,
           });
         });
       }
@@ -539,8 +364,6 @@ function AdminCMSPageContent() {
             raw: app,
           });
         });
-      } else {
-        items.push(...FALLBACK_APPLICATIONS);
       }
 
       // 7. FAQs
@@ -559,8 +382,6 @@ function AdminCMSPageContent() {
             raw: f,
           });
         });
-      } else {
-        items.push(...FALLBACK_FAQS);
       }
 
       // 8. Profiles & Contact
@@ -1077,7 +898,12 @@ function AdminCMSPageContent() {
             <div className="relative" ref={categoryDropdownRef}>
               <button
                 type="button"
-                onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+                onClick={() => {
+                  setIsCategoryDropdownOpen((prev) => {
+                    if (!prev) setIsStatusDropdownOpen(false);
+                    return !prev;
+                  });
+                }}
                 className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none min-w-[170px] cursor-pointer transition-colors shadow-2xs"
                 aria-expanded={isCategoryDropdownOpen}
                 aria-haspopup="true"
@@ -1145,16 +971,80 @@ function AdminCMSPageContent() {
               )}
             </div>
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
-            >
-              <option value="ALL">Semua Status</option>
-              <option value="Published">Published</option>
-              <option value="Draft">Draft</option>
-            </select>
+            {/* Dropdown Filter Status (Floating Menu sesuai Visual & Interaction Pattern Public Website) */}
+            <div className="relative" ref={statusDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStatusDropdownOpen((prev) => {
+                    if (!prev) setIsCategoryDropdownOpen(false);
+                    return !prev;
+                  });
+                }}
+                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none min-w-[140px] cursor-pointer transition-colors shadow-2xs"
+                aria-expanded={isStatusDropdownOpen}
+                aria-haspopup="true"
+              >
+                <span className="truncate">
+                  {statusFilter === "ALL" ? "Semua Status" : statusFilter}
+                </span>
+                <ChevronDownIcon
+                  className={`text-[10px] text-text-muted transition-transform duration-200 shrink-0 ${
+                    isStatusDropdownOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {isStatusDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1.5 w-44 rounded-xl bg-white border border-primary-light py-1.5 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter("ALL");
+                      setIsStatusDropdownOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left ${
+                      statusFilter === "ALL"
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-text-primary hover:text-primary hover:bg-surface"
+                    }`}
+                  >
+                    <span>Semua Status</span>
+                    {statusFilter === "ALL" && (
+                      <CheckIcon className="text-primary text-[10px]" />
+                    )}
+                  </button>
+
+                  <div className="my-1 border-t border-primary-light/60" />
+
+                  <div className="space-y-0.5">
+                    {["Published", "Draft"].map((st) => {
+                      const isSelected = statusFilter === st;
+                      return (
+                        <button
+                          key={st}
+                          type="button"
+                          onClick={() => {
+                            setStatusFilter(st);
+                            setIsStatusDropdownOpen(false);
+                          }}
+                          className={`flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left ${
+                            isSelected
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-text-primary hover:text-primary hover:bg-surface"
+                          }`}
+                        >
+                          <span>{st}</span>
+                          {isSelected && (
+                            <CheckIcon className="text-primary text-[10px]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Reset Filters button if any filter applied */}
             {(searchQuery || categoryFilter !== "ALL" || subcategoryFilter !== "ALL" || statusFilter !== "ALL") && (
@@ -1166,6 +1056,7 @@ function AdminCMSPageContent() {
                   setSubcategoryFilter("ALL");
                   setStatusFilter("ALL");
                   setIsCategoryDropdownOpen(false);
+                  setIsStatusDropdownOpen(false);
                 }}
                 className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
               >
