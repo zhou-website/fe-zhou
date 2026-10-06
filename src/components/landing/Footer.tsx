@@ -23,6 +23,7 @@ import {
   InstagramIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { publicApi, parseContactSettings } from "@/lib/api";
 
 export function Footer() {
