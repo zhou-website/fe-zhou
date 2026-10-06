@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,16 +34,32 @@ import {
   BookIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
 import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
+  const router = useRouter();
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [articles, setArticles] = useState<ZhouArticle[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedArticle, setSelectedArticle] = useState<ZhouArticle | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("semua");
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
+
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
+
+  const handleReadArticle = (article: ZhouArticle) => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent("/edukasi")}`);
+      return;
+    }
+    setSelectedArticle(article);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -211,7 +228,7 @@ export function EducationSection() {
                   </div>
 
                   <CardTitle
-                    onClick={() => setSelectedArticle(article)}
+                    onClick={() => handleReadArticle(article)}
                     className="text-[15px] font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer leading-snug line-clamp-2"
                   >
                     {article.title}
@@ -229,7 +246,7 @@ export function EducationSection() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSelectedArticle(article)}
+                    onClick={() => handleReadArticle(article)}
                     className="text-xs font-bold text-primary group-hover:text-primary-dark transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded px-1.5 py-0.5"
                   >
                     <span>Selengkapnya</span>
@@ -257,7 +274,7 @@ export function EducationSection() {
               asChild
               className="text-xs font-bold gap-2 hover:border-primary"
             >
-              <Link href="/edukasi">
+              <Link href={getAuthHref("/edukasi")}>
                 <span>Semua Artikel</span>
               </Link>
             </Button>

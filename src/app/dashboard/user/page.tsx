@@ -34,6 +34,7 @@ interface Ticket {
   status: "In Progress" | "Completed";
   progress: number;
   updatedAt: string;
+  createdAt?: string;
   checklists: { text: string; done: boolean }[];
   deliverableFile?: string;
   deliverableSize?: string;

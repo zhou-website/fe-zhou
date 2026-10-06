@@ -3,8 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRightIcon } from "@/components/icons";
+import { useAuth } from "@/context/AuthContext";
+
 export function ContactSection() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <section
       id="kontak"
@@ -26,11 +29,16 @@ export function ContactSection() {
               variant="primary"
               size="lg"
               asChild
-              className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm group"
+              className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm transition-all"
             >
-              <Link href="/kontak" className="inline-flex items-center justify-center gap-2">
+              <Link
+                href={
+                  isAuthenticated
+                    ? "/kontak"
+                    : `/login?redirect=${encodeURIComponent("/kontak")}`
+                }
+              >
                 <span>Kontak Lengkap</span>
-                <ArrowRightIcon className="text-xs transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </Button>
           </div>

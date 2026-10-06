@@ -22,6 +22,82 @@ import {
   UserIcon,
 } from "@/components/icons";
 
+const DEFAULT_DIVISIONS_TEMPLATE: StoredServiceItem[] = [
+  {
+    id: "SRV-TAX",
+    categoryKey: "tax-service",
+    name: "Perpajakan (Tax Compliance & Advisory)",
+    subtitle: "Kepatuhan SPT Masa/Tahunan, telaah faktur elektronik, strategi Coretax DJP, dan pendampingan SP2DK/Pemeriksaan.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/pajak",
+    leadConsultant: "Linda David, S.Ak., BKP",
+    pillars: [
+      { title: "Kepatuhan SPT & Mitigasi Risiko SP2DK", description: "Pengelolaan SPT masa & tahunan sesuai Coretax." },
+      { title: "Pendampingan Pemeriksaan & Sengketa Pajak", description: "Bantahan hasil audit dan permohonan banding." },
+    ],
+    workflow: ["Analisis Dokumen", "Perhitungan Fiskal", "Pelaporan DJP"],
+    deliverables: ["Laporan Ekualisasi Pajak", "Buku Kerja Kepatuhan Fiskal"],
+  },
+  {
+    id: "SRV-ACC",
+    categoryKey: "akuntansi",
+    name: "Akuntansi & Pembukuan Finansial",
+    subtitle: "Penyusunan laporan keuangan berstandar SAK EP, rekonsiliasi bank, dan penataan jurnal akuntansi.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/akuntansi",
+    leadConsultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
+    pillars: [
+      { title: "Laporan Keuangan SAK EP & IFRS", description: "Neraca, laba rugi, arus kas, dan CALK terverifikasi." },
+      { title: "Rekonsiliasi & Jurnal Penyesuaian", description: "Audit trail transaksi harian bank dan kas." },
+    ],
+    workflow: ["Klasifikasi Akun", "Entri Jurnal Penyesuaian", "Penerbitan Laporan"],
+    deliverables: ["Buku Besar", "Laporan Keuangan Lengkap"],
+  },
+  {
+    id: "SRV-LEGAL",
+    categoryKey: "hukum",
+    name: "Hukum Korporasi & Kontrak Bisnis",
+    subtitle: "Legal drafting perjanjian komersial, perizinan OSS RBA, dan mitigasi risiko sengketa perdata bisnis.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/hukum",
+    leadConsultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    pillars: [
+      { title: "Review Kontrak Komersial & Pakta Bisnis", description: "Penyusunan perjanjian kemitraan dan kerahasiaan." },
+      { title: "Perizinan OSS RBA & Kemenkumham", description: "Legalitas badan usaha dan izin operasional resmi." },
+    ],
+    workflow: ["Due Diligence Yuridis", "Drafting Dokumen", "Finalisasi Pengesahan"],
+    deliverables: ["Legal Opinion", "Akta & Izin OSS Terverifikasi"],
+  },
+  {
+    id: "SRV-BIZ",
+    categoryKey: "bisnis",
+    name: "Konsultasi Bisnis & Restrukturisasi",
+    subtitle: "Analisis kelayakan investasi, perencanaan arus kas, serta restrukturisasi modal dan kepemilikan usaha.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/bisnis",
+    leadConsultant: "Tim Partner Zhou Consulting",
+    pillars: [
+      { title: "Perencanaan Arus Kas & Kelayakan Finansial", description: "Simulasi proyeksi keuangan dan valuasi bisnis." },
+      { title: "Restrukturisasi Organisasi & Modal", description: "Efisiensi operasional dan optimalisasi struktur entitas." },
+    ],
+    workflow: ["Audit Operasional", "Pemodelan Strategis", "Implementasi Rekomendasi"],
+    deliverables: ["Executive Strategic Report", "Roadmap Restrukturisasi"],
+  },
+];
+
+const DEFAULT_SAMPLE_KMK_RATES: KmkRateItem[] = [
+  { currency: "USD", name: "Dolar Amerika Serikat", rate: "16.250,00", change: "+0.15%", trend: "up", flag: "🇺🇸" },
+  { currency: "EUR", name: "Euro Uni Eropa", rate: "17.650,00", change: "-0.08%", trend: "down", flag: "🇪🇺" },
+  { currency: "SGD", name: "Dolar Singapura", rate: "12.180,00", change: "+0.04%", trend: "up", flag: "🇸🇬" },
+  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", change: "+0.22%", trend: "up", flag: "🇯🇵" },
+  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.240,00", change: "-0.05%", trend: "down", flag: "🇨🇳" },
+  { currency: "MYR", name: "Ringgit Malaysia", rate: "3.480,00", change: "+0.10%", trend: "up", flag: "🇲🇾" },
+];
+
 function AdminDashboardContent() {
   const [overview, setOverview] = useState<AdminDashboardOverviewData>({
     total_consultations: 0,
@@ -509,6 +585,110 @@ function AdminDashboardContent() {
                 <span>Upload Dokumen Luaran</span>
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL: TAMBAH VALUTA BARU KURS KMK
+         ========================================================= */}
+      {isValutaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-5 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+              <div>
+                <h3 className="text-sm font-bold text-primary">Tambah Valuta Asing Baru (KMK)</h3>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Tambahkan kurs konversi valuta ke tabel resmi DJP
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsValutaModalOpen(false)}
+                className="w-7 h-7 rounded-lg hover:bg-surface text-text-muted hover:text-primary flex items-center justify-center"
+              >
+                <CloseIcon className="text-xs" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddValuta} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Kode Valuta (3 Huruf)</Label>
+                  <Input
+                    type="text"
+                    required
+                    maxLength={5}
+                    value={valutaForm.currency}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+                    placeholder="Contoh: USD, EUR"
+                    className="text-xs bg-surface border-primary-light font-mono font-bold uppercase"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Tarif Kurs (IDR)</Label>
+                  <Input
+                    type="text"
+                    required
+                    value={valutaForm.rate}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, rate: e.target.value }))}
+                    placeholder="Contoh: 16.250,00"
+                    className="text-xs bg-surface border-primary-light font-mono font-bold text-right"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-primary">Nama Lengkap Mata Uang</Label>
+                <Input
+                  type="text"
+                  required
+                  value={valutaForm.name}
+                  onChange={(e) => setValutaForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Contoh: Dolar Amerika Serikat"
+                  className="text-xs bg-surface border-primary-light"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Perubahan (%)</Label>
+                  <Input
+                    type="text"
+                    value={valutaForm.change}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, change: e.target.value }))}
+                    placeholder="+0.15% atau -0.10%"
+                    className="text-xs bg-surface border-primary-light font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Arah Trend</Label>
+                  <select
+                    value={valutaForm.trend}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, trend: e.target.value as "up" | "down" }))}
+                    className="w-full h-9 rounded-lg border border-primary-light bg-surface px-3 text-xs"
+                  >
+                    <option value="up">Naik (Up / Hijau)</option>
+                    <option value="down">Turun (Down / Merah)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-primary-light">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsValutaModalOpen(false)}
+                  className="text-xs h-8 px-4 border-primary-light"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 px-5 font-semibold">
+                  Simpan Valuta
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

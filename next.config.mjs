@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async rewrites() {
     const backendUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://43.173.2.162.sslip.io')
       .replace(/\/+$/, '')

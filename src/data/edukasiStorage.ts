@@ -152,3 +152,57 @@ export function resetZhouArticlesToDefault(): ZhouArticle[] {
   }
   return ZHOU_ARTICLES;
 }
+
+export const GOV_LINKS_STORAGE_KEY = "zhou_gov_links_data_v2";
+export const GOV_LINKS_EVENT = "zhou_gov_links_updated";
+
+import { BelajarPajakLink, BELAJAR_PAJAK_LINKS } from "./edukasiData";
+
+export function getStoredBelajarPajakLinks(): BelajarPajakLink[] {
+  if (typeof window === "undefined") {
+    return BELAJAR_PAJAK_LINKS;
+  }
+  try {
+    const raw = localStorage.getItem(GOV_LINKS_STORAGE_KEY);
+    if (!raw) return BELAJAR_PAJAK_LINKS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : BELAJAR_PAJAK_LINKS;
+  } catch {
+    return BELAJAR_PAJAK_LINKS;
+  }
+}
+
+export function saveStoredBelajarPajakLinks(links: BelajarPajakLink[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(GOV_LINKS_STORAGE_KEY, JSON.stringify(links));
+    window.dispatchEvent(new CustomEvent(GOV_LINKS_EVENT, { detail: links }));
+  } catch (error) {
+    console.error("Gagal menyimpan zhou_gov_links:", error);
+  }
+}
+
+export function addStoredBelajarPajakLink(linkData: Omit<BelajarPajakLink, "id"> & { id?: string }): BelajarPajakLink[] {
+  const current = getStoredBelajarPajakLinks();
+  const newLink: BelajarPajakLink = {
+    ...linkData,
+    id: linkData.id || `GOV-${Date.now().toString().slice(-4)}`,
+  };
+  const updated = [newLink, ...current];
+  saveStoredBelajarPajakLinks(updated);
+  return updated;
+}
+
+export function updateStoredBelajarPajakLink(id: string, changes: Partial<BelajarPajakLink>): BelajarPajakLink[] {
+  const current = getStoredBelajarPajakLinks();
+  const updated = current.map((l) => (l.id === id ? { ...l, ...changes } : l));
+  saveStoredBelajarPajakLinks(updated);
+  return updated;
+}
+
+export function deleteStoredBelajarPajakLink(id: string): BelajarPajakLink[] {
+  const current = getStoredBelajarPajakLinks();
+  const updated = current.filter((l) => l.id !== id);
+  saveStoredBelajarPajakLinks(updated);
+  return updated;
+}
