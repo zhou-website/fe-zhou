@@ -3,6 +3,8 @@
  * Memungkinkan Admin mengontrol apakah lowongan dibuka atau ditutup, serta mengubah teks pesan statis.
  */
 
+import { ContentStatus } from "./publicContentData";
+
 export interface JobPosition {
   id: string;
   title: string;
@@ -17,6 +19,7 @@ export interface JobPosition {
   responsibilities?: string[];
   qualifications?: string[];
   benefits?: string[];
+  status?: ContentStatus;
 }
 
 export interface CareerSettings {
@@ -90,4 +93,74 @@ export function resetStoredCareerSettings(): void {
   } catch (error) {
     console.error("Gagal mereset zhou_career_settings:", error);
   }
+}
+
+/**
+ * Membaca posisi lowongan aktif yang disimpan
+ */
+export function getStoredCareerPositions(): JobPosition[] {
+  const settings = getStoredCareerSettings();
+  return settings.positions || [];
+}
+
+/**
+ * Menambahkan posisi lowongan karir baru
+ */
+export function addStoredCareerPosition(position: JobPosition): JobPosition[] {
+  const settings = getStoredCareerSettings();
+  const currentPositions = settings.positions || [];
+  const updatedPositions = [position, ...currentPositions];
+  saveStoredCareerSettings({
+    ...settings,
+    positions: updatedPositions,
+    lastUpdated: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  });
+  return updatedPositions;
+}
+
+/**
+ * Memperbarui data posisi lowongan karir
+ */
+export function updateStoredCareerPosition(
+  id: string,
+  changes: Partial<JobPosition>
+): JobPosition[] {
+  const settings = getStoredCareerSettings();
+  const currentPositions = settings.positions || [];
+  const updatedPositions = currentPositions.map((pos) =>
+    pos.id === id ? { ...pos, ...changes } : pos
+  );
+  saveStoredCareerSettings({
+    ...settings,
+    positions: updatedPositions,
+    lastUpdated: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  });
+  return updatedPositions;
+}
+
+/**
+ * Menghapus posisi lowongan karir
+ */
+export function deleteStoredCareerPosition(id: string): JobPosition[] {
+  const settings = getStoredCareerSettings();
+  const currentPositions = settings.positions || [];
+  const updatedPositions = currentPositions.filter((pos) => pos.id !== id);
+  saveStoredCareerSettings({
+    ...settings,
+    positions: updatedPositions,
+    lastUpdated: new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  });
+  return updatedPositions;
 }

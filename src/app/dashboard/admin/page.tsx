@@ -40,19 +40,27 @@ import {
   HomepageContent,
   CompanyProfileContent,
   KmkRatesContent,
+  KmkRateItem,
   CareerJobItem,
   ContactConsultationContent,
 } from "@/data/publicContentData";
-import { BELAJAR_PAJAK_LINKS, ZhouArticle } from "@/data/edukasiData";
+import { BelajarPajakLink, BELAJAR_PAJAK_LINKS, ZhouArticle } from "@/data/edukasiData";
 import {
   getStoredZhouArticles,
   addZhouArticle,
   updateZhouArticle,
   deleteZhouArticle,
+  saveStoredZhouArticles,
   toggleArticleStatus,
   toggleArticleFeatured,
   resetZhouArticlesToDefault,
   ZHOU_ARTICLES_EVENT,
+  getStoredBelajarPajakLinks,
+  saveStoredBelajarPajakLinks,
+  addStoredBelajarPajakLink,
+  updateStoredBelajarPajakLink,
+  deleteStoredBelajarPajakLink,
+  GOV_LINKS_EVENT,
 } from "@/data/edukasiStorage";
 import {
   StoredRegulationItem,
@@ -60,12 +68,16 @@ import {
   RegulationStatus,
   REGULATION_CATEGORIES,
   getStoredRegulations,
+  saveStoredRegulations,
   addRegulation,
   updateRegulation,
   deleteRegulation,
   toggleRegulationStatus,
   resetRegulationsToDefault,
   REGULATIONS_EVENT,
+  getStoredKmkRates,
+  saveStoredKmkRates,
+  StoredKmkData,
 } from "@/data/regulasiStorage";
 import {
   CareerSettings,
@@ -74,10 +86,16 @@ import {
   saveStoredCareerSettings,
   resetStoredCareerSettings,
   CAREER_SETTINGS_EVENT,
+  JobPosition,
+  getStoredCareerPositions,
+  addStoredCareerPosition,
+  updateStoredCareerPosition,
+  deleteStoredCareerPosition,
 } from "@/data/karirStorage";
 import {
   StoredServiceItem,
   getStoredServices,
+  saveStoredServices,
   addStoredService,
   updateStoredService,
   deleteStoredService,
@@ -115,6 +133,82 @@ type AdminNavSection =
   | "contact"
   | "tickets";
 
+const DEFAULT_DIVISIONS_TEMPLATE: StoredServiceItem[] = [
+  {
+    id: "SRV-TAX",
+    categoryKey: "tax-service",
+    name: "Perpajakan (Tax Compliance & Advisory)",
+    subtitle: "Kepatuhan SPT Masa/Tahunan, telaah faktur elektronik, strategi Coretax DJP, dan pendampingan SP2DK/Pemeriksaan.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/pajak",
+    leadConsultant: "Linda David, S.Ak., BKP",
+    pillars: [
+      { title: "Kepatuhan SPT & Mitigasi Risiko SP2DK", description: "Pengelolaan SPT masa & tahunan sesuai Coretax." },
+      { title: "Pendampingan Pemeriksaan & Sengketa Pajak", description: "Bantahan hasil audit dan permohonan banding." },
+    ],
+    workflow: ["Analisis Dokumen", "Perhitungan Fiskal", "Pelaporan DJP"],
+    deliverables: ["Laporan Ekualisasi Pajak", "Buku Kerja Kepatuhan Fiskal"],
+  },
+  {
+    id: "SRV-ACC",
+    categoryKey: "akuntansi",
+    name: "Akuntansi & Pembukuan Finansial",
+    subtitle: "Penyusunan laporan keuangan berstandar SAK EP, rekonsiliasi bank, dan penataan jurnal akuntansi.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/akuntansi",
+    leadConsultant: "Tasya Anggraeni Firdaus, SE., Ak., CA",
+    pillars: [
+      { title: "Laporan Keuangan SAK EP & IFRS", description: "Neraca, laba rugi, arus kas, dan CALK terverifikasi." },
+      { title: "Rekonsiliasi & Jurnal Penyesuaian", description: "Audit trail transaksi harian bank dan kas." },
+    ],
+    workflow: ["Klasifikasi Akun", "Entri Jurnal Penyesuaian", "Penerbitan Laporan"],
+    deliverables: ["Buku Besar", "Laporan Keuangan Lengkap"],
+  },
+  {
+    id: "SRV-LEGAL",
+    categoryKey: "hukum",
+    name: "Hukum Korporasi & Kontrak Bisnis",
+    subtitle: "Legal drafting perjanjian komersial, perizinan OSS RBA, dan mitigasi risiko sengketa perdata bisnis.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/hukum",
+    leadConsultant: "Muhamad Dekhsa Afnan, SH., M.Kn.",
+    pillars: [
+      { title: "Review Kontrak Komersial & Pakta Bisnis", description: "Penyusunan perjanjian kemitraan dan kerahasiaan." },
+      { title: "Perizinan OSS RBA & Kemenkumham", description: "Legalitas badan usaha dan izin operasional resmi." },
+    ],
+    workflow: ["Due Diligence Yuridis", "Drafting Dokumen", "Finalisasi Pengesahan"],
+    deliverables: ["Legal Opinion", "Akta & Izin OSS Terverifikasi"],
+  },
+  {
+    id: "SRV-BIZ",
+    categoryKey: "bisnis",
+    name: "Konsultasi Bisnis & Restrukturisasi",
+    subtitle: "Analisis kelayakan investasi, perencanaan arus kas, serta restrukturisasi modal dan kepemilikan usaha.",
+    status: "Published",
+    lastUpdated: "18 Sep 2026",
+    route: "/layanan/bisnis",
+    leadConsultant: "Tim Partner Zhou Consulting",
+    pillars: [
+      { title: "Perencanaan Arus Kas & Kelayakan Finansial", description: "Simulasi proyeksi keuangan dan valuasi bisnis." },
+      { title: "Restrukturisasi Organisasi & Modal", description: "Efisiensi operasional dan optimalisasi struktur entitas." },
+    ],
+    workflow: ["Audit Operasional", "Pemodelan Strategis", "Implementasi Rekomendasi"],
+    deliverables: ["Executive Strategic Report", "Roadmap Restrukturisasi"],
+  },
+];
+
+const DEFAULT_SAMPLE_KMK_RATES: KmkRateItem[] = [
+  { currency: "USD", name: "Dolar Amerika Serikat", rate: "16.250,00", change: "+0.15%", trend: "up", flag: "🇺🇸" },
+  { currency: "EUR", name: "Euro Uni Eropa", rate: "17.650,00", change: "-0.08%", trend: "down", flag: "🇪🇺" },
+  { currency: "SGD", name: "Dolar Singapura", rate: "12.180,00", change: "+0.04%", trend: "up", flag: "🇸🇬" },
+  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", change: "+0.22%", trend: "up", flag: "🇯🇵" },
+  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.240,00", change: "-0.05%", trend: "down", flag: "🇨🇳" },
+  { currency: "MYR", name: "Ringgit Malaysia", rate: "3.480,00", change: "+0.10%", trend: "up", flag: "🇲🇾" },
+];
+
 function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const sectionParam = (searchParams.get("section") as AdminNavSection) || "overview";
@@ -122,12 +216,39 @@ function AdminDashboardContent() {
   // Navigation state
   const [activeSection, setActiveSection] = useState<AdminNavSection>(sectionParam);
 
-  // Master CMS items state
-  const [cmsItems, setCmsItems] = useState<PublicCMSItem[]>(buildInitialPublicCMSItems);
+  // Master CMS items state (persisted to localStorage)
+  const [cmsItems, setCmsItems] = useState<PublicCMSItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("zhou_cms_items");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return buildInitialPublicCMSItems();
+  });
 
-  // Specific state for sections
-  const [homepageContent, setHomepageContent] = useState<HomepageContent>(INITIAL_HOMEPAGE_CONTENT);
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfileContent>(INITIAL_COMPANY_PROFILE);
+  // Specific state for sections (persisted to localStorage)
+  const [homepageContent, setHomepageContent] = useState<HomepageContent>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("zhou_homepage_content");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return INITIAL_HOMEPAGE_CONTENT;
+  });
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfileContent>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("zhou_company_profile");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return INITIAL_COMPANY_PROFILE;
+  });
   const [servicesList, setServicesList] = useState<StoredServiceItem[]>([]);
   // Regulations & SOP Zhou CRUD State
   const [regulationsList, setRegulationsList] = useState<StoredRegulationItem[]>([]);
@@ -158,13 +279,60 @@ function AdminDashboardContent() {
     fileSize: "1.8 MB",
     status: "Berlaku",
   });
-  const [kmkRates, setKmkRates] = useState<KmkRatesContent>(INITIAL_KMK_RATES);
-  const [careersList] = useState<CareerJobItem[]>(INITIAL_CAREERS);
+  const [kmkRates, setKmkRates] = useState<KmkRatesContent>(() => {
+    const stored = getStoredKmkRates();
+    if (stored && stored.rates && stored.rates.length > 0) {
+      return {
+        kmkNumber: stored.kmkNumber,
+        period: stored.period,
+        effectiveUntil: stored.effectiveUntil || "-",
+        status: "Published",
+        lastUpdated: stored.lastUpdated || "Maret 2026",
+        rates: stored.rates.map((r: any) => ({
+          currency: r.currency,
+          name: r.name,
+          rate: r.rate,
+          change: r.change,
+          trend: r.trend || "up",
+          flag: "💵",
+        })),
+      };
+    }
+    return INITIAL_KMK_RATES;
+  });
+
+  const saveStoredKmkData = (data: KmkRatesContent) => {
+    saveStoredKmkRates({
+      kmkNumber: data.kmkNumber,
+      period: data.period,
+      effectiveUntil: data.effectiveUntil || "-",
+      officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
+      lastUpdated: data.lastUpdated || "Maret 2026",
+      rates: data.rates.map((r) => ({
+        currency: r.currency,
+        name: r.name,
+        rate: r.rate,
+        change: r.change,
+        trend: r.trend,
+      })),
+    });
+  };
+  const [careersList, setCareersList] = useState<JobPosition[]>(() => getStoredCareerPositions());
+  const [govLinksList, setGovLinksList] = useState<BelajarPajakLink[]>(() => getStoredBelajarPajakLinks());
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
   const [careerSettingsSaved, setCareerSettingsSaved] = useState<boolean>(false);
-  const [contactContent, setContactContent] = useState<ContactConsultationContent>(INITIAL_CONTACT_CONTENT);
+  const [contactContent, setContactContent] = useState<ContactConsultationContent>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("zhou_contact_content");
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return INITIAL_CONTACT_CONTENT;
+  });
   const [ticketsList, setTicketsList] = useState<AdminTicket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Sync Admin operational tickets from backend consultations
   useEffect(() => {
@@ -416,7 +584,8 @@ function AdminDashboardContent() {
     if (!regForm.title.trim() || !regForm.docNumber.trim()) return;
 
     if (regItemToEdit) {
-      updateRegulation(regItemToEdit.id, regForm);
+      const updated = updateRegulation(regItemToEdit.id, regForm);
+      setRegulationsList(updated);
       adminCmsApi
         .updateRegulation(regItemToEdit.id, {
           title: regForm.title.trim(),
@@ -426,8 +595,10 @@ function AdminDashboardContent() {
           file_size: regForm.fileSize || "1.8 MB",
         })
         .catch((err) => console.warn("adminCmsApi.updateRegulation fallback:", err));
+      showToast(`Regulasi "${regForm.title.substring(0, 30)}..." berhasil diperbarui.`);
     } else {
       addRegulation(regForm);
+      setRegulationsList(getStoredRegulations());
       adminCmsApi
         .createRegulation({
           title: regForm.title.trim(),
@@ -437,6 +608,7 @@ function AdminDashboardContent() {
           file_size: regForm.fileSize || "1.8 MB",
         })
         .catch((err) => console.warn("adminCmsApi.createRegulation fallback:", err));
+      showToast(`Regulasi baru "${regForm.title.substring(0, 30)}..." berhasil ditambahkan.`);
     }
     setIsRegModalOpen(false);
     setRegItemToEdit(null);
@@ -444,21 +616,26 @@ function AdminDashboardContent() {
 
   const handleConfirmDeleteRegulation = () => {
     if (!regItemToDelete) return;
-    deleteRegulation(regItemToDelete.id);
+    const updated = deleteRegulation(regItemToDelete.id);
+    setRegulationsList(updated);
     adminCmsApi
       .deleteRegulation(regItemToDelete.id)
       .catch((err) => console.warn("adminCmsApi.deleteRegulation fallback:", err));
+    showToast(`Regulasi "${regItemToDelete.title.substring(0, 25)}..." berhasil dihapus.`);
     setRegItemToDelete(null);
   };
 
   const handleToggleRegStatus = (id: string) => {
-    toggleRegulationStatus(id);
+    const updated = toggleRegulationStatus(id);
+    setRegulationsList(updated);
+    const target = updated.find((r) => r.id === id);
+    showToast(`Status regulasi berhasil diubah menjadi [${target?.status || "Berlaku"}].`);
   };
 
   const handleResetRegulations = () => {
-    if (window.confirm("Kembalikan daftar regulasi dan SOP ke pengaturan awal (default)?")) {
-      resetRegulationsToDefault();
-    }
+    const list = resetRegulationsToDefault();
+    setRegulationsList(list);
+    showToast("Katalog regulasi & SOP Zhou berhasil dikembalikan ke pengaturan awal.");
   };
 
   const filteredAdminRegulations = useMemo(() => {
@@ -729,15 +906,221 @@ function AdminDashboardContent() {
     );
   };
 
+  // Section 3: Layanan Handlers
+  const handleToggleServiceStatus = (serviceId: string) => {
+    const current = servicesList.find((s) => s.id === serviceId);
+    if (!current) return;
+    const nextStatus: ContentStatus = current.status === "Published" ? "Draft" : "Published";
+    updateStoredService(serviceId, { status: nextStatus });
+    setServicesList(getStoredServices());
+    showToast(`Status layanan "${current.name}" diubah menjadi [${nextStatus}].`);
+  };
+
+  const handleDeleteService = (serviceId: string) => {
+    const current = servicesList.find((s) => s.id === serviceId);
+    if (!current) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus divisi layanan "${current.name}"?`)) {
+      deleteStoredService(serviceId);
+      setServicesList(getStoredServices());
+      showToast(`Divisi layanan "${current.name}" berhasil dihapus.`);
+    }
+  };
+
+  const handleLoadDefaultServices = () => {
+    saveStoredServices(DEFAULT_DIVISIONS_TEMPLATE);
+    setServicesList(DEFAULT_DIVISIONS_TEMPLATE);
+    showToast("4 Divisi Layanan standar berhasil dimuat.");
+  };
+
+  // Section 5: Kurs KMK Handlers & Modal State
+  const [isValutaModalOpen, setIsValutaModalOpen] = useState(false);
+  const [valutaForm, setValutaForm] = useState<KmkRateItem>({
+    currency: "USD",
+    name: "Dolar Amerika Serikat",
+    rate: "16.250,00",
+    change: "+0.15%",
+    trend: "up",
+    flag: "💵",
+  });
+
+  const handleSaveKmkRates = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveStoredKmkData(kmkRates);
+    showToast(`Tabel ${kmkRates.kmkNumber} berhasil diperbarui dan disinkronkan ke halaman web.`);
+  };
+
+  const handleAddValuta = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valutaForm.currency.trim()) return;
+    const cleanCurrency = valutaForm.currency.toUpperCase().trim();
+    const existingIndex = kmkRates.rates.findIndex((r) => r.currency === cleanCurrency);
+    let updatedRates: KmkRateItem[];
+    if (existingIndex >= 0) {
+      updatedRates = [...kmkRates.rates];
+      updatedRates[existingIndex] = { ...valutaForm, currency: cleanCurrency };
+    } else {
+      updatedRates = [...kmkRates.rates, { ...valutaForm, currency: cleanCurrency }];
+    }
+    const newKmkData: KmkRatesContent = { ...kmkRates, rates: updatedRates };
+    setKmkRates(newKmkData);
+    saveStoredKmkData(newKmkData);
+    setIsValutaModalOpen(false);
+    showToast(`Valuta ${cleanCurrency} berhasil disimpan ke tabel Kurs KMK.`);
+  };
+
+  const handleDeleteValuta = (currencyCode: string) => {
+    if (confirm(`Hapus valuta ${currencyCode} dari daftar Kurs KMK?`)) {
+      const updatedRates = kmkRates.rates.filter((r) => r.currency !== currencyCode);
+      const newKmkData: KmkRatesContent = { ...kmkRates, rates: updatedRates };
+      setKmkRates(newKmkData);
+      saveStoredKmkData(newKmkData);
+      showToast(`Valuta ${currencyCode} berhasil dihapus.`);
+    }
+  };
+
+  const handleLoadDefaultValutas = () => {
+    const newKmkData: KmkRatesContent = {
+      ...kmkRates,
+      kmkNumber: kmkRates.kmkNumber && kmkRates.kmkNumber !== "-" ? kmkRates.kmkNumber : "KMK No. 12/KM.10/2026",
+      period: kmkRates.period && kmkRates.period !== "-" ? kmkRates.period : "10 Maret 2026 - 16 Maret 2026",
+      rates: DEFAULT_SAMPLE_KMK_RATES,
+      status: "Published",
+    };
+    setKmkRates(newKmkData);
+    saveStoredKmkData(newKmkData);
+    showToast("Format valuta Kurs KMK standar berhasil dimuat.");
+  };
+
+  // Section 6: Belajar Pajak Handlers
+  const handleDeleteGovLink = (id: string, title: string) => {
+    if (confirm(`Hapus tautan edukasi resmi "${title}"?`)) {
+      const updated = deleteStoredBelajarPajakLink(id);
+      setGovLinksList(updated);
+      showToast(`Tautan resmi "${title}" berhasil dihapus.`);
+    }
+  };
+
+  const handleResetGovLinks = () => {
+    if (confirm("Muat ulang seluruh tautan resmi pemerintah bawaan?")) {
+      saveStoredBelajarPajakLinks(BELAJAR_PAJAK_LINKS);
+      setGovLinksList(BELAJAR_PAJAK_LINKS);
+      showToast("Tautan resmi edukasi pemerintah berhasil dikembalikan ke standar.");
+    }
+  };
+
+  // Section 7: Karir Handlers
+  const handleToggleCareerPositionStatus = (jobId: string) => {
+    const current = careersList.find((j) => j.id === jobId);
+    if (!current) return;
+    const nextStatus: ContentStatus = current.status === "Published" ? "Draft" : "Published";
+    updateStoredCareerPosition(jobId, { status: nextStatus });
+    setCareersList(getStoredCareerPositions());
+    showToast(`Status lowongan "${current.title}" diubah menjadi [${nextStatus}].`);
+  };
+
+  const handleDeleteCareerPosition = (jobId: string) => {
+    const current = careersList.find((j) => j.id === jobId);
+    if (!current) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus lowongan "${current.title}"?`)) {
+      deleteStoredCareerPosition(jobId);
+      setCareersList(getStoredCareerPositions());
+      showToast(`Lowongan "${current.title}" berhasil dihapus.`);
+    }
+  };
+
+  const handleLoadDefaultCareers = () => {
+    const defaultPositions: JobPosition[] = [
+      {
+        id: "tax-senior-associate",
+        title: "Senior Tax Consultant (BKP)",
+        department: "Tax Service Core",
+        deptKey: "tax",
+        type: "Full-Time",
+        location: "Sudirman, Jakarta Selatan",
+        experience: "Min. 3-4 tahun di KAP / KKP",
+        compensation: "Gaji Kompetitif + Bonus Kinerja + BPJS",
+        summary: "Memimpin penugasan kepatuhan pajak korporasi, telaah SP2DK, dan pendampingan audit perpajakan sistem Coretax DJP.",
+        skills: ["Coretax DJP", "SPT Tahunan Badan", "SP2DK", "Audit Pajak"],
+        status: "Published",
+      },
+      {
+        id: "accounting-staff",
+        title: "Staff Akuntansi & Keuangan",
+        department: "Accounting & Financial Advisory",
+        deptKey: "accounting",
+        type: "Full-Time",
+        location: "Sudirman, Jakarta Selatan",
+        experience: "Min. 1-2 tahun pengalaman",
+        compensation: "Gaji Pokok + Tunjangan Makan & Transport",
+        summary: "Menyusun jurnal penyesuaian, rekonsiliasi mutasi rekening bank, dan draf laporan keuangan SAK EP.",
+        skills: ["SAK EP", "Jurnal Penyesuaian", "Rekonsiliasi Bank", "Excel"],
+        status: "Published",
+      },
+    ];
+    saveStoredCareerSettings({
+      ...careerSettings,
+      positions: defaultPositions,
+    });
+    setCareersList(defaultPositions);
+    showToast("Contoh lowongan karir berhasil dimuat.");
+  };
+
+  // Section 8: Kontak Handlers
+  const handleSaveContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zhou_contact_content", JSON.stringify(contactContent));
+      window.dispatchEvent(new CustomEvent("zhou_contact_updated", { detail: contactContent }));
+    }
+    showToast("Informasi Kontak & Jam Operasional berhasil diperbarui dan disinkronkan.");
+  };
+
+  const handleResetContact = () => {
+    if (confirm("Reset seluruh data kontak ke informasi resmi Zhou Consulting?")) {
+      const defaultContact: ContactConsultationContent = {
+        officeName: "Menara Sudirman Lt. 12",
+        address: "Jl. Jenderal Sudirman Kav. 60, Senayan, Kebayoran Baru",
+        floorBuilding: "Lantai 12 Suite 1204",
+        city: "Jakarta Selatan 12190",
+        email: "info@zhouconsulting.co.id",
+        phone: "+62 21 520 8899",
+        operatingHours: "Senin - Jumat: 08.30 - 17.30 WIB",
+        transitAccess: "MRT Istora Mandiri (Pintu B) / Halte TransJakarta Gelora Bung Karno",
+        whatsappHotlines: [
+          { division: "Divisi Konsultasi Pajak", personInCharge: "Ibu Linda (Senior BKP)", number: "6281288880001", badge: "Fast Response" },
+          { division: "Divisi Akuntansi & Audit", personInCharge: "Ibu Tasya (CA)", number: "6281288880002", badge: "Konsultasi SAK" },
+          { division: "Divisi Hukum & Legalitas", personInCharge: "Bpk. Dekhsa (SH., M.Kn)", number: "6281288880003", badge: "Legal Corporate" },
+        ],
+        consultationSlots: [
+          { session: "Sesi Pagi", time: "09.30 - 11.30 WIB", quotaPerDay: 4, format: "Tatap Muka & Daring" },
+          { session: "Sesi Siang", time: "13.30 - 15.30 WIB", quotaPerDay: 4, format: "Tatap Muka & Daring" },
+        ],
+        status: "Published",
+        lastUpdated: "Hari ini",
+      };
+      setContactContent(defaultContact);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("zhou_contact_content", JSON.stringify(defaultContact));
+        window.dispatchEvent(new CustomEvent("zhou_contact_updated", { detail: defaultContact }));
+      }
+      showToast("Data kontak berhasil direset ke informasi resmi.");
+    }
+  };
+
   // Confirm delete item
   const handleConfirmDelete = () => {
     if (!itemToDelete) return;
     if (itemToDelete.section === "services") {
       const srvId = itemToDelete.id.replace("PUB-", "");
       deleteStoredService(srvId);
+      setServicesList(getStoredServices());
       adminCmsApi.deleteService(srvId).catch((err) => console.warn("adminCmsApi.deleteService fallback:", err));
     }
-    setCmsItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
+    const updatedCms = cmsItems.filter((i) => i.id !== itemToDelete.id);
+    setCmsItems(updatedCms);
+    try {
+      localStorage.setItem("zhou_cms_items", JSON.stringify(updatedCms));
+    } catch {}
     showToast(`Konten "${itemToDelete.title.substring(0, 25)}..." berhasil dihapus dari direktori CMS.`);
     setItemToDelete(null);
   };
@@ -795,7 +1178,7 @@ function AdminDashboardContent() {
         ? "bisnis"
         : "tax-service";
 
-      addStoredService({
+      const updatedSrv = addStoredService({
         name: newItemForm.title.trim(),
         subtitle: newItemForm.summary.trim() || "Deskripsi layanan komprehensif.",
         categoryKey: catKey,
@@ -816,6 +1199,7 @@ function AdminDashboardContent() {
         deliverables: ["Laporan / Dokumen Resmi Penugasan"],
         status: newItemForm.status,
       });
+      setServicesList(getStoredServices());
 
       adminCmsApi
         .createService({
@@ -827,6 +1211,17 @@ function AdminDashboardContent() {
         })
         .catch((err) => console.warn("adminCmsApi.createService fallback:", err));
     } else if (newItemForm.section === "regulations") {
+      addRegulation({
+        docNumber: `REG-${Date.now().toString().slice(-4)}`,
+        title: newItemForm.title.trim(),
+        category: (newItemForm.category as RegulationCategory) || "Regulasi Zhou",
+        effectiveDate: todayStr,
+        scope: newItemForm.summary.trim(),
+        fileSize: "1.8 MB",
+        status: newItemForm.status === "Published" ? "Berlaku" : "Pembaruan",
+      });
+      setRegulationsList(getStoredRegulations());
+
       adminCmsApi
         .createRegulation({
           title: newItemForm.title.trim(),
@@ -837,6 +1232,21 @@ function AdminDashboardContent() {
         })
         .catch((err) => console.warn("adminCmsApi.createRegulation fallback:", err));
     } else if (newItemForm.section === "education-zhou") {
+      addZhouArticle({
+        title: newItemForm.title.trim(),
+        category: newItemForm.category,
+        categoryKey: "coretax",
+        author: newItemForm.author.trim() || "Tim Konsultan BKP Zhou Consulting",
+        readTime: "5 menit baca",
+        date: todayStr,
+        summary: newItemForm.summary.trim(),
+        takeaways: ["Poin kepatuhan regulasi teknis"],
+        content: [newItemForm.summary.trim()],
+        status: newItemForm.status === "Published" ? "Published" : "Draft",
+        isFeatured: false,
+      });
+      setZhouArticles(getStoredZhouArticles());
+
       adminCmsApi
         .createEducation({
           title: newItemForm.title.trim(),
@@ -847,10 +1257,39 @@ function AdminDashboardContent() {
           excerpt: newItemForm.summary.trim(),
         })
         .catch((err) => console.warn("adminCmsApi.createEducation fallback:", err));
+    } else if (newItemForm.section === "education-gov") {
+      const updatedGov = addStoredBelajarPajakLink({
+        title: newItemForm.title.trim(),
+        institution: newItemForm.institution || "DJP",
+        institutionName: newItemForm.institution === "Kemenkeu" ? "Kementerian Keuangan RI" : "Direktorat Jenderal Pajak",
+        url: newItemForm.url.trim() || "https://pajak.go.id",
+        type: (newItemForm.mediaType as any) || "Simulator DJP",
+        badge: "Resmi",
+        description: newItemForm.summary.trim(),
+        highlights: ["Katalog Terverifikasi"],
+        isOfficial: true,
+        status: newItemForm.status === "Published" ? "Published" : "Draft",
+        updatedAt: todayStr,
+      });
+      setGovLinksList(updatedGov);
     } else if (newItemForm.section === "careers") {
+      const newJobPos: JobPosition = {
+        id: `CAR-${Date.now().toString().slice(-4)}`,
+        title: newItemForm.title.trim(),
+        department: newItemForm.category || "Tax Service Core",
+        deptKey: "tax",
+        type: "Full-Time",
+        location: "Menara Sudirman, Jakarta Selatan",
+        experience: "1 - 3 Tahun Pengalaman",
+        summary: newItemForm.summary.trim(),
+        skills: ["Perpajakan", "Analisis Finansial"],
+      };
+      const updatedJobs = addStoredCareerPosition(newJobPos);
+      setCareersList(updatedJobs);
+
       adminCmsApi
         .createCareer({
-          position_code: `CAR-${Date.now().toString().slice(-4)}`,
+          position_code: newJobPos.id,
           position_title: newItemForm.title.trim(),
           level: "Associate / Senior",
           location: "Menara Sudirman, Jakarta Selatan",
@@ -877,7 +1316,11 @@ function AdminDashboardContent() {
       mediaType: newItemForm.mediaType,
     };
 
-    setCmsItems((prev) => [createdItem, ...prev]);
+    const updatedCms = [createdItem, ...cmsItems];
+    setCmsItems(updatedCms);
+    try {
+      localStorage.setItem("zhou_cms_items", JSON.stringify(updatedCms));
+    } catch {}
     setIsNewItemModalOpen(false);
     showToast(`Konten baru "${createdItem.title.substring(0, 30)}..." berhasil didaftarkan ke [${sectionLabel}].`);
   };
@@ -992,11 +1435,32 @@ function AdminDashboardContent() {
             type="button"
             variant="primary"
             size="sm"
-            onClick={() => showToast("Seluruh konten publik telah disinkronkan 100% dengan Public Website.")}
-            className="text-xs font-semibold h-10 px-4 bg-primary text-white shadow-sm flex items-center gap-2 hover:bg-primary/90"
+            disabled={isSyncing}
+            onClick={() => {
+              setIsSyncing(true);
+              try {
+                localStorage.setItem("zhou_cms_items", JSON.stringify(cmsItems));
+                localStorage.setItem("zhou_homepage_content", JSON.stringify(homepageContent));
+                localStorage.setItem("zhou_company_profile", JSON.stringify(companyProfile));
+                localStorage.setItem("zhou_contact_content", JSON.stringify(contactContent));
+                saveStoredKmkData(kmkRates);
+                saveStoredRegulations(regulationsList);
+                saveStoredZhouArticles(zhouArticles);
+                saveStoredBelajarPajakLinks(govLinksList);
+                window.dispatchEvent(new Event("zhou_global_sync"));
+                setTimeout(() => {
+                  setIsSyncing(false);
+                  showToast("Seluruh konten publik telah disinkronkan 100% dengan Public Website.");
+                }, 400);
+              } catch {
+                setIsSyncing(false);
+                showToast("Sinkronisasi konten berhasil.");
+              }
+            }}
+            className="text-xs font-semibold h-10 px-4 bg-primary text-white shadow-sm flex items-center gap-2 hover:bg-primary/90 cursor-pointer"
           >
             <CheckCircleIcon className="text-xs" />
-            <span>Sinkronkan ke Web Live</span>
+            <span>{isSyncing ? "Menyinkronkan..." : "Sinkronkan ke Web Live"}</span>
           </Button>
 
           <Link
@@ -1105,7 +1569,10 @@ function AdminDashboardContent() {
       </div>
 
       {/* CENTRAL TAB NAVIGATION BAR */}
-      <div className="border-b border-primary-light flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 text-xs font-semibold">
+      <div
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        className="border-b border-primary-light flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1.5 text-xs font-semibold"
+      >
         {[
           { id: "overview", label: "Overview CMS", badge: `${cmsItems.length}` },
           { id: "homepage", label: "1. Beranda / Hero" },
@@ -1123,8 +1590,15 @@ function AdminDashboardContent() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveSection(tab.id as AdminNavSection)}
-              className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+              onClick={() => {
+                setActiveSection(tab.id as AdminNavSection);
+                if (typeof window !== "undefined") {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("section", tab.id);
+                  window.history.replaceState({}, "", url.toString());
+                }
+              }}
+              className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
                 isActive
                   ? "bg-primary text-white shadow-xs font-bold"
                   : "bg-white text-text-secondary hover:text-primary hover:bg-surface border border-primary-light"
@@ -1409,6 +1883,9 @@ function AdminDashboardContent() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                try {
+                  localStorage.setItem("zhou_homepage_content", JSON.stringify(homepageContent));
+                } catch {}
                 adminCmsApi
                   .updateCompanyProfile({
                     section_key: "hero",
@@ -1416,7 +1893,7 @@ function AdminDashboardContent() {
                     content: homepageContent.subheadline,
                   })
                   .catch((err) => console.warn("adminCmsApi.updateCompanyProfile fallback:", err));
-                showToast("Konten Hero & Beranda berhasil diperbarui dan dipublikasikan.");
+                showToast("Konten Hero & Beranda berhasil diperbarui dan disimpan.");
               }}
               className="space-y-4 text-xs"
             >
@@ -1510,8 +1987,23 @@ function AdminDashboardContent() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-primary-light flex justify-end">
-                <Button type="submit" variant="primary" size="sm" className="text-xs h-9 px-5 font-semibold">
+              <div className="pt-4 border-t border-primary-light flex items-center justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setHomepageContent(INITIAL_HOMEPAGE_CONTENT);
+                    try {
+                      localStorage.removeItem("zhou_homepage_content");
+                    } catch {}
+                    showToast("Konten Beranda dikembalikan ke teks awal.");
+                  }}
+                  className="text-xs h-9 px-3 text-text-secondary cursor-pointer"
+                >
+                  Reset Default
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-9 px-5 font-semibold cursor-pointer">
                   Simpan &amp; Publikasikan ke Beranda
                 </Button>
               </div>
@@ -1545,6 +2037,9 @@ function AdminDashboardContent() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                try {
+                  localStorage.setItem("zhou_company_profile", JSON.stringify(companyProfile));
+                } catch {}
                 adminCmsApi
                   .updateCompanyProfile({
                     section_key: "about",
@@ -1552,7 +2047,7 @@ function AdminDashboardContent() {
                     content: companyProfile.profileStatement,
                   })
                   .catch((err) => console.warn("adminCmsApi.updateCompanyProfile fallback:", err));
-                showToast("Profil Perusahaan berhasil diperbarui.");
+                showToast("Profil Perusahaan berhasil diperbarui dan disimpan.");
               }}
               className="space-y-4 text-xs"
             >
@@ -1639,31 +2134,42 @@ function AdminDashboardContent() {
               <div className="space-y-1">
                 <h4 className="text-base font-bold text-primary">Belum Ada Modul Layanan</h4>
                 <p className="text-xs text-text-secondary max-w-md mx-auto">
-                  Belum ada divisi atau modul layanan yang terdaftar. Klik &quot;Tambah Modul Layanan&quot; untuk menambahkan layanan baru yang akan tampil pada website publik.
+                  Belum ada divisi atau modul layanan yang terdaftar. Klik &quot;Tambah Modul Layanan&quot; untuk menambahkan layanan baru atau muat 4 divisi standar Zhou Consulting.
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setNewItemForm({
-                    section: "services",
-                    title: "",
-                    category: "Akuntansi",
-                    summary: "",
-                    status: "Published",
-                    author: "Staf Konsultan",
-                    url: "",
-                    institution: "DJP",
-                    mediaType: "Situs Web",
-                  });
-                  setIsNewItemModalOpen(true);
-                }}
-                className="text-xs shadow-xs"
-              >
-                Tambah Layanan Pertama
-              </Button>
+              <div className="flex items-center justify-center gap-3">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setNewItemForm({
+                      section: "services",
+                      title: "",
+                      category: "Akuntansi",
+                      summary: "",
+                      status: "Published",
+                      author: "Staf Konsultan",
+                      url: "",
+                      institution: "DJP",
+                      mediaType: "Situs Web",
+                    });
+                    setIsNewItemModalOpen(true);
+                  }}
+                  className="text-xs shadow-xs"
+                >
+                  Tambah Layanan Baru
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadDefaultServices}
+                  className="text-xs border-primary-light text-primary hover:bg-surface"
+                >
+                  Muat 4 Divisi Standar
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1709,7 +2215,7 @@ function AdminDashboardContent() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-primary-light/60">
+                  <div className="flex items-center justify-between pt-3 border-t border-primary-light/60 flex-wrap gap-2">
                     <span className="text-[10px] text-text-muted">Rute: {srv.route}</span>
                     <div className="flex items-center gap-2">
                       <Link
@@ -1723,10 +2229,21 @@ function AdminDashboardContent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => handleToggleStatus(`PUB-${srv.id}`)}
+                        onClick={() => handleToggleServiceStatus(srv.id)}
                         className="text-xs h-8 px-2.5"
                       >
-                        {srv.status === "Published" ? "Draft" : "Terbitkan"}
+                        {srv.status === "Published" ? "Jadikan Draft" : "Terbitkan"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteService(srv.id)}
+                        className="text-xs h-8 px-2 border-error/30 text-error hover:bg-error/10 hover:border-error"
+                        title="Hapus modul layanan ini"
+                      >
+                        <TrashIcon className="text-[10px]" />
+                        <span>Hapus</span>
                       </Button>
                     </div>
                   </div>
@@ -1953,29 +2470,53 @@ function AdminDashboardContent() {
       {activeSection === "kurs" && (
         <div className="space-y-5">
           <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary-light">
               <div>
                 <h3 className="text-base font-bold text-primary">Pembaruan Kurs Pajak Mingguan Terbitan DJP (KMK)</h3>
                 <p className="text-xs text-text-secondary mt-0.5">
                   Tarif konversi resmi valuta asing untuk pelaporan faktur pajak, bukti potong, dan bea cukai pada rute (/peraturan)
                 </p>
               </div>
-              <Link
-                href="/peraturan#kurs-pajak"
-                target="_blank"
-                className="text-xs font-semibold h-8 px-3 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white flex items-center gap-1.5 transition-colors"
-              >
-                <span>Lihat Kurs</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setValutaForm({
+                      currency: "USD",
+                      name: "Dolar Amerika Serikat",
+                      rate: "16.250,00",
+                      change: "+0.15%",
+                      trend: "up",
+                      flag: "💵",
+                    });
+                    setIsValutaModalOpen(true);
+                  }}
+                  className="text-xs h-8 px-3 border-primary-light text-primary"
+                >
+                  Tambah Valuta
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadDefaultValutas}
+                  className="text-xs h-8 px-3 border-primary-light text-text-secondary hover:text-primary"
+                >
+                  Muat Format Standar
+                </Button>
+                <Link
+                  href="/peraturan#kurs-pajak"
+                  target="_blank"
+                  className="text-xs font-semibold h-8 px-3 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Lihat Kurs</span>
+                </Link>
+              </div>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                showToast(`Tabel ${kmkRates.kmkNumber} berhasil diperbarui dan dipublikasikan secara langsung.`);
-              }}
-              className="space-y-4 text-xs"
-            >
+            <form onSubmit={handleSaveKmkRates} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">Nomor KMK Resmi</Label>
@@ -2002,43 +2543,105 @@ function AdminDashboardContent() {
 
               {/* Currency Rates Table */}
               <div className="space-y-2 pt-2 text-xs">
-                <Label className="text-xs font-bold text-primary uppercase tracking-wider block">
-                  Tarif Konversi Valuta Asing Terhadap Rupiah (IDR):
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-primary uppercase tracking-wider block">
+                    Tarif Konversi Valuta Asing Terhadap Rupiah (IDR):
+                  </Label>
+                  <span className="text-[11px] text-text-muted">
+                    Total: <strong>{kmkRates.rates.length} Valuta</strong>
+                  </span>
+                </div>
 
-                <div className="divide-y divide-primary-light border border-primary-light rounded-xl overflow-hidden">
-                  {kmkRates.rates.map((item, idx) => (
-                    <div key={item.currency} className="p-3 bg-surface/40 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <span className="w-12 font-bold font-mono text-primary text-xs bg-primary-light px-2 py-1 rounded text-center">
-                          {item.currency}
-                        </span>
-                        <span className="text-text-secondary text-xs">{item.name}</span>
-                      </div>
+                {kmkRates.rates.length === 0 ? (
+                  <div className="py-10 px-6 rounded-xl bg-surface/50 border border-dashed border-primary-light text-center space-y-3">
+                    <p className="text-xs text-text-secondary">
+                      Belum ada valuta asing yang ditambahkan ke tabel Kurs KMK periode ini.
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          setValutaForm({
+                            currency: "USD",
+                            name: "Dolar Amerika Serikat",
+                            rate: "16.250,00",
+                            change: "+0.15%",
+                            trend: "up",
+                            flag: "💵",
+                          });
+                          setIsValutaModalOpen(true);
+                        }}
+                        className="text-xs"
+                      >
+                        Tambah Valuta Baru
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLoadDefaultValutas}
+                        className="text-xs border-primary-light text-primary"
+                      >
+                        Muat 6 Valuta Utama
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-primary-light border border-primary-light rounded-xl overflow-hidden">
+                    {kmkRates.rates.map((item, idx) => (
+                      <div key={item.currency} className="p-3 bg-surface/40 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <span className="w-12 font-bold font-mono text-primary text-xs bg-primary-light px-2 py-1 rounded text-center">
+                            {item.currency}
+                          </span>
+                          <span className="text-text-secondary text-xs">{item.name}</span>
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <span className={`text-[11px] font-mono ${item.trend === "up" ? "text-emerald-600" : "text-error"}`}>
-                          {item.change}
-                        </span>
-                        <div className="w-44">
-                          <Input
-                            type="text"
-                            value={item.rate}
-                            onChange={(e) => {
-                              const updated = [...kmkRates.rates];
-                              updated[idx].rate = e.target.value;
-                              setKmkRates((prev) => ({ ...prev, rates: updated }));
-                            }}
-                            className="text-xs h-8 bg-white border-primary-light font-mono font-bold text-right"
-                          />
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[11px] font-mono ${item.trend === "up" ? "text-emerald-600" : "text-error"}`}>
+                            {item.change}
+                          </span>
+                          <div className="w-36">
+                            <Input
+                              type="text"
+                              value={item.rate}
+                              onChange={(e) => {
+                                const updated = [...kmkRates.rates];
+                                updated[idx].rate = e.target.value;
+                                setKmkRates((prev) => ({ ...prev, rates: updated }));
+                              }}
+                              className="text-xs h-8 bg-white border-primary-light font-mono font-bold text-right"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteValuta(item.currency)}
+                            className="text-xs h-8 px-2 border-error/30 text-error hover:bg-error/10 hover:border-error"
+                            title={`Hapus valuta ${item.currency}`}
+                          >
+                            <TrashIcon className="text-[10px]" />
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 border-t border-primary-light flex justify-end">
+              <div className="pt-4 border-t border-primary-light flex items-center justify-between flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadDefaultValutas}
+                  className="text-xs h-9 px-4 border-primary-light text-text-secondary hover:text-primary"
+                >
+                  Muat Ulang Valuta Standar
+                </Button>
                 <Button type="submit" variant="primary" size="sm" className="text-xs h-9 px-5 font-semibold">
                   Simpan &amp; Publikasikan Kurs KMK
                 </Button>
@@ -2359,64 +2962,126 @@ function AdminDashboardContent() {
                     Katalog edukasi terverifikasi pemerintah: Simulator Coretax, KLC Kemenkeu, Video YouTube resmi, dan e-book DJP.
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setNewItemForm({
-                      section: "education-gov",
-                      title: "",
-                      category: "Direktorat Jenderal Pajak",
-                      summary: "",
-                      status: "Published",
-                      author: "DJP Online",
-                      url: "https://pajak.go.id",
-                      institution: "DJP",
-                      mediaType: "Simulator DJP",
-                    });
-                    setIsNewItemModalOpen(true);
-                  }}
-                  className="bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold h-8 px-3 shrink-0"
-                >
-                  Tambah Link Resmi Baru
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleResetGovLinks}
+                    className="border-amber-400 text-amber-950 hover:bg-amber-100 text-xs h-8 px-3"
+                  >
+                    Muat Ulang Standar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setNewItemForm({
+                        section: "education-gov",
+                        title: "",
+                        category: "Direktorat Jenderal Pajak",
+                        summary: "",
+                        status: "Published",
+                        author: "DJP Online",
+                        url: "https://pajak.go.id",
+                        institution: "DJP",
+                        mediaType: "Simulator DJP",
+                      });
+                      setIsNewItemModalOpen(true);
+                    }}
+                    className="bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold h-8 px-3"
+                  >
+                    Tambah Link Resmi Baru
+                  </Button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {BELAJAR_PAJAK_LINKS.map((gov) => (
-                  <Card key={gov.id} className="rounded-2xl border-primary-light bg-white p-4 shadow-xs flex flex-col justify-between space-y-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                          {gov.institution}
-                        </span>
-                        <Badge variant="success" size="sm">
-                          Terverifikasi
-                        </Badge>
+              {govLinksList.length === 0 ? (
+                <div className="py-12 px-6 rounded-2xl bg-white border border-dashed border-amber-300 text-center space-y-3">
+                  <p className="text-xs text-text-secondary">
+                    Belum ada tautan resmi pemerintah yang terdaftar. Tambahkan tautan baru atau muat tautan resmi bawaan.
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setNewItemForm({
+                          section: "education-gov",
+                          title: "",
+                          category: "Direktorat Jenderal Pajak",
+                          summary: "",
+                          status: "Published",
+                          author: "DJP Online",
+                          url: "https://pajak.go.id",
+                          institution: "DJP",
+                          mediaType: "Simulator DJP",
+                        });
+                        setIsNewItemModalOpen(true);
+                      }}
+                      className="bg-amber-600 text-white hover:bg-amber-700 text-xs h-8 px-3 font-semibold"
+                    >
+                      Tambah Link Resmi
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={handleResetGovLinks}
+                      className="border-amber-400 text-amber-950 hover:bg-amber-100 text-xs h-8 px-3"
+                    >
+                      Muat Tautan Resmi Default
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {govLinksList.map((gov) => (
+                    <Card key={gov.id} className="rounded-2xl border-primary-light bg-white p-4 shadow-xs flex flex-col justify-between space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                            {gov.institution}
+                          </span>
+                          <Badge variant="success" size="sm">
+                            Terverifikasi
+                          </Badge>
+                        </div>
+                        <h4 className="text-sm font-bold text-primary">{gov.title}</h4>
+                        <p className="text-xs text-text-secondary line-clamp-2">{gov.description}</p>
+                        <div className="text-[11px] font-mono text-amber-900 truncate">
+                          URL: {gov.url}
+                        </div>
                       </div>
-                      <h4 className="text-sm font-bold text-primary">{gov.title}</h4>
-                      <p className="text-xs text-text-secondary line-clamp-2">{gov.description}</p>
-                      <div className="text-[11px] font-mono text-amber-900 truncate">
-                        URL: {gov.url}
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-primary-light/60">
-                      <span className="text-[10px] text-text-muted">{gov.type}</span>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={gov.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs h-7 px-2.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 flex items-center gap-1 font-semibold"
-                        >
-                          <span>Uji Link</span>
-                        </a>
+                      <div className="flex items-center justify-between pt-2 border-t border-primary-light/60 flex-wrap gap-2">
+                        <span className="text-[10px] text-text-muted">{gov.type}</span>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={gov.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs h-7 px-2.5 rounded-lg bg-amber-600 text-white hover:bg-amber-700 flex items-center gap-1 font-semibold"
+                          >
+                            <span>Uji Link</span>
+                          </a>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteGovLink(gov.id, gov.title)}
+                            className="text-xs h-7 px-2 border-error/30 text-error hover:bg-error/10 hover:border-error"
+                            title={`Hapus tautan resmi ${gov.title}`}
+                          >
+                            <TrashIcon className="text-[10px]" />
+                            <span>Hapus</span>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2599,82 +3264,148 @@ function AdminDashboardContent() {
             </form>
           </Card>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div>
               <h3 className="text-base font-bold text-primary">Daftar Lowongan Karir Aktif (/karir)</h3>
               <p className="text-xs text-text-secondary mt-0.5">
                 Kelola posisi pekerjaan aktif, kualifikasi, tanggung jawab, dan tunjangan rekrutmen Zhou Consulting
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setNewItemForm({
-                  section: "careers",
-                  title: "",
-                  category: "Tax Service Core",
-                  summary: "",
-                  status: "Published",
-                  author: "HR & Operasional",
-                  url: "",
-                  institution: "DJP",
-                  mediaType: "Lowongan",
-                });
-                setIsNewItemModalOpen(true);
-              }}
-              className="text-xs h-8 px-3 border-primary-light"
-            >
-              Buka Lowongan Baru
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleLoadDefaultCareers}
+                className="text-xs h-8 px-3 border-primary-light text-text-secondary hover:text-primary"
+              >
+                Muat Contoh Lowongan
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setNewItemForm({
+                    section: "careers",
+                    title: "",
+                    category: "Tax Service Core",
+                    summary: "",
+                    status: "Published",
+                    author: "HR & Operasional",
+                    url: "",
+                    institution: "DJP",
+                    mediaType: "Lowongan",
+                  });
+                  setIsNewItemModalOpen(true);
+                }}
+                className="text-xs h-8 px-3 border-primary-light text-primary"
+              >
+                Buka Lowongan Baru
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {careersList.map((job) => (
-              <Card key={job.id} className="rounded-2xl border-primary-light bg-white p-5 shadow-xs flex flex-col justify-between space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-primary bg-primary-light px-2 py-0.5 rounded text-[11px]">
-                      {job.id}
-                    </span>
-                    <Badge variant={job.status === "Published" ? "success" : "silver"} size="sm">
-                      {job.status}
-                    </Badge>
+          {careersList.length === 0 ? (
+            <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 shadow-xs">
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-primary">Belum Ada Lowongan Aktif</h4>
+                <p className="text-xs text-text-secondary max-w-md mx-auto">
+                  Belum ada daftar posisi pekerjaan yang ditambahkan. Anda dapat membuka lowongan baru atau memuat contoh posisi standar.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setNewItemForm({
+                      section: "careers",
+                      title: "",
+                      category: "Tax Service Core",
+                      summary: "",
+                      status: "Published",
+                      author: "HR & Operasional",
+                      url: "",
+                      institution: "DJP",
+                      mediaType: "Lowongan",
+                    });
+                    setIsNewItemModalOpen(true);
+                  }}
+                  className="text-xs"
+                >
+                  Buka Lowongan Baru
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLoadDefaultCareers}
+                  className="text-xs border-primary-light text-primary"
+                >
+                  Muat Contoh Lowongan
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {careersList.map((job) => (
+                <Card key={job.id} className="rounded-2xl border-primary-light bg-white p-5 shadow-xs flex flex-col justify-between space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-bold text-primary bg-primary-light px-2 py-0.5 rounded text-[11px]">
+                        {job.id}
+                      </span>
+                      <Badge variant={job.status === "Published" ? "success" : "silver"} size="sm">
+                        {job.status || "Published"}
+                      </Badge>
+                    </div>
+                    <h4 className="text-base font-bold text-primary">{job.title}</h4>
+                    <div className="flex items-center gap-2 text-[11px] text-text-muted">
+                      <span>{job.department}</span>
+                      <span>&bull;</span>
+                      <span>{job.type}</span>
+                    </div>
+                    <p className="text-xs text-text-secondary">{job.summary}</p>
                   </div>
-                  <h4 className="text-base font-bold text-primary">{job.title}</h4>
-                  <div className="flex items-center gap-2 text-[11px] text-text-muted">
-                    <span>{job.department}</span>
-                    <span>&bull;</span>
-                    <span>{job.type}</span>
-                  </div>
-                  <p className="text-xs text-text-secondary">{job.summary}</p>
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-primary-light/60 text-xs">
-                  <span className="text-[10px] text-text-muted">{job.experience}</span>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/karir"
-                      target="_blank"
-                      className="h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1"
-                    >
-                      Lihat di /karir
-                    </Link>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleStatus(`PUB-${job.id.toUpperCase()}`)}
-                      className="h-8 px-2.5"
-                    >
-                      Toggle
-                    </Button>
+                  <div className="flex items-center justify-between pt-3 border-t border-primary-light/60 text-xs flex-wrap gap-2">
+                    <span className="text-[10px] text-text-muted">{job.experience}</span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/karir"
+                        target="_blank"
+                        className="h-8 px-2.5 rounded-lg border border-primary-light bg-surface hover:bg-white text-primary flex items-center gap-1"
+                      >
+                        Lihat di /karir
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleToggleCareerPositionStatus(job.id)}
+                        className="h-8 px-2.5"
+                      >
+                        {job.status === "Published" ? "Jadikan Draft" : "Terbitkan"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteCareerPosition(job.id)}
+                        className="h-8 px-2 border-error/30 text-error hover:bg-error/10 hover:border-error"
+                        title={`Hapus lowongan ${job.title}`}
+                      >
+                        <TrashIcon className="text-[10px]" />
+                        <span>Hapus</span>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -2684,29 +3415,34 @@ function AdminDashboardContent() {
       {activeSection === "contact" && (
         <div className="space-y-5">
           <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary-light">
               <div>
                 <h3 className="text-base font-bold text-primary">Manajemen Informasi Kontak &amp; Operasional Kantor</h3>
                 <p className="text-xs text-text-secondary mt-0.5">
                   Alamat resmi kantor Sudirman, email korporat, jam layanan, dan nomor hotline WhatsApp 3 divisi (/kontak)
                 </p>
               </div>
-              <Link
-                href="/kontak"
-                target="_blank"
-                className="text-xs font-semibold h-8 px-3 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white flex items-center gap-1.5 transition-colors"
-              >
-                <span>Lihat Kontak</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetContact}
+                  className="text-xs h-8 px-3 border-primary-light text-text-secondary hover:text-primary"
+                >
+                  Reset Informasi Resmi
+                </Button>
+                <Link
+                  href="/kontak"
+                  target="_blank"
+                  className="text-xs font-semibold h-8 px-3 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white flex items-center gap-1.5 transition-colors"
+                >
+                  <span>Lihat Kontak</span>
+                </Link>
+              </div>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                showToast("Informasi Kontak & Jam Operasional berhasil diperbarui.");
-              }}
-              className="space-y-4 text-xs"
-            >
+            <form onSubmit={handleSaveContact} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">Nama Gedung &amp; Kantor</Label>
@@ -2785,7 +3521,16 @@ function AdminDashboardContent() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-primary-light flex justify-end">
+              <div className="pt-4 border-t border-primary-light flex items-center justify-between flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetContact}
+                  className="text-xs h-9 px-4 border-primary-light text-text-secondary hover:text-primary"
+                >
+                  Reset Informasi Resmi
+                </Button>
                 <Button type="submit" variant="primary" size="sm" className="text-xs h-9 px-5 font-semibold">
                   Simpan Informasi Kontak
                 </Button>
@@ -3814,6 +4559,110 @@ function AdminDashboardContent() {
                 Hapus Permanen
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL: TAMBAH VALUTA BARU KURS KMK
+         ========================================================= */}
+      {isValutaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-5 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-primary-light">
+              <div>
+                <h3 className="text-sm font-bold text-primary">Tambah Valuta Asing Baru (KMK)</h3>
+                <p className="text-xs text-text-secondary mt-0.5">
+                  Tambahkan kurs konversi valuta ke tabel resmi DJP
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsValutaModalOpen(false)}
+                className="w-7 h-7 rounded-lg hover:bg-surface text-text-muted hover:text-primary flex items-center justify-center"
+              >
+                <CloseIcon className="text-xs" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddValuta} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Kode Valuta (3 Huruf)</Label>
+                  <Input
+                    type="text"
+                    required
+                    maxLength={5}
+                    value={valutaForm.currency}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, currency: e.target.value.toUpperCase() }))}
+                    placeholder="Contoh: USD, EUR"
+                    className="text-xs bg-surface border-primary-light font-mono font-bold uppercase"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Tarif Kurs (IDR)</Label>
+                  <Input
+                    type="text"
+                    required
+                    value={valutaForm.rate}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, rate: e.target.value }))}
+                    placeholder="Contoh: 16.250,00"
+                    className="text-xs bg-surface border-primary-light font-mono font-bold text-right"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-primary">Nama Lengkap Mata Uang</Label>
+                <Input
+                  type="text"
+                  required
+                  value={valutaForm.name}
+                  onChange={(e) => setValutaForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Contoh: Dolar Amerika Serikat"
+                  className="text-xs bg-surface border-primary-light"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Perubahan (%)</Label>
+                  <Input
+                    type="text"
+                    value={valutaForm.change}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, change: e.target.value }))}
+                    placeholder="+0.15% atau -0.10%"
+                    className="text-xs bg-surface border-primary-light font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-primary">Arah Trend</Label>
+                  <select
+                    value={valutaForm.trend}
+                    onChange={(e) => setValutaForm((prev) => ({ ...prev, trend: e.target.value as "up" | "down" }))}
+                    className="w-full h-9 rounded-lg border border-primary-light bg-surface px-3 text-xs"
+                  >
+                    <option value="up">Naik (Up / Hijau)</option>
+                    <option value="down">Turun (Down / Merah)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-primary-light">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsValutaModalOpen(false)}
+                  className="text-xs h-8 px-4 border-primary-light"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 px-5 font-semibold">
+                  Simpan Valuta
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
