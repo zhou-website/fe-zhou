@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import {
   UserIcon,
@@ -400,10 +401,10 @@ export default function SuperadminUsersPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Select
             value={divisionFilter}
             onChange={(e) => setDivisionFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="text-xs h-9 min-w-[140px]"
           >
             <option value="ALL">Semua Divisi</option>
             <option value="Tax Service Core">Tax Service Core</option>
@@ -411,27 +412,27 @@ export default function SuperadminUsersPage() {
             <option value="Business Financial Consulting">Business Financial Consulting</option>
             <option value="Legal Compliance">Legal Compliance</option>
             <option value="IT & Operasional">IT &amp; Operasional</option>
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="text-xs h-9 min-w-[120px]"
           >
             <option value="ALL">Semua Status</option>
             <option value="Aktif">Aktif</option>
             <option value="Nonaktif">Nonaktif</option>
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="text-xs h-9 min-w-[120px]"
           >
             <option value="ALL">Semua Peran</option>
             <option value="Admin">Admin</option>
             <option value="Superadmin">Superadmin</option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -673,7 +674,7 @@ export default function SuperadminUsersPage() {
                   <Label className="text-xs font-semibold text-primary">
                     Divisi Layanan Penugasan <span className="text-error">*</span>
                   </Label>
-                  <select
+                  <Select
                     value={newStaffForm.division}
                     onChange={(e) =>
                       setNewStaffForm((prev) => ({
@@ -681,14 +682,14 @@ export default function SuperadminUsersPage() {
                         division: e.target.value as StaffAdmin["division"],
                       }))
                     }
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                    className="w-full text-xs h-9 font-medium"
                   >
                     <option value="Tax Service Core">Tax Service Core</option>
                     <option value="Accounting Service">Accounting Service</option>
                     <option value="Business Financial Consulting">Business Financial Consulting</option>
                     <option value="Legal Compliance">Legal Compliance</option>
                     <option value="IT & Operasional">IT &amp; Operasional</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -697,16 +698,16 @@ export default function SuperadminUsersPage() {
                   <Label className="text-xs font-semibold text-primary">
                     Peran / Hak Akses (RBAC) <span className="text-error">*</span>
                   </Label>
-                  <select
+                  <Select
                     value={newStaffForm.role}
                     onChange={(e) =>
                       setNewStaffForm((prev) => ({ ...prev, role: e.target.value }))
                     }
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                    className="w-full text-xs h-9 font-medium"
                   >
                     <option value="admin">Admin</option>
                     <option value="superadmin">Superadmin</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
@@ -814,7 +815,7 @@ export default function SuperadminUsersPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">Peran / Hak Akses (RBAC)</Label>
-                  <select
+                  <Select
                     value={editingStaff.role.toLowerCase().includes("superadmin") ? "superadmin" : "admin"}
                     onChange={(e) =>
                       setEditingStaff({
@@ -822,16 +823,16 @@ export default function SuperadminUsersPage() {
                         role: e.target.value === "superadmin" ? "Superadmin" : "Admin",
                       })
                     }
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                    className="w-full text-xs h-9 font-medium"
                   >
                     <option value="admin">Admin</option>
                     <option value="superadmin">Superadmin</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">Divisi</Label>
-                  <select
+                  <Select
                     value={editingStaff.division}
                     onChange={(e) =>
                       setEditingStaff({
@@ -839,14 +840,14 @@ export default function SuperadminUsersPage() {
                         division: e.target.value as StaffAdmin["division"],
                       })
                     }
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+                    className="w-full text-xs h-9 font-medium"
                   >
                     <option value="Tax Service Core">Tax Service Core</option>
                     <option value="Accounting Service">Accounting Service</option>
                     <option value="Business Financial Consulting">Business Financial Consulting</option>
                     <option value="Legal Compliance">Legal Compliance</option>
                     <option value="IT & Operasional">IT &amp; Operasional</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 

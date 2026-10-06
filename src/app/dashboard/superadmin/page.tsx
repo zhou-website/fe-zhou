@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import {
   CloseIcon,
@@ -599,10 +600,10 @@ export default function SuperadminDashboard() {
             <div className="p-4 rounded-xl bg-white border border-primary-light shadow-sm flex flex-col sm:flex-row items-center gap-3 text-xs">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <span className="font-semibold text-text-secondary whitespace-nowrap">Admin:</span>
-                <select
+                <Select
                   value={filterAdmin}
                   onChange={(e) => setFilterAdmin(e.target.value)}
-                  className="h-9 px-3 rounded-md border border-primary-light bg-surface text-text text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="h-9 min-w-[140px] text-xs"
                 >
                   <option value="ALL">Semua Admin</option>
                   {admins.map((a) => (
@@ -610,7 +611,7 @@ export default function SuperadminDashboard() {
                       {a.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="relative flex-1 w-full">
@@ -751,30 +752,30 @@ export default function SuperadminDashboard() {
 
               <div className="space-y-1">
                 <Label htmlFor="admin-role">Peran / Hak Akses (RBAC)</Label>
-                <select
+                <Select
                   id="admin-role"
                   value={newAdmin.role}
                   onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
-                  className="w-full h-10 px-3 rounded-md border border-primary-light bg-white text-text text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full h-10 text-xs"
                 >
                   <option value="admin">Admin</option>
                   <option value="superadmin">Superadmin</option>
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor="admin-spec">Spesialisasi Penugasan</Label>
-                <select
+                <Select
                   id="admin-spec"
                   value={newAdmin.specialty}
                   onChange={(e) => setNewAdmin({ ...newAdmin, specialty: e.target.value })}
-                  className="w-full h-10 px-3 rounded-md border border-primary-light bg-white text-text text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full h-10 text-xs"
                 >
                   <option value="Tax Service Core">Tax Service Core (Coretax DJP)</option>
                   <option value="Accounting Service">Accounting Service (SAK)</option>
                   <option value="Business Financial Consulting">Business &amp; Financial Consulting</option>
                   <option value="Legal & Corporate Compliance">Legal &amp; Corporate Compliance</option>
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">

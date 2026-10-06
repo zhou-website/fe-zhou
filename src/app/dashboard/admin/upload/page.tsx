@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import {
   ShieldTaxIcon,
@@ -355,28 +356,28 @@ export default function AdminUploadBillingPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="w-auto min-w-[160px]"
           >
             <option value="ALL">Semua Kategori</option>
             <option value="Tax Service Core">Tax Service Core</option>
             <option value="Accounting Service">Accounting Service</option>
             <option value="Business Financial Consulting">Business Financial Consulting</option>
             <option value="Legal">Legal</option>
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={billingFilter}
             onChange={(e) => setBillingFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="w-auto min-w-[170px]"
           >
             <option value="ALL">Semua Status Billing</option>
             <option value="Lunas">Lunas</option>
             <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
             <option value="Terkirim">Terkirim</option>
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -543,7 +544,7 @@ export default function AdminUploadBillingPage() {
                   <Label className="text-xs font-semibold text-primary">
                     Pilih Tiket Penugasan Selesai <span className="text-error">*</span>
                   </Label>
-                  <select
+                  <Select
                     value={uploadForm.ticketId}
                     onChange={(e) => {
                       const tId = e.target.value;
@@ -555,7 +556,7 @@ export default function AdminUploadBillingPage() {
                         clientNpwp: "-",
                       }));
                     }}
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none font-mono"
+                    className="mt-1"
                   >
                     <option value="">-- Pilih Tiket Penugasan --</option>
                     {availableTickets.length > 0 ? (
@@ -567,7 +568,7 @@ export default function AdminUploadBillingPage() {
                     ) : (
                       <option value="" disabled>Belum ada tiket penugasan tersedia</option>
                     )}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
@@ -868,7 +869,7 @@ export default function AdminUploadBillingPage() {
                   <Label className="text-xs font-semibold text-primary">
                     Pilih Tiket Penugasan <span className="text-error">*</span>
                   </Label>
-                  <select
+                  <Select
                     value={uploadForm.ticketId}
                     onChange={(e) => {
                       const tId = e.target.value;
@@ -880,7 +881,7 @@ export default function AdminUploadBillingPage() {
                         clientNpwp: "-",
                       }));
                     }}
-                    className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none font-mono"
+                    className="w-full text-xs h-9 font-medium font-mono"
                   >
                     <option value="">-- Pilih Tiket Penugasan --</option>
                     {availableTickets.length > 0 ? (
@@ -892,7 +893,7 @@ export default function AdminUploadBillingPage() {
                     ) : (
                       <option value="TK-2026-001">TK-2026-001 (Tiket Konsultasi Klien)</option>
                     )}
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">

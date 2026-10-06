@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import {
   Card,
   CardHeader,
@@ -641,7 +642,7 @@ export default function CareerPage() {
                   <Label htmlFor="modal-posisi-dilamar" className="text-xs font-bold text-primary">
                     Posisi yang Dilamar <span className="text-error">*</span>
                   </Label>
-                  <select
+                  <Select
                     id="modal-posisi-dilamar"
                     value={selectedPositionId}
                     onChange={(e) => {
@@ -650,7 +651,7 @@ export default function CareerPage() {
                       const found = CAREER_JOBS.find((j) => j.id === posId) || null;
                       setSelectedJobToApply(found);
                     }}
-                    className="w-full rounded-md border border-primary-light bg-white px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full text-xs"
                   >
                     <option value="">-- Pilih Posisi Lowongan --</option>
                     {CAREER_JOBS.map((job) => (
@@ -661,7 +662,7 @@ export default function CareerPage() {
                     <option value="general-talent-pool">
                       General Application / Database Talenta Terbuka
                     </option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* 2 Kolom: Nama Lengkap & Email */}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import {
   CheckCircleIcon,
   SearchIcon,
@@ -1358,21 +1359,21 @@ function AdminCMSPageContent() {
               {/* Section Selector */}
               <div>
                 <Label className="text-xs font-semibold text-primary">Modul Target</Label>
-                <select
+                <Select
                   value={modalSection}
                   onChange={(e) =>
                     setModalSection(e.target.value as "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs")
                   }
                   disabled={Boolean(editingFaq)}
-                  className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1 focus:bg-white"
+                  className="mt-1"
                 >
-                  <option value="edukasi">1. Materi Edukasi</option>
-                  <option value="services">2. Katalog Layanan</option>
-                  <option value="regulasi">3. Regulasi DJP</option>
-                  <option value="kurs">4. Kurs Pajak KMK</option>
-                  <option value="karir">5. Lowongan Karir</option>
-                  <option value="faqs">6. FAQ Chatbot</option>
-                </select>
+                  <option value="edukasi">Materi Edukasi</option>
+                  <option value="services">Katalog Layanan</option>
+                  <option value="regulasi">Regulasi DJP</option>
+                  <option value="kurs">Kurs Pajak KMK</option>
+                  <option value="karir">Lowongan Karir</option>
+                  <option value="faqs">FAQ Chatbot</option>
+                </Select>
               </div>
 
               {/* DYNAMIC FORM 1: EDUKASI */}
@@ -1403,16 +1404,16 @@ function AdminCMSPageContent() {
                     </div>
                     <div>
                       <Label className="font-semibold text-primary">Tipe Konten *</Label>
-                      <select
+                      <Select
                         value={eduForm.content_type}
                         onChange={(e) =>
                           setEduForm((prev) => ({ ...prev, content_type: e.target.value as "ARTICLE" | "GUIDE" }))
                         }
-                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
+                        className="mt-1"
                       >
                         <option value="ARTICLE">Artikel Wawasan</option>
                         <option value="GUIDE">Buku Panduan / Guide</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
                   <div>
@@ -1506,17 +1507,17 @@ function AdminCMSPageContent() {
                   </div>
                   <div>
                     <Label className="font-semibold text-primary">Tipe Regulasi *</Label>
-                    <select
+                    <Select
                       value={regForm.regulation_type}
                       onChange={(e) => setRegForm((prev) => ({ ...prev, regulation_type: e.target.value }))}
-                      className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
+                      className="mt-1"
                     >
                       <option value="PMK">Peraturan Menteri Keuangan (PMK)</option>
                       <option value="PER">Peraturan Direktur Jenderal Pajak (PER)</option>
                       <option value="PP">Peraturan Pemerintah (PP)</option>
                       <option value="UU">Undang-Undang (UU)</option>
                       <option value="SE">Surat Edaran Dirjen Pajak (SE)</option>
-                    </select>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -1621,17 +1622,17 @@ function AdminCMSPageContent() {
                     </div>
                     <div>
                       <Label className="font-semibold text-primary">Tingkat / Level *</Label>
-                      <select
+                      <Select
                         value={careerForm.level}
                         onChange={(e) => setCareerForm((prev) => ({ ...prev, level: e.target.value }))}
-                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
+                        className="mt-1"
                       >
                         <option value="Internship">Internship</option>
                         <option value="Junior Associate">Junior Associate</option>
                         <option value="Associate">Associate</option>
                         <option value="Senior Associate">Senior Associate</option>
                         <option value="Manager">Manager</option>
-                      </select>
+                      </Select>
                     </div>
                   </div>
                   <div>

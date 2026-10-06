@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import {
   CheckCircleIcon,
   DocumentIcon,
@@ -232,16 +233,16 @@ function AdminDashboardContent() {
                 className="pl-8 text-xs h-9 w-48 sm:w-64 bg-surface border-primary-light"
               />
             </div>
-            <select
+            <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+              className="text-xs h-9 min-w-[130px]"
             >
               <option value="ALL">Semua Status</option>
               <option value="IN_PROGRESS">Sedang Berjalan</option>
               <option value="COMPLETED">Selesai</option>
               <option value="PENDING">Menunggu</option>
-            </select>
+            </Select>
           </div>
         </div>
 

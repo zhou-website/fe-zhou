@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import {
   Card,
   CardTitle,
@@ -892,12 +893,12 @@ export default function ClientProfileSecurityPage() {
                     <label className="font-bold text-primary">
                       Bentuk Badan Usaha <span className="text-error">*</span>
                     </label>
-                    <select
+                    <Select
                       value={modalProfile.entityType}
                       onChange={(e) =>
                         setModalProfile((prev) => ({ ...prev, entityType: e.target.value }))
                       }
-                      className="w-full h-9 rounded-lg border border-primary-light bg-surface px-3 text-xs text-text-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                      className="w-full h-9 text-xs"
                     >
                       <option value="">-- Pilih Bentuk Badan Usaha --</option>
                       <option value="Perseroan Terbatas (PT)">Perseroan Terbatas (PT)</option>
@@ -906,7 +907,7 @@ export default function ClientProfileSecurityPage() {
                       <option value="Perorangan (Usaha Dagang)">Perorangan (Usaha Dagang)</option>
                       <option value="Yayasan / Lembaga Nirlaba">Yayasan / Lembaga Nirlaba</option>
                       <option value="Koperasi">Koperasi</option>
-                    </select>
+                    </Select>
                   </div>
 
                   {/* NPWP 16 Digit */}
