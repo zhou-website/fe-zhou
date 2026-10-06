@@ -118,41 +118,18 @@ function AdminDashboardContent() {
       )}
 
       {/* Header & Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary-light">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
-            <span>Portal Staf Konsultan</span>
-            <span>/</span>
-            <span className="text-primary font-bold">Dashboard Operasional</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Ringkasan Operasional &amp; Perikatan Klien
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1">
-            Pantau statistik konsultasi aktif, progres penugasan tim fiskal, dan koordinasi dokumen perikatan.
-          </p>
+      <div className="pb-4 border-b border-primary-light">
+        <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
+          <span>Portal Staf Konsultan</span>
+          <span>/</span>
+          <span className="text-primary font-bold">Dashboard Operasional</span>
         </div>
-
-        <div className="flex items-center gap-2.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={isLoading}
-            className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white"
-          >
-            {isLoading ? "Memuat..." : "Segarkan Data"}
-          </Button>
-
-          <Link
-            href="/dashboard/admin/cms"
-            className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-          >
-            <EditIcon className="text-xs" />
-            <span>Pusat Manajemen CMS</span>
-          </Link>
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
+          Ringkasan Operasional &amp; Perikatan Klien
+        </h1>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">
+          Pantau statistik konsultasi aktif, progres penugasan tim fiskal, dan koordinasi dokumen perikatan.
+        </p>
       </div>
 
       {/* METRIC CARDS */}
