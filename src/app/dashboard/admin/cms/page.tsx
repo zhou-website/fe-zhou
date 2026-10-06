@@ -41,11 +41,12 @@ export type CMSTab =
   | "kontak";
 
 export interface UnifiedCMSItem {
-  id: string; // e.g. "EDU-1", "SVC-2"
+  id: string; // e.g. "EDU-1", "SVC-2", "REG-3", "TAX-4", "CAR-5", "APP-6", "FAQ-7", "CFG-HERO", "CFG-CONTACT"
   numericId: number;
-  section: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs";
+  section: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "applications" | "faqs" | "kontak";
   title: string;
-  category: string;
+  category: string; // "Edukasi", "Layanan", "Regulasi", "Kurs KMK", "Karir", "Lamaran Masuk", "FAQ Chatbot", "Profil & Kontak"
+  subcategory: string; // e.g. "Coretax DJP", "TAX", "PMK", "USD", "Senior Associate", "Layanan Perpajakan", etc.
   summary: string;
   status: "Published" | "Draft";
   updatedAt: string;
@@ -62,32 +63,42 @@ const DEFAULT_KURS_LIST = [
   { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "🇨🇳" },
 ];
 
+const TAB_TO_CATEGORY: Record<string, string> = {
+  all: "ALL",
+  edukasi: "Edukasi",
+  services: "Layanan",
+  regulasi: "Regulasi",
+  kurs: "Kurs KMK",
+  karir: "Karir",
+  applications: "Lamaran Masuk",
+  faqs: "FAQ Chatbot",
+  kontak: "Profil & Kontak",
+};
+
 function AdminCMSPageContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as CMSTab;
-  const [activeTab, setActiveTab] = useState<CMSTab>(
-    tabParam && ["all", "edukasi", "services", "regulasi", "kurs", "karir", "applications", "faqs", "kontak"].includes(tabParam)
-      ? tabParam
-      : "all"
-  );
-
-  useEffect(() => {
-    if (tabParam && tabParam !== activeTab) {
-      if (["all", "edukasi", "services", "regulasi", "kurs", "karir", "applications", "faqs", "kontak"].includes(tabParam)) {
-        setActiveTab(tabParam);
-      }
-    }
-  }, [tabParam, activeTab]);
 
   const [cmsItems, setCmsItems] = useState<UnifiedCMSItem[]>([]);
-  const [applications, setApplications] = useState<JobApplicationItem[]>([]);
-  const [faqs, setFaqs] = useState<ChatbotFaqItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Profile & Contact Settings Form State (Exact backend schema)
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    tabParam && TAB_TO_CATEGORY[tabParam] ? TAB_TO_CATEGORY[tabParam] : "ALL"
+  );
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  useEffect(() => {
+    if (tabParam && TAB_TO_CATEGORY[tabParam]) {
+      setCategoryFilter(TAB_TO_CATEGORY[tabParam]);
+      setSubcategoryFilter("ALL");
+    }
+  }, [tabParam]);
+
+  // Profile & Contact Settings Form State
   const [heroForm, setHeroForm] = useState({
     headline: "Solusi Terintegrasi Perpajakan, Akuntansi & Legalitas Usaha",
     subheadline: "Didukung tim konsultan bersertifikasi BKP dan akuntan profesional untuk kepatuhan fiskal bisnis Anda.",
@@ -105,8 +116,11 @@ function AdminCMSPageContent() {
   const [kursRates, setKursRates] = useState(DEFAULT_KURS_LIST);
   const [kmkNumber, setKmkNumber] = useState("KMK No. 44/KM.10/2026");
 
-  // Modals & Editing states
+  // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isHeroModalOpen, setIsHeroModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isBatchKursModalOpen, setIsBatchKursModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<ChatbotFaqItem | null>(null);
   const [modalSection, setModalSection] = useState<"edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs">("edukasi");
 
@@ -157,7 +171,7 @@ function AdminCMSPageContent() {
 
   // 6. FAQs
   const [faqForm, setFaqForm] = useState({
-    category: "Perpajakan",
+    category: "Layanan Perpajakan",
     question: "",
     answer_template: "",
   });
@@ -167,7 +181,7 @@ function AdminCMSPageContent() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Load all backend resources
+  // Load all backend resources into ONE unified list
   const loadAllCMS = async () => {
     setIsLoading(true);
     try {
@@ -203,7 +217,8 @@ function AdminCMSPageContent() {
             numericId: e.id,
             section: "edukasi",
             title: e.title,
-            category: e.category,
+            category: "Edukasi",
+            subcategory: e.category || "Coretax DJP",
             summary: e.body ? e.body.slice(0, 140) + "..." : "Artikel edukasi perpajakan",
             status: "Published",
             updatedAt: e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID") : "Terbaru",
@@ -220,7 +235,8 @@ function AdminCMSPageContent() {
             numericId: s.id,
             section: "services",
             title: s.service_name,
-            category: s.category || "Layanan",
+            category: "Layanan",
+            subcategory: s.category || "Layanan Bisnis",
             summary: s.description || "Layanan konsultasi resmi",
             status: s.is_active ? "Published" : "Draft",
             updatedAt: "Aktif",
@@ -237,7 +253,8 @@ function AdminCMSPageContent() {
             numericId: r.id,
             section: "regulasi",
             title: r.title,
-            category: r.regulation_type,
+            category: "Regulasi",
+            subcategory: r.regulation_type || "PMK",
             summary: `Berkas: ${r.file_path} (${r.file_size || "PDF"})`,
             status: "Published",
             updatedAt: r.created_at ? new Date(r.created_at).toLocaleDateString("id-ID") : "Terbaru",
@@ -255,6 +272,7 @@ function AdminCMSPageContent() {
             section: "kurs",
             title: `Kurs Valas ${t.currency_code}: Rp ${Number(t.rate_value).toLocaleString("id-ID")}`,
             category: "Kurs KMK",
+            subcategory: t.currency_code,
             summary: `Berlaku: ${t.effective_start_date ? new Date(t.effective_start_date).toLocaleDateString("id-ID") : "-"} s/d ${t.effective_end_date ? new Date(t.effective_end_date).toLocaleDateString("id-ID") : "Seterusnya"}`,
             status: "Published",
             updatedAt: "KMK Aktif",
@@ -271,7 +289,8 @@ function AdminCMSPageContent() {
             numericId: c.id,
             section: "karir",
             title: c.position_title,
-            category: `${c.level} - ${c.location}`,
+            category: "Karir",
+            subcategory: `${c.level} (${c.location})`,
             summary: c.description || "Lowongan karir aktif di Zhou Consulting",
             status: c.is_active ? "Published" : "Draft",
             updatedAt: "Rekrutmen Buka",
@@ -282,20 +301,33 @@ function AdminCMSPageContent() {
 
       // 6. Job Applications
       if (appRes.status === "fulfilled" && Array.isArray(appRes.value.data)) {
-        setApplications(appRes.value.data);
+        appRes.value.data.forEach((app: JobApplicationItem) => {
+          items.push({
+            id: `APP-${app.id}`,
+            numericId: app.id,
+            section: "applications",
+            title: `Lamaran: ${app.applicant_name}`,
+            category: "Lamaran Masuk",
+            subcategory: app.job?.position_title || `Posisi ID #${app.job_id || app.career_id || "-"}`,
+            summary: `Email: ${app.applicant_email} | Telp: ${app.applicant_phone || "-"}${app.cv_file_path ? ` | CV: ${app.cv_file_path}` : ""}`,
+            status: "Published",
+            updatedAt: app.applied_at ? new Date(app.applied_at).toLocaleDateString("id-ID") : "Terbaru",
+            raw: app,
+          });
+        });
       }
 
       // 7. FAQs
       if (faqRes.status === "fulfilled" && Array.isArray(faqRes.value.data)) {
-        setFaqs(faqRes.value.data);
         faqRes.value.data.forEach((f: ChatbotFaqItem) => {
           items.push({
             id: `FAQ-${f.id}`,
             numericId: f.id,
             section: "faqs",
             title: f.question,
-            category: f.category,
-            summary: f.answer_template.slice(0, 140) + "...",
+            category: "FAQ Chatbot",
+            subcategory: f.category || "Layanan Perpajakan",
+            summary: f.answer_template ? f.answer_template.slice(0, 140) + "..." : "Respon otomatis chatbot",
             status: "Published",
             updatedAt: "Bot Knowledge",
             raw: f,
@@ -318,6 +350,31 @@ function AdminCMSPageContent() {
         setContactForm(parseContactSettings(contactRes.value.data));
       }
 
+      // Add Profile & Contact items into unified list
+      items.push({
+        id: "CFG-HERO",
+        numericId: 1,
+        section: "kontak",
+        title: "Headline Hero Landing Page",
+        category: "Profil & Kontak",
+        subcategory: "Hero Headline",
+        summary: heroForm.headline || "Teks utama headline dan subheadline beranda publik",
+        status: "Published",
+        updatedAt: "Aktif",
+      });
+
+      items.push({
+        id: "CFG-CONTACT",
+        numericId: 2,
+        section: "kontak",
+        title: "Informasi Kontak & CS Resmi",
+        category: "Profil & Kontak",
+        subcategory: "Kontak & Alamat",
+        summary: `${contactForm.companyName} | ${contactForm.email} | ${contactForm.phone} | WA: ${contactForm.whatsapp}`,
+        status: "Published",
+        updatedAt: "Aktif",
+      });
+
       setCmsItems(items);
     } catch (err) {
       console.warn("Gagal sinkronisasi CMS dengan backend:", err);
@@ -328,6 +385,7 @@ function AdminCMSPageContent() {
 
   useEffect(() => {
     loadAllCMS();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // DELETE handler
@@ -375,7 +433,7 @@ function AdminCMSPageContent() {
     }
   };
 
-  // CREATE ITEM Form Submission (Strict backend payload)
+  // CREATE / EDIT ITEM Form Submission
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -396,18 +454,21 @@ function AdminCMSPageContent() {
               numericId: id,
               section: "edukasi",
               title: eduForm.title,
-              category: eduForm.category,
+              category: "Edukasi",
+              subcategory: eduForm.category,
               summary: eduForm.body.slice(0, 140) + "...",
               status: "Published",
               updatedAt: "Baru saja",
+              raw: { id, ...eduForm },
             },
             ...prev,
           ]);
+        } else {
+          loadAllCMS();
         }
       } else if (modalSection === "services") {
-        const code = serviceForm.service_code || `SVC-${Date.now().toString().slice(-4)}`;
         const res = await adminCmsApi.createService({
-          service_code: code,
+          service_code: serviceForm.service_code || `SRV-${Date.now().toString().slice(-4)}`,
           service_name: serviceForm.service_name,
           category: serviceForm.category,
           description: serviceForm.description,
@@ -422,13 +483,17 @@ function AdminCMSPageContent() {
               numericId: id,
               section: "services",
               title: serviceForm.service_name,
-              category: serviceForm.category,
+              category: "Layanan",
+              subcategory: serviceForm.category,
               summary: serviceForm.description,
               status: serviceForm.is_active ? "Published" : "Draft",
               updatedAt: "Baru saja",
+              raw: { id, ...serviceForm },
             },
             ...prev,
           ]);
+        } else {
+          loadAllCMS();
         }
       } else if (modalSection === "regulasi") {
         const res = await adminCmsApi.createRegulation({
@@ -446,13 +511,17 @@ function AdminCMSPageContent() {
               numericId: id,
               section: "regulasi",
               title: regForm.title,
-              category: regForm.regulation_type,
+              category: "Regulasi",
+              subcategory: regForm.regulation_type,
               summary: `Berkas: ${regForm.file_path} (${regForm.file_size})`,
               status: "Published",
               updatedAt: "Baru saja",
+              raw: { id, ...regForm },
             },
             ...prev,
           ]);
+        } else {
+          loadAllCMS();
         }
       } else if (modalSection === "kurs") {
         const res = await adminCmsApi.createTaxRate({
@@ -471,24 +540,27 @@ function AdminCMSPageContent() {
               section: "kurs",
               title: `Kurs Valas ${kursForm.currency_code}: Rp ${Number(kursForm.rate_value).toLocaleString("id-ID")}`,
               category: "Kurs KMK",
+              subcategory: kursForm.currency_code,
               summary: `Berlaku: ${kursForm.effective_start_date} s/d ${kursForm.effective_end_date}`,
               status: "Published",
               updatedAt: "Baru saja",
+              raw: { id, ...kursForm },
             },
             ...prev,
           ]);
+        } else {
+          loadAllCMS();
         }
       } else if (modalSection === "karir") {
-        const code = careerForm.position_code || `CAR-${Date.now().toString().slice(-4)}`;
         const res = await adminCmsApi.createCareer({
-          position_code: code,
+          position_code: careerForm.position_code || `POS-${Date.now().toString().slice(-4)}`,
           position_title: careerForm.position_title,
           level: careerForm.level,
           location: careerForm.location,
           description: careerForm.description,
           is_active: careerForm.is_active,
         });
-        showToast("Lowongan karir berhasil dibuka!");
+        showToast("Lowongan karir baru berhasil dibuka!");
         if (res.data && (res.data as Record<string, unknown>).id) {
           const id = Number((res.data as Record<string, unknown>).id);
           setCmsItems((prev) => [
@@ -497,13 +569,17 @@ function AdminCMSPageContent() {
               numericId: id,
               section: "karir",
               title: careerForm.position_title,
-              category: `${careerForm.level} - ${careerForm.location}`,
+              category: "Karir",
+              subcategory: `${careerForm.level} (${careerForm.location})`,
               summary: careerForm.description,
               status: careerForm.is_active ? "Published" : "Draft",
               updatedAt: "Baru saja",
+              raw: { id, ...careerForm },
             },
             ...prev,
           ]);
+        } else {
+          loadAllCMS();
         }
       } else if (modalSection === "faqs") {
         if (editingFaq) {
@@ -512,24 +588,12 @@ function AdminCMSPageContent() {
             question: faqForm.question,
             answer_template: faqForm.answer_template,
           });
-          setFaqs((prev) =>
-            prev.map((item) =>
-              item.id === editingFaq.id
-                ? {
-                    ...item,
-                    category: faqForm.category,
-                    question: faqForm.question,
-                    answer_template: faqForm.answer_template,
-                  }
-                : item
-            )
-          );
           setCmsItems((prev) =>
             prev.map((item) =>
               item.id === `FAQ-${editingFaq.id}`
                 ? {
                     ...item,
-                    category: faqForm.category,
+                    subcategory: faqForm.category,
                     title: faqForm.question,
                     summary: faqForm.answer_template.slice(0, 140) + "...",
                   }
@@ -546,17 +610,14 @@ function AdminCMSPageContent() {
           showToast("FAQ chatbot baru berhasil disimpan!");
           if (res.data && (res.data as Record<string, unknown>).id) {
             const id = Number((res.data as Record<string, unknown>).id);
-            setFaqs((prev) => [
-              ...prev,
-              { id, category: faqForm.category, question: faqForm.question, answer_template: faqForm.answer_template },
-            ]);
             setCmsItems((prev) => [
               {
                 id: `FAQ-${id}`,
                 numericId: id,
                 section: "faqs",
                 title: faqForm.question,
-                category: faqForm.category,
+                category: "FAQ Chatbot",
+                subcategory: faqForm.category,
                 summary: faqForm.answer_template.slice(0, 140) + "...",
                 status: "Published",
                 updatedAt: "Bot Knowledge",
@@ -585,7 +646,15 @@ function AdminCMSPageContent() {
         title: heroForm.headline,
         content: heroForm.subheadline,
       });
+      setCmsItems((prev) =>
+        prev.map((item) =>
+          item.id === "CFG-HERO"
+            ? { ...item, summary: heroForm.headline }
+            : item
+        )
+      );
       showToast("Headline Hero Landing Page berhasil diperbarui ke database!");
+      setIsHeroModalOpen(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memperbarui profil";
       showToast(msg);
@@ -609,9 +678,20 @@ function AdminCMSPageContent() {
           { setting_key: "cs_whatsapp", setting_value: contactForm.whatsapp },
         ],
       });
-      showToast("Informasi kontak & WhatsApp CS berhasil disimpan!");
+      setCmsItems((prev) =>
+        prev.map((item) =>
+          item.id === "CFG-CONTACT"
+            ? {
+                ...item,
+                summary: `${contactForm.companyName} | ${contactForm.email} | ${contactForm.phone} | WA: ${contactForm.whatsapp}`,
+              }
+            : item
+        )
+      );
+      showToast("Pengaturan Kontak & WhatsApp CS berhasil disimpan!");
+      setIsContactModalOpen(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal memperbarui kontak";
+      const msg = err instanceof Error ? err.message : "Gagal menyimpan kontak";
       showToast(msg);
     }
   };
@@ -635,6 +715,8 @@ function AdminCMSPageContent() {
         })
       );
       showToast(`Seluruh 7 kurs valas KMK (${kmkNumber}) berhasil diperbarui ke database.`);
+      setIsBatchKursModalOpen(false);
+      loadAllCMS();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan kurs";
       showToast(msg);
@@ -707,23 +789,41 @@ function AdminCMSPageContent() {
     }
   };
 
+  // Derive available categories and subcategories dynamically from data
+  const availableCategories = useMemo(() => {
+    const cats = Array.from(new Set(cmsItems.map((i) => i.category)));
+    return cats.sort();
+  }, [cmsItems]);
+
+  const availableSubcategories = useMemo(() => {
+    const items = categoryFilter === "ALL"
+      ? cmsItems
+      : cmsItems.filter((i) => i.category === categoryFilter);
+    const subs = Array.from(new Set(items.map((i) => i.subcategory).filter(Boolean)));
+    return subs.sort();
+  }, [cmsItems, categoryFilter]);
+
+  // Combined Search and Filtering
   const filteredItems = useMemo(() => {
     return cmsItems.filter((item) => {
-      const matchesSection = activeTab === "all" || item.section === activeTab;
+      const matchesCategory = categoryFilter === "ALL" || item.category === categoryFilter;
+      const matchesSubcategory = subcategoryFilter === "ALL" || item.subcategory === subcategoryFilter;
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
         item.title.toLowerCase().includes(q) ||
         item.category.toLowerCase().includes(q) ||
-        item.id.toLowerCase().includes(q);
-      return matchesSection && matchesStatus && matchesSearch;
+        item.subcategory.toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q);
+      return matchesCategory && matchesSubcategory && matchesStatus && matchesSearch;
     });
-  }, [cmsItems, activeTab, statusFilter, searchQuery]);
+  }, [cmsItems, categoryFilter, subcategoryFilter, statusFilter, searchQuery]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Toast */}
+      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#0B1533] text-white px-5 py-3 rounded-xl shadow-xl border border-primary-light flex items-center gap-3 text-xs animate-in fade-in">
           <CheckCircleIcon className="text-success text-sm shrink-0" />
@@ -734,150 +834,231 @@ function AdminCMSPageContent() {
         </div>
       )}
 
-      {/* Main Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary-light">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
-            <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-              Dashboard Operasional
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Pusat Manajemen CMS</span>
+      {/* 1. CLEAN PAGE HEADER (No Action Button in Header) */}
+      <div className="space-y-1 pb-4 border-b border-primary-light">
+        <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
+          <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
+            Dashboard Operasional
+          </Link>
+          <span>/</span>
+          <span className="text-primary font-bold">Pusat Manajemen CMS</span>
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight flex items-center gap-2.5">
+          <span>Pusat Manajemen Konten Website (CMS)</span>
+          {isLoading && (
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold animate-pulse">
+              Sinkronisasi Backend...
+            </span>
+          )}
+        </h1>
+        <p className="text-xs sm:text-sm text-text-secondary">
+          Satu pintu untuk mengelola seluruh publikasi landing page dan konten public website.
+        </p>
+      </div>
+
+      {/* 2. CONSOLIDATED TOOLBAR (Search, Category Filter, Subcategory Filter, Status Filter, and Action Button) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-primary-light shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          {/* Search Box */}
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
+            <Input
+              type="text"
+              placeholder="Cari konten, ID, atau kata kunci..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
+            />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight flex items-center gap-2.5">
-            <span>Pusat Manajemen Konten Website (CMS)</span>
-            {isLoading && (
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold animate-pulse">
-                Sinkronisasi Backend...
-              </span>
-            )}
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1">
-            Satu pintu kelola seluruh publikasi landing page dan portal publik: Edukasi, Layanan, Regulasi, Kurs KMK, Karir, FAQ Bot, dan Profil.
-          </p>
+
+          {/* Category Filter */}
+          <select
+            value={categoryFilter}
+            onChange={(e) => {
+              setCategoryFilter(e.target.value);
+              setSubcategoryFilter("ALL");
+            }}
+            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+          >
+            <option value="ALL">Semua Kategori ({cmsItems.length})</option>
+            {availableCategories.map((cat) => {
+              const count = cmsItems.filter((i) => i.category === cat).length;
+              return (
+                <option key={cat} value={cat}>
+                  {cat} ({count})
+                </option>
+              );
+            })}
+          </select>
+
+          {/* Subcategory Filter (If available) */}
+          {availableSubcategories.length > 0 && (
+            <select
+              value={subcategoryFilter}
+              onChange={(e) => setSubcategoryFilter(e.target.value)}
+              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none max-w-[200px] truncate"
+            >
+              <option value="ALL">Semua Subkategori</option>
+              {availableSubcategories.map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="Published">Published</option>
+            <option value="Draft">Draft</option>
+          </select>
+
+          {/* Reset Filters button if any filter applied */}
+          {(searchQuery || categoryFilter !== "ALL" || subcategoryFilter !== "ALL" || statusFilter !== "ALL") && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery("");
+                setCategoryFilter("ALL");
+                setSubcategoryFilter("ALL");
+                setStatusFilter("ALL");
+              }}
+              className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
+            >
+              Reset Filter
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        {/* Action Button: Tambah Konten Baru on Toolbar Right */}
+        <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap">
+          {categoryFilter === "Kurs KMK" && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBatchKursModalOpen(true)}
+              className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white text-primary"
+            >
+              Kelola Batch 7 Kurs Valas
+            </Button>
+          )}
+
+          {categoryFilter === "FAQ Chatbot" && cmsItems.filter((i) => i.section === "faqs").length === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSeedDefaultFaqs}
+              className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white text-primary"
+            >
+              Muat Rekomendasi FAQ
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="primary"
             size="sm"
-            onClick={() =>
-              openAddModal(
-                activeTab === "all" || activeTab === "applications" || activeTab === "kontak"
-                  ? "edukasi"
-                  : activeTab
-              )
-            }
+            onClick={() => {
+              const catMap: Record<string, "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs"> = {
+                Edukasi: "edukasi",
+                Layanan: "services",
+                Regulasi: "regulasi",
+                "Kurs KMK": "kurs",
+                Karir: "karir",
+                "FAQ Chatbot": "faqs",
+              };
+              openAddModal(catMap[categoryFilter] || "edukasi");
+            }}
             className="text-xs font-semibold h-9 px-4 shadow-sm"
           >
-            Tambah Konten Baru
+            + Tambah Konten Baru
           </Button>
         </div>
       </div>
 
-      {/* UNIFIED TAB NAVIGATION */}
-      <div className="border-b border-primary-light flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 text-xs font-semibold">
-        {[
-          { id: "all", label: `Semua Konten (${cmsItems.length})` },
-          { id: "edukasi", label: `Edukasi (${cmsItems.filter((i) => i.section === "edukasi").length})` },
-          { id: "services", label: `Layanan (${cmsItems.filter((i) => i.section === "services").length})` },
-          { id: "regulasi", label: `Regulasi DJP (${cmsItems.filter((i) => i.section === "regulasi").length})` },
-          { id: "kurs", label: "Kurs Pajak KMK" },
-          { id: "karir", label: `Karir (${cmsItems.filter((i) => i.section === "karir").length})` },
-          { id: "applications", label: `Lamaran Masuk (${applications.length})`, highlight: "bg-blue-600 text-white" },
-          { id: "faqs", label: `FAQ Chatbot (${faqs.length})` },
-          { id: "kontak", label: "Profil & Kontak Resmi" },
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as CMSTab)}
-              className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
-                isActive
-                  ? tab.highlight || "bg-primary text-white shadow-xs font-bold"
-                  : "bg-white text-text-secondary hover:text-primary hover:bg-surface border border-primary-light"
-              }`}
-            >
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* TAB CONTENT 1: ALL / EDUKASI / SERVICES / REGULASI / KARIR TABLE */}
-      {["all", "edukasi", "services", "regulasi", "karir"].includes(activeTab) && (
-        <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-primary">
-                {activeTab === "all"
-                  ? "Direktori Master Konten Terbit"
-                  : activeTab === "edukasi"
-                  ? "Manajemen Materi Edukasi Pajak"
-                  : activeTab === "services"
-                  ? "Katalog Layanan Bisnis & Perpajakan"
-                  : activeTab === "regulasi"
-                  ? "Pusat Regulasi & Berkas DJP"
-                  : "Daftar Lowongan Karir"}
-              </h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Kelola status publikasi, sunting isi, atau hapus konten langsung dari database backend.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
-                <Input
-                  type="text"
-                  placeholder="Cari judul atau ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 text-xs h-9 w-44 sm:w-56 bg-surface border-primary-light"
-                />
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
-              >
-                <option value="ALL">Semua Status</option>
-                <option value="Published">Published</option>
-                <option value="Draft">Draft</option>
-              </select>
-            </div>
+      {/* 3. MASTER CONTENT MANAGEMENT TABLE */}
+      <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
+        {/* Table Title and Count */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-primary-light">
+          <div>
+            <h2 className="text-base font-bold text-primary">Daftar Seluruh Konten</h2>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Seluruh publikasi website terkelola dalam satu tabel master terpadu.
+            </p>
           </div>
+          <div className="text-xs text-text-muted font-medium bg-surface px-3 py-1 rounded-lg border border-primary-light">
+            Menampilkan <span className="font-bold text-primary">{filteredItems.length}</span> dari{" "}
+            <span className="font-bold text-primary">{cmsItems.length}</span> konten
+          </div>
+        </div>
 
-          <div className="overflow-x-auto rounded-xl border border-primary-light">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
-                <tr>
-                  <th className="py-3 px-4">ID &amp; Judul</th>
-                  <th className="py-3 px-4">Modul / Kategori</th>
-                  <th className="py-3 px-4">Ringkasan Isi</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-primary-light">
-                {filteredItems.map((item) => (
+        {/* Master Table */}
+        <div className="overflow-x-auto rounded-xl border border-primary-light">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
+              <tr>
+                <th className="py-3 px-4 w-28">ID</th>
+                <th className="py-3 px-4 min-w-[260px]">Judul</th>
+                <th className="py-3 px-4 w-36">Kategori</th>
+                <th className="py-3 px-4 w-44">Subkategori</th>
+                <th className="py-3 px-4 w-24">Status</th>
+                <th className="py-3 px-4 text-right w-44">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-primary-light">
+              {filteredItems.map((item) => {
+                const isDeletable = ["edukasi", "services", "regulasi", "kurs", "karir", "faqs"].includes(item.section);
+                const isStatusToggleable = ["services", "karir"].includes(item.section);
+                const isFaq = item.section === "faqs";
+                const isHero = item.id === "CFG-HERO";
+                const isContact = item.id === "CFG-CONTACT";
+                const isApplication = item.section === "applications";
+                const appRaw = item.raw as JobApplicationItem | undefined;
+
+                return (
                   <tr key={item.id} className="hover:bg-surface/50 transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-primary">
-                      <span className="font-mono text-[10px] text-text-muted block">{item.id}</span>
-                      <span className="font-semibold text-xs text-primary">{item.title}</span>
+                    {/* 1. ID */}
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted whitespace-nowrap">
+                      {item.id}
                     </td>
+
+                    {/* 2. Judul & Ringkasan */}
                     <td className="py-3.5 px-4">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-primary-light text-primary font-medium">
+                      <div className="font-semibold text-xs text-primary leading-tight">
+                        {item.title}
+                      </div>
+                      <div className="text-[11px] text-text-secondary mt-1 line-clamp-1 max-w-lg leading-relaxed">
+                        {item.summary}
+                      </div>
+                    </td>
+
+                    {/* 3. Kategori */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
                         {item.category}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-text-secondary text-[11px] max-w-xs truncate">
-                      {item.summary}
-                    </td>
+
+                    {/* 4. Subkategori */}
                     <td className="py-3.5 px-4">
+                      {item.subcategory ? (
+                        <span className="text-[11px] font-medium text-text-primary px-2 py-0.5 rounded bg-surface border border-primary-light/80 inline-block">
+                          {item.subcategory}
+                        </span>
+                      ) : (
+                        <span className="text-text-muted text-xs">-</span>
+                      )}
+                    </td>
+
+                    {/* 5. Status */}
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <Badge
                         variant={item.status === "Published" ? "success" : "silver"}
                         size="sm"
@@ -885,412 +1066,151 @@ function AdminCMSPageContent() {
                         {item.status}
                       </Badge>
                     </td>
+
+                    {/* 6. Aksi */}
                     <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
-                      {["services", "karir"].includes(item.section) && (
+                      {/* Toggle Publish / Draft */}
+                      {isStatusToggleable && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => handleToggleStatus(item)}
-                          className="text-[11px] h-7 px-2.5"
+                          className="text-[11px] h-7 px-2.5 border-primary-light"
                         >
                           {item.status === "Published" ? "Draftkan" : "Publikasikan"}
                         </Button>
                       )}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteItem(item)}
-                        className="text-[11px] h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      >
-                        <TrashIcon className="text-xs" />
-                      </Button>
+
+                      {/* Edit FAQ */}
+                      {isFaq && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (item.raw) {
+                              openEditFaq(item.raw as ChatbotFaqItem);
+                            } else {
+                              openAddModal("faqs");
+                            }
+                          }}
+                          className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
+                        >
+                          <EditIcon className="text-xs" />
+                          <span>Edit</span>
+                        </Button>
+                      )}
+
+                      {/* Edit Hero Banner */}
+                      {isHero && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsHeroModalOpen(true)}
+                          className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
+                        >
+                          <EditIcon className="text-xs" />
+                          <span>Edit</span>
+                        </Button>
+                      )}
+
+                      {/* Edit Contact Settings */}
+                      {isContact && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsContactModalOpen(true)}
+                          className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
+                        >
+                          <EditIcon className="text-xs" />
+                          <span>Edit</span>
+                        </Button>
+                      )}
+
+                      {/* View Resume CV for Job Application */}
+                      {isApplication && (
+                        <a
+                          href={
+                            appRaw?.cv_file_path
+                              ? `${process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io"}${appRaw.cv_file_path}`
+                              : "#"
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center px-2.5 h-7 text-[11px] font-medium rounded-lg border border-primary-light bg-white hover:bg-surface text-primary"
+                        >
+                          Lihat CV
+                        </a>
+                      )}
+
+                      {/* Delete */}
+                      {isDeletable && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteItem(item)}
+                          className="text-[11px] h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        >
+                          <TrashIcon className="text-xs" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                );
+              })}
 
-                {filteredItems.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-text-secondary text-xs">
-                      {isLoading ? "Sedang memuat data dari database..." : "Tidak ada konten yang cocok dengan pencarian."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* TAB CONTENT 2: KURS PAJAK KMK */}
-      {activeTab === "kurs" && (
-        <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary-light">
-            <div>
-              <h2 className="text-base font-bold text-primary">Tabel Kurs Pajak KMK Mingguan</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Perbarui nilai kurs valas untuk 7 mata uang asing utama yang tertera di widget kurs landing page.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => openAddModal("kurs")}
-              className="text-xs h-9 px-3.5"
-            >
-              Tambah Kurs Tunggal
-            </Button>
-          </div>
-
-          <form onSubmit={handleSaveBatchKurs} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
-              <div>
-                <Label className="text-xs font-semibold text-primary">Nomor Keputusan Menteri Keuangan (KMK)</Label>
-                <Input
-                  type="text"
-                  value={kmkNumber}
-                  onChange={(e) => setKmkNumber(e.target.value)}
-                  className="text-xs h-9 mt-1"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {kursRates.map((kr, idx) => (
-                <div key={kr.currency} className="p-3.5 rounded-xl border border-primary-light bg-surface space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-primary flex items-center gap-1.5">
-                      <span>{kr.flag}</span>
-                      <span>{kr.currency}</span>
-                    </span>
-                    <span className="text-[10px] text-text-muted">{kr.name}</span>
-                  </div>
-                  <Input
-                    type="text"
-                    value={kr.rate}
-                    onChange={(e) => {
-                      const next = [...kursRates];
-                      next[idx].rate = e.target.value;
-                      setKursRates(next);
-                    }}
-                    className="text-xs h-8 bg-white"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2">
-              <Button type="submit" variant="primary" size="sm" className="h-9 px-5 text-xs font-semibold">
-                Simpan Seluruh 7 Kurs ke Database
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {/* TAB CONTENT 3: LAMARAN MASUK */}
-      {activeTab === "applications" && (
-        <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-primary">Daftar Berkas Lamaran Masuk</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Kandidat yang mendaftar melalui portal karir Zhou Consulting dan tersimpan di database backend.
-              </p>
-            </div>
-            <div className="text-xs text-text-muted">Total: {applications.length} berkas</div>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {applications.map((app) => (
-              <div
-                key={app.id}
-                className="p-4 rounded-xl bg-surface border border-primary-light flex items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-text-muted">ID: #{app.id}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-medium">
-                      {app.job?.position_title || `Posisi ID #${app.job_id || app.career_id || "-"}`}
-                    </span>
-                    {app.applied_at && (
-                      <span className="text-[10px] text-text-muted">
-                        {new Date(app.applied_at).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="font-bold text-primary text-xs">{app.applicant_name}</h4>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-text-secondary">
-                    <span>Email: <strong>{app.applicant_email}</strong></span>
-                    <span>No. Telp: <strong>{app.applicant_phone || "-"}</strong></span>
-                    {app.cv_file_path && (
-                      <span>File CV: <strong className="font-mono text-primary">{app.cv_file_path}</strong></span>
-                    )}
-                  </div>
-                </div>
-
-                <a
-                  href={
-                    app.cv_file_path
-                      ? `${process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io"}${app.cv_file_path}`
-                      : "#"
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center px-3 h-8 text-xs font-medium rounded-xl border border-primary-light bg-white hover:bg-surface text-primary shrink-0"
-                >
-                  Buka Dokumen CV
-                </a>
-              </div>
-            ))}
-
-            {applications.length === 0 && (
-              <div className="p-8 text-center text-text-secondary text-xs">
-                Belum ada berkas lamaran kerja yang masuk ke backend.
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* TAB CONTENT 4: FAQ CHATBOT */}
-      {activeTab === "faqs" && (
-        <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-primary-light">
-            <div>
-              <h2 className="text-base font-bold text-primary">Basis Pengetahuan FAQ Chatbot AI</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Kelola tanya-jawab otomatis yang disajikan kepada pengunjung situs oleh Chatbot Zhou.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => openAddModal("faqs")}
-              className="text-xs h-8 px-3"
-            >
-              Tambah FAQ Bot
-            </Button>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            {faqs.map((f) => (
-              <div
-                key={f.id}
-                className="p-4 rounded-xl bg-surface border border-primary-light flex items-start justify-between gap-4"
-              >
-                <div className="space-y-1.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-text-muted">FAQ #{f.id}</span>
-                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                      {f.category}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-primary text-xs">{f.question}</h4>
-                  <div className="text-[11px] text-text-secondary leading-relaxed bg-white/80 p-2.5 rounded-lg border border-primary-light/70 space-y-0.5">
-                    <span className="text-[10px] font-semibold text-primary block uppercase tracking-wider">
-                      Respon Otomatis Bot (Tanpa Tunggu Manual Admin):
-                    </span>
-                    <p>{f.answer_template}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEditFaq(f)}
-                    className="text-xs h-7 px-2.5 border-primary-light text-primary hover:bg-white flex items-center gap-1"
-                  >
-                    <EditIcon className="text-xs" />
-                    <span>Edit</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        await adminCmsApi.deleteFaq(f.id);
-                        setFaqs((prev) => prev.filter((item) => item.id !== f.id));
-                        setCmsItems((prev) => prev.filter((item) => item.id !== `FAQ-${f.id}`));
-                        showToast("FAQ berhasil dihapus.");
-                      } catch {
-                        showToast("Gagal menghapus FAQ.");
-                      }
-                    }}
-                    className="text-xs h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                  >
-                    <TrashIcon className="text-xs" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-
-            {faqs.length === 0 && (
-              <div className="p-8 text-center bg-surface rounded-2xl border border-primary-light space-y-3">
-                <p className="text-text-secondary text-xs">
-                  Belum ada pertanyaan umum (FAQ) tersimpan di database untuk Chatbot.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => openAddModal("faqs")}
-                    className="text-xs h-8 px-3"
-                  >
-                    Tambah FAQ Pertama
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSeedDefaultFaqs}
-                    className="text-xs h-8 px-3 border-primary-light bg-white text-primary"
-                  >
-                    Muat 4 Rekomendasi Template FAQ Pajak &amp; Layanan
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* TAB CONTENT 5: PROFIL & KONTAK */}
-      {activeTab === "kontak" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* HERO BANNER SETTINGS */}
-          <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-primary">Headline Hero Landing Page</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Teks utama yang tampil di bagian paling atas beranda pengunjung (/hero).
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveHero} className="space-y-3.5 text-xs">
-              <div>
-                <Label className="font-semibold text-text-secondary">Headline Utama</Label>
-                <Input
-                  type="text"
-                  value={heroForm.headline}
-                  onChange={(e) => setHeroForm((prev) => ({ ...prev, headline: e.target.value }))}
-                  className="text-xs h-9 mt-1"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label className="font-semibold text-text-secondary">Sub-headline / Deskripsi</Label>
-                <Textarea
-                  value={heroForm.subheadline}
-                  onChange={(e) => setHeroForm((prev) => ({ ...prev, subheadline: e.target.value }))}
-                  rows={3}
-                  className="text-xs mt-1"
-                  required
-                />
-              </div>
-
-              <Button type="submit" variant="primary" size="sm" className="h-9 px-4 text-xs">
-                Simpan Hero Banner
-              </Button>
-            </form>
-          </Card>
-
-          {/* CONTACT & CS SETTINGS */}
-          <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-primary">Kontak Resmi &amp; WhatsApp CS</h2>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Disinkronkan ke Footer, Floating WhatsApp CTA, dan Halaman Kontak (/kontak).
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveContact} className="space-y-3 text-xs">
-              <div>
-                <Label className="font-semibold text-text-secondary">Nama Perusahaan</Label>
-                <Input
-                  type="text"
-                  value={contactForm.companyName}
-                  onChange={(e) => setContactForm((prev) => ({ ...prev, companyName: e.target.value }))}
-                  className="text-xs h-9 mt-1"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="font-semibold text-text-secondary">Email Resmi</Label>
-                  <Input
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
-                    className="text-xs h-9 mt-1"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label className="font-semibold text-text-secondary">Telepon Kantor</Label>
-                  <Input
-                    type="text"
-                    value={contactForm.phone}
-                    onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="text-xs h-9 mt-1"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="font-semibold text-text-secondary">Nomor WhatsApp Helpdesk</Label>
-                <Input
-                  type="text"
-                  value={contactForm.whatsapp}
-                  onChange={(e) => setContactForm((prev) => ({ ...prev, whatsapp: e.target.value }))}
-                  className="text-xs h-9 mt-1"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label className="font-semibold text-text-secondary">Alamat Kantor Resmi</Label>
-                <Textarea
-                  value={contactForm.address}
-                  onChange={(e) => setContactForm((prev) => ({ ...prev, address: e.target.value }))}
-                  rows={2}
-                  className="text-xs mt-1"
-                  required
-                />
-              </div>
-
-              <Button type="submit" variant="primary" size="sm" className="h-9 px-4 text-xs">
-                Simpan Pengaturan Kontak
-              </Button>
-            </form>
-          </Card>
+              {/* Empty State */}
+              {filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-text-secondary text-xs">
+                    <div className="max-w-sm mx-auto space-y-2">
+                      <p className="font-semibold text-primary text-sm">
+                        {isLoading
+                          ? "Sedang memuat data dari database backend..."
+                          : "Tidak ada konten yang sesuai dengan filter atau kata kunci pencarian."}
+                      </p>
+                      {!isLoading && (
+                        <p className="text-[11px] text-text-muted">
+                          Coba reset filter atau kata kunci untuk melihat seluruh konten yang tersedia.
+                        </p>
+                      )}
+                      {!isLoading && (searchQuery || categoryFilter !== "ALL" || subcategoryFilter !== "ALL" || statusFilter !== "ALL") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setCategoryFilter("ALL");
+                            setSubcategoryFilter("ALL");
+                            setStatusFilter("ALL");
+                          }}
+                          className="mt-2 text-xs"
+                        >
+                          Reset Filter
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </Card>
 
-      {/* UNIFIED MODAL TAMBAH KONTEN (STRICT BACKEND SCHEMA) */}
+      {/* MODAL 1: ADD / EDIT CONTENT (Edukasi, Layanan, Regulasi, Kurs, Karir, FAQs) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
             <button
               type="button"
               onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1 cursor-pointer"
             >
               <CloseIcon className="text-sm" />
             </button>
@@ -1323,15 +1243,14 @@ function AdminCMSPageContent() {
                 <select
                   value={modalSection}
                   onChange={(e) =>
-                    setModalSection(
-                      e.target.value as "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs"
-                    )
+                    setModalSection(e.target.value as "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs")
                   }
-                  className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1 focus:bg-white font-medium focus:outline-none"
+                  disabled={Boolean(editingFaq)}
+                  className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1 focus:bg-white"
                 >
-                  <option value="edukasi">1. Edukasi &amp; Panduan Pajak</option>
-                  <option value="services">2. Layanan Bisnis &amp; Pajak</option>
-                  <option value="regulasi">3. Regulasi &amp; Dokumen DJP</option>
+                  <option value="edukasi">1. Materi Edukasi</option>
+                  <option value="services">2. Katalog Layanan</option>
+                  <option value="regulasi">3. Regulasi DJP</option>
                   <option value="kurs">4. Kurs Pajak KMK</option>
                   <option value="karir">5. Lowongan Karir</option>
                   <option value="faqs">6. FAQ Chatbot</option>
@@ -1342,11 +1261,11 @@ function AdminCMSPageContent() {
               {modalSection === "edukasi" && (
                 <>
                   <div>
-                    <Label className="font-semibold text-primary">Judul Materi Edukasi *</Label>
+                    <Label className="font-semibold text-primary">Judul Artikel / Modul *</Label>
                     <Input
                       type="text"
                       required
-                      placeholder="e.g. Panduan Kepatuhan Coretax 2026"
+                      placeholder="e.g. Panduan Integrasi Coretax DJP 2026"
                       value={eduForm.title}
                       onChange={(e) => setEduForm((prev) => ({ ...prev, title: e.target.value }))}
                       className="text-xs h-9 mt-1"
@@ -1354,48 +1273,46 @@ function AdminCMSPageContent() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="font-semibold text-primary">Kategori</Label>
+                      <Label className="font-semibold text-primary">Kategori Topik *</Label>
                       <Input
                         type="text"
                         required
+                        placeholder="e.g. Coretax DJP"
                         value={eduForm.category}
                         onChange={(e) => setEduForm((prev) => ({ ...prev, category: e.target.value }))}
                         className="text-xs h-9 mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="font-semibold text-primary">Tipe Konten</Label>
+                      <Label className="font-semibold text-primary">Tipe Konten *</Label>
                       <select
                         value={eduForm.content_type}
                         onChange={(e) =>
-                          setEduForm((prev) => ({
-                            ...prev,
-                            content_type: e.target.value as "ARTICLE" | "GUIDE",
-                          }))
+                          setEduForm((prev) => ({ ...prev, content_type: e.target.value as "ARTICLE" | "GUIDE" }))
                         }
-                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface mt-1"
+                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
                       >
-                        <option value="ARTICLE">ARTICLE (Artikel Literasi)</option>
-                        <option value="GUIDE">GUIDE (Panduan DJP)</option>
+                        <option value="ARTICLE">Artikel Wawasan</option>
+                        <option value="GUIDE">Buku Panduan / Guide</option>
                       </select>
                     </div>
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Isi / Uraian Materi *</Label>
+                    <Label className="font-semibold text-primary">Isi Materi Lengkap *</Label>
                     <Textarea
                       required
                       rows={4}
-                      placeholder="Tuliskan isi pembahasan edukasi pajak..."
+                      placeholder="Uraikan materi panduan perpajakan..."
                       value={eduForm.body}
                       onChange={(e) => setEduForm((prev) => ({ ...prev, body: e.target.value }))}
                       className="text-xs mt-1"
                     />
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Tautan / URL Berkas PDF (Opsional)</Label>
+                    <Label className="font-semibold text-primary">Path Berkas PDF (Opsional)</Label>
                     <Input
                       type="text"
-                      placeholder="e.g. /docs/panduan.pdf atau https://pajak.go.id"
+                      placeholder="e.g. /docs/panduan-coretax.pdf"
                       value={eduForm.file_path}
                       onChange={(e) => setEduForm((prev) => ({ ...prev, file_path: e.target.value }))}
                       className="text-xs h-9 mt-1"
@@ -1409,35 +1326,33 @@ function AdminCMSPageContent() {
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="font-semibold text-primary">Kode Layanan</Label>
+                      <Label className="font-semibold text-primary">Kode Layanan (Opsional)</Label>
                       <Input
                         type="text"
-                        placeholder="e.g. TAX_CORE"
+                        placeholder="e.g. TAX-CMPL"
                         value={serviceForm.service_code}
                         onChange={(e) => setServiceForm((prev) => ({ ...prev, service_code: e.target.value }))}
                         className="text-xs h-9 mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="font-semibold text-primary">Kategori Divisi</Label>
-                      <select
+                      <Label className="font-semibold text-primary">Kategori Layanan *</Label>
+                      <Input
+                        type="text"
+                        required
+                        placeholder="e.g. TAX, ACCOUNTING, LEGAL"
                         value={serviceForm.category}
                         onChange={(e) => setServiceForm((prev) => ({ ...prev, category: e.target.value }))}
-                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface mt-1"
-                      >
-                        <option value="TAX">TAX (Perpajakan)</option>
-                        <option value="ACCOUNTING">ACCOUNTING (Akuntansi)</option>
-                        <option value="CONSULTING">CONSULTING (Advisory Bisnis)</option>
-                        <option value="LEGAL">LEGAL (Hukum Perusahaan)</option>
-                      </select>
+                        className="text-xs h-9 mt-1"
+                      />
                     </div>
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Nama Layanan *</Label>
+                    <Label className="font-semibold text-primary">Nama Layanan Bisnis *</Label>
                     <Input
                       type="text"
                       required
-                      placeholder="e.g. Tax Compliance & SPT Badan"
+                      placeholder="e.g. Asistensi Pemeriksaan Pajak & SP2DK"
                       value={serviceForm.service_name}
                       onChange={(e) => setServiceForm((prev) => ({ ...prev, service_name: e.target.value }))}
                       className="text-xs h-9 mt-1"
@@ -1448,7 +1363,7 @@ function AdminCMSPageContent() {
                     <Textarea
                       required
                       rows={3}
-                      placeholder="Uraian ruang lingkup layanan konsultasi..."
+                      placeholder="Jelaskan ruang lingkup layanan konsultasi ini..."
                       value={serviceForm.description}
                       onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))}
                       className="text-xs mt-1"
@@ -1461,46 +1376,52 @@ function AdminCMSPageContent() {
               {modalSection === "regulasi" && (
                 <>
                   <div>
-                    <Label className="font-semibold text-primary">Judul Dokumen Regulasi *</Label>
+                    <Label className="font-semibold text-primary">Nomor &amp; Judul Regulasi *</Label>
                     <Input
                       type="text"
                       required
-                      placeholder="e.g. UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan"
+                      placeholder="e.g. PMK Nomor 168 Tahun 2023 tentang Petunjuk Teknis PPh 21"
                       value={regForm.title}
                       onChange={(e) => setRegForm((prev) => ({ ...prev, title: e.target.value }))}
                       className="text-xs h-9 mt-1"
                     />
                   </div>
+                  <div>
+                    <Label className="font-semibold text-primary">Tipe Regulasi *</Label>
+                    <select
+                      value={regForm.regulation_type}
+                      onChange={(e) => setRegForm((prev) => ({ ...prev, regulation_type: e.target.value }))}
+                      className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
+                    >
+                      <option value="Peraturan Menteri Keuangan (PMK)">Peraturan Menteri Keuangan (PMK)</option>
+                      <option value="Peraturan Direktur Jenderal Pajak (PER)">Peraturan Direktur Jenderal Pajak (PER)</option>
+                      <option value="Peraturan Pemerintah (PP)">Peraturan Pemerintah (PP)</option>
+                      <option value="Undang-Undang (UU)">Undang-Undang (UU)</option>
+                      <option value="Surat Edaran Dirjen Pajak (SE)">Surat Edaran Dirjen Pajak (SE)</option>
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="font-semibold text-primary">Tipe Regulasi</Label>
+                      <Label className="font-semibold text-primary">File Path / URL Berkas *</Label>
                       <Input
                         type="text"
                         required
-                        value={regForm.regulation_type}
-                        onChange={(e) => setRegForm((prev) => ({ ...prev, regulation_type: e.target.value }))}
+                        placeholder="/docs/pmk-168-2023.pdf"
+                        value={regForm.file_path}
+                        onChange={(e) => setRegForm((prev) => ({ ...prev, file_path: e.target.value }))}
                         className="text-xs h-9 mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="font-semibold text-primary">Ukuran Berkas</Label>
+                      <Label className="font-semibold text-primary">Ukuran File</Label>
                       <Input
                         type="text"
+                        placeholder="e.g. 2.4 MB"
                         value={regForm.file_size}
                         onChange={(e) => setRegForm((prev) => ({ ...prev, file_size: e.target.value }))}
                         className="text-xs h-9 mt-1"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <Label className="font-semibold text-primary">Path / Link Berkas PDF *</Label>
-                    <Input
-                      type="text"
-                      required
-                      value={regForm.file_path}
-                      onChange={(e) => setRegForm((prev) => ({ ...prev, file_path: e.target.value }))}
-                      className="text-xs h-9 mt-1"
-                    />
                   </div>
                 </>
               )}
@@ -1510,43 +1431,55 @@ function AdminCMSPageContent() {
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="font-semibold text-primary">Kode Valuta</Label>
+                      <Label className="font-semibold text-primary">Kode Valas (3 Huruf) *</Label>
                       <Input
                         type="text"
                         required
+                        maxLength={3}
+                        placeholder="USD"
                         value={kursForm.currency_code}
-                        onChange={(e) => setSingleKursForm((prev) => ({ ...prev, currency_code: e.target.value }))}
-                        className="text-xs h-9 mt-1"
+                        onChange={(e) =>
+                          setSingleKursForm((prev) => ({ ...prev, currency_code: e.target.value.toUpperCase() }))
+                        }
+                        className="text-xs h-9 mt-1 uppercase font-mono"
                       />
                     </div>
                     <div>
-                      <Label className="font-semibold text-primary">Nilai Kurs (Rupiah)</Label>
+                      <Label className="font-semibold text-primary">Nilai Kurs (Rupiah) *</Label>
                       <Input
                         type="number"
                         required
+                        placeholder="15890"
                         value={kursForm.rate_value}
-                        onChange={(e) => setSingleKursForm((prev) => ({ ...prev, rate_value: Number(e.target.value) }))}
+                        onChange={(e) =>
+                          setSingleKursForm((prev) => ({ ...prev, rate_value: Number(e.target.value) }))
+                        }
                         className="text-xs h-9 mt-1"
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="font-semibold text-primary">Tanggal Mulai Berlaku</Label>
+                      <Label className="font-semibold text-primary">Mulai Berlaku *</Label>
                       <Input
                         type="date"
                         required
                         value={kursForm.effective_start_date}
-                        onChange={(e) => setSingleKursForm((prev) => ({ ...prev, effective_start_date: e.target.value }))}
+                        onChange={(e) =>
+                          setSingleKursForm((prev) => ({ ...prev, effective_start_date: e.target.value }))
+                        }
                         className="text-xs h-9 mt-1"
                       />
                     </div>
                     <div>
-                      <Label className="font-semibold text-primary">Tanggal Berakhir (Opsional)</Label>
+                      <Label className="font-semibold text-primary">Berakhir Berlaku *</Label>
                       <Input
                         type="date"
+                        required
                         value={kursForm.effective_end_date}
-                        onChange={(e) => setSingleKursForm((prev) => ({ ...prev, effective_end_date: e.target.value }))}
+                        onChange={(e) =>
+                          setSingleKursForm((prev) => ({ ...prev, effective_end_date: e.target.value }))
+                        }
                         className="text-xs h-9 mt-1"
                       />
                     </div>
@@ -1557,45 +1490,60 @@ function AdminCMSPageContent() {
               {/* DYNAMIC FORM 5: KARIR */}
               {modalSection === "karir" && (
                 <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="font-semibold text-primary">Kode Lowongan (Opsional)</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g. TAX-SR-01"
+                        value={careerForm.position_code}
+                        onChange={(e) => setCareerForm((prev) => ({ ...prev, position_code: e.target.value }))}
+                        className="text-xs h-9 mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="font-semibold text-primary">Tingkat / Level *</Label>
+                      <select
+                        value={careerForm.level}
+                        onChange={(e) => setCareerForm((prev) => ({ ...prev, level: e.target.value }))}
+                        className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
+                      >
+                        <option value="Internship">Internship</option>
+                        <option value="Junior Associate">Junior Associate</option>
+                        <option value="Associate">Associate</option>
+                        <option value="Senior Associate">Senior Associate</option>
+                        <option value="Manager">Manager</option>
+                      </select>
+                    </div>
+                  </div>
                   <div>
-                    <Label className="font-semibold text-primary">Judul Posisi Pekerjaan *</Label>
+                    <Label className="font-semibold text-primary">Nama Posisi Karir *</Label>
                     <Input
                       type="text"
                       required
-                      placeholder="e.g. Senior Tax Consultant BKP"
+                      placeholder="e.g. Senior Tax Consultant (BKP Level B)"
                       value={careerForm.position_title}
                       onChange={(e) => setCareerForm((prev) => ({ ...prev, position_title: e.target.value }))}
                       className="text-xs h-9 mt-1"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="font-semibold text-primary">Level Pengalaman</Label>
-                      <Input
-                        type="text"
-                        required
-                        value={careerForm.level}
-                        onChange={(e) => setCareerForm((prev) => ({ ...prev, level: e.target.value }))}
-                        className="text-xs h-9 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label className="font-semibold text-primary">Lokasi Kerja</Label>
-                      <Input
-                        type="text"
-                        required
-                        value={careerForm.location}
-                        onChange={(e) => setCareerForm((prev) => ({ ...prev, location: e.target.value }))}
-                        className="text-xs h-9 mt-1"
-                      />
-                    </div>
+                  <div>
+                    <Label className="font-semibold text-primary">Lokasi Kerja *</Label>
+                    <Input
+                      type="text"
+                      required
+                      placeholder="e.g. SCBD Jakarta Selatan (Hybrid)"
+                      value={careerForm.location}
+                      onChange={(e) => setCareerForm((prev) => ({ ...prev, location: e.target.value }))}
+                      className="text-xs h-9 mt-1"
+                    />
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Uraian Kualifikasi &amp; Tanggung Jawab *</Label>
+                    <Label className="font-semibold text-primary">Uraian Kebutuhan &amp; Kualifikasi *</Label>
                     <Textarea
                       required
                       rows={3}
-                      placeholder="Kualifikasi pendidikan, sertifikasi BKP, dan deskripsi tugas..."
+                      placeholder="Uraikan kualifikasi dan tanggung jawab..."
                       value={careerForm.description}
                       onChange={(e) => setCareerForm((prev) => ({ ...prev, description: e.target.value }))}
                       className="text-xs mt-1"
@@ -1630,7 +1578,7 @@ function AdminCMSPageContent() {
                           key={cat}
                           type="button"
                           onClick={() => setFaqForm((prev) => ({ ...prev, category: cat }))}
-                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
                             faqForm.category === cat
                               ? "bg-primary text-white border-primary"
                               : "bg-surface text-text-secondary border-primary-light hover:border-primary"
@@ -1679,12 +1627,228 @@ function AdminCMSPageContent() {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="text-xs h-8"
+                  className="text-xs h-8 cursor-pointer"
                 >
                   Batal
                 </Button>
-                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold">
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold cursor-pointer">
                   {editingFaq && modalSection === "faqs" ? "Simpan Perubahan FAQ" : "Simpan ke Database"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: EDIT HERO BANNER */}
+      {isHeroModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative">
+            <button
+              type="button"
+              onClick={() => setIsHeroModalOpen(false)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1 cursor-pointer"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                Pengaturan Profil Landing Page
+              </span>
+              <h3 className="text-base font-bold text-primary mt-0.5">Edit Headline Hero Beranda</h3>
+            </div>
+            <form onSubmit={handleSaveHero} className="space-y-3.5 text-xs">
+              <div>
+                <Label className="font-semibold text-text-secondary">Headline Utama *</Label>
+                <Input
+                  type="text"
+                  value={heroForm.headline}
+                  onChange={(e) => setHeroForm((prev) => ({ ...prev, headline: e.target.value }))}
+                  className="text-xs h-9 mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="font-semibold text-text-secondary">Sub-headline / Deskripsi Ringkas *</Label>
+                <Textarea
+                  value={heroForm.subheadline}
+                  onChange={(e) => setHeroForm((prev) => ({ ...prev, subheadline: e.target.value }))}
+                  rows={3}
+                  className="text-xs mt-1"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-primary-light">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsHeroModalOpen(false)}
+                  className="text-xs h-8 cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold cursor-pointer">
+                  Simpan Perubahan Hero
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: EDIT CONTACT SETTINGS */}
+      {isContactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative">
+            <button
+              type="button"
+              onClick={() => setIsContactModalOpen(false)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1 cursor-pointer"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                Pengaturan Kontak Resmi
+              </span>
+              <h3 className="text-base font-bold text-primary mt-0.5">Edit Kontak &amp; WhatsApp CS</h3>
+            </div>
+            <form onSubmit={handleSaveContact} className="space-y-3 text-xs">
+              <div>
+                <Label className="font-semibold text-text-secondary">Nama Perusahaan *</Label>
+                <Input
+                  type="text"
+                  value={contactForm.companyName}
+                  onChange={(e) => setContactForm((prev) => ({ ...prev, companyName: e.target.value }))}
+                  className="text-xs h-9 mt-1"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="font-semibold text-text-secondary">Email Resmi *</Label>
+                  <Input
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
+                    className="text-xs h-9 mt-1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="font-semibold text-text-secondary">Telepon Kantor *</Label>
+                  <Input
+                    type="text"
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="text-xs h-9 mt-1"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="font-semibold text-text-secondary">WhatsApp CS Hotline *</Label>
+                <Input
+                  type="text"
+                  value={contactForm.whatsapp}
+                  onChange={(e) => setContactForm((prev) => ({ ...prev, whatsapp: e.target.value }))}
+                  className="text-xs h-9 mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="font-semibold text-text-secondary">Alamat Kantor Resmi *</Label>
+                <Textarea
+                  value={contactForm.address}
+                  onChange={(e) => setContactForm((prev) => ({ ...prev, address: e.target.value }))}
+                  rows={2}
+                  className="text-xs mt-1"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-primary-light">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsContactModalOpen(false)}
+                  className="text-xs h-8 cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold cursor-pointer">
+                  Simpan Kontak Resmi
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: BATCH KURS VALAS KMK */}
+      {isBatchKursModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-2xl w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setIsBatchKursModalOpen(false)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1 cursor-pointer"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                Pembaruan Kurs Valuta Asing
+              </span>
+              <h3 className="text-base font-bold text-primary mt-0.5">Kelola Batch 7 Kurs Valas KMK</h3>
+            </div>
+            <form onSubmit={handleSaveBatchKurs} className="space-y-4 text-xs">
+              <div>
+                <Label className="text-xs font-semibold text-primary">Nomor Keputusan Menteri Keuangan (KMK)</Label>
+                <Input
+                  type="text"
+                  value={kmkNumber}
+                  onChange={(e) => setKmkNumber(e.target.value)}
+                  className="text-xs h-9 mt-1"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {kursRates.map((kr, idx) => (
+                  <div key={kr.currency} className="p-3 rounded-xl border border-primary-light bg-surface space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-primary flex items-center gap-1.5">
+                        <span>{kr.flag}</span>
+                        <span>{kr.currency}</span>
+                      </span>
+                      <span className="text-[10px] text-text-muted">{kr.name}</span>
+                    </div>
+                    <Input
+                      type="text"
+                      value={kr.rate}
+                      onChange={(e) => {
+                        const next = [...kursRates];
+                        next[idx].rate = e.target.value;
+                        setKursRates(next);
+                      }}
+                      className="text-xs h-8 bg-white"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-primary-light">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBatchKursModalOpen(false)}
+                  className="text-xs h-8 cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold cursor-pointer">
+                  Simpan Seluruh 7 Kurs ke Database
                 </Button>
               </div>
             </form>
@@ -1700,7 +1864,7 @@ export default function AdminCMSPage() {
     <Suspense
       fallback={
         <div className="p-8 text-center text-text-secondary text-xs">
-          Memuat Pusat Manajemen CMS...
+          Memuat Pusat Manajemen Konten Website (CMS)...
         </div>
       }
     >
