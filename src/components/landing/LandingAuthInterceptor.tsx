@@ -77,16 +77,20 @@ export function LandingAuthInterceptor({ children }: LandingAuthInterceptorProps
         return;
       }
 
-      // Tombol aksi seperti "Lamar Posisi" di Karir atau "Selengkapnya" di Edukasi
+      // Tombol aksi seperti "Lihat Kualifikasi" / "Lamar Posisi" di Karir atau "Selengkapnya" di Edukasi
       const btnText = target.textContent?.trim() || "";
       if (
         btnText.includes("Lamar Posisi") ||
         btnText.includes("Lamar Pekerjaan") ||
+        btnText.includes("Lihat Kualifikasi") ||
         btnText.includes("Selengkapnya")
       ) {
         e.preventDefault();
         e.stopPropagation();
-        const targetPath = btnText.includes("Lamar") ? "/karir" : "/edukasi";
+        const targetPath =
+          btnText.includes("Lamar") || btnText.includes("Kualifikasi")
+            ? "/karir"
+            : "/edukasi";
         router.push(`/login?redirect=${encodeURIComponent(targetPath)}`);
         return;
       }

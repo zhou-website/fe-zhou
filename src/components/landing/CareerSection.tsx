@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
   ClockIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   CareerSettings,
   JobPosition,
@@ -45,7 +47,9 @@ import {
 import { publicApi, CareerItem } from "@/lib/api";
 
 export function CareerSection() {
+  const router = useRouter();
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
   const [jobs, setJobs] = useState<JobPosition[]>([]);
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -56,6 +60,11 @@ export function CareerSection() {
   const [applicantPhone, setApplicantPhone] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
   const [fileError, setFileError] = useState<string>("");
+
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -160,6 +169,10 @@ export function CareerSection() {
   };
 
   const handleOpenModal = (job: JobPosition) => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=${encodeURIComponent("/karir")}`);
+      return;
+    }
     setSelectedJob(job);
     setFormSubmitted(false);
     setApplicantName("");
@@ -233,10 +246,10 @@ export function CareerSection() {
             )}
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
               <Button variant="outline" size="sm" asChild className="text-xs font-semibold hover:border-primary">
-                <Link href="/kontak">Hubungi Sekretariat</Link>
+                <Link href={getAuthHref("/kontak")}>Hubungi Sekretariat</Link>
               </Button>
               <Button variant="ghost" size="sm" asChild className="text-xs text-text-secondary hover:text-primary">
-                <Link href="/karir">Lihat Portal Karir</Link>
+                <Link href={getAuthHref("/karir")}>Lihat Portal Karir</Link>
               </Button>
             </div>
           </div>
@@ -342,7 +355,7 @@ export function CareerSection() {
                 asChild
                 className="text-xs font-bold gap-2 hover:border-primary"
               >
-                <Link href="/karir">
+                <Link href={getAuthHref("/karir")}>
                   <span>Lihat Seluruh Lowongan</span>
                 </Link>
               </Button>

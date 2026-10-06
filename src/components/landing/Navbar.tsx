@@ -20,6 +20,11 @@ export function Navbar() {
   const { language, setLanguage, t } = useLanguage();
   const { user, isAuthenticated, logout } = useAuth();
 
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [layananOpen, setLayananOpen] = useState(false);
   const [mobileLayananOpen, setMobileLayananOpen] = useState(false);
@@ -140,28 +145,28 @@ export function Navbar() {
                   {t.nav.consultationSection}
                 </div>
                 <Link
-                  href="/layanan/akuntansi"
+                  href={getAuthHref("/layanan/akuntansi")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   Accounting Services
                 </Link>
                 <Link
-                  href="/layanan/bisnis"
+                  href={getAuthHref("/layanan/bisnis")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   Business &amp; Financial Services
                 </Link>
                 <Link
-                  href="/layanan/tax-service"
+                  href={getAuthHref("/layanan/tax-service")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   Tax Services
                 </Link>
                 <Link
-                  href="/layanan/hukum"
+                  href={getAuthHref("/layanan/hukum")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
@@ -176,42 +181,42 @@ export function Navbar() {
                   {t.nav.taxCoreSection}
                 </div>
                 <Link
-                  href="/layanan/tax-service#e-faktur"
+                  href={getAuthHref("/layanan/tax-service#e-faktur")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   e-Faktur Pajak
                 </Link>
                 <Link
-                  href="/layanan/tax-service#e-bupot-21"
+                  href={getAuthHref("/layanan/tax-service#e-bupot-21")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   e-Bupot 21/26
                 </Link>
                 <Link
-                  href="/layanan/tax-service#e-bupot-unifikasi"
+                  href={getAuthHref("/layanan/tax-service#e-bupot-unifikasi")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   e-Bupot Unifikasi
                 </Link>
                 <Link
-                  href="/layanan/tax-service#e-billing"
+                  href={getAuthHref("/layanan/tax-service#e-billing")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   e-Billing &amp; VSWP
                 </Link>
                 <Link
-                  href="/layanan/tax-service#pelaporan-spt"
+                  href={getAuthHref("/layanan/tax-service#pelaporan-spt")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   Pelaporan SPT (BPE DJP)
                 </Link>
                 <Link
-                  href="/layanan/tax-service#integrasi-api"
+                  href={getAuthHref("/layanan/tax-service#integrasi-api")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
@@ -246,21 +251,21 @@ export function Navbar() {
             {peraturanOpen && (
               <div className="absolute top-full left-0 w-52 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                 <Link
-                  href="/peraturan"
+                  href={getAuthHref("/peraturan")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   {t.nav.regulations}
                 </Link>
                 <Link
-                  href="/peraturan#kurs-pajak"
+                  href={getAuthHref("/peraturan#kurs-pajak")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   Kurs Pajak
                 </Link>
                 <Link
-                  href="/peraturan#unduh-peraturan"
+                  href={getAuthHref("/peraturan#unduh-peraturan")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
@@ -295,14 +300,14 @@ export function Navbar() {
             {edukasiOpen && (
               <div className="absolute top-full left-0 w-64 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                 <Link
-                  href="/edukasi?tab=edukasi-zhou"
+                  href={getAuthHref("/edukasi?tab=edukasi-zhou")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
                   {t.nav.educationZhou}
                 </Link>
                 <Link
-                  href="/edukasi?tab=belajar-pajak"
+                  href={getAuthHref("/edukasi?tab=belajar-pajak")}
                   onClick={closeAllMenus}
                   className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
                 >
@@ -313,13 +318,13 @@ export function Navbar() {
           </div>
 
           <Link
-            href="/kontak"
+            href={getAuthHref("/kontak")}
             className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
           >
             {t.nav.contact}
           </Link>
           <Link
-            href="/karir"
+            href={getAuthHref("/karir")}
             className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
           >
             {t.nav.career}
@@ -562,28 +567,28 @@ export function Navbar() {
                     {t.nav.consultationSection}
                   </div>
                   <Link
-                    href="/layanan/akuntansi"
+                    href={getAuthHref("/layanan/akuntansi")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     Accounting Services
                   </Link>
                   <Link
-                    href="/layanan/bisnis"
+                    href={getAuthHref("/layanan/bisnis")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     Business &amp; Financial Services
                   </Link>
                   <Link
-                    href="/layanan/tax-service"
+                    href={getAuthHref("/layanan/tax-service")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     Tax Services
                   </Link>
                   <Link
-                    href="/layanan/hukum"
+                    href={getAuthHref("/layanan/hukum")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
@@ -598,42 +603,42 @@ export function Navbar() {
                     {t.nav.taxCoreSection}
                   </div>
                   <Link
-                    href="/layanan/tax-service#e-faktur"
+                    href={getAuthHref("/layanan/tax-service#e-faktur")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     e-Faktur Pajak
                   </Link>
                   <Link
-                    href="/layanan/tax-service#e-bupot-21"
+                    href={getAuthHref("/layanan/tax-service#e-bupot-21")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     e-Bupot 21/26
                   </Link>
                   <Link
-                    href="/layanan/tax-service#e-bupot-unifikasi"
+                    href={getAuthHref("/layanan/tax-service#e-bupot-unifikasi")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     e-Bupot Unifikasi
                   </Link>
                   <Link
-                    href="/layanan/tax-service#e-billing"
+                    href={getAuthHref("/layanan/tax-service#e-billing")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     e-Billing &amp; VSWP
                   </Link>
                   <Link
-                    href="/layanan/tax-service#pelaporan-spt"
+                    href={getAuthHref("/layanan/tax-service#pelaporan-spt")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     Pelaporan SPT (BPE DJP)
                   </Link>
                   <Link
-                    href="/layanan/tax-service#integrasi-api"
+                    href={getAuthHref("/layanan/tax-service#integrasi-api")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
@@ -661,21 +666,21 @@ export function Navbar() {
               {mobilePeraturanOpen && (
                 <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
                   <Link
-                    href="/peraturan"
+                    href={getAuthHref("/peraturan")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     {t.nav.regulations}
                   </Link>
                   <Link
-                    href="/peraturan#kurs-pajak"
+                    href={getAuthHref("/peraturan#kurs-pajak")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     Kurs Pajak
                   </Link>
                   <Link
-                    href="/peraturan#unduh-peraturan"
+                    href={getAuthHref("/peraturan#unduh-peraturan")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
@@ -703,14 +708,14 @@ export function Navbar() {
               {mobileEdukasiOpen && (
                 <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
                   <Link
-                    href="/edukasi?tab=edukasi-zhou"
+                    href={getAuthHref("/edukasi?tab=edukasi-zhou")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
                     {t.nav.educationZhou}
                   </Link>
                   <Link
-                    href="/edukasi?tab=belajar-pajak"
+                    href={getAuthHref("/edukasi?tab=belajar-pajak")}
                     onClick={closeAllMenus}
                     className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
                   >
@@ -721,14 +726,14 @@ export function Navbar() {
             </div>
 
             <Link
-              href="/kontak"
+              href={getAuthHref("/kontak")}
               onClick={closeAllMenus}
               className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
             >
               {t.nav.contact}
             </Link>
             <Link
-              href="/karir"
+              href={getAuthHref("/karir")}
               onClick={closeAllMenus}
               className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
             >

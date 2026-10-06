@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 /**
  * Helper to render an authentic 3D embossed isometric cube
@@ -171,6 +172,7 @@ function EmbossedCube({ cx, cy, size = 52 }: { cx: number; cy: number; size?: nu
 
 export function Hero() {
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   return (
     <section
       id="hero"
@@ -347,7 +349,15 @@ export function Hero() {
               asChild
               className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md shadow-sm transition-all duration-200 active:scale-[0.98]"
             >
-              <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? "/konsultasi"
+                    : `/login?redirect=${encodeURIComponent("/konsultasi")}`
+                }
+              >
+                {t.hero.ctaConsult}
+              </Link>
             </Button>
 
             <Button
@@ -356,7 +366,15 @@ export function Hero() {
               asChild
               className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md transition-all duration-200 active:scale-[0.98]"
             >
-              <Link href="/#layanan">{t.hero.ctaServices}</Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? "/#layanan"
+                    : `/login?redirect=${encodeURIComponent("/layanan/tax-service")}`
+                }
+              >
+                {t.hero.ctaServices}
+              </Link>
             </Button>
           </div>
         </div>

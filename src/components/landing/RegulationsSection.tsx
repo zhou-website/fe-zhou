@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { CheckCircleIcon, DocumentIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   StoredRegulationItem,
   StoredKmkData,
@@ -27,8 +28,14 @@ import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
 export function RegulationsSection() {
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
   const [kmkData, setKmkData] = useState<StoredKmkData>(DEFAULT_KMK_DATA);
+
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -286,7 +293,7 @@ export function RegulationsSection() {
                 className="flex-1 text-xs font-semibold justify-center gap-2"
               >
                 <Link
-                  href="/peraturan"
+                  href={getAuthHref("/peraturan")}
                   className="inline-flex items-center justify-center gap-2"
                 >
                   <span>{t.regulations.btnAll}</span>
@@ -299,7 +306,7 @@ export function RegulationsSection() {
                 className="flex-1 text-xs font-semibold hover:border-primary justify-center gap-2 cursor-pointer shadow-xs"
               >
                 <Link
-                  href="/peraturan#kurs-pajak"
+                  href={getAuthHref("/peraturan#kurs-pajak")}
                   className="inline-flex items-center justify-center gap-2"
                   title="Lihat Tabel & Unduh KMK Kurs Pajak Mingguan"
                 >

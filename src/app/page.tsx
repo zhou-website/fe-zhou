@@ -10,30 +10,33 @@ import {
   ContactSection,
   Footer,
   FloatingWhatsAppCTA,
+  LandingAuthInterceptor,
 } from "@/components/landing";
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
-      {/* 1. Header / Navigation */}
-      <Navbar />
+      <LandingAuthInterceptor>
+        {/* 1. Header / Navigation */}
+        <Navbar />
 
-      {/* 2. Main Landing Page Sections */}
-      <main className="flex-1">
-        <Hero />
-        <AboutSection />
-        <ServicesSection />
-        <RegulationsSection />
-        <EducationSection />
-        <CareerSection />
-        <ContactSection />
-      </main>
+        {/* 2. Main Landing Page Sections */}
+        <main className="flex-1">
+          <Hero />
+          <AboutSection />
+          <ServicesSection />
+          <RegulationsSection />
+          <EducationSection />
+          <CareerSection />
+          <ContactSection />
+        </main>
 
-      {/* 3. Footer */}
-      <Footer />
+        {/* 3. Footer */}
+        <Footer />
 
-      {/* 4. Floating WhatsApp CTA */}
-      <FloatingWhatsAppCTA />
+        {/* 4. Floating WhatsApp CTA */}
+        <FloatingWhatsAppCTA />
+      </LandingAuthInterceptor>
     </div>
   );
 }

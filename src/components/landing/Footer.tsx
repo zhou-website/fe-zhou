@@ -22,10 +22,17 @@ import {
   InstagramIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 export function Footer() {
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [legalModalType, setLegalModalType] = useState<"privasi" | "syarat" | "kepatuhan" | null>(null);
+
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -124,22 +131,22 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/peraturan" className="hover:text-white transition-colors">
+                <Link href={getAuthHref("/peraturan")} className="hover:text-white transition-colors">
                   Regulasi &amp; Kurs KMK
                 </Link>
               </li>
               <li>
-                <Link href="/edukasi" className="hover:text-white transition-colors">
+                <Link href={getAuthHref("/edukasi")} className="hover:text-white transition-colors">
                   Wawasan &amp; Edukasi
                 </Link>
               </li>
               <li>
-                <Link href="/karir" className="hover:text-white transition-colors">
+                <Link href={getAuthHref("/karir")} className="hover:text-white transition-colors">
                   Peluang Karir
                 </Link>
               </li>
               <li>
-                <Link href="/kontak" className="hover:text-white transition-colors">
+                <Link href={getAuthHref("/kontak")} className="hover:text-white transition-colors">
                   Hubungi Kami
                 </Link>
               </li>
@@ -154,22 +161,22 @@ export function Footer() {
               </h4>
               <ul className="space-y-2 text-xs text-silver">
                 <li>
-                  <Link href="/layanan/akuntansi" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/akuntansi")} className="hover:text-white transition-colors">
                     Accounting Services
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/bisnis" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/bisnis")} className="hover:text-white transition-colors">
                     Business &amp; Financial Services
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service" className="hover:text-white transition-colors font-medium text-white">
+                  <Link href={getAuthHref("/layanan/tax-service")} className="hover:text-white transition-colors font-medium text-white">
                     Tax Services (Kepatuhan SPT)
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/hukum" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/hukum")} className="hover:text-white transition-colors">
                     Law Services (Legal Compliance)
                   </Link>
                 </li>
@@ -184,32 +191,32 @@ export function Footer() {
               </div>
               <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] text-silver">
                 <li>
-                  <Link href="/layanan/tax-service#e-faktur" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#e-faktur")} className="hover:text-white transition-colors">
                     e-Faktur / PPN
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service#e-bupot-21" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#e-bupot-21")} className="hover:text-white transition-colors">
                     e-Bupot PPh 21
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service#e-bupot-unifikasi" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#e-bupot-unifikasi")} className="hover:text-white transition-colors">
                     e-Bupot Unifikasi
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service#e-billing" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#e-billing")} className="hover:text-white transition-colors">
                     e-Billing &amp; VSWP
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service#pelaporan-spt" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
                     Pelaporan SPT
                   </Link>
                 </li>
                 <li>
-                  <Link href="/layanan/tax-service#integrasi-api" className="hover:text-white transition-colors">
+                  <Link href={getAuthHref("/layanan/tax-service#integrasi-api")} className="hover:text-white transition-colors">
                     Integrasi API ERP
                   </Link>
                 </li>

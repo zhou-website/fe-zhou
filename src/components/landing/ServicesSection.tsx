@@ -18,6 +18,7 @@ import {
   ArrowRightIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   StoredServiceItem,
   getStoredServices,
@@ -28,6 +29,12 @@ export function ServicesSection() {
   const [activeTab, setActiveTab] = useState<"all" | "konsultasi" | "tax">("all");
   const [services, setServices] = useState<StoredServiceItem[]>([]);
   const { t } = useLanguage();
+  const { isAuthenticated } = useAuth();
+
+  const getAuthHref = (target: string) => {
+    if (isAuthenticated) return target;
+    return `/login?redirect=${encodeURIComponent(target)}`;
+  };
 
   useEffect(() => {
     setServices(getStoredServices());
@@ -102,7 +109,7 @@ export function ServicesSection() {
             </div>
             <div className="pt-2 flex items-center justify-center gap-3">
               <Button variant="primary" size="sm" asChild className="text-xs">
-                <Link href="/konsultasi">Konsultasi Langsung</Link>
+                <Link href={getAuthHref("/konsultasi")}>Konsultasi Langsung</Link>
               </Button>
             </div>
           </div>
@@ -140,11 +147,10 @@ export function ServicesSection() {
                   <Button
                     variant="outline"
                     asChild
-                    className="w-full justify-between text-xs font-bold border-primary text-primary hover:bg-primary/5 group"
+                    className="w-full justify-center text-xs font-bold border-primary text-primary hover:bg-primary/5 transition-colors"
                   >
-                    <Link href={service.route || `/layanan/${service.categoryKey}`}>
+                    <Link href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}>
                       <span>Lihat Layanan</span>
-                      <ArrowRightIcon className="text-[10px] group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </Button>
                 </CardFooter>
@@ -170,7 +176,7 @@ export function ServicesSection() {
               asChild
               className="border-white/30 text-white hover:bg-white/10 font-bold text-xs sm:text-sm px-5"
             >
-              <Link href="/#layanan">Katalog Layanan</Link>
+              <Link href={getAuthHref("/layanan/tax-service")}>Katalog Layanan</Link>
             </Button>
             <Button
               variant="silver"
@@ -178,7 +184,7 @@ export function ServicesSection() {
               asChild
               className="font-bold text-xs sm:text-sm px-6 shadow-md"
             >
-              <Link href="/konsultasi">Reservasi Konsultasi</Link>
+              <Link href={getAuthHref("/konsultasi")}>Reservasi Konsultasi</Link>
             </Button>
           </div>
         </div>
