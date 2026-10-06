@@ -4,11 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { BackendStatusBadge } from "@/components/common/BackendStatusBadge";
 import {
   DocumentIcon,
   ChatbotIcon,
-  UserIcon,
   LogoutIcon,
   MenuIcon,
   CloseIcon,
@@ -34,27 +32,16 @@ const USER_NAV_ITEMS: NavItem[] = [
     label: "Konsultasi",
     href: "/dashboard/user/tiket",
     icon: ClockIcon,
-    badge: "3",
-    badgeColor: "bg-primary-light text-primary",
   },
   {
     label: "Dokumen Pajak",
     href: "/dashboard/user/dokumen",
     icon: DocumentIcon,
-    badge: "6",
-    badgeColor: "bg-success/20 text-success",
   },
   {
     label: "Chatbot Bantuan",
     href: "/dashboard/user/chatbot",
     icon: ChatbotIcon,
-    badge: "Rule",
-    badgeColor: "bg-white/15 text-silver",
-  },
-  {
-    label: "Pengaturan Profil",
-    href: "/dashboard/user/profil",
-    icon: UserIcon,
   },
 ];
 
@@ -199,29 +186,31 @@ export function UserSidebar() {
 
         {/* Bottom: Client Profile Card & Logout */}
         <div className="p-4 border-t border-[#172652] space-y-3 bg-[#060D22]/60">
-          {/* Client Entity Info Box */}
-          <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-xs">
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="w-7 h-7 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs">
-                {user?.avatarText || (user?.name ? user.name.slice(0, 2).toUpperCase() : "KL")}
+          {/* Client Entity Info Box - Klik untuk menuju Pengaturan Profil */}
+          <Link
+            href="/dashboard/user/profil"
+            onClick={() => setMobileOpen(false)}
+            title="Buka Pengaturan Profil"
+            className={`block rounded-lg p-3 text-xs transition-all border group cursor-pointer ${
+              pathname === "/dashboard/user/profil"
+                ? "bg-white/15 border-primary-light shadow-sm"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs group-hover:bg-primary-light group-hover:text-[#0B1533] transition-colors">
+                {user?.avatarText || (user?.name ? user.name.slice(0, 2).toUpperCase() : "-")}
               </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-white truncate">
-                  {user?.name || "Klien Terdaftar"}
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-white truncate group-hover:text-primary-light transition-colors">
+                  {user?.name || "-"}
                 </div>
                 <div className="text-[10px] text-silver truncate">
                   {user?.email || ""}
                 </div>
               </div>
             </div>
-
-            <div className="text-[10px] text-silver/80 flex items-center justify-between pt-1.5 border-t border-white/5">
-              <span>Peran: Klien</span>
-              <span className="text-success font-semibold">&bull; Aktif</span>
-            </div>
-          </div>
-
-          <BackendStatusBadge compact className="w-full justify-center py-1 bg-white/5 border-white/10" />
+          </Link>
 
           {/* Logout Action */}
           <button

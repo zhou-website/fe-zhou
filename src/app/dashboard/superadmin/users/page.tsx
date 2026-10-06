@@ -535,7 +535,6 @@ export default function SuperadminUsersPage() {
                       <Badge
                         variant={staff.status === "Aktif" ? "success" : "silver"}
                         size="sm"
-                        dot={staff.status === "Aktif"}
                       >
                         {staff.status}
                       </Badge>

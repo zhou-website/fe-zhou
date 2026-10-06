@@ -212,7 +212,7 @@ function ResetPasswordContent() {
       </main>
 
       <footer className="w-full py-4 text-center text-xs text-text-secondary border-t border-primary-light/50">
-        © {new Date().getFullYear()} Zhou Consulting. Hak Cipta Dilindungi Undang-Undang.
+        © {new Date().getFullYear()} Zhou Consulting. All rights reserved.
       </footer>
     </div>
   );

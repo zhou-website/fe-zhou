@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, isDummyTicket } from "@/context/AuthContext";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,13 +55,42 @@ export default function UserDashboardPage() {
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  // Sync consultations & documents with backend
+  // Sync consultations & documents with backend, filtering dummy data
   useEffect(() => {
+    let customTickets: Ticket[] = [];
+    try {
+      const saved = localStorage.getItem("zhou_client_custom_tickets");
+      if (saved) {
+        const parsed = JSON.parse(saved) as any[];
+        const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
+        customTickets = filteredSaved.map((t) => ({
+          id: t.id,
+          title: t.title,
+          category: t.category || "Tax Service Core",
+          consultant: t.consultant || "Konsultan Zhou",
+          status: t.status === "Completed" ? "Completed" : "In Progress",
+          progress: t.progress || 20,
+          updatedAt: t.updatedAt || t.createdAt || "Baru saja",
+          checklists: t.checklists || [
+            { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+            { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: false },
+            { text: "Penyusunan berkas luaran & final review", done: false },
+          ],
+          deliverableFile: t.deliverableFile,
+          deliverableSize: t.deliverableSize,
+        }));
+        if (customTickets.length > 0) {
+          setTickets(customTickets);
+        }
+      }
+    } catch {}
+
     async function loadClientData() {
       try {
         const res = await clientApi.getConsultations();
         if (res.success && Array.isArray(res.data)) {
-          const mapped: Ticket[] = res.data.map((c: ConsultationItem) => ({
+          const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          const mapped: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-${c.id}`,
             title: c.title,
             category: "Tax Service Core",
@@ -81,7 +110,14 @@ export default function UserDashboardPage() {
             deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
             deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
           }));
-          setTickets(mapped);
+
+          const combined = [...customTickets];
+          mapped.forEach((m) => {
+            if (!combined.some((item) => item.id === m.id)) {
+              combined.push(m);
+            }
+          });
+          setTickets(combined);
         }
 
         const docRes = await clientApi.getDocuments();
@@ -162,7 +198,13 @@ export default function UserDashboardPage() {
       deliverableFile: undefined,
     };
 
-    setTickets((prev) => [newTicket, ...prev]);
+    setTickets((prev) => {
+      const updated = [newTicket, ...prev];
+      try {
+        localStorage.setItem("zhou_client_custom_tickets", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setNewTicketData({ title: "", category: "Tax Service Core", description: "" });
     setIsSubmittingTicket(false);
     setShowCreateModal(false);
@@ -175,8 +217,8 @@ export default function UserDashboardPage() {
 ZHOU CONSULTING - DIGITAL CLIENT VAULT
 ======================================================
 Berkas Resmi : ${fileName}
-Entitas      : ${user?.company || "Perusahaan Klien"}
-PIC Klien    : ${user?.name || "Klien Terdaftar"}
+Entitas      : ${user?.company || "-"}
+PIC Klien    : ${user?.name || "-"}
 Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
 Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
 Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
@@ -308,7 +350,15 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
             </CardDescription>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setShowCreateModal(true)}
+              className="text-xs py-1.5 px-3 h-auto shadow-sm"
+            >
+              + Buat Konsultasi Baru
+            </Button>
+
             {/* Filter Tabs */}
             <div className="inline-flex rounded-lg bg-surface p-1 border border-navy-light text-xs">
               <button

@@ -874,7 +874,6 @@ function AdminCMSPageContent() {
                         <Badge
                           variant={item.status === "Published" ? "success" : "silver"}
                           size="sm"
-                          dot={item.status === "Published"}
                         >
                           {item.status}
                         </Badge>
@@ -1103,7 +1102,6 @@ function AdminCMSPageContent() {
                       <Badge
                         variant={article.status === "Published" ? "success" : "silver"}
                         size="sm"
-                        dot={article.status === "Published"}
                       >
                         {article.status}
                       </Badge>
@@ -1333,7 +1331,6 @@ function AdminCMSPageContent() {
                       <Badge
                         variant={link.status === "Published" ? "success" : "silver"}
                         size="sm"
-                        dot={link.status === "Published"}
                       >
                         {link.status}
                       </Badge>

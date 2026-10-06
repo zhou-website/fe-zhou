@@ -67,8 +67,62 @@ function normalizeRole(backendRole: string): "user" | "admin" | "superadmin" {
   return "user";
 }
 
+export function isDummyValue(val?: string | null): boolean {
+  if (!val) return true;
+  const s = val.trim().toLowerCase();
+  if (s === "-" || s === "") return true;
+  if (
+    s.includes("mitra klien") ||
+    s.includes("perusahaan klien") ||
+    s.includes("zhou consulting klien") ||
+    s.includes("maju makmur") ||
+    s === "klien terdaftar" ||
+    s === "nama klien" ||
+    s === "pmk" ||
+    s === "pk" ||
+    s === "mms" ||
+    s === "kl"
+  ) {
+    return true;
+  }
+  const cleanDigits = s.replace(/\D/g, "");
+  if (
+    cleanDigits === "6281234567890" ||
+    cleanDigits === "081234567890" ||
+    cleanDigits === "6281123456789"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isDummyTicket(c: { project_code?: string; title?: string; id?: string | number }): boolean {
+  const code = (c.project_code || String(c.id || "")).toLowerCase();
+  const title = (c.title || "").toLowerCase();
+  return (
+    code.includes("prj-tax-2026-001") ||
+    code.includes("tk-1") ||
+    title.includes("maju sukses") ||
+    title.includes("spt tahunan badan pt maju") ||
+    title.includes("dummy") ||
+    title.includes("mock")
+  );
+}
+
+function cleanCompany(comp?: string, role?: string): string | undefined {
+  if (!comp || isDummyValue(comp)) {
+    return role === "admin" ? "Zhou Consulting Internal" : undefined;
+  }
+  return comp;
+}
+
+function cleanPhone(phone?: string): string | undefined {
+  if (!phone || isDummyValue(phone)) return undefined;
+  return phone;
+}
+
 function getInitials(name: string): string {
-  if (!name) return "ZC";
+  if (!name || isDummyValue(name)) return "-";
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -127,13 +181,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profile = res.data;
         const mappedRole = normalizeRole(profile.role);
         setUser((prev) => {
+          const comp = cleanCompany(profile.company_name, mappedRole) || cleanCompany(prev?.company, mappedRole);
+          const ph = cleanPhone(profile.phone) || cleanPhone(prev?.phone);
           const updated: AuthUser = {
             id: profile.id,
             name: profile.name,
             email: profile.email,
             role: mappedRole,
-            company: profile.company_name || prev?.company || "Zhou Consulting Klien",
-            phone: profile.phone || prev?.phone,
+            company: comp,
+            phone: ph,
             avatarUrl: profile.avatar_url || prev?.avatarUrl,
             avatarText: getInitials(profile.name),
             provider: prev?.provider || "credentials",
@@ -172,6 +228,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored) as AuthUser;
         if (parsed && parsed.email) {
+          if (parsed.company && isDummyValue(parsed.company)) {
+            parsed.company = undefined;
+          }
+          if (parsed.phone && isDummyValue(parsed.phone)) {
+            parsed.phone = undefined;
+          }
+          if (parsed.avatarText && isDummyValue(parsed.avatarText)) {
+            parsed.avatarText = "-";
+          }
           setUser(parsed);
           setIsAuthenticated(true);
         }
@@ -217,8 +282,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         name: backendUser.name,
         email: backendUser.email,
         role,
-        company: backendUser.company_name || (role === "admin" ? "Zhou Consulting Internal" : "Zhou Consulting Klien"),
-        phone: backendUser.phone,
+        company: cleanCompany(backendUser.company_name, role),
+        phone: cleanPhone(backendUser.phone),
         avatarText: getInitials(backendUser.name),
         avatarUrl: backendUser.avatar_url || undefined,
         provider: "credentials",
@@ -297,9 +362,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     redirectUrl?: string | null,
     customData?: Partial<AuthUser>
   ) => {
-    let name = "Klien Terdaftar";
-    let company = "Perusahaan Klien";
-    let avatarText = "KL";
+    let name = "-";
+    let company: string | undefined = undefined;
+    let avatarText = "-";
 
     if (role === "admin") {
       name = "Konsultan Senior Zhou";

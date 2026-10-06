@@ -209,7 +209,7 @@ export default function ForgotPasswordPage() {
 
       {/* Bottom Footer */}
       <footer className="py-4 text-center text-xs text-text-secondary border-t border-primary-light bg-white">
-        &copy; {new Date().getFullYear()} Zhou Consulting.
+        &copy; {new Date().getFullYear()} Zhou Consulting. All rights reserved.
       </footer>
     </div>
   );

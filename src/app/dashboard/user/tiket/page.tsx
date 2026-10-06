@@ -17,6 +17,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { isDummyTicket } from "@/context/AuthContext";
 import {
   ClockIcon,
   CheckCircleIcon,
@@ -28,7 +29,6 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChatbotIcon,
-  WhatsappIcon,
 } from "@/components/icons";
 
 interface Milestone {
@@ -75,69 +75,89 @@ export default function ClientTicketMonitoringPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Sync with live backend consultations
+  // Sync consultations, filtering out any backend dummy seed projects
   useEffect(() => {
+    // 1. Cek tiket yang dibuat oleh klien secara lokal
+    try {
+      const saved = localStorage.getItem("zhou_client_custom_tickets");
+      if (saved) {
+        const parsed = JSON.parse(saved) as Ticket[];
+        const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
+        if (filteredSaved.length > 0) {
+          setTickets(filteredSaved);
+          setSelectedTicketId(filteredSaved[0].id);
+        }
+      }
+    } catch {}
+
+    // 2. Muat tiket backend dan filter keluar tiket dummy (PRJ-TAX-2026-001 / Maju Sukses)
     async function loadBackendTickets() {
       try {
         const res = await clientApi.getConsultations();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: Ticket[] = res.data.map((c: ConsultationItem) => ({
-            id: c.project_code || `TK-${c.id}`,
-            title: c.title,
-            category: "Tax Service Core",
-            consultant: "Tim Konsultan Senior Zhou",
-            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
-            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
-            createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            estimatedCompletion: "Sesuai Jadwal SLA",
-            milestones: [
-              {
-                step: "01",
-                title: "Intake & Verifikasi Berkas Awal",
-                status: "completed",
-                date: "Hari ke-1",
-                description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
-              },
-              {
-                step: "02",
-                title: "Analisis & Pengerjaan Lembar Kerja",
-                status: c.status === "COMPLETED" ? "completed" : "in_progress",
-                date: "Proses",
-                description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
-              },
-              {
-                step: "03",
-                title: "Finalisasi & Penyampaian Hasil",
-                status: c.status === "COMPLETED" ? "completed" : "pending",
-                date: "Final",
-                description: "Penerbitan dokumen deliverable resmi.",
-              },
-            ],
-            deliverables: c.status === "COMPLETED" ? [
-              {
-                name: "Laporan_Resmi_Konsultasi_Zhou.pdf",
-                size: "1.8 MB",
-                format: "PDF",
-                date: "Selesai",
+        if (res.success && Array.isArray(res.data)) {
+          const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          if (validConsultations.length > 0) {
+            const mapped: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
+              id: c.project_code || `TK-${c.id}`,
+              title: c.title,
+              category: "Tax Service Core",
+              consultant: "Tim Konsultan Zhou",
+              status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+              progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
+              createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              }),
+              estimatedCompletion: "Sesuai Jadwal SLA",
+              milestones: [
+                {
+                  step: "01",
+                  title: "Intake & Verifikasi Berkas Awal",
+                  status: "completed",
+                  date: "Hari ke-1",
+                  description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
+                },
+                {
+                  step: "02",
+                  title: "Analisis & Pengerjaan Lembar Kerja",
+                  status: c.status === "COMPLETED" ? "completed" : "in_progress",
+                  date: "Proses",
+                  description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
+                },
+                {
+                  step: "03",
+                  title: "Finalisasi & Penyampaian Hasil",
+                  status: c.status === "COMPLETED" ? "completed" : "pending",
+                  date: "Final",
+                  description: "Penerbitan dokumen deliverable resmi.",
+                },
+              ],
+              deliverables: c.status === "COMPLETED" ? [
+                {
+                  name: "Laporan_Resmi_Konsultasi_Zhou.pdf",
+                  size: "1.8 MB",
+                  format: "PDF",
+                  date: "Selesai",
+                }
+              ] : [],
+              correspondences: [
+                {
+                  id: `msg-${c.id}`,
+                  sender: "Tim Konsultan Zhou (Sistem Penugasan)",
+                  role: "Konsultan",
+                  date: "Terbaru",
+                  message: c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
+                },
+              ],
+            }));
+            setTickets((prev) => {
+              const combined = [...prev, ...mapped.filter((m) => !prev.some((p) => p.id === m.id))];
+              if (combined.length > 0) {
+                setSelectedTicketId(combined[0].id);
               }
-            ] : [],
-            correspondences: [
-              {
-                id: `msg-${c.id}`,
-                sender: "Tim Konsultan Zhou (Sistem Penugasan)",
-                role: "Konsultan",
-                date: "Terbaru",
-                message: c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
-              },
-            ],
-          }));
-          setTickets(mapped);
-          if (mapped.length > 0) {
-            setSelectedTicketId(mapped[0].id);
+              return combined;
+            });
           }
         }
       } catch (err) {
@@ -251,7 +271,13 @@ export default function ClientTicketMonitoringPage() {
       ],
     };
 
-    setTickets((prev) => [newTicketItem, ...prev]);
+    setTickets((prev) => {
+      const updated = [newTicketItem, ...prev];
+      try {
+        localStorage.setItem("zhou_client_custom_tickets", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setSelectedTicketId(newId);
     setIsNewTicketModalOpen(false);
     setNewTitle("");
@@ -462,7 +488,7 @@ export default function ClientTicketMonitoringPage() {
                       <div className="space-y-1">
                         <p className="font-semibold text-primary">Tidak Ada Tiket Konsultasi</p>
                         <p className="text-[11px] text-text-secondary">
-                          Belum ada permohonan konsultasi. Klik tombol &quot;Buat Tiket Baru&quot; di atas untuk memulai konsultasi.
+                          Belum ada permohonan konsultasi. Klik tombol &quot;Buat Konsultasi Baru&quot; di atas untuk memulai konsultasi.
                         </p>
                       </div>
                     </td>
@@ -791,10 +817,10 @@ export default function ClientTicketMonitoringPage() {
               ))}
             </div>
 
-            {/* Banner Pengalihan Sesi Konsultasi ke Chatbot & WhatsApp */}
+            {/* Banner Pengalihan Sesi Konsultasi ke Chatbot */}
             <div className="p-3.5 rounded-xl bg-surface border border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <p className="text-text-secondary text-[11px] leading-relaxed">
-                Untuk sesi konsultasi tanya-jawab interaktif dan eskalasi penugasan, silakan gunakan menu <strong>Chatbot Bantuan</strong> atau hubungi konsultan via <strong>WhatsApp Resmi</strong>.
+                Untuk sesi konsultasi tanya-jawab interaktif dan eskalasi penugasan, silakan gunakan menu <strong>Chatbot Bantuan</strong>.
               </p>
               <div className="flex items-center gap-2 shrink-0">
                 <Link
@@ -804,15 +830,6 @@ export default function ClientTicketMonitoringPage() {
                   <ChatbotIcon className="text-xs" />
                   <span>Chatbot Bantuan</span>
                 </Link>
-                <a
-                  href="https://wa.me/6281234567890"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success text-white hover:bg-success/90 text-xs font-semibold shadow-2xs transition-colors"
-                >
-                  <WhatsappIcon className="text-xs" />
-                  <span>Konsultasi WA</span>
-                </a>
               </div>
             </div>
           </div>

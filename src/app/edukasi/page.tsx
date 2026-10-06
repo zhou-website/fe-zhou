@@ -362,7 +362,7 @@ function EducationPortalContent() {
                   {/* Info & Konten Kolom Kanan */}
                   <div className="lg:col-span-7 space-y-4">
                     <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
-                      <Badge variant="success" size="sm" dot>
+                      <Badge variant="success" size="sm">
                         {currentFeatured.category}
                       </Badge>
                       <span>&bull;</span>
@@ -890,7 +890,7 @@ function EducationPortalContent() {
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white p-6 sm:p-8 rounded-xl border-primary-light">
             <DialogHeader className="space-y-3 pb-2 border-b border-primary-light">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="success" size="sm" dot>
+                <Badge variant="success" size="sm">
                   {activeArticleModal.category}
                 </Badge>
                 <span className="text-xs text-text-secondary">

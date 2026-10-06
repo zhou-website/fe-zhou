@@ -1216,7 +1216,7 @@ function AdminDashboardContent() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-primary">{p.title}</span>
-                  <Badge variant="success" size="sm" dot>
+                  <Badge variant="success" size="sm">
                     {p.status}
                   </Badge>
                 </div>
@@ -1299,7 +1299,6 @@ function AdminDashboardContent() {
                         <Badge
                           variant={item.status === "Published" ? "success" : "silver"}
                           size="sm"
-                          dot={item.status === "Published"}
                         >
                           {item.status}
                         </Badge>
@@ -1680,7 +1679,7 @@ function AdminDashboardContent() {
                       <span className="font-mono text-xs font-bold text-primary bg-primary-light px-2.5 py-0.5 rounded">
                         {srv.id}
                       </span>
-                      <Badge variant={srv.status === "Published" ? "success" : "silver"} size="sm" dot>
+                      <Badge variant={srv.status === "Published" ? "success" : "silver"} size="sm">
                         {srv.status}
                       </Badge>
                     </div>
@@ -1887,7 +1886,6 @@ function AdminDashboardContent() {
                       <Badge
                         variant={reg.status === "Berlaku" ? "success" : "secondary"}
                         size="sm"
-                        dot
                       >
                         {reg.status}
                       </Badge>
@@ -2397,7 +2395,7 @@ function AdminDashboardContent() {
                         <span className="font-mono text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
                           {gov.institution}
                         </span>
-                        <Badge variant="success" size="sm" dot>
+                        <Badge variant="success" size="sm">
                           Terverifikasi
                         </Badge>
                       </div>
@@ -2445,7 +2443,6 @@ function AdminDashboardContent() {
                   <Badge
                     variant={careerSettings.isOpen ? "success" : "silver"}
                     size="sm"
-                    dot
                   >
                     {careerSettings.isOpen
                       ? "Penerimaan Terbuka (Aktif Ditampilkan)"
@@ -2647,7 +2644,7 @@ function AdminDashboardContent() {
                     <span className="font-mono font-bold text-primary bg-primary-light px-2 py-0.5 rounded text-[11px]">
                       {job.id}
                     </span>
-                    <Badge variant={job.status === "Published" ? "success" : "silver"} size="sm" dot>
+                    <Badge variant={job.status === "Published" ? "success" : "silver"} size="sm">
                       {job.status}
                     </Badge>
                   </div>
@@ -2957,7 +2954,7 @@ function AdminDashboardContent() {
                 <span className="text-[10px] font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-primary-light uppercase">
                   {previewItem.sectionLabel}
                 </span>
-                <Badge variant={previewItem.status === "Published" ? "success" : "silver"} size="sm" dot>
+                <Badge variant={previewItem.status === "Published" ? "success" : "silver"} size="sm">
                   {previewItem.status}
                 </Badge>
               </div>

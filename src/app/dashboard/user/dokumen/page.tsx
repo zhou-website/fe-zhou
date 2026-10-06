@@ -380,7 +380,7 @@ export default function ClientDocumentVaultPage() {
 
                     {/* Verified Status */}
                     <td className="py-3.5 px-4">
-                      <Badge variant={doc.statusType} size="sm" dot>
+                      <Badge variant={doc.statusType} size="sm">
                         {doc.statusBadge}
                       </Badge>
                     </td>

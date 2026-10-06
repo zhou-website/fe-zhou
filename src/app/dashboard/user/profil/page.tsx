@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { userApi } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, isDummyValue } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,17 +55,17 @@ interface ProfileData {
 }
 
 const DEFAULT_PROFILE: ProfileData = {
-  companyName: "Perusahaan Klien",
-  entityType: "Perseroan Terbatas (PT)",
+  companyName: "-",
+  entityType: "-",
   npwp16: "-",
   joinDate: "-",
   klu: "-",
   taxOfficeAddress: "-",
-  initials: "PK",
+  initials: "-",
   clientCode: "-",
   status: "Klien Aktif",
-  picName: "Nama Klien",
-  picTitle: "Penanggung Jawab",
+  picName: "-",
+  picTitle: "-",
   picEmail: "-",
   picPhone: "-",
   officeAddress: "-",
@@ -79,49 +79,56 @@ export default function ClientProfileSecurityPage() {
   // Profile State
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
 
-  // Sync profile data with live auth user and live backend
+  // Sync profile data, ensuring no mock/dummy values are ever populated
   useEffect(() => {
-    if (user) {
-      const company = user.company || user.name || "Perusahaan Klien";
-      const initials = company
-        .trim()
-        .split(/\s+/)
-        .slice(0, 3)
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase();
+    // 1. Cek penyimpanan profil kustom lokal yang pernah disimpan sendiri oleh user
+    try {
+      const saved = localStorage.getItem("zhou_client_custom_profile");
+      if (saved) {
+        const parsed = JSON.parse(saved) as ProfileData;
+        if (parsed && parsed.companyName && !isDummyValue(parsed.companyName)) {
+          setProfile({
+            ...DEFAULT_PROFILE,
+            ...parsed,
+            companyName: !isDummyValue(parsed.companyName) ? parsed.companyName : "-",
+            initials: !isDummyValue(parsed.initials) ? parsed.initials : "-",
+            picPhone: !isDummyValue(parsed.picPhone) ? parsed.picPhone : "-",
+            picName: !isDummyValue(parsed.picName) ? parsed.picName : "-",
+            picEmail: user?.email || parsed.picEmail || "-",
+          });
+          return;
+        }
+      }
+    } catch {}
 
-      setProfile((prev) => ({
-        ...prev,
-        companyName: user.company || prev.companyName,
-        picName: user.name || prev.picName,
-        picEmail: user.email || prev.picEmail,
-        picPhone: user.phone || prev.picPhone,
-        initials: initials || prev.initials,
-        clientCode: user.id ? `ID: CL-${user.id}` : prev.clientCode,
-      }));
-    }
+    // 2. Default awal: Kosongkan seluruh field ("-")
+    setProfile({
+      ...DEFAULT_PROFILE,
+      picEmail: user?.email || "-",
+    });
 
+    // 3. Muat data dari backend hanya jika data nyata (bukan mockup dummy seed)
     async function loadBackendProfile() {
       try {
         const res = await userApi.getProfile();
         if (res.success && res.data) {
           const u = res.data;
-          const initials = (u.company_name || u.name || "PK")
-            .trim()
-            .split(/\s+/)
-            .slice(0, 3)
-            .map((w: string) => w[0])
-            .join("")
-            .toUpperCase();
-          setProfile((prev) => ({
-            ...prev,
-            companyName: u.company_name || prev.companyName,
-            picName: u.name || prev.picName,
-            picEmail: u.email || prev.picEmail,
-            picPhone: u.phone || prev.picPhone,
-            initials: initials || prev.initials,
-          }));
+          const comp = !isDummyValue(u.company_name) ? u.company_name : undefined;
+          const phone = !isDummyValue(u.phone) ? u.phone : undefined;
+          const name = !isDummyValue(u.name) ? u.name : undefined;
+
+          if (comp || phone || name) {
+            setProfile((prev) => ({
+              ...prev,
+              companyName: comp || prev.companyName,
+              picPhone: phone || prev.picPhone,
+              picName: name || prev.picName,
+              picEmail: u.email || user?.email || prev.picEmail,
+              initials: comp
+                ? comp.trim().split(/\s+/).slice(0, 3).map((w: string) => w[0]).join("").toUpperCase()
+                : prev.initials,
+            }));
+          }
         }
       } catch {
         // silent fallback
@@ -167,7 +174,20 @@ export default function ClientProfileSecurityPage() {
 
   // Open Edit Profile Modal
   const handleOpenEditProfileModal = () => {
-    setModalProfile({ ...profile });
+    setModalProfile({
+      ...profile,
+      companyName: profile.companyName === "-" || isDummyValue(profile.companyName) ? "" : profile.companyName,
+      entityType: profile.entityType === "-" ? "" : profile.entityType,
+      npwp16: profile.npwp16 === "-" ? "" : profile.npwp16,
+      klu: profile.klu === "-" ? "" : profile.klu,
+      taxOfficeAddress: profile.taxOfficeAddress === "-" ? "" : profile.taxOfficeAddress,
+      picName: profile.picName === "-" || isDummyValue(profile.picName) ? "" : profile.picName,
+      picTitle: profile.picTitle === "-" ? "" : profile.picTitle,
+      picEmail: profile.picEmail === "-" || isDummyValue(profile.picEmail) ? (user?.email || "") : profile.picEmail,
+      picPhone: profile.picPhone === "-" || isDummyValue(profile.picPhone) ? "" : profile.picPhone,
+      officeAddress: profile.officeAddress === "-" ? "" : profile.officeAddress,
+      initials: profile.initials === "-" || isDummyValue(profile.initials) ? "" : profile.initials,
+    });
     setIsEditProfileModalOpen(true);
   };
 
@@ -178,9 +198,9 @@ export default function ClientProfileSecurityPage() {
 
     try {
       await userApi.updateProfile({
-        name: modalProfile.picName,
-        company_name: modalProfile.companyName,
-        phone: modalProfile.picPhone,
+        name: modalProfile.picName === "-" ? "" : modalProfile.picName,
+        company_name: modalProfile.companyName === "-" ? "" : modalProfile.companyName,
+        phone: modalProfile.picPhone === "-" ? "" : modalProfile.picPhone,
       });
     } catch (err) {
       console.warn("Backend update error:", err);
@@ -188,26 +208,66 @@ export default function ClientProfileSecurityPage() {
 
     // Auto-compute initials if blank
     let autoInitials = modalProfile.initials.trim();
-    if (!autoInitials && modalProfile.companyName) {
+    if ((!autoInitials || autoInitials === "-") && modalProfile.companyName && modalProfile.companyName !== "-") {
       const words = modalProfile.companyName.trim().split(/\s+/);
       autoInitials = words.length > 1
         ? words.slice(0, 3).map((w) => w[0]).join("").toUpperCase()
         : modalProfile.companyName.slice(0, 3).toUpperCase();
     }
 
-    setProfile({
+    const updatedProfile: ProfileData = {
       ...modalProfile,
-      initials: autoInitials || "MMS",
-    });
+      companyName: modalProfile.companyName.trim() || "-",
+      entityType: modalProfile.entityType.trim() || "-",
+      npwp16: modalProfile.npwp16.trim() || "-",
+      klu: modalProfile.klu.trim() || "-",
+      taxOfficeAddress: modalProfile.taxOfficeAddress.trim() || "-",
+      picName: modalProfile.picName.trim() || "-",
+      picTitle: modalProfile.picTitle.trim() || "-",
+      picEmail: modalProfile.picEmail.trim() || user?.email || "-",
+      picPhone: modalProfile.picPhone.trim() || "-",
+      officeAddress: modalProfile.officeAddress.trim() || "-",
+      initials: autoInitials || "-",
+    };
+
+    setProfile(updatedProfile);
+    try {
+      localStorage.setItem("zhou_client_custom_profile", JSON.stringify(updatedProfile));
+    } catch {}
+
     setIsSavingModal(false);
     setIsEditProfileModalOpen(false);
-    showToast("Data profil perusahaan dan penanggung jawab berhasil diperbarui ke server backend.");
+    showToast("Data profil perusahaan dan penanggung jawab berhasil diperbarui.");
   };
 
   // Reset to default in modal
   const handleResetModalDefault = () => {
-    setModalProfile(DEFAULT_PROFILE);
-    showToast("Form modal telah direset ke data default.");
+    try {
+      localStorage.removeItem("zhou_client_custom_profile");
+    } catch {}
+
+    setProfile({
+      ...DEFAULT_PROFILE,
+      picEmail: user?.email || "-",
+    });
+
+    setModalProfile({
+      companyName: "",
+      entityType: "",
+      npwp16: "",
+      joinDate: "-",
+      klu: "",
+      taxOfficeAddress: "",
+      initials: "",
+      clientCode: "-",
+      status: "Klien Aktif",
+      picName: "",
+      picTitle: "",
+      picEmail: user?.email || "",
+      picPhone: "",
+      officeAddress: "",
+    });
+    showToast("Data profil telah dikosongkan.");
   };
 
   // Password strength calculation
@@ -299,7 +359,7 @@ export default function ClientProfileSecurityPage() {
             <div className="relative h-24 bg-gradient-to-r from-primary via-primary-hover to-primary px-6 flex items-end">
               {/* Dynamic Initials Badge with generous overhang */}
               <div className="w-16 h-16 rounded-2xl bg-white border-2 border-primary-light shadow-lg flex items-center justify-center font-bold text-primary text-xl translate-y-1/2 shrink-0 select-none">
-                {profile.initials || "MMS"}
+                {profile.initials || "-"}
               </div>
 
               {/* Direct Pencil Icon Button on Card Gambar 2 */}
@@ -318,93 +378,39 @@ export default function ClientProfileSecurityPage() {
             <CardContent className="pt-12 px-6 pb-6 flex-1 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="pt-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-bold text-primary leading-tight">
-                        {profile.companyName}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="font-mono text-xs text-text-muted font-semibold">
-                          {profile.clientCode}
-                        </span>
-                        <span>&bull;</span>
-                        <Badge variant="success" size="sm" dot>
-                          {profile.status}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Secondary Pencil Icon beside Title */}
-                    <button
-                      type="button"
-                      onClick={handleOpenEditProfileModal}
-                      className="p-1.5 rounded-lg text-primary hover:text-primary-hover hover:bg-primary-light/50 border border-transparent hover:border-primary-light transition-all shrink-0 cursor-pointer"
-                      title="Ubah data profil perusahaan"
-                    >
-                      <PencilIcon className="text-xs" />
-                    </button>
+                  <h3 className="text-base sm:text-lg font-bold text-primary leading-tight">
+                    {profile.companyName}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <Badge variant="success" size="sm">
+                      {profile.status}
+                    </Badge>
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-2 text-xs">
+                {/* Ringkasan Akun Pengguna (Tanpa menduplikasi data legalitas di Tab 1) */}
+                <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-2.5 text-xs">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-text-muted">NPWP 16 Digit:</span>
-                    <span className="font-mono font-bold text-primary">{profile.npwp16}</span>
+                    <span className="text-text-muted">Email Akun:</span>
+                    <span className="font-medium text-text-primary truncate max-w-[170px]" title={user?.email || profile.picEmail}>
+                      {user?.email || profile.picEmail}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-text-muted">Bentuk Badan:</span>
-                    <span className="font-semibold text-primary">{profile.entityType}</span>
+                    <span className="text-text-muted">PIC Utama:</span>
+                    <span className="font-semibold text-primary">{profile.picName}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-text-muted">Tanggal Bergabung:</span>
+                    <span className="text-text-muted">Kontak WhatsApp:</span>
+                    <span className="font-medium text-text-primary">{profile.picPhone}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-text-muted">Terdaftar Sejak:</span>
                     <span className="font-medium text-text-primary">{profile.joinDate}</span>
                   </div>
                 </div>
-
-                <div className="space-y-1.5 text-xs">
-                  <span className="text-[11px] text-text-muted font-bold uppercase tracking-wider block">
-                    Klasifikasi Usaha (KLU):
-                  </span>
-                  <p className="text-text-secondary leading-relaxed bg-surface/80 p-2.5 rounded-lg border border-primary-light text-[11px]">
-                    {profile.klu}
-                  </p>
-                </div>
-
-                <div className="space-y-1.5 text-xs">
-                  <span className="text-[11px] text-text-muted font-bold uppercase tracking-wider block">
-                    Alamat Terdaftar KPP:
-                  </span>
-                  <p className="text-text-secondary leading-relaxed bg-surface/80 p-2.5 rounded-lg border border-primary-light text-[11px]">
-                    {profile.taxOfficeAddress}
-                  </p>
-                </div>
-
-                {/* Ringkasan PIC Utama */}
-                <div className="p-3 bg-primary/5 rounded-xl border border-primary/15 text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-primary font-bold uppercase tracking-wider block">
-                      Person in Charge (PIC Utama):
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleOpenEditProfileModal}
-                      className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <PencilIcon className="text-[9px]" /> Edit
-                    </button>
-                  </div>
-                  <div className="font-bold text-primary text-xs">{profile.picName}</div>
-                  <div className="text-[11px] text-text-secondary">{profile.picTitle} &bull; {profile.picPhone}</div>
-                </div>
               </div>
 
-              <div className="pt-4 mt-6 border-t border-primary-light flex items-center justify-between text-[11px] text-text-muted">
-                <span>Status Akun:</span>
-                <span className="font-semibold text-success flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-success"></span>
-                  Terverifikasi Aktif
-                </span>
-              </div>
             </CardContent>
           </Card>
         </div>
@@ -458,33 +464,19 @@ export default function ClientProfileSecurityPage() {
               {/* TAB 1: INFORMASI ENTITAS & PIC */}
               {activeTab === "info" && (
                 <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-primary-light">
-                    <div>
-                      <CardTitle className="text-base font-bold text-primary">
-                        Data Profil Entitas &amp; Person in Charge (PIC)
-                      </CardTitle>
-                      <CardDescription className="text-xs text-text-secondary mt-0.5">
-                        Informasi resmi entitas korporat dan kontak penanggung jawab untuk korespondensi perpajakan.
-                      </CardDescription>
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={handleOpenEditProfileModal}
-                      className="text-xs h-9 px-4 font-semibold shadow-sm gap-2 shrink-0 self-start sm:self-auto cursor-pointer"
-                    >
-                      <PencilIcon className="text-xs" />
-                      <span>Ubah Data Profil</span>
-                    </Button>
+                  <div className="pb-4 border-b border-primary-light">
+                    <CardTitle className="text-base font-bold text-primary">
+                      Data Profil Entitas &amp; Person in Charge (PIC)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-text-secondary mt-0.5">
+                      Informasi resmi entitas korporat dan kontak penanggung jawab untuk korespondensi perpajakan.
+                    </CardDescription>
                   </div>
 
                   {/* Section 1: Informasi Legalitas Entitas */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                      <BuildingIcon className="text-xs" />
-                      <span>1. Informasi Legalitas Entitas</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                      1. Informasi Legalitas Entitas
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-1">
@@ -508,11 +500,6 @@ export default function ClientProfileSecurityPage() {
                       </div>
 
                       <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-1">
-                        <span className="text-[11px] text-text-muted">Tanggal Bergabung</span>
-                        <div className="font-semibold text-primary">{profile.joinDate}</div>
-                      </div>
-
-                      <div className="sm:col-span-2 p-3.5 bg-surface rounded-xl border border-primary-light space-y-1">
                         <span className="text-[11px] text-text-muted">Klasifikasi Lapangan Usaha (KLU)</span>
                         <div className="font-semibold text-primary">{profile.klu}</div>
                       </div>
@@ -526,9 +513,8 @@ export default function ClientProfileSecurityPage() {
 
                   {/* Section 2: Person in Charge (PIC) Utama */}
                   <div className="space-y-3 pt-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                      <UserIcon className="text-xs" />
-                      <span>2. Person in Charge (PIC Utama)</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                      2. Person in Charge (PIC Utama)
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div className="p-3.5 bg-surface rounded-xl border border-primary-light space-y-1">
@@ -558,22 +544,6 @@ export default function ClientProfileSecurityPage() {
                     </div>
                   </div>
 
-                  {/* Bottom Action Note */}
-                  <div className="pt-4 border-t border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] text-text-muted">
-                    <p>
-                      Untuk melakukan perubahan data legalitas atau PIC, klik tombol <strong>&quot;Ubah Data Profil&quot;</strong> atau klik ikon pensil pada kartu profil di sisi kiri.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleOpenEditProfileModal}
-                      className="text-xs h-8 px-3 gap-1.5 border-primary-light text-primary hover:bg-surface self-start sm:self-auto cursor-pointer"
-                    >
-                      <PencilIcon className="text-xs" />
-                      <span>Ubah Profil</span>
-                    </Button>
-                  </div>
                 </div>
               )}
 
@@ -726,7 +696,11 @@ export default function ClientProfileSecurityPage() {
                           </Badge>
                         </div>
                         <p className="text-[11px] text-text-secondary">
-                          Kode 6 digit akan dikirim ke nomor <strong className="text-primary">{profile.picPhone}</strong> saat login.
+                          {profile.picPhone && profile.picPhone !== "-" && !isDummyValue(profile.picPhone) ? (
+                            <>Kode 6 digit akan dikirim ke nomor <strong className="text-primary">{profile.picPhone}</strong> saat login.</>
+                          ) : (
+                            <>Kode 6 digit akan dikirimkan ke email terdaftar (<strong className="text-primary">{user?.email || "-"}</strong>) saat login.</>
+                          )}
                         </p>
                       </div>
 
@@ -806,7 +780,7 @@ export default function ClientProfileSecurityPage() {
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-primary">{sess.device}</span>
                               {sess.isCurrent && (
-                                <Badge variant="success" size="sm" dot>
+                                <Badge variant="success" size="sm">
                                   Sesi Ini
                                 </Badge>
                               )}
@@ -861,18 +835,13 @@ export default function ClientProfileSecurityPage() {
           <div className="bg-white rounded-2xl border border-primary-light shadow-2xl max-w-2xl w-full overflow-hidden my-8">
             {/* Modal Header */}
             <div className="p-5 border-b border-primary-light flex items-center justify-between bg-surface">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center text-sm font-bold shadow-xs">
-                  <PencilIcon className="text-sm" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-primary">
-                    Ubah Data Profil Entitas &amp; PIC
-                  </h3>
-                  <p className="text-[11px] text-text-muted">
-                    Perbarui data legalitas perusahaan dan kontak penanggung jawab resmi
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-base font-bold text-primary">
+                  Ubah Data Profil Entitas &amp; PIC
+                </h3>
+                <p className="text-[11px] text-text-muted">
+                  Perbarui data legalitas perusahaan dan kontak penanggung jawab resmi
+                </p>
               </div>
               <button
                 type="button"
@@ -888,9 +857,8 @@ export default function ClientProfileSecurityPage() {
             <form onSubmit={handleSaveModalProfile} className="p-6 space-y-6 text-xs max-h-[75vh] overflow-y-auto">
               {/* Bagian 1: Data Entitas Perusahaan */}
               <div className="space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-primary-light pb-1.5 flex items-center gap-2">
-                  <BuildingIcon className="text-xs" />
-                  <span>1. Data Legalitas Entitas Perusahaan</span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-primary-light pb-1.5">
+                  1. Data Legalitas Entitas Perusahaan
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -931,6 +899,7 @@ export default function ClientProfileSecurityPage() {
                       }
                       className="w-full h-9 rounded-lg border border-primary-light bg-surface px-3 text-xs text-text-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                     >
+                      <option value="">-- Pilih Bentuk Badan Usaha --</option>
                       <option value="Perseroan Terbatas (PT)">Perseroan Terbatas (PT)</option>
                       <option value="Commanditaire Vennootschap (CV)">Commanditaire Vennootschap (CV)</option>
                       <option value="Firma (Fa)">Firma (Fa)</option>
@@ -959,24 +928,8 @@ export default function ClientProfileSecurityPage() {
                     />
                   </div>
 
-                  {/* Inisial Badge */}
-                  <div className="space-y-1.5">
-                    <label className="font-bold text-primary">
-                      Inisial Avatar Kartu (Maks. 4 Karakter)
-                    </label>
-                    <Input
-                      maxLength={4}
-                      value={modalProfile.initials}
-                      onChange={(e) =>
-                        setModalProfile((prev) => ({ ...prev, initials: e.target.value.toUpperCase() }))
-                      }
-                      className="text-xs h-9 uppercase font-bold tracking-wider bg-surface focus:bg-white"
-                      placeholder="MMS"
-                    />
-                  </div>
-
                   {/* KLU */}
-                  <div className="sm:col-span-2 space-y-1.5">
+                  <div className="space-y-1.5">
                     <label className="font-bold text-primary">
                       Klasifikasi Usaha (KLU) <span className="text-error">*</span>
                     </label>
@@ -987,7 +940,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, klu: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="62019 - Aktivitas Pemrograman Komputer Lainnya"
+                      placeholder="Kode KLU (contoh: 62019)"
                     />
                   </div>
 
@@ -1007,14 +960,29 @@ export default function ClientProfileSecurityPage() {
                       placeholder="Alamat kantor resmi sesuai SKT KPP"
                     />
                   </div>
+
+                  {/* Inisial Badge */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-primary">
+                      Inisial Avatar Kartu (Maks. 4 Karakter)
+                    </label>
+                    <Input
+                      maxLength={4}
+                      value={modalProfile.initials}
+                      onChange={(e) =>
+                        setModalProfile((prev) => ({ ...prev, initials: e.target.value.toUpperCase() }))
+                      }
+                      className="text-xs h-9 uppercase font-bold tracking-wider bg-surface focus:bg-white"
+                      placeholder="-"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Bagian 2: Kontak Person in Charge (PIC) Utama */}
               <div className="space-y-4 pt-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-primary-light pb-1.5 flex items-center gap-2">
-                  <UserIcon className="text-xs" />
-                  <span>2. Data Person in Charge (PIC Utama)</span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-primary-light pb-1.5">
+                  2. Data Person in Charge (PIC Utama)
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1046,7 +1014,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picTitle: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="Finance & Tax Manager"
+                      placeholder="Contoh: Finance & Tax Manager"
                     />
                   </div>
 
@@ -1063,7 +1031,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picEmail: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="pic@perusahaan.co.id"
+                      placeholder="Contoh: pic@perusahaan.com"
                     />
                   </div>
 
@@ -1080,7 +1048,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, picPhone: e.target.value }))
                       }
                       className="text-xs h-9 bg-surface focus:bg-white"
-                      placeholder="+62 811-2345-6789"
+                      placeholder="Contoh: 0812xxxxxxxx"
                     />
                   </div>
 
@@ -1097,7 +1065,7 @@ export default function ClientProfileSecurityPage() {
                         setModalProfile((prev) => ({ ...prev, officeAddress: e.target.value }))
                       }
                       className="text-xs bg-surface focus:bg-white leading-relaxed"
-                      placeholder="Gedung Cyber 2 Tower Lt. 18..."
+                      placeholder="Alamat kantor operasional perusahaan"
                     />
                   </div>
                 </div>
@@ -1112,7 +1080,7 @@ export default function ClientProfileSecurityPage() {
                   onClick={handleResetModalDefault}
                   className="text-xs h-9 px-3 text-text-muted hover:text-primary cursor-pointer"
                 >
-                  Reset Default
+                  Kosongkan Form
                 </Button>
 
                 <div className="flex items-center gap-2">

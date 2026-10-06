@@ -36,11 +36,10 @@ export interface BadgeProps
 function Badge({ className, variant, size, dot = false, children, ...props }: BadgeProps) {
   return (
     <div className={cn(badgeVariants({ variant, size }), className)} {...props}>
-      {dot && (
+      {dot && variant !== "success" && (
         <span
           className={cn(
             "mr-1.5 h-1.5 w-1.5 rounded-full",
-            variant === "success" && "bg-success",
             variant === "error" && "bg-error",
             variant === "primary" && "bg-white",
             variant === "secondary" && "bg-primary",

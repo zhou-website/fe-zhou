@@ -114,7 +114,7 @@ export const translations = {
       terms: "Syarat & Ketentuan",
       compliance: "Standar Kepatuhan",
       backToTop: "Kembali ke Atas",
-      copyright: "PT Zhou Konsultan Indonesia (Zhou Consulting). Seluruh hak cipta dilindungi undang-undang.",
+      copyright: "Zhou Consulting. All rights reserved.",
     },
   },
   EN: {
@@ -230,7 +230,7 @@ export const translations = {
       terms: "Terms & Conditions",
       compliance: "Compliance Standards",
       backToTop: "Back to Top",
-      copyright: "PT Zhou Konsultan Indonesia (Zhou Consulting). All rights reserved.",
+      copyright: "Zhou Consulting. All rights reserved.",
     },
   },
 } as const;
