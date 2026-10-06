@@ -13,6 +13,7 @@ import {
   CheckCircleIcon,
   SearchIcon,
   CloseIcon,
+  EditIcon,
   TrashIcon,
 } from "@/components/icons";
 import {
@@ -104,8 +105,9 @@ function AdminCMSPageContent() {
   const [kursRates, setKursRates] = useState(DEFAULT_KURS_LIST);
   const [kmkNumber, setKmkNumber] = useState("KMK No. 44/KM.10/2026");
 
-  // Modals
+  // Modals & Editing states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<ChatbotFaqItem | null>(null);
   const [modalSection, setModalSection] = useState<"edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs">("edukasi");
 
   // Form states strictly matching backend request bodies:
@@ -504,18 +506,67 @@ function AdminCMSPageContent() {
           ]);
         }
       } else if (modalSection === "faqs") {
-        const res = await adminCmsApi.createFaq({
-          category: faqForm.category,
-          question: faqForm.question,
-          answer_template: faqForm.answer_template,
-        });
-        showToast("FAQ chatbot berhasil disimpan!");
-        if (res.data && (res.data as Record<string, unknown>).id) {
-          const id = Number((res.data as Record<string, unknown>).id);
-          setFaqs((prev) => [
-            ...prev,
-            { id, category: faqForm.category, question: faqForm.question, answer_template: faqForm.answer_template },
-          ]);
+        if (editingFaq) {
+          await adminCmsApi.updateFaq(editingFaq.id, {
+            category: faqForm.category,
+            question: faqForm.question,
+            answer_template: faqForm.answer_template,
+          });
+          setFaqs((prev) =>
+            prev.map((item) =>
+              item.id === editingFaq.id
+                ? {
+                    ...item,
+                    category: faqForm.category,
+                    question: faqForm.question,
+                    answer_template: faqForm.answer_template,
+                  }
+                : item
+            )
+          );
+          setCmsItems((prev) =>
+            prev.map((item) =>
+              item.id === `FAQ-${editingFaq.id}`
+                ? {
+                    ...item,
+                    category: faqForm.category,
+                    title: faqForm.question,
+                    summary: faqForm.answer_template.slice(0, 140) + "...",
+                  }
+                : item
+            )
+          );
+          showToast("FAQ chatbot berhasil diperbarui!");
+        } else {
+          const res = await adminCmsApi.createFaq({
+            category: faqForm.category,
+            question: faqForm.question,
+            answer_template: faqForm.answer_template,
+          });
+          showToast("FAQ chatbot baru berhasil disimpan!");
+          if (res.data && (res.data as Record<string, unknown>).id) {
+            const id = Number((res.data as Record<string, unknown>).id);
+            setFaqs((prev) => [
+              ...prev,
+              { id, category: faqForm.category, question: faqForm.question, answer_template: faqForm.answer_template },
+            ]);
+            setCmsItems((prev) => [
+              {
+                id: `FAQ-${id}`,
+                numericId: id,
+                section: "faqs",
+                title: faqForm.question,
+                category: faqForm.category,
+                summary: faqForm.answer_template.slice(0, 140) + "...",
+                status: "Published",
+                updatedAt: "Bot Knowledge",
+                raw: { id, ...faqForm },
+              },
+              ...prev,
+            ]);
+          } else {
+            loadAllCMS();
+          }
         }
       }
       setIsAddModalOpen(false);
@@ -591,8 +642,69 @@ function AdminCMSPageContent() {
   };
 
   const openAddModal = (sec: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs") => {
+    setEditingFaq(null);
     setModalSection(sec);
+    if (sec === "faqs") {
+      setFaqForm({
+        category: "Layanan Perpajakan",
+        question: "",
+        answer_template: "",
+      });
+    }
     setIsAddModalOpen(true);
+  };
+
+  const openEditFaq = (f: ChatbotFaqItem) => {
+    setEditingFaq(f);
+    setFaqForm({
+      category: f.category || "Layanan Perpajakan",
+      question: f.question,
+      answer_template: f.answer_template,
+    });
+    setModalSection("faqs");
+    setIsAddModalOpen(true);
+  };
+
+  const handleSeedDefaultFaqs = async () => {
+    setIsLoading(true);
+    const presets = [
+      {
+        category: "Layanan Perpajakan",
+        question: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
+        answer_template:
+          "Layanan Konsultasi Perpajakan Zhou Consulting mencakup Tax Compliance (SPT Masa & Tahunan), asistensi integrasi Coretax DJP 2026, Tax Advisory & Planning, penanganan sengketa & tanggapan SP2DK, asistensi pemeriksaan pajak, serta konsultasi transfer pricing dan kepatuhan perpajakan korporasi.",
+      },
+      {
+        category: "Prosedur & Validasi",
+        question: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
+        answer_template:
+          "Dokumen klien dianalisis melalui 3 tahap telaah: verifikasi kelengkapan berkas oleh analis, review kepatuhan regulasi oleh Konsultan Berizin BKP, dan pengesahan akhir oleh Lead Partner. Seluruh berkas dilindungi enkripsi SHA-256.",
+      },
+      {
+        category: "Konsultasi & Monitoring",
+        question: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
+        answer_template:
+          "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar. Setiap lembar kerja menampilkan tahapan milestone, persentase progres, catatan konsultan lead, dan estimasi waktu penyelesaian.",
+      },
+      {
+        category: "Layanan & Pendaftaran",
+        question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
+        answer_template:
+          "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi atau tombol 'Buka Konsultasi / Projects' di portal ini. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung.",
+      },
+    ];
+
+    try {
+      for (const item of presets) {
+        await adminCmsApi.createFaq(item);
+      }
+      showToast("4 Rekomendasi FAQ Layanan & Pajak berhasil ditambahkan ke database!");
+      loadAllCMS();
+    } catch {
+      showToast("Gagal memuat template contoh FAQ.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredItems = useMemo(() => {
@@ -977,39 +1089,79 @@ function AdminCMSPageContent() {
                 key={f.id}
                 className="p-4 rounded-xl bg-surface border border-primary-light flex items-start justify-between gap-4"
               >
-                <div className="space-y-1">
+                <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[10px] text-text-muted">FAQ #{f.id}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-primary-light text-primary font-medium">
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
                       {f.category}
                     </span>
                   </div>
                   <h4 className="font-bold text-primary text-xs">{f.question}</h4>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">{f.answer_template}</p>
+                  <div className="text-[11px] text-text-secondary leading-relaxed bg-white/80 p-2.5 rounded-lg border border-primary-light/70 space-y-0.5">
+                    <span className="text-[10px] font-semibold text-primary block uppercase tracking-wider">
+                      Respon Otomatis Bot (Tanpa Tunggu Manual Admin):
+                    </span>
+                    <p>{f.answer_template}</p>
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await adminCmsApi.deleteFaq(f.id);
-                      setFaqs((prev) => prev.filter((item) => item.id !== f.id));
-                      showToast("FAQ berhasil dihapus.");
-                    } catch {
-                      showToast("Gagal menghapus FAQ.");
-                    }
-                  }}
-                  className="text-xs h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shrink-0"
-                >
-                  <TrashIcon className="text-xs" />
-                </Button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditFaq(f)}
+                    className="text-xs h-7 px-2.5 border-primary-light text-primary hover:bg-white flex items-center gap-1"
+                  >
+                    <EditIcon className="text-xs" />
+                    <span>Edit</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await adminCmsApi.deleteFaq(f.id);
+                        setFaqs((prev) => prev.filter((item) => item.id !== f.id));
+                        setCmsItems((prev) => prev.filter((item) => item.id !== `FAQ-${f.id}`));
+                        showToast("FAQ berhasil dihapus.");
+                      } catch {
+                        showToast("Gagal menghapus FAQ.");
+                      }
+                    }}
+                    className="text-xs h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                  >
+                    <TrashIcon className="text-xs" />
+                  </Button>
+                </div>
               </div>
             ))}
 
             {faqs.length === 0 && (
-              <div className="p-8 text-center text-text-secondary text-xs">
-                Belum ada data FAQ chatbot di database.
+              <div className="p-8 text-center bg-surface rounded-2xl border border-primary-light space-y-3">
+                <p className="text-text-secondary text-xs">
+                  Belum ada pertanyaan umum (FAQ) tersimpan di database untuk Chatbot.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => openAddModal("faqs")}
+                    className="text-xs h-8 px-3"
+                  >
+                    Tambah FAQ Pertama
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSeedDefaultFaqs}
+                    className="text-xs h-8 px-3 border-primary-light bg-white text-primary"
+                  >
+                    Muat 4 Rekomendasi Template FAQ Pajak &amp; Layanan
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -1158,6 +1310,8 @@ function AdminCMSPageContent() {
                   ? "Tambah Kurs Pajak Tunggal"
                   : modalSection === "karir"
                   ? "Buka Lowongan Karir Baru"
+                  : editingFaq
+                  ? "Edit FAQ Chatbot"
                   : "Tambah FAQ Chatbot"}
               </h3>
             </div>
@@ -1453,37 +1607,68 @@ function AdminCMSPageContent() {
               {/* DYNAMIC FORM 6: FAQS */}
               {modalSection === "faqs" && (
                 <>
-                  <div>
-                    <Label className="font-semibold text-primary">Kategori FAQ</Label>
+                  <div className="space-y-1.5">
+                    <Label className="font-semibold text-primary">Kategori Topik Pertanyaan *</Label>
                     <Input
                       type="text"
                       required
+                      placeholder="e.g. Layanan Perpajakan"
                       value={faqForm.category}
                       onChange={(e) => setFaqForm((prev) => ({ ...prev, category: e.target.value }))}
-                      className="text-xs h-9 mt-1"
+                      className="text-xs h-9"
                     />
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <span className="text-[10px] text-text-muted mr-1">Rekomendasi topik:</span>
+                      {[
+                        "Layanan Perpajakan",
+                        "Konsultasi & Jadwal",
+                        "Kepatuhan SPT & Coretax",
+                        "Akuntansi & Pembukuan",
+                        "Akun & Pendaftaran",
+                      ].map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setFaqForm((prev) => ({ ...prev, category: cat }))}
+                          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                            faqForm.category === cat
+                              ? "bg-primary text-white border-primary"
+                              : "bg-surface text-text-secondary border-primary-light hover:border-primary"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Pertanyaan Pengguna *</Label>
+                    <Label className="font-semibold text-primary">Pertanyaan Pengguna / Pertanyaan Umum *</Label>
                     <Input
                       type="text"
                       required
-                      placeholder="e.g. Bagaimana tahapan pendaftaran Coretax bagi WP Badan?"
+                      placeholder="e.g. Bagaimana tahapan konsultasi dan penelaahan dokumen pajak?"
                       value={faqForm.question}
                       onChange={(e) => setFaqForm((prev) => ({ ...prev, question: e.target.value }))}
                       className="text-xs h-9 mt-1"
                     />
+                    <p className="text-[10px] text-text-muted mt-1">
+                      Pertanyaan ini akan muncul sebagai tombol pilihan bagi klien di menu Chatbot Bantuan.
+                    </p>
                   </div>
                   <div>
-                    <Label className="font-semibold text-primary">Template Jawaban Chatbot *</Label>
+                    <Label className="font-semibold text-primary">Template Jawaban Otomatis Chatbot *</Label>
                     <Textarea
                       required
-                      rows={3}
-                      placeholder="Tuliskan jawaban panduan otomatis yang akan dikirimkan oleh bot..."
+                      rows={4}
+                      placeholder="Tuliskan jawaban panduan otomatis yang akan langsung dikirimkan oleh bot..."
                       value={faqForm.answer_template}
                       onChange={(e) => setFaqForm((prev) => ({ ...prev, answer_template: e.target.value }))}
-                      className="text-xs mt-1"
+                      className="text-xs mt-1 leading-relaxed"
                     />
+                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1 font-medium">
+                      <span>✓</span>
+                      <span>Bot akan langsung menjawab dengan teks di atas secara instan tanpa menunggu respon manual admin.</span>
+                    </p>
                   </div>
                 </>
               )}
@@ -1499,7 +1684,7 @@ function AdminCMSPageContent() {
                   Batal
                 </Button>
                 <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold">
-                  Simpan ke Database
+                  {editingFaq && modalSection === "faqs" ? "Simpan Perubahan FAQ" : "Simpan ke Database"}
                 </Button>
               </div>
             </form>

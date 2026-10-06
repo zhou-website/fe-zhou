@@ -24,6 +24,7 @@ import { clientApi, ChatbotTreeItem } from "@/lib/api";
 
 interface FAQItem {
   id: string;
+  category?: string;
   question: string;
   answer: string;
 }
@@ -75,16 +76,21 @@ export default function ClientChatbotPage() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Sync FAQ tree from live backend
+  // Sync FAQ tree from live backend (managed by admin in CMS)
   useEffect(() => {
     async function loadBackendFaq() {
       try {
         const res = await clientApi.getChatbotTree();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped: FAQItem[] = res.data.map((item: ChatbotTreeItem, idx: number) => ({
+        const rawList = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        if (rawList.length > 0) {
+          const mapped: FAQItem[] = rawList.map((item: ChatbotTreeItem, idx: number) => ({
             id: `faq-be-${item.id || idx}`,
+            category: item.category,
             question: item.question,
-            answer: item.answer_template || "Silakan konsultasikan lebih lanjut dengan tim kami.",
+            answer:
+              item.answer_template ||
+              item.answer ||
+              "Silakan konsultasikan lebih lanjut dengan tim spesialis Zhou Consulting.",
           }));
           setFaqs(mapped);
         }
@@ -237,13 +243,20 @@ export default function ClientChatbotPage() {
                             : "bg-white border-primary-light hover:border-primary/40 hover:bg-surface/50"
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <QuestionCircleIcon className="text-text-muted group-hover:text-primary text-sm shrink-0 transition-colors" />
-                          <span className="text-xs sm:text-sm font-medium text-primary">
-                            {faq.question}
-                          </span>
+                        <div className="flex items-start gap-3 min-w-0">
+                          <QuestionCircleIcon className="text-text-muted group-hover:text-primary text-sm shrink-0 transition-colors mt-0.5" />
+                          <div className="space-y-0.5 min-w-0">
+                            {faq.category && (
+                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary mb-0.5">
+                                {faq.category}
+                              </span>
+                            )}
+                            <div className="text-xs sm:text-sm font-medium text-primary">
+                              {faq.question}
+                            </div>
+                          </div>
                         </div>
-                        <ChevronRightIcon className="text-xs text-text-muted group-hover:text-primary shrink-0 transition-colors" />
+                        <ChevronRightIcon className="text-xs text-text-muted group-hover:text-primary shrink-0 transition-colors mt-1" />
                       </button>
                     );
                   })}
