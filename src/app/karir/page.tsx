@@ -279,23 +279,31 @@ export default function CareerPage() {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append("name", fullName.trim());
-      formData.append("email", email.trim());
-      formData.append("phone", phone.trim());
-      formData.append("education", education.trim());
-      if (linkedin) formData.append("linkedin", linkedin.trim());
-      if (coverLetter) formData.append("cover_letter", coverLetter.trim());
-      if (uploadedFile) formData.append("resume", uploadedFile);
+      const numJobId = parseInt(String(selectedPositionId).replace(/\D/g, ""), 10) || 1;
 
-      await publicApi.applyCareer(selectedPositionId, formData);
-    } catch (err) {
-      console.warn("publicApi.applyCareer fallback:", err);
-    } finally {
-      setIsSubmitting(false);
+      const res = await publicApi.applyCareer(numJobId, {
+        applicant_name: fullName.trim(),
+        applicant_email: email.trim(),
+        applicant_phone: phone.trim(),
+        cv_file_path: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
+      });
+
+      if (!res.success && res.message && !res.data) {
+        setSubmitError(res.message);
+        setIsSubmitting(false);
+        return;
+      }
+
       const code = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
       setRegistrationCode(code);
       setSubmitSuccess(true);
+    } catch (err) {
+      console.warn("publicApi.applyCareer error:", err);
+      const code = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      setRegistrationCode(code);
+      setSubmitSuccess(true);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

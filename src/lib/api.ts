@@ -5,19 +5,15 @@
  */
 
 export function getApiBaseUrl(): string {
-  // Jika berjalan di browser pada koneksi HTTPS (misal deploy Vercel),
-  // gunakan URL relatif "" agar permintaan diarahkan ke same-origin /api/...
-  // yang di-proxy oleh Next.js rewrites untuk mencegah blokir Insecure Mixed Content.
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    return "";
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, "").replace(/\/api\/?$/, "");
   }
-  return (process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162")
-    .replace(/\/+$/, "")
-    .replace(/\/api\/?$/, "");
+  return "https://43.173.2.162.sslip.io";
 }
 
 export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162"
+  process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io"
 ).replace(/\/+$/, "").replace(/\/api\/?$/, "");
 
 export const TOKEN_STORAGE_KEY = "zhou_auth_token";
@@ -255,6 +251,18 @@ export interface ConsultationItem {
   progress_percent?: number;
   created_at: string;
   updated_at?: string;
+  client?: {
+    id: number;
+    name: string;
+    email: string;
+    company_name?: string;
+  };
+  service?: {
+    service_name: string;
+    category: string;
+  };
+  tasks?: AdminTaskItem[];
+  documents?: ClientDocumentItem[];
 }
 
 export interface ClientDocumentItem {
@@ -308,8 +316,17 @@ export interface AdminTaskItem {
   updated_at?: string;
 }
 
+export interface AdminDashboardOverviewData {
+  total_consultations: number;
+  active_consultations: number;
+  completed_consultations: number;
+  total_clients: number;
+  total_documents: number;
+}
+
 export const adminApi = {
-  getDashboardOverview: () => apiFetch("/api/v1/admin/dashboard/overview"),
+  getDashboardOverview: () =>
+    apiFetch<AdminDashboardOverviewData>("/api/v1/admin/dashboard/overview"),
 
   getConsultations: () => apiFetch<ConsultationItem[]>("/api/v1/admin/consultations"),
 
@@ -498,7 +515,61 @@ export const adminCmsApi = {
       method: "DELETE",
     }),
 
-  getJobApplications: () => apiFetch("/api/v1/admin/cms/job-applications"),
+  updateTaxRate: (
+    id: number | string,
+    payload: Partial<{
+      currency_code: string;
+      rate_value: number;
+      effective_start_date: string;
+      effective_end_date?: string;
+    }>
+  ) =>
+    apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteTaxRate: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
+      method: "DELETE",
+    }),
+
+  getJobApplications: () =>
+    apiFetch<JobApplicationItem[]>("/api/v1/admin/cms/job-applications"),
+
+  getFaqs: () => apiFetch<ChatbotFaqItem[]>("/api/v1/admin/cms/faqs"),
+
+  createFaq: (payload: { category: string; question: string; answer_template: string }) =>
+    apiFetch("/api/v1/admin/cms/faqs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  updateFaq: (
+    id: number | string,
+    payload: Partial<{ category: string; question: string; answer_template: string }>
+  ) =>
+    apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  deleteFaq: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
+      method: "DELETE",
+    }),
+
+  updateContactSettings: (payload: {
+    whatsapp?: string;
+    email?: string;
+    address?: string;
+    phone?: string;
+    settings?: Array<{ setting_key: string; setting_value: string }>;
+  }) =>
+    apiFetch<PublicSiteSettingItem[]>("/api/v1/admin/cms/settings/contact", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 };
 
 // ----------------------------------------------------
@@ -511,6 +582,8 @@ export interface PublicServiceItem {
   category: string;
   description?: string;
   is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface PublicTaxRateItem {
@@ -519,6 +592,7 @@ export interface PublicTaxRateItem {
   rate_value: number;
   effective_start_date: string;
   effective_end_date: string;
+  created_at?: string;
 }
 
 export interface PublicCompanyProfileItem {
@@ -526,6 +600,7 @@ export interface PublicCompanyProfileItem {
   section_key: string;
   title: string;
   content: string;
+  updated_at?: string;
 }
 
 export interface PublicRegulationItem {
@@ -555,6 +630,38 @@ export interface PublicCareerItem {
   location: string;
   description?: string;
   is_active?: boolean;
+  created_at?: string;
+}
+
+export interface JobApplicationItem {
+  id: number;
+  job_id: number;
+  career_id?: number;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone?: string;
+  cv_file_path: string;
+  applied_at: string;
+  job?: {
+    position_code: string;
+    position_title: string;
+  };
+}
+
+export interface ChatbotFaqItem {
+  id: number;
+  category: string;
+  question: string;
+  answer_template: string;
+  created_at?: string;
+}
+
+export interface PublicSiteSettingItem {
+  id: number;
+  setting_key: string;
+  setting_value: string;
+  closed_message?: string | null;
+  updated_at?: string;
 }
 
 export interface ChatbotTreeItem {
@@ -571,6 +678,51 @@ export type TaxRateItem = PublicTaxRateItem;
 export type EducationItem = PublicEducationItem;
 export type CareerItem = PublicCareerItem;
 
+export interface ApplyCareerPayload {
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone?: string;
+  cv_file_path: string;
+}
+
+export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
+  companyName: string;
+  email: string;
+  phone: string;
+  address: string;
+  whatsapp: string;
+  [key: string]: string;
+} {
+  const map: Record<string, string> = {
+    companyName: "Zhou Consulting",
+    email: "contact@zhouconsulting.com",
+    phone: "+62 21 555 8899",
+    address: "Sudirman Central Business District (SCBD) Lot 28, Jakarta Selatan",
+    whatsapp: "+6281298765432",
+  };
+
+  if (Array.isArray(settings)) {
+    settings.forEach((s) => {
+      if (!s?.setting_key) return;
+      map[s.setting_key] = s.setting_value;
+      if (s.setting_key === "company_name") map.companyName = s.setting_value;
+      if (s.setting_key === "company_email" || s.setting_key === "contact_email") map.email = s.setting_value;
+      if (s.setting_key === "company_phone" || s.setting_key === "contact_phone") map.phone = s.setting_value;
+      if (s.setting_key === "company_address" || s.setting_key === "contact_address") map.address = s.setting_value;
+      if (s.setting_key === "cs_whatsapp" || s.setting_key === "contact_whatsapp") map.whatsapp = s.setting_value;
+    });
+  }
+
+  return map as {
+    companyName: string;
+    email: string;
+    phone: string;
+    address: string;
+    whatsapp: string;
+    [key: string]: string;
+  };
+}
+
 export const publicApi = {
   getCompanyProfiles: () =>
     apiFetch<PublicCompanyProfileItem[]>("/api/v1/public/company-profiles", {
@@ -583,6 +735,11 @@ export const publicApi = {
     }),
 
   getLatestTaxRates: () =>
+    apiFetch<PublicTaxRateItem[]>("/api/v1/public/tax-rates/latest", {
+      skipAuth: true,
+    }),
+
+  getTaxRates: () =>
     apiFetch<PublicTaxRateItem[]>("/api/v1/public/tax-rates/latest", {
       skipAuth: true,
     }),
@@ -602,15 +759,31 @@ export const publicApi = {
       skipAuth: true,
     }),
 
-  applyCareer: (jobId: number | string, formData: FormData) =>
-    apiFetch(`/api/v1/public/careers/${jobId}/apply`, {
+  applyCareer: (
+    jobId: number | string,
+    payload: ApplyCareerPayload | FormData
+  ) => {
+    let bodyData: ApplyCareerPayload;
+    if (payload instanceof FormData) {
+      bodyData = {
+        applicant_name: String(payload.get("name") || payload.get("applicant_name") || ""),
+        applicant_email: String(payload.get("email") || payload.get("applicant_email") || ""),
+        applicant_phone: String(payload.get("phone") || payload.get("applicant_phone") || ""),
+        cv_file_path: String(payload.get("resume") ? (payload.get("resume") as File).name : payload.get("cv_file_path") || "cv-pelamar.pdf"),
+      };
+    } else {
+      bodyData = payload;
+    }
+
+    return apiFetch(`/api/v1/public/careers/${jobId}/apply`, {
       method: "POST",
-      body: formData,
+      body: JSON.stringify(bodyData),
       skipAuth: true,
-    }),
+    });
+  },
 
   getContactSettings: () =>
-    apiFetch("/api/v1/public/settings/contact", {
+    apiFetch<PublicSiteSettingItem[]>("/api/v1/public/settings/contact", {
       skipAuth: true,
     }),
 

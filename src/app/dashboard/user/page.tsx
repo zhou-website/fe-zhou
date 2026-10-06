@@ -61,7 +61,7 @@ export default function UserDashboardPage() {
     try {
       const saved = localStorage.getItem("zhou_client_custom_tickets");
       if (saved) {
-        const parsed = JSON.parse(saved) as any[];
+        const parsed = JSON.parse(saved) as Ticket[];
         const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
         customTickets = filteredSaved.map((t) => ({
           id: t.id,
@@ -70,7 +70,7 @@ export default function UserDashboardPage() {
           consultant: t.consultant || "Konsultan Zhou",
           status: t.status === "Completed" ? "Completed" : "In Progress",
           progress: t.progress || 20,
-          updatedAt: t.updatedAt || t.createdAt || "Baru saja",
+          updatedAt: t.updatedAt || "Baru saja",
           checklists: t.checklists || [
             { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
             { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: false },

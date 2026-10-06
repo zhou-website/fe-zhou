@@ -12,35 +12,98 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircleIcon,
   ArrowRightIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
-import {
-  StoredServiceItem,
-  getStoredServices,
-  SERVICES_EVENT,
-} from "@/data/layananStorage";
+import { StoredServiceItem } from "@/data/layananStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 export function ServicesSection() {
   const [activeTab, setActiveTab] = useState<"all" | "konsultasi" | "tax">("all");
   const [services, setServices] = useState<StoredServiceItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const { t } = useLanguage();
 
   useEffect(() => {
-    setServices(getStoredServices());
+    let isMounted = true;
 
-    const handleUpdate = () => {
-      setServices(getStoredServices());
-    };
+    // Fetch live backend services only (no mock data fallback)
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const apiServices: StoredServiceItem[] = res.data.map((item: PublicServiceItem) => {
+            const catLower = (item.category || "").toLowerCase();
+            const codeUpper = (item.service_code || "").toUpperCase();
+            const catKey =
+              catLower.includes("akuntansi") || codeUpper.includes("ACC")
+                ? "akuntansi"
+                : catLower.includes("bisnis") || codeUpper.includes("FIN") || catLower.includes("konsultasi")
+                ? "bisnis"
+                : catLower.includes("hukum") || codeUpper.includes("LEGAL") || catLower.includes("sengketa")
+                ? "hukum"
+                : "tax-service";
 
-    window.addEventListener(SERVICES_EVENT, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
+            const route =
+              catKey === "akuntansi"
+                ? "/layanan/akuntansi"
+                : catKey === "bisnis"
+                ? "/layanan/bisnis"
+                : catKey === "hukum"
+                ? "/layanan/hukum"
+                : "/layanan/tax-service";
+
+            return {
+              id: `BE-${item.id}`,
+              code: item.service_code,
+              categoryKey: catKey,
+              name: item.service_name,
+              subtitle: item.description || "Layanan profesional terintegrasi Zhou Consulting.",
+              badge: item.category?.toUpperCase() || "LAYANAN",
+              route,
+              leadConsultant: "Tim Konsultan Spesialis Zhou Consulting",
+              pillars: [
+                {
+                  title: item.service_name,
+                  description: item.description || "Asistensi kepatuhan dan pelaporan profesional terintegrasi.",
+                },
+              ],
+              workflow: [
+                "Konsultasi Kebutuhan Awal",
+                "Analisis Teknis & Regulasi",
+                "Eksekusi Penugasan",
+                "Penyampaian Laporan Final",
+              ],
+              deliverables: ["Laporan Hasil Kerja & Risalah Penugasan Resmi"],
+              status: item.is_active ? "Published" : "Draft",
+              lastUpdated: item.created_at
+                ? new Date(item.created_at).toLocaleDateString("id-ID", { month: "short", year: "numeric" })
+                : "Oktober 2026",
+            };
+          });
+
+          setServices(apiServices);
+        } else {
+          setServices([]);
+        }
+      })
+      .catch((err) => {
+        console.warn("publicApi.getServices in ServicesSection:", err);
+        setServices([]);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
     return () => {
-      window.removeEventListener(SERVICES_EVENT, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
+      isMounted = false;
     };
   }, []);
 
@@ -70,8 +133,14 @@ export function ServicesSection() {
           </p>
         </div>
 
-        {/* Category Filter Tabs */}
-        {publishedServices.length > 0 && (
+        {/* Category Filter Tabs or Skeleton */}
+        {isLoading ? (
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-24 rounded-md" />
+          </div>
+        ) : publishedServices.length > 0 ? (
           <Tabs
             value={activeTab}
             onValueChange={(val) => setActiveTab(val as "all" | "konsultasi" | "tax")}
@@ -89,10 +158,43 @@ export function ServicesSection() {
               </TabsTrigger>
             </TabsList>
           </Tabs>
-        )}
+        ) : null}
 
-        {/* Services List / Empty State */}
-        {publishedServices.length === 0 ? (
+        {/* Services List / Skeleton / Empty State */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card
+                key={i}
+                className="flex flex-col justify-between w-full rounded-xl bg-white border-primary-light p-6 space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between h-6">
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3.5 w-full" />
+                    <Skeleton className="h-3.5 w-5/6" />
+                  </div>
+                </div>
+                <div className="space-y-2 pt-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
+                    <Skeleton className="h-3.5 w-4/5" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
+                    <Skeleton className="h-3.5 w-3/5" />
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-primary-light">
+                  <Skeleton className="h-9 w-full rounded-md" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : publishedServices.length === 0 ? (
           <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 max-w-2xl mx-auto shadow-xs">
             <div className="space-y-1.5">
               <h3 className="text-base font-bold text-primary">Katalog Layanan Sedang Dipersiapkan</h3>

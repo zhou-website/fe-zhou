@@ -27,30 +27,30 @@ interface NavItem {
 
 const MAIN_NAV_ITEMS: NavItem[] = [
   {
-    label: "Overview CMS",
+    label: "Dashboard Operasional",
     href: "/dashboard/admin",
     icon: BuildingIcon,
   },
   {
-    label: "Master Editor CMS",
+    label: "Pusat Manajemen CMS",
     href: "/dashboard/admin/cms",
     icon: EditIcon,
   },
   {
-    label: "Upload & Billing",
+    label: "Upload Dokumen",
     href: "/dashboard/admin/upload",
     icon: DocumentIcon,
   },
 ];
 
 const PUBLIC_PAGE_ITEMS: NavItem[] = [
-  { label: "Beranda", href: "/dashboard/admin?section=homepage", icon: BuildingIcon },
-  { label: "Profil Perusahaan", href: "/dashboard/admin?section=company", icon: ShieldTaxIcon },
-  { label: "Layanan", href: "/dashboard/admin?section=services", icon: CheckCircleIcon },
-  { label: "Peraturan", href: "/dashboard/admin?section=regulations", icon: DocumentIcon },
-  { label: "Edukasi Pajak", href: "/dashboard/admin?section=education", icon: BookIcon },
-  { label: "Karir", href: "/dashboard/admin?section=careers", icon: BriefcaseIcon },
-  { label: "Kontak", href: "/dashboard/admin?section=contact", icon: PhoneIcon },
+  { label: "Materi Edukasi", href: "/dashboard/admin/cms?tab=edukasi", icon: BookIcon },
+  { label: "Katalog Layanan", href: "/dashboard/admin/cms?tab=services", icon: CheckCircleIcon },
+  { label: "Regulasi DJP", href: "/dashboard/admin/cms?tab=regulasi", icon: DocumentIcon },
+  { label: "Kurs Pajak KMK", href: "/dashboard/admin/cms?tab=kurs", icon: ShieldTaxIcon },
+  { label: "Lowongan Karir", href: "/dashboard/admin/cms?tab=karir", icon: BriefcaseIcon },
+  { label: "Lamaran Masuk", href: "/dashboard/admin/cms?tab=applications", icon: DocumentIcon },
+  { label: "Profil & Kontak", href: "/dashboard/admin/cms?tab=kontak", icon: PhoneIcon },
 ];
 
 export function AdminSidebar() {

@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
+import { publicApi } from "@/lib/api";
 
 /**
  * Helper to render an authentic 3D embossed isometric cube
@@ -171,6 +173,36 @@ function EmbossedCube({ cx, cy, size = 52 }: { cx: number; cy: number; size?: nu
 
 export function Hero() {
   const { t } = useLanguage();
+  const [heroData, setHeroData] = useState<{ title?: string; content?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    publicApi
+      .getCompanyProfiles()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data)) {
+          const found = res.data.find(
+            (p) => p.section_key === "hero" || p.section_key === "hero_tentang_kami"
+          );
+          if (found && (found.title || found.content)) {
+            setHeroData({ title: found.title, content: found.content });
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <section
       id="hero"
@@ -326,40 +358,62 @@ export function Hero() {
 
       {/* Main Content Container (relative z-10 for sharp focus, high contrast & zero glare) */}
       <div className="container-custom relative z-10">
-        <div className="max-w-3xl space-y-6 sm:space-y-8">
-          {/* Main Hero Headline */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.1]">
-            {t.hero.title}
-          </h1>
+        {isLoading ? (
+          <div className="max-w-3xl space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+            {/* Main Hero Headline Skeleton */}
+            <div className="space-y-3">
+              <Skeleton className="h-10 sm:h-12 lg:h-14 w-11/12 bg-white/10 rounded-lg" />
+              <Skeleton className="h-10 sm:h-12 lg:h-14 w-3/4 bg-white/10 rounded-lg" />
+            </div>
 
-          {/* Subtitles */}
-          <div className="space-y-2">
-            <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug">
-              {t.hero.subtitle2}
-            </p>
+            {/* Subtitles Skeleton */}
+            <div className="space-y-2 pt-1">
+              <Skeleton className="h-5 sm:h-6 w-5/6 bg-white/10 rounded-md" />
+              <Skeleton className="h-5 sm:h-6 w-2/3 bg-white/10 rounded-md" />
+            </div>
+
+            {/* Action Buttons Skeleton */}
+            <div className="flex flex-wrap items-center gap-4 pt-3">
+              <Skeleton className="h-11 w-44 bg-white/10 rounded-md" />
+              <Skeleton className="h-11 w-40 bg-white/10 rounded-md" />
+            </div>
           </div>
+        ) : (
+          <div className="max-w-3xl space-y-6 sm:space-y-8">
+            {/* Main Hero Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.1]">
+              {heroData?.title || t.hero.title}
+            </h1>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-4 pt-2">
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md shadow-sm transition-all duration-200 active:scale-[0.98]"
-            >
-              <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
-            </Button>
+            {/* Subtitles */}
+            <div className="space-y-2">
+              <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug">
+                {heroData?.content || t.hero.subtitle2}
+              </p>
+            </div>
 
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md transition-all duration-200 active:scale-[0.98]"
-            >
-              <Link href="/#layanan">{t.hero.ctaServices}</Link>
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md shadow-sm transition-all duration-200 active:scale-[0.98]"
+              >
+                <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md transition-all duration-200 active:scale-[0.98]"
+              >
+                <Link href="/#layanan">{t.hero.ctaServices}</Link>
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

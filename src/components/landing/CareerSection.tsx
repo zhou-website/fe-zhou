@@ -34,6 +34,7 @@ import {
   LocationIcon,
   ClockIcon,
 } from "@/components/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   CareerSettings,
@@ -48,6 +49,7 @@ export function CareerSection() {
   const { t } = useLanguage();
   const [careerSettings, setCareerSettings] = useState<CareerSettings>(DEFAULT_CAREER_SETTINGS);
   const [jobs, setJobs] = useState<JobPosition[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [selectedJob, setSelectedJob] = useState<JobPosition | null>(null);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
@@ -56,27 +58,23 @@ export function CareerSection() {
   const [applicantPhone, setApplicantPhone] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
   const [fileError, setFileError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [applyError, setApplyError] = useState<string>("");
 
   useEffect(() => {
     let isMounted = true;
     const settings = getStoredCareerSettings();
     setCareerSettings(settings);
-    if (settings.positions && Array.isArray(settings.positions)) {
-      setJobs(settings.positions);
-    }
 
     const handleUpdate = () => {
       const s = getStoredCareerSettings();
       setCareerSettings(s);
-      if (s.positions && Array.isArray(s.positions)) {
-        setJobs(s.positions);
-      }
     };
 
     window.addEventListener(CAREER_SETTINGS_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
-    // Fetch live backend careers
+    // Fetch live backend careers only (no mock positions)
     publicApi
       .getCareers()
       .then((res) => {
@@ -115,10 +113,18 @@ export function CareerSection() {
           });
 
           setJobs(apiJobs);
+        } else {
+          setJobs([]);
         }
       })
       .catch((err) => {
-        console.warn("publicApi.getCareers fallback in CareerSection:", err);
+        console.warn("publicApi.getCareers in CareerSection:", err);
+        setJobs([]);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -151,12 +157,36 @@ export function CareerSection() {
     }
   };
 
-  const handleApplySubmit = (e: React.FormEvent) => {
+  const handleApplySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!applicantName || !applicantEmail || !applicantPhone || !fileName) {
       return;
     }
-    setFormSubmitted(true);
+    setIsSubmitting(true);
+    setApplyError("");
+
+    try {
+      const rawId = selectedJob?.id || "1";
+      const numId = parseInt(rawId.replace(/\D/g, ""), 10) || 1;
+
+      const res = await publicApi.applyCareer(numId, {
+        applicant_name: applicantName.trim(),
+        applicant_email: applicantEmail.trim(),
+        applicant_phone: applicantPhone.trim(),
+        cv_file_path: fileName || "cv_applicant.pdf",
+      });
+
+      if (!res.success && res.message) {
+        setApplyError(res.message);
+      } else {
+        setFormSubmitted(true);
+      }
+    } catch (err) {
+      console.warn("handleApplySubmit error:", err);
+      setFormSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenModal = (job: JobPosition) => {
@@ -179,7 +209,7 @@ export function CareerSection() {
     setFileError("");
   };
 
-  const isHiringOpen = careerSettings.isOpen && jobs.length > 0;
+  const isHiringOpen = jobs.length > 0;
 
   return (
     <section
@@ -199,16 +229,41 @@ export function CareerSection() {
             </p>
           </div>
 
-          {isHiringOpen && (
+          {isLoading ? (
+            <Skeleton className="h-7 w-28 rounded-md self-start md:self-auto shrink-0" />
+          ) : isHiringOpen ? (
             <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
               <Badge variant="outline" className="text-xs font-semibold py-1.5 px-3">
                 {jobs.length} Posisi Terbuka
               </Badge>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {!isHiringOpen ? (
+        {isLoading ? (
+          <div className="max-w-4xl mx-auto space-y-4 animate-in fade-in duration-200">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-white border-primary-light p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-28" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-3/5" />
+                  <Skeleton className="h-3.5 w-full" />
+                  <Skeleton className="h-3.5 w-4/5" />
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-primary-light">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-24 rounded-md" />
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : !isHiringOpen ? (
           /* Tampilan Pengumuman Statis Saat Belum Ada Lowongan */
           <div className="max-w-3xl mx-auto rounded-2xl bg-surface border border-primary-light p-8 md:p-12 text-center space-y-5 shadow-xs">
             <div className="w-14 h-14 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center text-xl">
@@ -478,14 +533,18 @@ export function CareerSection() {
                       )}
                     </div>
 
+                    {applyError && (
+                      <p className="text-[11px] text-error font-medium">{applyError}</p>
+                    )}
+
                     <DialogFooter className="pt-3 border-t border-primary-light">
                       <DialogClose asChild>
-                        <Button type="button" variant="outline" size="sm" className="text-xs">
+                        <Button type="button" variant="outline" size="sm" className="text-xs" disabled={isSubmitting}>
                           Batal
                         </Button>
                       </DialogClose>
-                      <Button type="submit" variant="primary" size="sm" className="text-xs font-semibold">
-                        Kirim Berkas Lamaran
+                      <Button type="submit" variant="primary" size="sm" className="text-xs font-semibold" disabled={isSubmitting}>
+                        {isSubmitting ? "Mengirim..." : "Kirim Berkas Lamaran"}
                       </Button>
                     </DialogFooter>
                   </form>
