@@ -31,11 +31,7 @@ import {
   saveStoredServices,
   StoredServiceItem,
 } from "@/data/layananStorage";
-import {
-  ZHOU_ARTICLES,
-  BELAJAR_PAJAK_LINKS,
-  BelajarPajakLink,
-} from "@/data/edukasiData";
+import type { BelajarPajakLink } from "@/data/edukasiData";
 
 export interface CMSItem {
   id: string;
@@ -62,44 +58,6 @@ export interface CMSItem {
   highlights?: string[];
   isOfficial?: boolean;
 }
-
-// Convert initial Zhou articles to CMS items
-const INITIAL_ZHOU_CMS: CMSItem[] = ZHOU_ARTICLES.map((a) => ({
-  id: `ZHOU-${a.id.toUpperCase()}`,
-  section: "edukasi-zhou",
-  title: a.title,
-  category: a.category,
-  lastUpdated: a.date,
-  editor: a.author,
-  status: a.status || "Published",
-  summary: a.summary,
-  author: a.author,
-  readTime: a.readTime,
-  takeaways: a.takeaways,
-  content: a.content,
-}));
-
-// Convert initial Belajar Pajak links to CMS items
-const INITIAL_BELAJAR_CMS: CMSItem[] = BELAJAR_PAJAK_LINKS.map((b) => ({
-  id: `GOV-${b.id.toUpperCase()}`,
-  section: "belajar-pajak",
-  title: b.title,
-  category: b.institution === "DJP" ? "Direktorat Jenderal Pajak" : "Kementerian Keuangan RI",
-  lastUpdated: b.updatedAt,
-  editor: b.institutionName,
-  status: b.status || "Published",
-  summary: b.description,
-  institution: b.institution,
-  institutionName: b.institutionName,
-  url: b.url,
-  mediaType: b.type,
-  badge: b.badge,
-  highlights: b.highlights,
-  isOfficial: b.isOfficial,
-}));
-
-// Standard initial CMS items
-const INITIAL_OTHER_CMS: CMSItem[] = [];
 
 const INITIAL_CMS_ITEMS: CMSItem[] = [];
 

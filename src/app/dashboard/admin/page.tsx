@@ -35,13 +35,11 @@ import {
   INITIAL_HOMEPAGE_CONTENT,
   INITIAL_COMPANY_PROFILE,
   INITIAL_KMK_RATES,
-  INITIAL_CAREERS,
   INITIAL_CONTACT_CONTENT,
   HomepageContent,
   CompanyProfileContent,
   KmkRatesContent,
   KmkRateItem,
-  CareerJobItem,
   ContactConsultationContent,
 } from "@/data/publicContentData";
 import { BelajarPajakLink, BELAJAR_PAJAK_LINKS, ZhouArticle } from "@/data/edukasiData";
@@ -58,9 +56,7 @@ import {
   getStoredBelajarPajakLinks,
   saveStoredBelajarPajakLinks,
   addStoredBelajarPajakLink,
-  updateStoredBelajarPajakLink,
   deleteStoredBelajarPajakLink,
-  GOV_LINKS_EVENT,
 } from "@/data/edukasiStorage";
 import {
   StoredRegulationItem,
@@ -77,7 +73,6 @@ import {
   REGULATIONS_EVENT,
   getStoredKmkRates,
   saveStoredKmkRates,
-  StoredKmkData,
 } from "@/data/regulasiStorage";
 import {
   CareerSettings,
@@ -288,7 +283,7 @@ function AdminDashboardContent() {
         effectiveUntil: stored.effectiveUntil || "-",
         status: "Published",
         lastUpdated: stored.lastUpdated || "Maret 2026",
-        rates: stored.rates.map((r: any) => ({
+        rates: stored.rates.map((r: { currency: string; name: string; rate: string; change: string; trend?: "up" | "down" | "flat" }) => ({
           currency: r.currency,
           name: r.name,
           rate: r.rate,
@@ -1178,7 +1173,7 @@ function AdminDashboardContent() {
         ? "bisnis"
         : "tax-service";
 
-      const updatedSrv = addStoredService({
+      addStoredService({
         name: newItemForm.title.trim(),
         subtitle: newItemForm.summary.trim() || "Deskripsi layanan komprehensif.",
         categoryKey: catKey,
@@ -1263,7 +1258,7 @@ function AdminDashboardContent() {
         institution: newItemForm.institution || "DJP",
         institutionName: newItemForm.institution === "Kemenkeu" ? "Kementerian Keuangan RI" : "Direktorat Jenderal Pajak",
         url: newItemForm.url.trim() || "https://pajak.go.id",
-        type: (newItemForm.mediaType as any) || "Simulator DJP",
+        type: (newItemForm.mediaType as BelajarPajakLink["type"]) || "Simulator DJP",
         badge: "Resmi",
         description: newItemForm.summary.trim(),
         highlights: ["Katalog Terverifikasi"],

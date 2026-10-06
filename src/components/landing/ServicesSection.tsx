@@ -13,10 +13,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  CheckCircleIcon,
-  ArrowRightIcon,
-} from "@/components/icons";
+import { CheckCircleIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import {

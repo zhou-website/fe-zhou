@@ -34,6 +34,7 @@ interface Ticket {
   status: "In Progress" | "Completed";
   progress: number;
   updatedAt: string;
+  createdAt?: string;
   checklists: { text: string; done: boolean }[];
   deliverableFile?: string;
   deliverableSize?: string;
@@ -61,7 +62,7 @@ export default function UserDashboardPage() {
     try {
       const saved = localStorage.getItem("zhou_client_custom_tickets");
       if (saved) {
-        const parsed = JSON.parse(saved) as any[];
+        const parsed = (JSON.parse(saved) as Ticket[]) || [];
         const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
         customTickets = filteredSaved.map((t) => ({
           id: t.id,
