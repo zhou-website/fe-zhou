@@ -16,7 +16,6 @@ import {
   ClockIcon,
   DocumentIcon,
   SearchIcon,
-  PlusIcon,
   CloseIcon,
   DownloadIcon,
   SendIcon,
@@ -260,9 +259,8 @@ export default function AdminUploadBillingPage() {
             variant="primary"
             size="sm"
             onClick={() => setIsUploadModalOpen(true)}
-            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center gap-2"
+            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center justify-center"
           >
-            <PlusIcon className="text-xs" />
             <span>Upload Berkas Laporan Baru</span>
           </Button>
         </div>

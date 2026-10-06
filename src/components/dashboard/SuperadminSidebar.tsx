@@ -116,10 +116,9 @@ export function SuperadminSidebar() {
             <Link
               href="/"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 group"
+              className="w-full flex items-center justify-center py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 shadow-xs active:scale-[0.98]"
             >
-              <span className="text-primary-light group-hover:-translate-x-1 transition-transform">←</span>
-              <span>Kembali ke Website</span>
+              Kembali ke Website
             </Link>
           </div>
 
@@ -152,19 +151,30 @@ export function SuperadminSidebar() {
 
         {/* Superadmin Profile & Logout Footer */}
         <div className="p-3 border-t border-white/10 bg-black/20 space-y-2.5">
-          <div className="flex items-center gap-2.5 px-1 py-1">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white border border-white/20 shrink-0">
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : "SA"}
+          <Link
+            href="/dashboard/superadmin/profil"
+            onClick={() => setMobileOpen(false)}
+            title="Buka Pengaturan Profil Superadmin"
+            className={`block rounded-lg p-2 transition-all border group cursor-pointer ${
+              pathname === "/dashboard/superadmin/profil"
+                ? "bg-white/15 border-white/30 shadow-sm"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white border border-white/20 shrink-0 group-hover:scale-105 transition-transform">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : "SA"}
+              </div>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-xs font-bold text-white truncate group-hover:text-primary-light transition-colors">
+                  {user?.name || "Super Administrator"}
+                </span>
+                <span className="text-[10px] text-silver truncate">
+                  {user?.email || ""}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-bold text-white truncate">
-                {user?.name || "Super Administrator"}
-              </span>
-              <span className="text-[10px] text-silver truncate">
-                {user?.email || ""}
-              </span>
-            </div>
-          </div>
+          </Link>
 
           <button
             type="button"

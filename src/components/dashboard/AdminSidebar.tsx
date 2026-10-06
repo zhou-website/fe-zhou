@@ -136,10 +136,9 @@ export function AdminSidebar() {
             <Link
               href="/"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 group"
+              className="w-full flex items-center justify-center py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 shadow-xs active:scale-[0.98]"
             >
-              <span className="text-primary-light group-hover:-translate-x-1 transition-transform">←</span>
-              <span>Kembali ke Website</span>
+              Kembali ke Website
             </Link>
           </div>
 
@@ -196,19 +195,30 @@ export function AdminSidebar() {
 
         {/* Bottom: Staff Profile & Logout */}
         <div className="p-3 border-t border-[#172652] space-y-2.5 bg-[#060D22]/60">
-          <div className="flex items-center gap-2.5 px-1 py-1">
-            <div className="w-8 h-8 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs">
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : <UserIcon className="text-xs" />}
+          <Link
+            href="/dashboard/admin/profil"
+            onClick={() => setMobileOpen(false)}
+            title="Buka Pengaturan Profil Admin"
+            className={`block rounded-lg p-2 transition-all border group cursor-pointer ${
+              pathname === "/dashboard/admin/profil"
+                ? "bg-white/15 border-primary-light shadow-sm"
+                : "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-silver/20 text-white flex items-center justify-center shrink-0 font-bold text-xs group-hover:bg-primary-light group-hover:text-[#0B1533] transition-colors">
+                {user?.name ? user.name.slice(0, 2).toUpperCase() : <UserIcon className="text-xs" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-bold text-white block truncate group-hover:text-primary-light transition-colors">
+                  {user?.name || "Staff Administrator"}
+                </span>
+                <span className="text-[10px] text-silver block truncate">
+                  {user?.email || ""}
+                </span>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-bold text-white block truncate">
-                {user?.name || "Staff Administrator"}
-              </span>
-              <span className="text-[10px] text-silver block truncate">
-                {user?.email || ""}
-              </span>
-            </div>
-          </div>
+          </Link>
 
           <button
             type="button"

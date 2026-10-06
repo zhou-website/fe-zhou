@@ -356,7 +356,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
               onClick={() => setShowCreateModal(true)}
               className="text-xs py-1.5 px-3 h-auto shadow-sm"
             >
-              + Buat Konsultasi Baru
+              Buat Konsultasi Baru
             </Button>
 
             {/* Filter Tabs */}

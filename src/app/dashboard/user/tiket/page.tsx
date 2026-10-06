@@ -22,7 +22,6 @@ import {
   ClockIcon,
   CheckCircleIcon,
   DocumentIcon,
-  PlusIcon,
   CloseIcon,
   SearchIcon,
   UserIcon,
@@ -324,9 +323,8 @@ export default function ClientTicketMonitoringPage() {
         <Button
           variant="primary"
           onClick={() => setIsNewTicketModalOpen(true)}
-          className="shadow-sm font-semibold text-xs py-2.5 px-5 flex items-center gap-2 self-start sm:self-auto"
+          className="shadow-sm font-semibold text-xs py-2.5 px-5 flex items-center justify-center self-start sm:self-auto"
         >
-          <PlusIcon className="text-xs" />
           <span>Buat Konsultasi Baru</span>
         </Button>
       </div>
@@ -844,7 +842,7 @@ export default function ClientTicketMonitoringPage() {
             <div className="p-5 border-b border-primary-light flex items-center justify-between bg-surface">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center text-sm font-bold">
-                  <PlusIcon />
+                  <DocumentIcon />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-primary">Buat Konsultasi Baru</h3>

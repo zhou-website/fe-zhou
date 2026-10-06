@@ -92,7 +92,7 @@ export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: Unauthor
             asChild
             className="w-full font-semibold text-xs border-primary-light text-text-secondary hover:text-primary hover:bg-surface cursor-pointer h-10"
           >
-            <Link href="/">← Kembali ke Website</Link>
+            <Link href="/">Kembali ke Website</Link>
           </Button>
 
           <button

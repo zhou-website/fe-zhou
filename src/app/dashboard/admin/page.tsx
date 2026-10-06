@@ -17,7 +17,6 @@ import {
   DocumentIcon,
   BuildingIcon,
   SearchIcon,
-  PlusIcon,
   CloseIcon,
   EyeIcon,
   TrashIcon,
@@ -984,9 +983,8 @@ function AdminDashboardContent() {
               });
               setIsNewItemModalOpen(true);
             }}
-            className="text-xs font-semibold h-10 px-3.5 border-primary-light bg-white hover:border-primary text-primary flex items-center gap-2"
+            className="text-xs font-semibold h-10 px-3.5 border-primary-light bg-white hover:border-primary text-primary flex items-center justify-center"
           >
-            <PlusIcon className="text-xs" />
             <span>Tambah Konten Publik</span>
           </Button>
 
@@ -1632,7 +1630,6 @@ function AdminDashboardContent() {
               }}
               className="text-xs h-8 px-3 border-primary-light"
             >
-              <PlusIcon className="text-xs mr-1" />
               Tambah Modul Layanan
             </Button>
           </div>
@@ -1665,7 +1662,6 @@ function AdminDashboardContent() {
                 }}
                 className="text-xs shadow-xs"
               >
-                <PlusIcon className="text-xs mr-1" />
                 Tambah Layanan Pertama
               </Button>
             </div>
@@ -1771,9 +1767,8 @@ function AdminDashboardContent() {
                 type="button"
                 size="sm"
                 onClick={() => handleOpenAddRegulation("Regulasi Zhou")}
-                className="bg-primary hover:bg-primary-dark text-white text-xs font-semibold h-8 px-3.5 shadow-sm flex items-center gap-1.5"
+                className="bg-primary hover:bg-primary-dark text-white text-xs font-semibold h-8 px-3.5 shadow-sm flex items-center justify-center"
               >
-                <PlusIcon className="text-xs" />
                 <span>Tambah Regulasi / SOP Zhou</span>
               </Button>
             </div>
@@ -2123,9 +2118,8 @@ function AdminDashboardContent() {
                     type="button"
                     size="sm"
                     onClick={handleOpenUploadZhou}
-                    className="bg-primary hover:bg-primary-dark text-white text-xs font-semibold h-8 px-3.5 shadow-sm flex items-center gap-1.5"
+                    className="bg-primary hover:bg-primary-dark text-white text-xs font-semibold h-8 px-3.5 shadow-sm flex items-center justify-center"
                   >
-                    <PlusIcon className="text-xs" />
                     <span>Upload Modul / Materi Baru</span>
                   </Button>
                 </div>
@@ -2308,7 +2302,7 @@ function AdminDashboardContent() {
                             }`}
                             title="Atur apakah materi ini ditampilkan di Banner Carousel Unggulan (/edukasi)"
                           >
-                            <span>{art.isFeatured !== false ? "Lepas Carousel" : "+ Carousel"}</span>
+                            <span>{art.isFeatured !== false ? "Lepas Carousel" : "Pasang Carousel"}</span>
                           </Button>
 
                           <Button
@@ -2384,7 +2378,6 @@ function AdminDashboardContent() {
                   }}
                   className="bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold h-8 px-3 shrink-0"
                 >
-                  <PlusIcon className="text-xs mr-1" />
                   Tambah Link Resmi Baru
                 </Button>
               </div>
@@ -2633,7 +2626,6 @@ function AdminDashboardContent() {
               }}
               className="text-xs h-8 px-3 border-primary-light"
             >
-              <PlusIcon className="text-xs mr-1" />
               Buka Lowongan Baru
             </Button>
           </div>

@@ -14,7 +14,6 @@ import {
   CheckCircleIcon,
   CheckIcon,
   SearchIcon,
-  PlusIcon,
   CloseIcon,
   EditIcon,
   TrashIcon,
@@ -323,9 +322,8 @@ export default function SuperadminUsersPage() {
             variant="primary"
             size="sm"
             onClick={() => setIsAddModalOpen(true)}
-            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center gap-2"
+            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center justify-center"
           >
-            <PlusIcon className="text-xs" />
             <span>Tambah Akun Staf Baru</span>
           </Button>
         </div>

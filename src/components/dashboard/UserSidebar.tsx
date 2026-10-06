@@ -132,10 +132,9 @@ export function UserSidebar() {
             <Link
               href="/"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 group"
+              className="w-full flex items-center justify-center py-2 px-3 rounded-lg bg-white/5 hover:bg-white/10 text-silver hover:text-white text-xs font-semibold transition-all border border-white/10 shadow-xs active:scale-[0.98]"
             >
-              <span className="text-primary-light group-hover:-translate-x-1 transition-transform">←</span>
-              <span>Kembali ke Website</span>
+              Kembali ke Website
             </Link>
           </div>
 

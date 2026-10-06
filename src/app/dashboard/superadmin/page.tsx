@@ -10,7 +10,6 @@ import { Card } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import {
   CloseIcon,
-  PlusIcon,
   SearchIcon,
   ExportIcon,
   EyeIcon,
@@ -459,9 +458,8 @@ export default function SuperadminDashboard() {
                 variant="primary"
                 size="sm"
                 onClick={() => setShowAddAdminModal(true)}
-                className="text-xs font-semibold inline-flex items-center gap-1.5"
+                className="text-xs font-semibold px-3 py-1.5"
               >
-                <PlusIcon className="text-xs" />
                 <span>Tambah Admin Baru</span>
               </Button>
             </div>

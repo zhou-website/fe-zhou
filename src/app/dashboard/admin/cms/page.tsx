@@ -15,7 +15,6 @@ import {
   CheckIcon,
   DocumentIcon,
   SearchIcon,
-  PlusIcon,
   CloseIcon,
   EyeIcon,
   TrashIcon,
@@ -609,9 +608,8 @@ function AdminCMSPageContent() {
             variant="outline"
             size="sm"
             onClick={() => handleOpenAddModal("edukasi-zhou")}
-            className="text-xs font-semibold h-10 px-3.5 border-primary-light flex items-center gap-2 bg-white hover:border-primary text-primary"
+            className="text-xs font-semibold h-10 px-3.5 border-primary-light flex items-center justify-center bg-white hover:border-primary text-primary"
           >
-            <PlusIcon className="text-xs" />
             <span>Upload Edukasi Zhou</span>
           </Button>
 
@@ -620,9 +618,8 @@ function AdminCMSPageContent() {
             variant="outline"
             size="sm"
             onClick={() => handleOpenAddModal("belajar-pajak")}
-            className="text-xs font-semibold h-10 px-3.5 border-amber-300 flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-900"
+            className="text-xs font-semibold h-10 px-3.5 border-amber-300 flex items-center justify-center bg-amber-50 hover:bg-amber-100 text-amber-900"
           >
-            <PlusIcon className="text-xs" />
             <span>Tambah Link Kemenkeu/DJP</span>
           </Button>
 
@@ -1006,9 +1003,8 @@ function AdminCMSPageContent() {
                 <Button
                   type="button"
                   onClick={() => handleOpenAddModal("edukasi-zhou")}
-                  className="bg-white text-primary hover:bg-white/90 text-xs font-bold h-10 px-4 rounded-xl flex items-center gap-2 shadow-sm"
+                  className="bg-white text-primary hover:bg-white/90 text-xs font-bold h-10 px-4 rounded-xl flex items-center justify-center shadow-sm"
                 >
-                  <PlusIcon className="text-xs" />
                   <span>Upload Artikel Baru</span>
                 </Button>
 
@@ -1227,9 +1223,8 @@ function AdminCMSPageContent() {
                 <Button
                   type="button"
                   onClick={() => handleOpenAddModal("belajar-pajak")}
-                  className="bg-white text-amber-900 hover:bg-white/90 text-xs font-bold h-10 px-4 rounded-xl flex items-center gap-2 shadow-sm"
+                  className="bg-white text-amber-900 hover:bg-white/90 text-xs font-bold h-10 px-4 rounded-xl flex items-center justify-center shadow-sm"
                 >
-                  <PlusIcon className="text-xs" />
                   <span>Tambah Link Edukasi Baru</span>
                 </Button>
 
@@ -1678,7 +1673,6 @@ function AdminCMSPageContent() {
               onClick={() => handleOpenAddModal("regulasi")}
               className="text-xs h-8 px-3 border-primary-light"
             >
-              <PlusIcon className="text-xs mr-1" />
               Tambah Regulasi
             </Button>
           </div>
@@ -1728,7 +1722,6 @@ function AdminCMSPageContent() {
               onClick={() => handleOpenAddModal("karir")}
               className="text-xs h-8 px-3 border-primary-light"
             >
-              <PlusIcon className="text-xs mr-1" />
               Buka Posisi Baru
             </Button>
           </div>
