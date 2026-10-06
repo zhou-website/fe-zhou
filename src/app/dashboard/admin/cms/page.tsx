@@ -15,6 +15,8 @@ import {
   CloseIcon,
   EditIcon,
   TrashIcon,
+  ChevronDownIcon,
+  CheckIcon,
 } from "@/components/icons";
 import {
   adminCmsApi,
@@ -263,6 +265,36 @@ function AdminCMSPageContent() {
   );
   const [subcategoryFilter, setSubcategoryFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // Category Floating Dropdown State (Pattern Konsisten dengan Public Website Navbar)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isCategoryDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isCategoryDropdownOpen]);
 
   useEffect(() => {
     if (tabParam && TAB_TO_CATEGORY[tabParam]) {
@@ -1041,22 +1073,77 @@ function AdminCMSPageContent() {
               />
             </div>
 
-            {/* Dropdown Filter Kategori Utama (Hanya Kategori Utama, Tanpa Subkategori) */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setSubcategoryFilter("ALL");
-              }}
-              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[160px]"
-            >
-              <option value="ALL">Semua Kategori</option>
-              {MASTER_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            {/* Dropdown Filter Kategori Utama (Floating Menu sesuai Visual & Interaction Pattern Public Website) */}
+            <div className="relative" ref={categoryDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none min-w-[170px] cursor-pointer transition-colors shadow-2xs"
+                aria-expanded={isCategoryDropdownOpen}
+                aria-haspopup="true"
+              >
+                <span className="truncate">
+                  {categoryFilter === "ALL" ? "Semua Kategori" : categoryFilter}
+                </span>
+                <ChevronDownIcon
+                  className={`text-[10px] text-text-muted transition-transform duration-200 shrink-0 ${
+                    isCategoryDropdownOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {isCategoryDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1.5 w-56 rounded-xl bg-white border border-primary-light py-1.5 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCategoryFilter("ALL");
+                      setSubcategoryFilter("ALL");
+                      setIsCategoryDropdownOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left ${
+                      categoryFilter === "ALL"
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-text-primary hover:text-primary hover:bg-surface"
+                    }`}
+                  >
+                    <span>Semua Kategori</span>
+                    {categoryFilter === "ALL" && (
+                      <CheckIcon className="text-primary text-[10px]" />
+                    )}
+                  </button>
+
+                  <div className="my-1 border-t border-primary-light/60" />
+
+                  <div className="space-y-0.5">
+                    {MASTER_CATEGORIES.map((cat) => {
+                      const isSelected = categoryFilter === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(cat);
+                            setSubcategoryFilter("ALL");
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className={`flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left ${
+                            isSelected
+                              ? "bg-primary/10 text-primary font-semibold"
+                              : "text-text-primary hover:text-primary hover:bg-surface"
+                          }`}
+                        >
+                          <span>{cat}</span>
+                          {isSelected && (
+                            <CheckIcon className="text-primary text-[10px]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Status Filter */}
             <select
@@ -1078,6 +1165,7 @@ function AdminCMSPageContent() {
                   setCategoryFilter("ALL");
                   setSubcategoryFilter("ALL");
                   setStatusFilter("ALL");
+                  setIsCategoryDropdownOpen(false);
                 }}
                 className="text-xs text-text-muted hover:text-primary underline px-1 cursor-pointer"
               >
