@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import {
-  LocationIcon,
   PhoneIcon,
   WhatsappIcon,
   EnvelopeIcon,
@@ -118,7 +117,7 @@ export default function ContactPage() {
                 Hubungi Kantor Pusat Zhou Consulting
               </h1>
               <p className="text-body-regular text-text-secondary leading-relaxed">
-                Konsultasikan kebutuhan perpajakan, audit akuntansi, dan legal korporat Anda bersama tim konsultan berlisensi Menara Sudirman.
+                Konsultasikan kebutuhan perpajakan, audit akuntansi, dan legal korporat Anda bersama tim konsultan berlisensi.
               </p>
             </div>
 
@@ -127,34 +126,17 @@ export default function ContactPage() {
               {/* Sisi Kiri: Detail Kantor, Kontak & Jam Operasional (5 cols) */}
               <div className="lg:col-span-5 bg-surface/70 p-6 sm:p-8 flex flex-col justify-between space-y-6 border-b lg:border-b-0 lg:border-r border-primary-light">
                 <div className="space-y-6">
-                  {/* Kantor Pusat Sudirman */}
+                  {/* Kantor Pusat */}
                   <div className="space-y-2.5">
                     <Badge variant="primary" size="sm" className="font-semibold text-[11px]">
-                      Kantor Pusat Sudirman
+                      Kantor Pusat
                     </Badge>
                     <h2 className="text-lg sm:text-xl font-bold text-primary">
-                      Menara Sudirman Lantai 12, Kav. 21
+                      -
                     </h2>
                     <p className="text-xs text-text-secondary leading-relaxed">
-                      Jl. Jend. Sudirman Kav. 21, RT.1/RW.3, Karet Tengsin, Tanah Abang, Jakarta Pusat, DKI Jakarta 10250.
+                      -
                     </p>
-                    <div className="pt-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        className="text-xs font-semibold hover:border-primary gap-1.5 bg-white shadow-2xs"
-                      >
-                        <a
-                          href="https://maps.google.com/?q=Menara+Sudirman+Jl.+Jend.+Sudirman+Kav.+21+Jakarta"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <LocationIcon className="text-xs text-primary" />
-                          <span>Petunjuk Arah Google Maps</span>
-                        </a>
-                      </Button>
-                    </div>
                   </div>
 
                   {/* Saluran Kontak Langsung */}
@@ -165,7 +147,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">Telepon Kantor (Hunting)</span>
-                        <span className="font-bold text-primary">(021) 520-7890 / 520-7891</span>
+                        <span className="font-semibold text-text-muted">-</span>
                       </div>
                     </div>
 
@@ -175,26 +157,17 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">Email Korespondensi Resmi</span>
-                        <a href="mailto:consultingzhou@gmail.com" className="font-bold text-primary hover:underline">
-                          consultingzhou@gmail.com
-                        </a>
+                        <span className="font-semibold text-text-muted">-</span>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-success/10 text-success flex items-center justify-center shrink-0 text-xs mt-0.5">
+                      <div className="w-8 h-8 rounded-full bg-white border border-primary-light text-text-secondary flex items-center justify-center shrink-0 text-xs mt-0.5">
                         <WhatsappIcon />
                       </div>
                       <div>
                         <span className="text-text-secondary text-[11px] block">WhatsApp Business Helpdesk</span>
-                        <a
-                          href="https://wa.me/6281299887766?text=Halo%20Zhou%20Consulting,%20saya%20ingin%20berkonsultasi%20terkait%20layanan%20fiskal."
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-bold text-success hover:underline"
-                        >
-                          +62 812-9988-7766 (Fast Response)
-                        </a>
+                        <span className="font-semibold text-text-muted">-</span>
                       </div>
                     </div>
                   </div>
@@ -209,11 +182,11 @@ export default function ContactPage() {
                   <div className="space-y-1.5 text-xs text-text-secondary">
                     <div className="flex justify-between items-center">
                       <span>Senin &ndash; Jumat:</span>
-                      <strong className="text-primary font-bold">08.30 &ndash; 17.30 WIB</strong>
+                      <span className="font-semibold text-text-muted">-</span>
                     </div>
                     <div className="flex justify-between items-center text-[11px]">
                       <span>Sabtu, Minggu &amp; Libur:</span>
-                      <span className="italic">Tutup (Layanan Darurat On-Call)</span>
+                      <span className="font-semibold text-text-muted">-</span>
                     </div>
                   </div>
                 </div>
@@ -229,7 +202,7 @@ export default function ContactPage() {
                     Kirimkan Pesan atau Permohonan Diskusi
                   </h2>
                   <p className="text-xs text-text-secondary leading-relaxed">
-                    Lengkapi formulir di bawah ini untuk menjadwalkan sesi konsultasi tatap muka di Menara Sudirman atau evaluasi awal dokumen fiskal.
+                    Lengkapi formulir di bawah ini untuk menjadwalkan sesi konsultasi atau evaluasi awal dokumen fiskal.
                   </p>
                 </div>
 
@@ -283,7 +256,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, name: e.target.value });
                               if (formErrors.name) setFormErrors({ ...formErrors, name: "" });
                             }}
-                            placeholder="Nama Lengkap Anda"
+                            placeholder="Masukkan nama lengkap"
                             error={Boolean(formErrors.name)}
                             className="pl-8 text-xs bg-white"
                           />
@@ -303,7 +276,7 @@ export default function ContactPage() {
                             id="contact-company"
                             value={formData.company}
                             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                            placeholder="Nama Perusahaan / Entitas Bisnis"
+                            placeholder="Masukkan nama perusahaan (opsional)"
                             className="pl-8 text-xs bg-white"
                           />
                         </div>
@@ -326,7 +299,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, email: e.target.value });
                               if (formErrors.email) setFormErrors({ ...formErrors, email: "" });
                             }}
-                            placeholder="nama@perusahaan.co.id"
+                            placeholder="Masukkan alamat email resmi"
                             error={Boolean(formErrors.email)}
                             className="pl-8 text-xs bg-white"
                           />
@@ -350,7 +323,7 @@ export default function ContactPage() {
                               setFormData({ ...formData, phone: e.target.value });
                               if (formErrors.phone) setFormErrors({ ...formErrors, phone: "" });
                             }}
-                            placeholder="08xxxxxxxxxx"
+                            placeholder="Masukkan nomor telepon / WhatsApp"
                             error={Boolean(formErrors.phone)}
                             className="pl-8 text-xs bg-white"
                           />
@@ -395,7 +368,7 @@ export default function ContactPage() {
                           setFormData({ ...formData, message: e.target.value });
                           if (formErrors.message) setFormErrors({ ...formErrors, message: "" });
                         }}
-                        placeholder="Ceritakan gambaran permasalahan akuntansi, kendala pelaporan SPT, ekualisasi omzet, SP2DK, atau rencana restrukturisasi korporat yang ingin Anda diskusikan..."
+                        placeholder="Tuliskan rincian kebutuhan atau kendala yang ingin Anda konsultasikan..."
                         error={Boolean(formErrors.message)}
                         className="text-xs bg-white"
                       />

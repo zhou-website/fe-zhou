@@ -65,19 +65,15 @@ export function Footer() {
             <div className="space-y-2.5 text-xs text-silver/90 pt-2 border-t border-white/10">
               <div className="flex items-start gap-2.5">
                 <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
-                <span className="leading-relaxed">
-                  Menara Sudirman Kav. 21 Lt. 12, Jl. Jend. Sudirman, Jakarta Selatan 12190
-                </span>
+                <span className="leading-relaxed">-</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <PhoneIcon className="text-silver text-xs shrink-0" />
-                <span>(021) 5290-8800 / (021) 5290-8801</span>
+                <span>-</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <EnvelopeIcon className="text-silver text-xs shrink-0" />
-                <a href="mailto:consultingzhou@gmail.com" className="hover:text-white transition-colors">
-                  consultingzhou@gmail.com
-                </a>
+                <span>-</span>
               </div>
             </div>
 
