@@ -967,14 +967,6 @@ function AdminCMSPageContent() {
     });
   }, [cmsItems, MASTER_CATEGORIES]);
 
-  // Available subcategories for the second dropdown (adapts to selected category)
-  const availableSubcategories = useMemo(() => {
-    const items = categoryFilter === "ALL"
-      ? cmsItems
-      : cmsItems.filter((i) => i.category === categoryFilter);
-    const subs = Array.from(new Set(items.map((i) => i.subcategory).filter(Boolean)));
-    return subs.sort();
-  }, [cmsItems, categoryFilter]);
 
   // Combined Search and Filtering
   const filteredItems = useMemo(() => {
@@ -1087,26 +1079,6 @@ function AdminCMSPageContent() {
             ))}
           </select>
 
-          {/* DROPDOWN KEDUA: Subkategori Filter Khusus */}
-          <select
-            value={subcategoryFilter}
-            onChange={(e) => setSubcategoryFilter(e.target.value)}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none max-w-[200px] truncate"
-          >
-            <option value="ALL">
-              {categoryFilter === "ALL" ? "Semua Subkategori" : `Semua di ${categoryFilter}`}
-            </option>
-            {availableSubcategories.map((sub) => {
-              const subCount = cmsItems.filter((i) =>
-                (categoryFilter === "ALL" || i.category === categoryFilter) && i.subcategory === sub
-              ).length;
-              return (
-                <option key={sub} value={sub}>
-                  {sub} ({subCount})
-                </option>
-              );
-            })}
-          </select>
 
           {/* Status Filter */}
           <select
