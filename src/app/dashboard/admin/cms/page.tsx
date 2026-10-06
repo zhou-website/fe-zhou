@@ -45,7 +45,7 @@ export interface UnifiedCMSItem {
   numericId: number;
   section: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "applications" | "faqs" | "kontak";
   title: string;
-  category: "Edukasi" | "Layanan" | "Regulasi" | "Kurs KMK" | "Karir" | "Lamaran Masuk" | "FAQ Chatbot" | "Profil & Kontak";
+  category: "Edukasi" | "Layanan" | "Regulasi" | "Kurs Pajak" | "Kurs KMK" | "Karir" | "Lamaran Masuk" | "FAQ Chatbot" | "Profil & Kontak";
   subcategory: string;
   summary: string;
   status: "Published" | "Draft";
@@ -68,7 +68,7 @@ const TAB_TO_CATEGORY: Record<string, string> = {
   edukasi: "Edukasi",
   services: "Layanan",
   regulasi: "Regulasi",
-  kurs: "Kurs KMK",
+  kurs: "Kurs Pajak",
   karir: "Karir",
   applications: "Lamaran Masuk",
   faqs: "FAQ Chatbot",
@@ -448,7 +448,7 @@ function AdminCMSPageContent() {
             numericId: t.id,
             section: "kurs",
             title: `Kurs Valas ${t.currency_code}: Rp ${Number(t.rate_value).toLocaleString("id-ID")}`,
-            category: "Kurs KMK",
+            category: "Kurs Pajak",
             subcategory: t.currency_code,
             summary: `Berlaku: ${t.effective_start_date ? new Date(t.effective_start_date).toLocaleDateString("id-ID") : "-"} s/d ${t.effective_end_date ? new Date(t.effective_end_date).toLocaleDateString("id-ID") : "Seterusnya"}`,
             status: "Published",
@@ -463,7 +463,7 @@ function AdminCMSPageContent() {
             numericId: idx + 1,
             section: "kurs",
             title: `Kurs Valas ${k.currency} (${k.name}): Rp ${k.rate}`,
-            category: "Kurs KMK",
+            category: "Kurs Pajak",
             subcategory: k.currency,
             summary: `${kmkNumber} Berlaku s/d Akhir Pekan`,
             status: "Published",
@@ -734,7 +734,7 @@ function AdminCMSPageContent() {
               numericId: id,
               section: "kurs",
               title: `Kurs Valas ${kursForm.currency_code}: Rp ${Number(kursForm.rate_value).toLocaleString("id-ID")}`,
-              category: "Kurs KMK",
+              category: "Kurs Pajak",
               subcategory: kursForm.currency_code,
               summary: `Berlaku: ${kursForm.effective_start_date} s/d ${kursForm.effective_end_date}`,
               status: "Published",
@@ -942,36 +942,25 @@ function AdminCMSPageContent() {
     setIsAddModalOpen(true);
   };
 
-  // Fixed master category list so ALL 8 categories are ALWAYS present in the double dropdown
+  // Fixed master category list for the simplified category dropdown
   const MASTER_CATEGORIES = useMemo(() => [
     "Layanan",
     "Edukasi",
     "Regulasi",
-    "Kurs KMK",
+    "Kurs Pajak",
     "Karir",
     "Lamaran Masuk",
     "FAQ Chatbot",
     "Profil & Kontak",
   ], []);
 
-  // Build hierarchical category groups with their respective subcategories
-  const categoryGroups = useMemo(() => {
-    return MASTER_CATEGORIES.map((cat) => {
-      const itemsInCat = cmsItems.filter((i) => i.category === cat);
-      const subs = Array.from(new Set(itemsInCat.map((i) => i.subcategory).filter(Boolean)));
-      return {
-        name: cat,
-        count: itemsInCat.length,
-        subcategories: subs.sort(),
-      };
-    });
-  }, [cmsItems, MASTER_CATEGORIES]);
-
-
   // Combined Search and Filtering
   const filteredItems = useMemo(() => {
     return cmsItems.filter((item) => {
-      const matchesCategory = categoryFilter === "ALL" || item.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "ALL" ||
+        item.category === categoryFilter ||
+        (categoryFilter === "Kurs Pajak" && (item.category === "Kurs Pajak" || item.category === "Kurs KMK"));
       const matchesSubcategory = subcategoryFilter === "ALL" || item.subcategory === subcategoryFilter;
       const matchesStatus = statusFilter === "ALL" || item.status === statusFilter;
       const q = searchQuery.toLowerCase().trim();
@@ -1036,46 +1025,20 @@ function AdminCMSPageContent() {
             />
           </div>
 
-          {/* DOUBLE DROPDOWN KIRI: Dropdown Kategori & Subkategori Berjenjang */}
+          {/* Dropdown Filter Kategori Utama (Hanya Kategori Utama, Tanpa Subkategori) */}
           <select
-            value={
-              subcategoryFilter !== "ALL"
-                ? `sub:${subcategoryFilter}`
-                : categoryFilter !== "ALL"
-                ? `cat:${categoryFilter}`
-                : "ALL"
-            }
+            value={categoryFilter}
             onChange={(e) => {
-              const val = e.target.value;
-              if (val === "ALL") {
-                setCategoryFilter("ALL");
-                setSubcategoryFilter("ALL");
-              } else if (val.startsWith("cat:")) {
-                const cat = val.replace("cat:", "");
-                setCategoryFilter(cat);
-                setSubcategoryFilter("ALL");
-              } else if (val.startsWith("sub:")) {
-                const sub = val.replace("sub:", "");
-                const parentCat = cmsItems.find((i) => i.subcategory === sub)?.category || "ALL";
-                setCategoryFilter(parentCat);
-                setSubcategoryFilter(sub);
-              }
+              setCategoryFilter(e.target.value);
+              setSubcategoryFilter("ALL");
             }}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[210px]"
+            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[160px]"
           >
-            <option value="ALL">Semua Kategori ({cmsItems.length})</option>
-            {categoryGroups.map((grp) => (
-              <optgroup key={grp.name} label={`─── ${grp.name} (${grp.count}) ───`}>
-                <option value={`cat:${grp.name}`}>Semua di {grp.name} ({grp.count})</option>
-                {grp.subcategories.map((sub) => {
-                  const subCount = cmsItems.filter((i) => i.category === grp.name && i.subcategory === sub).length;
-                  return (
-                    <option key={sub} value={`sub:${sub}`}>
-                      &nbsp;&nbsp;↳ {sub} ({subCount})
-                    </option>
-                  );
-                })}
-              </optgroup>
+            <option value="ALL">Semua Kategori</option>
+            {MASTER_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
           </select>
 
