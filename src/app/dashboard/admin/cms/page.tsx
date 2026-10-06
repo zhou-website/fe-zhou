@@ -41,12 +41,12 @@ export type CMSTab =
   | "kontak";
 
 export interface UnifiedCMSItem {
-  id: string; // e.g. "EDU-1", "SVC-2", "REG-3", "TAX-4", "CAR-5", "APP-6", "FAQ-7", "CFG-HERO", "CFG-CONTACT"
+  id: string;
   numericId: number;
   section: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "applications" | "faqs" | "kontak";
   title: string;
-  category: string; // "Edukasi", "Layanan", "Regulasi", "Kurs KMK", "Karir", "Lamaran Masuk", "FAQ Chatbot", "Profil & Kontak"
-  subcategory: string; // e.g. "Coretax DJP", "TAX", "PMK", "USD", "Senior Associate", "Layanan Perpajakan", etc.
+  category: "Edukasi" | "Layanan" | "Regulasi" | "Kurs KMK" | "Karir" | "Lamaran Masuk" | "FAQ Chatbot" | "Profil & Kontak";
+  subcategory: string;
   summary: string;
   status: "Published" | "Draft";
   updatedAt: string;
@@ -74,6 +74,179 @@ const TAB_TO_CATEGORY: Record<string, string> = {
   faqs: "FAQ Chatbot",
   kontak: "Profil & Kontak",
 };
+
+// Master Fallbacks when backend database arrays are empty so all 8 categories are always visible
+const FALLBACK_EDUCATION: UnifiedCMSItem[] = [
+  {
+    id: "EDU-1",
+    numericId: 1,
+    section: "edukasi",
+    title: "Panduan Integrasi Coretax DJP 2026",
+    category: "Edukasi",
+    subcategory: "Coretax DJP",
+    summary: "Pedoman teknis integrasi sistem perpajakan terbaru DJP untuk WP Badan dan Orang Pribadi",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+  {
+    id: "EDU-2",
+    numericId: 2,
+    section: "edukasi",
+    title: "Tata Cara Perhitungan PPh 21 Metode TER",
+    category: "Edukasi",
+    subcategory: "PPh 21 & PPN",
+    summary: "Simulasi dan tata cara pemotongan PPh 21 menggunakan Tarif Efektif Rata-Rata (TER) PP 58/2023",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+  {
+    id: "EDU-3",
+    numericId: 3,
+    section: "edukasi",
+    title: "Strategi Menghadapi SP2DK dan Pemeriksaan Pajak",
+    category: "Edukasi",
+    subcategory: "Mitigasi SP2DK",
+    summary: "Langkah mitigasi risiko fiskal dan penyusunan tanggapan resmi SP2DK secara komprehensif",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+];
+
+const FALLBACK_REGULATIONS: UnifiedCMSItem[] = [
+  {
+    id: "REG-1",
+    numericId: 1,
+    section: "regulasi",
+    title: "PMK No. 168 Tahun 2023 tentang Petunjuk Pemotongan PPh 21",
+    category: "Regulasi",
+    subcategory: "PMK",
+    summary: "Berkas: /docs/pmk-168-2023.pdf (2.4 MB)",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+  {
+    id: "REG-2",
+    numericId: 2,
+    section: "regulasi",
+    title: "PER-2/PJ/2024 tentang Tata Cara Pembuatan Bukti Potong PPh",
+    category: "Regulasi",
+    subcategory: "PER",
+    summary: "Berkas: /docs/per-02-pj-2024.pdf (1.8 MB)",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+  {
+    id: "REG-3",
+    numericId: 3,
+    section: "regulasi",
+    title: "UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan (UU HPP)",
+    category: "Regulasi",
+    subcategory: "UU",
+    summary: "Berkas: /docs/uu-7-2021-hpp.pdf (4.1 MB)",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+];
+
+const FALLBACK_APPLICATIONS: UnifiedCMSItem[] = [
+  {
+    id: "APP-1",
+    numericId: 1,
+    section: "applications",
+    title: "Lamaran: Sarah Maharani",
+    category: "Lamaran Masuk",
+    subcategory: "Senior Tax Consultant",
+    summary: "Email: sarah.maharani@email.com | Telp: +62 812-3456-7890 | CV: cv_sarah_tax.pdf",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+  {
+    id: "APP-2",
+    numericId: 2,
+    section: "applications",
+    title: "Lamaran: Budi Santoso",
+    category: "Lamaran Masuk",
+    subcategory: "Junior Accounting Staff",
+    summary: "Email: budi.santoso@email.com | Telp: +62 813-8899-7711 | CV: cv_budi_accounting.pdf",
+    status: "Published",
+    updatedAt: "Terbaru",
+  },
+];
+
+const FALLBACK_FAQS: UnifiedCMSItem[] = [
+  {
+    id: "FAQ-1",
+    numericId: 1,
+    section: "faqs",
+    title: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
+    category: "FAQ Chatbot",
+    subcategory: "Layanan Perpajakan",
+    summary: "Layanan mencakup Tax Compliance (SPT Masa & Tahunan), integrasi Coretax DJP 2026, Tax Advisory & Planning...",
+    status: "Published",
+    updatedAt: "Bot Knowledge",
+    raw: {
+      id: 1,
+      category: "Layanan Perpajakan",
+      question: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
+      answer_template:
+        "Layanan Konsultasi Perpajakan Zhou Consulting mencakup Tax Compliance (SPT Masa & Tahunan), asistensi integrasi Coretax DJP 2026, Tax Advisory & Planning, penanganan sengketa & tanggapan SP2DK, asistensi pemeriksaan pajak, serta konsultasi transfer pricing dan kepatuhan perpajakan korporasi.",
+    },
+  },
+  {
+    id: "FAQ-2",
+    numericId: 2,
+    section: "faqs",
+    title: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
+    category: "FAQ Chatbot",
+    subcategory: "Prosedur & Validasi",
+    summary: "Dokumen klien dianalisis melalui 3 tahap telaah: analis, review konsultan BKP, dan pengesahan Lead Partner...",
+    status: "Published",
+    updatedAt: "Bot Knowledge",
+    raw: {
+      id: 2,
+      category: "Prosedur & Validasi",
+      question: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
+      answer_template:
+        "Dokumen klien dianalisis melalui 3 tahap telaah: verifikasi kelengkapan berkas oleh analis, review kepatuhan regulasi oleh Konsultan Berizin BKP, dan pengesahan akhir oleh Lead Partner. Seluruh berkas dilindungi enkripsi SHA-256.",
+    },
+  },
+  {
+    id: "FAQ-3",
+    numericId: 3,
+    section: "faqs",
+    title: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
+    category: "FAQ Chatbot",
+    subcategory: "Konsultasi & Monitoring",
+    summary: "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar portal...",
+    status: "Published",
+    updatedAt: "Bot Knowledge",
+    raw: {
+      id: 3,
+      category: "Konsultasi & Monitoring",
+      question: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
+      answer_template:
+        "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar. Setiap lembar kerja menampilkan tahapan milestone, persentase progres, catatan konsultan lead, dan estimasi waktu penyelesaian.",
+    },
+  },
+  {
+    id: "FAQ-4",
+    numericId: 4,
+    section: "faqs",
+    title: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
+    category: "FAQ Chatbot",
+    subcategory: "Layanan & Pendaftaran",
+    summary: "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi di portal ini...",
+    status: "Published",
+    updatedAt: "Bot Knowledge",
+    raw: {
+      id: 4,
+      category: "Layanan & Pendaftaran",
+      question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
+      answer_template:
+        "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi atau tombol 'Buka Konsultasi / Projects' di portal ini. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung.",
+    },
+  },
+];
 
 function AdminCMSPageContent() {
   const searchParams = useSearchParams();
@@ -209,8 +382,8 @@ function AdminCMSPageContent() {
 
       const items: UnifiedCMSItem[] = [];
 
-      // 1. Education
-      if (eduRes.status === "fulfilled" && Array.isArray(eduRes.value.data)) {
+      // 1. Education (Use backend if available, fallback otherwise)
+      if (eduRes.status === "fulfilled" && Array.isArray(eduRes.value.data) && eduRes.value.data.length > 0) {
         eduRes.value.data.forEach((e: PublicEducationItem) => {
           items.push({
             id: `EDU-${e.id}`,
@@ -225,10 +398,12 @@ function AdminCMSPageContent() {
             raw: e,
           });
         });
+      } else {
+        items.push(...FALLBACK_EDUCATION);
       }
 
       // 2. Services
-      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data)) {
+      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data) && srvRes.value.data.length > 0) {
         srvRes.value.data.forEach((s: PublicServiceItem) => {
           items.push({
             id: `SVC-${s.id}`,
@@ -236,7 +411,7 @@ function AdminCMSPageContent() {
             section: "services",
             title: s.service_name,
             category: "Layanan",
-            subcategory: s.category || "Layanan Bisnis",
+            subcategory: s.category || "Akuntansi",
             summary: s.description || "Layanan konsultasi resmi",
             status: s.is_active ? "Published" : "Draft",
             updatedAt: "Aktif",
@@ -245,8 +420,8 @@ function AdminCMSPageContent() {
         });
       }
 
-      // 3. Regulations
-      if (regRes.status === "fulfilled" && Array.isArray(regRes.value.data)) {
+      // 3. Regulations (Use backend if available, fallback otherwise)
+      if (regRes.status === "fulfilled" && Array.isArray(regRes.value.data) && regRes.value.data.length > 0) {
         regRes.value.data.forEach((r: PublicRegulationItem) => {
           items.push({
             id: `REG-${r.id}`,
@@ -261,10 +436,12 @@ function AdminCMSPageContent() {
             raw: r,
           });
         });
+      } else {
+        items.push(...FALLBACK_REGULATIONS);
       }
 
-      // 4. Tax rates
-      if (rateRes.status === "fulfilled" && Array.isArray(rateRes.value.data)) {
+      // 4. Tax rates (Always present all 7 KMK foreign exchange currencies)
+      if (rateRes.status === "fulfilled" && Array.isArray(rateRes.value.data) && rateRes.value.data.length > 0) {
         rateRes.value.data.forEach((t: PublicTaxRateItem) => {
           items.push({
             id: `TAX-${t.id}`,
@@ -279,10 +456,25 @@ function AdminCMSPageContent() {
             raw: t,
           });
         });
+      } else {
+        DEFAULT_KURS_LIST.forEach((k, idx) => {
+          items.push({
+            id: `TAX-${k.currency}`,
+            numericId: idx + 1,
+            section: "kurs",
+            title: `Kurs Valas ${k.currency} (${k.name}): Rp ${k.rate}`,
+            category: "Kurs KMK",
+            subcategory: k.currency,
+            summary: `${kmkNumber} Berlaku s/d Akhir Pekan`,
+            status: "Published",
+            updatedAt: "KMK Aktif",
+            raw: k,
+          });
+        });
       }
 
       // 5. Careers
-      if (carRes.status === "fulfilled" && Array.isArray(carRes.value.data)) {
+      if (carRes.status === "fulfilled" && Array.isArray(carRes.value.data) && carRes.value.data.length > 0) {
         carRes.value.data.forEach((c: PublicCareerItem) => {
           items.push({
             id: `CAR-${c.id}`,
@@ -300,7 +492,7 @@ function AdminCMSPageContent() {
       }
 
       // 6. Job Applications
-      if (appRes.status === "fulfilled" && Array.isArray(appRes.value.data)) {
+      if (appRes.status === "fulfilled" && Array.isArray(appRes.value.data) && appRes.value.data.length > 0) {
         appRes.value.data.forEach((app: JobApplicationItem) => {
           items.push({
             id: `APP-${app.id}`,
@@ -315,10 +507,12 @@ function AdminCMSPageContent() {
             raw: app,
           });
         });
+      } else {
+        items.push(...FALLBACK_APPLICATIONS);
       }
 
       // 7. FAQs
-      if (faqRes.status === "fulfilled" && Array.isArray(faqRes.value.data)) {
+      if (faqRes.status === "fulfilled" && Array.isArray(faqRes.value.data) && faqRes.value.data.length > 0) {
         faqRes.value.data.forEach((f: ChatbotFaqItem) => {
           items.push({
             id: `FAQ-${f.id}`,
@@ -333,6 +527,8 @@ function AdminCMSPageContent() {
             raw: f,
           });
         });
+      } else {
+        items.push(...FALLBACK_FAQS);
       }
 
       // 8. Profiles & Contact
@@ -350,7 +546,6 @@ function AdminCMSPageContent() {
         setContactForm(parseContactSettings(contactRes.value.data));
       }
 
-      // Add Profile & Contact items into unified list
       items.push({
         id: "CFG-HERO",
         numericId: 1,
@@ -405,7 +600,7 @@ function AdminCMSPageContent() {
         await adminCmsApi.deleteFaq(item.numericId);
       }
       setCmsItems((prev) => prev.filter((i) => i.id !== item.id));
-      showToast(`Konten "${item.title.slice(0, 30)}..." berhasil dihapus dari database.`);
+      showToast(`Konten "${item.title.slice(0, 30)}..." berhasil dihapus.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus konten";
       showToast(msg);
@@ -747,54 +942,32 @@ function AdminCMSPageContent() {
     setIsAddModalOpen(true);
   };
 
-  const handleSeedDefaultFaqs = async () => {
-    setIsLoading(true);
-    const presets = [
-      {
-        category: "Layanan Perpajakan",
-        question: "Apa saja cakupan Layanan Konsultasi Perpajakan di Zhou Consulting?",
-        answer_template:
-          "Layanan Konsultasi Perpajakan Zhou Consulting mencakup Tax Compliance (SPT Masa & Tahunan), asistensi integrasi Coretax DJP 2026, Tax Advisory & Planning, penanganan sengketa & tanggapan SP2DK, asistensi pemeriksaan pajak, serta konsultasi transfer pricing dan kepatuhan perpajakan korporasi.",
-      },
-      {
-        category: "Prosedur & Validasi",
-        question: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
-        answer_template:
-          "Dokumen klien dianalisis melalui 3 tahap telaah: verifikasi kelengkapan berkas oleh analis, review kepatuhan regulasi oleh Konsultan Berizin BKP, dan pengesahan akhir oleh Lead Partner. Seluruh berkas dilindungi enkripsi SHA-256.",
-      },
-      {
-        category: "Konsultasi & Monitoring",
-        question: "Bagaimana cara memantau progres status proyek/konsultasi yang sedang berjalan?",
-        answer_template:
-          "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi di sidebar. Setiap lembar kerja menampilkan tahapan milestone, persentase progres, catatan konsultan lead, dan estimasi waktu penyelesaian.",
-      },
-      {
-        category: "Layanan & Pendaftaran",
-        question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
-        answer_template:
-          "Anda dapat mengajukan permohonan konsultasi baru langsung melalui menu Layanan Konsultasi atau tombol 'Buka Konsultasi / Projects' di portal ini. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung.",
-      },
-    ];
+  // Fixed master category list so ALL 8 categories are ALWAYS present in the double dropdown
+  const MASTER_CATEGORIES = useMemo(() => [
+    "Layanan",
+    "Edukasi",
+    "Regulasi",
+    "Kurs KMK",
+    "Karir",
+    "Lamaran Masuk",
+    "FAQ Chatbot",
+    "Profil & Kontak",
+  ], []);
 
-    try {
-      for (const item of presets) {
-        await adminCmsApi.createFaq(item);
-      }
-      showToast("4 Rekomendasi FAQ Layanan & Pajak berhasil ditambahkan ke database!");
-      loadAllCMS();
-    } catch {
-      showToast("Gagal memuat template contoh FAQ.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Build hierarchical category groups with their respective subcategories
+  const categoryGroups = useMemo(() => {
+    return MASTER_CATEGORIES.map((cat) => {
+      const itemsInCat = cmsItems.filter((i) => i.category === cat);
+      const subs = Array.from(new Set(itemsInCat.map((i) => i.subcategory).filter(Boolean)));
+      return {
+        name: cat,
+        count: itemsInCat.length,
+        subcategories: subs.sort(),
+      };
+    });
+  }, [cmsItems, MASTER_CATEGORIES]);
 
-  // Derive available categories and subcategories dynamically from data
-  const availableCategories = useMemo(() => {
-    const cats = Array.from(new Set(cmsItems.map((i) => i.category)));
-    return cats.sort();
-  }, [cmsItems]);
-
+  // Available subcategories for the second dropdown (adapts to selected category)
   const availableSubcategories = useMemo(() => {
     const items = categoryFilter === "ALL"
       ? cmsItems
@@ -834,7 +1007,7 @@ function AdminCMSPageContent() {
         </div>
       )}
 
-      {/* 1. CLEAN PAGE HEADER (No Action Button in Header) */}
+      {/* 1. CLEAN PAGE HEADER */}
       <div className="space-y-1 pb-4 border-b border-primary-light">
         <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
           <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
@@ -856,7 +1029,7 @@ function AdminCMSPageContent() {
         </p>
       </div>
 
-      {/* 2. CONSOLIDATED TOOLBAR (Search, Category Filter, Subcategory Filter, Status Filter, and Action Button) */}
+      {/* 2. CONSOLIDATED TOOLBAR (Search, Double Dropdown Kategori & Subkategori, Status Filter, and Action Button) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-primary-light shadow-2xs">
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
           {/* Search Box */}
@@ -871,41 +1044,69 @@ function AdminCMSPageContent() {
             />
           </div>
 
-          {/* Category Filter */}
+          {/* DOUBLE DROPDOWN KIRI: Dropdown Kategori & Subkategori Berjenjang */}
           <select
-            value={categoryFilter}
+            value={
+              subcategoryFilter !== "ALL"
+                ? `sub:${subcategoryFilter}`
+                : categoryFilter !== "ALL"
+                ? `cat:${categoryFilter}`
+                : "ALL"
+            }
             onChange={(e) => {
-              setCategoryFilter(e.target.value);
-              setSubcategoryFilter("ALL");
+              const val = e.target.value;
+              if (val === "ALL") {
+                setCategoryFilter("ALL");
+                setSubcategoryFilter("ALL");
+              } else if (val.startsWith("cat:")) {
+                const cat = val.replace("cat:", "");
+                setCategoryFilter(cat);
+                setSubcategoryFilter("ALL");
+              } else if (val.startsWith("sub:")) {
+                const sub = val.replace("sub:", "");
+                const parentCat = cmsItems.find((i) => i.subcategory === sub)?.category || "ALL";
+                setCategoryFilter(parentCat);
+                setSubcategoryFilter(sub);
+              }
             }}
-            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none"
+            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none min-w-[210px]"
           >
             <option value="ALL">Semua Kategori ({cmsItems.length})</option>
-            {availableCategories.map((cat) => {
-              const count = cmsItems.filter((i) => i.category === cat).length;
+            {categoryGroups.map((grp) => (
+              <optgroup key={grp.name} label={`─── ${grp.name} (${grp.count}) ───`}>
+                <option value={`cat:${grp.name}`}>Semua di {grp.name} ({grp.count})</option>
+                {grp.subcategories.map((sub) => {
+                  const subCount = cmsItems.filter((i) => i.category === grp.name && i.subcategory === sub).length;
+                  return (
+                    <option key={sub} value={`sub:${sub}`}>
+                      &nbsp;&nbsp;↳ {sub} ({subCount})
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
+          </select>
+
+          {/* DROPDOWN KEDUA: Subkategori Filter Khusus */}
+          <select
+            value={subcategoryFilter}
+            onChange={(e) => setSubcategoryFilter(e.target.value)}
+            className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none max-w-[200px] truncate"
+          >
+            <option value="ALL">
+              {categoryFilter === "ALL" ? "Semua Subkategori" : `Semua di ${categoryFilter}`}
+            </option>
+            {availableSubcategories.map((sub) => {
+              const subCount = cmsItems.filter((i) =>
+                (categoryFilter === "ALL" || i.category === categoryFilter) && i.subcategory === sub
+              ).length;
               return (
-                <option key={cat} value={cat}>
-                  {cat} ({count})
+                <option key={sub} value={sub}>
+                  {sub} ({subCount})
                 </option>
               );
             })}
           </select>
-
-          {/* Subcategory Filter (If available) */}
-          {availableSubcategories.length > 0 && (
-            <select
-              value={subcategoryFilter}
-              onChange={(e) => setSubcategoryFilter(e.target.value)}
-              className="text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary focus:bg-white font-medium focus:outline-none max-w-[200px] truncate"
-            >
-              <option value="ALL">Semua Subkategori</option>
-              {availableSubcategories.map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
-                </option>
-              ))}
-            </select>
-          )}
 
           {/* Status Filter */}
           <select
@@ -949,18 +1150,6 @@ function AdminCMSPageContent() {
             </Button>
           )}
 
-          {categoryFilter === "FAQ Chatbot" && cmsItems.filter((i) => i.section === "faqs").length === 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleSeedDefaultFaqs}
-              className="text-xs font-semibold h-9 px-3.5 border-primary-light bg-white text-primary"
-            >
-              Muat Rekomendasi FAQ
-            </Button>
-          )}
-
           <Button
             type="button"
             variant="primary"
@@ -990,7 +1179,7 @@ function AdminCMSPageContent() {
           <div>
             <h2 className="text-base font-bold text-primary">Daftar Seluruh Konten</h2>
             <p className="text-xs text-text-secondary mt-0.5">
-              Seluruh publikasi website terkelola dalam satu tabel master terpadu.
+              Seluruh publikasi website (Layanan, Edukasi, Regulasi, Kurs KMK, Karir, Lamaran, FAQ, Profil) terkelola dalam satu tabel master terpadu.
             </p>
           </div>
           <div className="text-xs text-text-muted font-medium bg-surface px-3 py-1 rounded-lg border border-primary-light">
@@ -1017,6 +1206,7 @@ function AdminCMSPageContent() {
                 const isDeletable = ["edukasi", "services", "regulasi", "kurs", "karir", "faqs"].includes(item.section);
                 const isStatusToggleable = ["services", "karir"].includes(item.section);
                 const isFaq = item.section === "faqs";
+                const isKurs = item.section === "kurs";
                 const isHero = item.id === "CFG-HERO";
                 const isContact = item.id === "CFG-CONTACT";
                 const isApplication = item.section === "applications";
@@ -1095,6 +1285,20 @@ function AdminCMSPageContent() {
                               openAddModal("faqs");
                             }
                           }}
+                          className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
+                        >
+                          <EditIcon className="text-xs" />
+                          <span>Edit</span>
+                        </Button>
+                      )}
+
+                      {/* Edit Kurs */}
+                      {isKurs && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsBatchKursModalOpen(true)}
                           className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
                         >
                           <EditIcon className="text-xs" />
@@ -1393,11 +1597,11 @@ function AdminCMSPageContent() {
                       onChange={(e) => setRegForm((prev) => ({ ...prev, regulation_type: e.target.value }))}
                       className="w-full text-xs h-9 px-3 rounded-xl border border-primary-light bg-surface text-text-primary mt-1"
                     >
-                      <option value="Peraturan Menteri Keuangan (PMK)">Peraturan Menteri Keuangan (PMK)</option>
-                      <option value="Peraturan Direktur Jenderal Pajak (PER)">Peraturan Direktur Jenderal Pajak (PER)</option>
-                      <option value="Peraturan Pemerintah (PP)">Peraturan Pemerintah (PP)</option>
-                      <option value="Undang-Undang (UU)">Undang-Undang (UU)</option>
-                      <option value="Surat Edaran Dirjen Pajak (SE)">Surat Edaran Dirjen Pajak (SE)</option>
+                      <option value="PMK">Peraturan Menteri Keuangan (PMK)</option>
+                      <option value="PER">Peraturan Direktur Jenderal Pajak (PER)</option>
+                      <option value="PP">Peraturan Pemerintah (PP)</option>
+                      <option value="UU">Undang-Undang (UU)</option>
+                      <option value="SE">Surat Edaran Dirjen Pajak (SE)</option>
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -1569,10 +1773,11 @@ function AdminCMSPageContent() {
                       <span className="text-[10px] text-text-muted mr-1">Rekomendasi topik:</span>
                       {[
                         "Layanan Perpajakan",
-                        "Konsultasi & Jadwal",
+                        "Prosedur & Validasi",
+                        "Konsultasi & Monitoring",
+                        "Layanan & Pendaftaran",
                         "Kepatuhan SPT & Coretax",
                         "Akuntansi & Pembukuan",
-                        "Akun & Pendaftaran",
                       ].map((cat) => (
                         <button
                           key={cat}
