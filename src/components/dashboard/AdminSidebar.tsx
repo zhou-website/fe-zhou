@@ -11,12 +11,7 @@ import {
   MenuIcon,
   CloseIcon,
   BuildingIcon,
-  ShieldTaxIcon,
   EditIcon,
-  BookIcon,
-  BriefcaseIcon,
-  PhoneIcon,
-  CheckCircleIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -43,15 +38,7 @@ const MAIN_NAV_ITEMS: NavItem[] = [
   },
 ];
 
-const PUBLIC_PAGE_ITEMS: NavItem[] = [
-  { label: "Materi Edukasi", href: "/dashboard/admin/cms?tab=edukasi", icon: BookIcon },
-  { label: "Katalog Layanan", href: "/dashboard/admin/cms?tab=services", icon: CheckCircleIcon },
-  { label: "Regulasi DJP", href: "/dashboard/admin/cms?tab=regulasi", icon: DocumentIcon },
-  { label: "Kurs Pajak KMK", href: "/dashboard/admin/cms?tab=kurs", icon: ShieldTaxIcon },
-  { label: "Lowongan Karir", href: "/dashboard/admin/cms?tab=karir", icon: BriefcaseIcon },
-  { label: "Lamaran Masuk", href: "/dashboard/admin/cms?tab=applications", icon: DocumentIcon },
-  { label: "Profil & Kontak", href: "/dashboard/admin/cms?tab=kontak", icon: PhoneIcon },
-];
+
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -170,26 +157,7 @@ export function AdminSidebar() {
               })}
             </div>
 
-            {/* Kelola Halaman Publik */}
-            <div className="space-y-0.5">
-              <span className="px-3 text-[10px] uppercase font-bold tracking-wider text-silver/50 block">
-                Kelola Halaman Publik
-              </span>
-              {PUBLIC_PAGE_ITEMS.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 px-3.5 py-1.5 rounded-lg text-xs font-medium text-silver/90 hover:bg-white/10 hover:text-white transition-colors"
-                  >
-                    <Icon className="text-[11px] text-silver/70 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+
           </nav>
         </div>
 
