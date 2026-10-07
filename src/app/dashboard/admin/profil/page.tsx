@@ -1,20 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import {
-  UserIcon,
-  LockIcon,
-  CheckCircleIcon,
-  CheckIcon,
-  ClockIcon,
-  ShieldTaxIcon,
-} from "@/components/icons";
+import { CheckCircleIcon } from "@/components/icons";
 
 export default function AdminProfilePage() {
   const { user } = useAuth();
@@ -81,61 +72,38 @@ export default function AdminProfilePage() {
 
       {/* Header */}
       <div className="space-y-1">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
-          <div>
-            <h1 className="text-2xl font-bold text-primary font-serif">
-              Profil Staf Administrator
-            </h1>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Kelola data identitas, preferensi operasional tim konsultan, dan kredensial keamanan akun Anda.
-            </p>
-          </div>
-          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs font-semibold py-1 px-3 self-start sm:self-auto">
-            Role: {user?.role ? user.role.toUpperCase() : "ADMIN"}
-          </Badge>
+        <div className="pt-1">
+          <h1 className="text-2xl font-bold text-primary font-serif">
+            Profil Staf Administrator
+          </h1>
+          <p className="text-xs text-text-secondary mt-0.5">
+            Kelola data identitas, preferensi operasional tim konsultan, dan kredensial keamanan akun Anda.
+          </p>
         </div>
       </div>
 
       {/* Main Profile Summary Card */}
       <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
-              {user?.name ? user.name.slice(0, 2).toUpperCase() : "AD"}
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-lg font-bold text-primary">
-                  {user?.name || "Staff Administrator"}
-                </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Akun Aktif
-                </span>
-              </div>
-              <p className="text-xs text-text-secondary">
-                {user?.email || "-"}
-              </p>
-              <div className="flex items-center gap-3 text-[11px] text-text-muted pt-0.5">
-                <span className="flex items-center gap-1">
-                  <ShieldTaxIcon className="text-xs text-primary" />
-                  Staff Administrator Zhou
-                </span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <ClockIcon className="text-xs" />
-                  Otoritas Terverifikasi
-                </span>
-              </div>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+            {user?.name ? user.name.slice(0, 2).toUpperCase() : "AD"}
           </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/admin"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:text-primary hover:bg-surface border border-primary-light transition-all"
-            >
-              Dashboard Utama
-            </Link>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-lg font-bold text-primary">
+                {user?.name || "Staff Administrator"}
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Akun Aktif
+              </span>
+            </div>
+            <p className="text-xs text-text-secondary">
+              {user?.email || "-"}
+            </p>
+            <div className="flex items-center gap-3 text-[11px] text-text-muted pt-0.5">
+              <span>Staff Administrator Zhou</span>
+              <span>Otoritas Terverifikasi</span>
+            </div>
           </div>
         </div>
       </Card>
@@ -145,26 +113,24 @@ export default function AdminProfilePage() {
         <button
           type="button"
           onClick={() => setActiveTab("info")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "info"
               ? "bg-primary text-white shadow-xs"
               : "text-text-secondary hover:text-primary hover:bg-surface"
           }`}
         >
-          <UserIcon className="text-xs" />
-          <span>Informasi Identitas</span>
+          Informasi Identitas
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "security"
               ? "bg-primary text-white shadow-xs"
               : "text-text-secondary hover:text-primary hover:bg-surface"
           }`}
         >
-          <LockIcon className="text-xs" />
-          <span>Keamanan &amp; Kata Sandi</span>
+          Keamanan &amp; Kata Sandi
         </button>
       </div>
 
@@ -244,7 +210,6 @@ export default function AdminProfilePage() {
                   size="sm"
                   className="text-xs font-semibold px-5 h-9 shadow-xs"
                 >
-                  <CheckIcon className="text-xs mr-1.5" />
                   Simpan Perubahan
                 </Button>
               </div>
@@ -318,7 +283,6 @@ export default function AdminProfilePage() {
                   size="sm"
                   className="text-xs font-semibold px-5 h-9 shadow-xs"
                 >
-                  <LockIcon className="text-xs mr-1.5" />
                   Perbarui Kata Sandi
                 </Button>
               </div>
