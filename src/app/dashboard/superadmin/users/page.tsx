@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import {
-  UserIcon,
-  ShieldTaxIcon,
   CheckCircleIcon,
   CheckIcon,
   SearchIcon,
@@ -302,13 +299,6 @@ export default function SuperadminUsersPage() {
       {/* Top Header & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
         <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <Link href="/dashboard/superadmin" className="hover:text-primary transition-colors">
-              Superadmin Portal
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Kelola Admin &amp; Staf</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Kelola Akun Staf Konsultan &amp; Admin
           </h1>
@@ -331,59 +321,41 @@ export default function SuperadminUsersPage() {
       </div>
 
       {/* 3 TOP OPERATIONAL & SECURITY METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Card 1 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Total Akun Staf
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <UserIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Akun Staf
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{totalStaffCount < 10 ? `0${totalStaffCount}` : totalStaffCount}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Staf Terdaftar</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              {totalStaffCount < 10 ? `0${totalStaffCount}` : totalStaffCount}
-            </span>
-            <span className="text-xs text-text-secondary">Staf Terdaftar</span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Staf operasional terdaftar</div>
         </Card>
 
         {/* Card 2 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Staf Aktif Bertugas
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-success/15 flex items-center justify-center text-success text-xs">
-              <CheckCircleIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Staf Aktif Bertugas
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{activeStaffCount < 10 ? `0${activeStaffCount}` : activeStaffCount}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Akun Aktif</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-success font-mono">
-              {activeStaffCount < 10 ? `0${activeStaffCount}` : activeStaffCount}
-            </span>
-            <span className="text-xs text-text-secondary">Akun Aktif</span>
-          </div>
+          <div className="text-[10px] text-emerald-700 mt-1">Akun staf aktif bertugas</div>
         </Card>
 
         {/* Card 3 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Proteksi Multi-Faktor (2FA)
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <ShieldTaxIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Proteksi Multi-Faktor (2FA)
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{twoFactorPercentage}%</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Terproteksi</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              {twoFactorPercentage}%
-            </span>
-            <span className="text-xs text-text-secondary">Terproteksi</span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Tingkat proteksi akun</div>
         </Card>
       </div>
 

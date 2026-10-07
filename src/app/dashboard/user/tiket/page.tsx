@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { clientApi, ConsultationItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import {
 } from "@/components/ui/card";
 import { isDummyTicket } from "@/context/AuthContext";
 import {
-  ClockIcon,
   CheckCircleIcon,
   DocumentIcon,
   CloseIcon,
@@ -27,7 +25,6 @@ import {
   UserIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChatbotIcon,
 } from "@/components/icons";
 
 interface Milestone {
@@ -69,8 +66,6 @@ interface Ticket {
 
 export default function ClientTicketMonitoringPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [selectedTicketId, setSelectedTicketId] = useState<string>("");
-  const [filterTab, setFilterTab] = useState<"all" | "in_progress" | "completed">("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -84,7 +79,6 @@ export default function ClientTicketMonitoringPage() {
         const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
         if (filteredSaved.length > 0) {
           setTickets(filteredSaved);
-          setSelectedTicketId(filteredSaved[0].id);
         }
       }
     } catch {}
@@ -152,9 +146,6 @@ export default function ClientTicketMonitoringPage() {
             }));
             setTickets((prev) => {
               const combined = [...prev, ...mapped.filter((m) => !prev.some((p) => p.id === m.id))];
-              if (combined.length > 0) {
-                setSelectedTicketId(combined[0].id);
-              }
               return combined;
             });
           }
@@ -179,20 +170,12 @@ export default function ClientTicketMonitoringPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Selected Ticket Object
-  const selectedTicket =
-    tickets.find((t) => t.id === selectedTicketId) || (tickets.length > 0 ? tickets[0] : null);
-
   const activeCount = tickets.filter((t) => t.status === "In Progress").length;
   const completedCount = tickets.filter((t) => t.status === "Completed").length;
   const totalDeliverablesCount = tickets.reduce((acc, t) => acc + (t.deliverables?.length || 0), 0);
 
   // Filtering Logic
   const filteredTickets = tickets.filter((ticket) => {
-    // Tab Filter
-    if (filterTab === "in_progress" && ticket.status !== "In Progress") return false;
-    if (filterTab === "completed" && ticket.status !== "Completed") return false;
-
     // Category Filter
     if (categoryFilter !== "all" && ticket.category !== categoryFilter) return false;
 
@@ -277,7 +260,6 @@ export default function ClientTicketMonitoringPage() {
       } catch {}
       return updated;
     });
-    setSelectedTicketId(newId);
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");
@@ -302,47 +284,26 @@ export default function ClientTicketMonitoringPage() {
         </div>
       )}
 
-      {/* Top Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <Link href="/dashboard/user" className="hover:text-primary transition-colors">
-              Dashboard Saya
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Layanan Konsultasi</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Monitoring Konsultasi &amp; Lembar Kerja
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
-            Pantau alur tahapan penugasan akuntansi, kepatuhan pajak Coretax DJP, dan unduh berkas deliverable resmi secara terpusat.
-          </p>
-        </div>
-
-        <Button
-          variant="primary"
-          onClick={() => setIsNewTicketModalOpen(true)}
-          className="shadow-sm font-semibold text-xs py-2.5 px-5 flex items-center justify-center self-start sm:self-auto"
-        >
-          <span>Buat Konsultasi Baru</span>
-        </Button>
+      {/* Top Header */}
+      <div className="pb-6 border-b border-primary-light">
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
+          Monitoring Konsultasi &amp; Lembar Kerja
+        </h1>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
+          Pantau alur tahapan penugasan akuntansi, kepatuhan pajak Coretax DJP, dan unduh berkas deliverable resmi secara terpusat.
+        </p>
       </div>
 
       {/* Row 3 Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Card 1 */}
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Konsultasi Aktif Berjalan</span>
-              <div className="text-3xl font-bold text-primary">
-                {activeCount < 10 ? `0${activeCount}` : activeCount}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
-              <ClockIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Konsultasi Aktif Berjalan
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{activeCount < 10 ? `0${activeCount}` : activeCount}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Tiket</span>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
             <div className="bg-primary h-full rounded-full" style={{ width: `${tickets.length > 0 ? Math.round((activeCount / tickets.length) * 100) : 0}%` }} />
@@ -350,17 +311,13 @@ export default function ClientTicketMonitoringPage() {
         </Card>
 
         {/* Card 2 */}
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Laporan Selesai &amp; BPE</span>
-              <div className="text-3xl font-bold text-success">
-                {completedCount < 10 ? `0${completedCount}` : completedCount}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
-              <CheckCircleIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Laporan Selesai &amp; Rilis
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{completedCount < 10 ? `0${completedCount}` : completedCount}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Selesai</span>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
             <div className="bg-success h-full rounded-full" style={{ width: `${tickets.length > 0 ? Math.round((completedCount / tickets.length) * 100) : 0}%` }} />
@@ -368,17 +325,13 @@ export default function ClientTicketMonitoringPage() {
         </Card>
 
         {/* Card 3 */}
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Total Dokumen Luaran</span>
-              <div className="text-3xl font-bold text-primary">
-                {totalDeliverablesCount < 10 ? `0${totalDeliverablesCount}` : totalDeliverablesCount}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
-              <DocumentIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Dokumen Layanan
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{totalDeliverablesCount < 10 ? `0${totalDeliverablesCount}` : totalDeliverablesCount}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Berkas</span>
           </div>
           <div className="mt-3 w-full bg-surface h-1.5 rounded-full overflow-hidden">
             <div className="bg-primary h-full rounded-full" style={{ width: "100%" }} />
@@ -389,79 +342,50 @@ export default function ClientTicketMonitoringPage() {
       {/* MASTER PANEL: TABEL DAFTAR KONSULTASI */}
       <Card className="rounded-2xl border-primary-light bg-white shadow-sm overflow-hidden">
         <CardHeader className="p-5 sm:p-6 border-b border-primary-light space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-base sm:text-lg font-bold text-primary">
-                Daftar Seluruh Konsultasi
-              </CardTitle>
-              <CardDescription className="text-xs text-text-secondary mt-0.5">
-                Klik baris konsultasi untuk membuka lembar kerja milestone dan berkas deliverable di panel bawah.
-              </CardDescription>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1 bg-surface p-1 rounded-lg border border-primary-light self-start sm:self-auto text-xs">
-              <button
-                type="button"
-                onClick={() => setFilterTab("all")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
-                  filterTab === "all"
-                    ? "bg-white text-primary shadow-sm font-bold"
-                    : "text-text-secondary hover:text-primary"
-                }`}
-              >
-                Semua ({tickets.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterTab("in_progress")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
-                  filterTab === "in_progress"
-                    ? "bg-white text-primary shadow-sm font-bold"
-                    : "text-text-secondary hover:text-primary"
-                }`}
-              >
-                Dalam Proses ({tickets.filter((t) => t.status === "In Progress").length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterTab("completed")}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-all ${
-                  filterTab === "completed"
-                    ? "bg-white text-primary shadow-sm font-bold"
-                    : "text-text-secondary hover:text-primary"
-                }`}
-              >
-                Selesai ({tickets.filter((t) => t.status === "Completed").length})
-              </button>
-            </div>
+          <div className="space-y-1">
+            <CardTitle className="text-base sm:text-lg font-bold text-primary">
+              Daftar Seluruh Konsultasi
+            </CardTitle>
+            <CardDescription className="text-xs text-text-secondary">
+              Klik baris konsultasi untuk membuka lembar kerja di panel bawah.
+            </CardDescription>
           </div>
 
-          {/* Search & Category Filter Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2">
-            <div className="sm:col-span-8 relative">
-              <SearchIcon className="absolute left-3 top-3 text-text-muted text-xs" />
-              <Input
-                type="text"
-                placeholder="Cari ID konsultasi, judul kebutuhan, atau nama konsultan..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 text-xs h-9 bg-surface border-primary-light"
-              />
+          {/* Search + Filter Kategori + Button Buat Konsultasi Baru Toolbar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+              <div className="relative flex-1">
+                <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Cari ID konsultasi, judul kebutuhan, atau nama konsultan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
+                />
+              </div>
+              <div className="w-full sm:w-60 shrink-0">
+                <Select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="text-xs h-9 bg-surface border-primary-light w-full"
+                >
+                  <option value="all">Semua Kategori Layanan</option>
+                  <option value="Tax Service Core">Tax Service Core</option>
+                  <option value="Accounting Service">Accounting Service</option>
+                  <option value="Business Consulting">Business Consulting</option>
+                  <option value="Legal">Legal Compliance</option>
+                </Select>
+              </div>
             </div>
-            <div className="sm:col-span-4">
-              <Select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="text-xs h-9 bg-surface border-primary-light"
-              >
-                <option value="all">Semua Kategori Layanan</option>
-                <option value="Tax Service Core">Tax Service Core</option>
-                <option value="Accounting Service">Accounting Service</option>
-                <option value="Business Consulting">Business Consulting</option>
-                <option value="Legal">Legal Compliance</option>
-              </Select>
-            </div>
+
+            <Button
+              variant="primary"
+              onClick={() => setIsNewTicketModalOpen(true)}
+              className="font-semibold text-xs py-2 px-4 shadow-sm shrink-0 whitespace-nowrap self-stretch sm:self-auto"
+            >
+              <span>Buat Konsultasi Baru</span>
+            </Button>
           </div>
         </CardHeader>
 
@@ -476,13 +400,12 @@ export default function ClientTicketMonitoringPage() {
                   <th className="py-3.5 px-4">Konsultan Lead</th>
                   <th className="py-3.5 px-4">Progres</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-light">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-text-muted">
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
                       <div className="space-y-1">
                         <p className="font-semibold text-primary">Tidak Ada Tiket Konsultasi</p>
                         <p className="text-[11px] text-text-secondary">
@@ -492,18 +415,11 @@ export default function ClientTicketMonitoringPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTickets.map((ticket) => {
-                    const isSelected = selectedTicket ? ticket.id === selectedTicket.id : false;
-                    return (
-                      <tr
-                        key={ticket.id}
-                        onClick={() => setSelectedTicketId(ticket.id)}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected
-                            ? "bg-primary-light/40 border-l-4 border-primary font-semibold"
-                            : "hover:bg-surface/50"
-                        }`}
-                      >
+                  filteredTickets.map((ticket) => (
+                    <tr
+                      key={ticket.id}
+                      className="hover:bg-surface/50 transition-colors"
+                    >
                       <td className="py-3.5 px-4 font-mono font-bold text-primary">
                         {ticket.id}
                       </td>
@@ -553,28 +469,10 @@ export default function ClientTicketMonitoringPage() {
                           {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
                         </Badge>
                       </td>
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`text-xs py-1 px-3 h-auto font-semibold transition-all ${
-                            isSelected
-                              ? "bg-primary/10 text-primary border-primary/30"
-                              : "border-primary-light text-primary hover:bg-surface"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTicketId(ticket.id);
-                          }}
-                        >
-                          Buka Lembar Kerja
-                        </Button>
-                      </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
+                  ))
+                )}
+              </tbody>
             </table>
           </div>
 
@@ -613,227 +511,6 @@ export default function ClientTicketMonitoringPage() {
         </CardContent>
       </Card>
 
-      {/* DETAIL PANEL: LEMBAR KERJA & ALUR TAHAPAN TIKET TERPILIH (MASTER-DETAIL) */}
-      {selectedTicket ? (
-        <div className="space-y-6 pt-2">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs uppercase font-bold tracking-wider text-text-muted">
-              Inspeksi Lembar Kerja:
-            </span>
-            <span className="font-mono text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded">
-              {selectedTicket.id}
-            </span>
-            <span className="text-xs text-text-secondary font-semibold">
-              &bull; {selectedTicket.category}
-            </span>
-          </div>
-
-        {/* Selected Ticket Overview Card */}
-        <Card className="rounded-2xl border-primary-light bg-white shadow-sm p-6 space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-lg sm:text-xl font-bold text-primary">
-              {selectedTicket.title}
-            </h2>
-            <div className="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
-              <div>
-                <span className="text-text-muted">Lead Konsultan: </span>
-                <span className="font-bold text-primary">{selectedTicket.consultant}</span>
-              </div>
-              <div>
-                <span className="text-text-muted">Tanggal Registrasi: </span>
-                <span>{selectedTicket.createdAt}</span>
-              </div>
-              <div>
-                <span className="text-text-muted">Akumulasi Progres: </span>
-                <span className="font-bold text-primary">{selectedTicket.progress}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 3 Horizontal Milestone Tracker Cards */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
-              Tahapan Pekerjaan &amp; Alur Verifikasi Konsultan
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {selectedTicket.milestones.map((milestone) => {
-                const isDone = milestone.status === "completed";
-                const isInProg = milestone.status === "in_progress";
-
-                return (
-                  <div
-                    key={milestone.step}
-                    className={`p-4 rounded-xl border transition-all flex flex-col justify-between space-y-3 ${
-                      isDone
-                        ? "bg-surface/60 border-success/30"
-                        : isInProg
-                        ? "bg-white border-primary/40 shadow-sm"
-                        : "bg-surface/30 border-primary-light text-text-muted"
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-                            isDone
-                              ? "bg-success/20 text-success"
-                              : isInProg
-                              ? "bg-primary/15 text-primary border border-primary/30"
-                              : "bg-surface border text-text-muted"
-                          }`}
-                        >
-                          Tahap {milestone.step}
-                        </span>
-
-                        <span className="text-[11px] font-bold">
-                          {isDone && (
-                            <span className="text-success flex items-center gap-1">
-                              <CheckCircleIcon className="text-xs" />
-                              <span>Selesai</span>
-                            </span>
-                          )}
-                          {isInProg && (
-                            <span className="text-primary flex items-center gap-1">
-                              <ClockIcon className="text-xs" />
-                              <span>Berjalan</span>
-                            </span>
-                          )}
-                          {!isDone && !isInProg && <span>Menunggu</span>}
-                        </span>
-                      </div>
-
-                      <h4 className="text-xs font-bold text-primary leading-snug">
-                        {milestone.title}
-                      </h4>
-                      <p className="text-[11px] text-text-secondary leading-relaxed">
-                        {milestone.description}
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-primary-light text-[10px] text-text-muted">
-                      {milestone.date}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Berkas Deliverable / Dokumen Hasil Kerja */}
-          <div className="space-y-3 pt-4 border-t border-primary-light">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                <span>Berkas Deliverable &amp; Kertas Kerja Resmi</span>
-                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.2 rounded font-normal">
-                  {selectedTicket.deliverables.length} Dokumen
-                </span>
-              </h3>
-              <Link
-                href="/dashboard/user/dokumen"
-                className="text-xs text-primary font-bold hover:underline"
-              >
-                <span>Lihat Dokumen</span>
-              </Link>
-            </div>
-
-            {selectedTicket.deliverables.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {selectedTicket.deliverables.map((doc, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-xl bg-surface border border-primary-light hover:border-primary transition-colors flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-9 h-9 rounded-lg bg-white border border-primary-light flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                        {doc.format}
-                      </div>
-                      <div className="overflow-hidden">
-                        <div className="text-xs font-bold text-primary truncate">
-                          {doc.name}
-                        </div>
-                        <div className="text-[11px] text-text-muted mt-0.5">
-                          {doc.size} &bull; Diterbitkan {doc.date}
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        showToast(`Mengunduh berkas resmi ${doc.name} (Simulasi 256-bit Secured Download).`)
-                      }
-                      className="text-xs py-1 px-3.5 h-auto border-primary-light text-primary hover:bg-surface font-semibold shrink-0"
-                    >
-                      Unduh
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-6 text-center text-xs text-text-muted bg-surface/50 rounded-xl border border-dashed border-primary-light">
-                Berkas deliverable sedang dalam proses penyusunan oleh konsultan lead.
-              </div>
-            )}
-          </div>
-
-          {/* Catatan Konsultan Staf */}
-          <div className="space-y-4 pt-4 border-t border-primary-light">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
-                Catatan Konsultan Staf
-              </h3>
-              <span className="text-[11px] text-text-muted">
-                Catatan resmi progres &amp; evaluasi pengerjaan penugasan
-              </span>
-            </div>
-
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {selectedTicket.correspondences.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="p-4 rounded-xl border border-primary-light bg-surface/70 text-xs leading-relaxed space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-bold text-primary flex items-center gap-2">
-                      <span>{msg.sender}</span>
-                      <Badge
-                        variant="primary"
-                        size="sm"
-                        className="text-[9px] py-0 px-1.5"
-                      >
-                        {msg.role}
-                      </Badge>
-                    </div>
-                    <span
-                      className="text-[10px] text-text-muted"
-                      dangerouslySetInnerHTML={{ __html: msg.date }}
-                    />
-                  </div>
-                  <p className="text-text-secondary">{msg.message}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Banner Pengalihan Sesi Konsultasi ke Chatbot */}
-            <div className="p-3.5 rounded-xl bg-surface border border-primary-light flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <p className="text-text-secondary text-[11px] leading-relaxed">
-                Untuk sesi konsultasi tanya-jawab interaktif dan eskalasi penugasan, silakan gunakan menu <strong>Chatbot Bantuan</strong>.
-              </p>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href="/dashboard/user/chatbot"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-primary-light text-primary hover:bg-surface text-xs font-semibold shadow-2xs transition-colors"
-                >
-                  <ChatbotIcon className="text-xs" />
-                  <span>Chatbot Bantuan</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-      ) : null}
 
       {/* MODAL: BUAT TIKET KONSULTASI BARU */}
       {isNewTicketModalOpen && (

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +15,6 @@ import {
   EyeIcon,
   TrashIcon,
   CheckCircleIcon,
-  DocumentIcon,
-  LockIcon,
 } from "@/components/icons";
 import { superadminApi, AdminUserItem, AuditLogItem } from "@/lib/api";
 
@@ -323,13 +320,6 @@ export default function SuperadminDashboard() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
         <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <Link href="/dashboard/superadmin" className="hover:text-primary transition-colors">
-              Superadmin Portal
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Log Audit &amp; Keamanan Sistem</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Log Audit Perubahan Status &amp; Aktivitas
           </h1>
@@ -361,55 +351,37 @@ export default function SuperadminDashboard() {
       </div>
 
       {/* 3 TOP AUDIT METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Total Log Aktivitas
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <DocumentIcon />
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Log Aktivitas
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{String(auditLogs.length).padStart(2, "0")}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Catatan</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              {String(auditLogs.length).padStart(2, "0")}
-            </span>
-            <span className="text-xs text-text-secondary">Catatan</span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Catatan riwayat sistem</div>
         </Card>
 
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Perubahan Status Selesai
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-success/15 flex items-center justify-center text-success text-xs">
-              <CheckCircleIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Perubahan Status Selesai
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{String(auditLogs.filter((l) => l.statusAfter === "Completed").length).padStart(2, "0")}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Mutasi Selesai</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-success font-mono">
-              {String(auditLogs.filter((l) => l.statusAfter === "Completed").length).padStart(2, "0")}
-            </span>
-            <span className="text-xs text-text-secondary">Mutasi Selesai</span>
-          </div>
+          <div className="text-[10px] text-emerald-700 mt-1">Mutasi berhasil diselesaikan</div>
         </Card>
 
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Integritas Kriptografis
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <LockIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Integritas Kriptografis
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+            SHA-256
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              SHA-256
-            </span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Standar hashing keamanan</div>
         </Card>
       </div>
         {/* Navigation Tabs */}

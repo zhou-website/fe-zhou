@@ -14,6 +14,7 @@ import {
   GoogleColorIcon,
   ShieldTaxIcon,
   EyeIcon,
+  AlertIcon,
 } from "@/components/icons";
 
 function LoginFormContent() {
@@ -208,7 +209,7 @@ function LoginFormContent() {
           {/* Error Notice jika autentikasi backend gagal */}
           {errorMessage && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2.5 animate-in fade-in">
-              <span className="font-bold text-sm leading-none mt-0.5">⚠️</span>
+              <AlertIcon className="text-red-600 text-sm mt-0.5 shrink-0" />
               <div>
                 <span className="font-bold block">Gagal Masuk</span>
                 <span className="text-[11px] leading-tight block mt-0.5">{errorMessage}</span>

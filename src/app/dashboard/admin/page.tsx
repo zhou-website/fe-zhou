@@ -7,6 +7,7 @@ import {
   ConsultationItem,
   AdminDashboardOverviewData,
 } from "@/lib/api";
+import { isDummyTicket } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,8 @@ import { Select } from "@/components/ui/select";
 import {
   CheckCircleIcon,
   DocumentIcon,
-  BuildingIcon,
   SearchIcon,
   CloseIcon,
-  ClockIcon,
-  UserIcon,
 } from "@/components/icons";
 
 function AdminDashboardContent() {
@@ -54,7 +52,8 @@ function AdminDashboardContent() {
         setOverview(overviewRes.value.data);
       }
       if (consultRes.status === "fulfilled" && Array.isArray(consultRes.value.data)) {
-        setConsultations(consultRes.value.data);
+        const validConsultations = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+        setConsultations(validConsultations);
       }
     } catch (err) {
       console.warn("Gagal memuat data operasional:", err);
@@ -119,11 +118,6 @@ function AdminDashboardContent() {
 
       {/* Header & Page Title */}
       <div className="pb-4 border-b border-primary-light">
-        <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
-          <span>Portal Staf Konsultan</span>
-          <span>/</span>
-          <span className="text-primary font-bold">Dashboard Operasional</span>
-        </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
           Ringkasan Operasional &amp; Perikatan Klien
         </h1>
@@ -135,14 +129,9 @@ function AdminDashboardContent() {
       {/* METRIC CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-              Total Konsultasi
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs">
-              <BuildingIcon />
-            </div>
-          </div>
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Konsultasi
+          </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
             {overview.total_consultations}
           </div>
@@ -150,14 +139,9 @@ function AdminDashboardContent() {
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider">
-              Sedang Berjalan
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-amber-200/60 flex items-center justify-center text-amber-800 text-xs">
-              <ClockIcon />
-            </div>
-          </div>
+          <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
+            Sedang Berjalan
+          </span>
           <div className="mt-2 text-2xl font-bold text-amber-800 font-mono">
             {overview.active_consultations}
           </div>
@@ -165,14 +149,9 @@ function AdminDashboardContent() {
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider">
-              Konsultasi Selesai
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-200/60 flex items-center justify-center text-emerald-800 text-xs">
-              <CheckCircleIcon />
-            </div>
-          </div>
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Konsultasi Selesai
+          </span>
           <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono">
             {overview.completed_consultations}
           </div>
@@ -180,14 +159,9 @@ function AdminDashboardContent() {
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-              Total Klien
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs">
-              <UserIcon />
-            </div>
-          </div>
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Klien
+          </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
             {overview.total_clients}
           </div>
@@ -195,14 +169,9 @@ function AdminDashboardContent() {
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">
-              Total Dokumen
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs">
-              <DocumentIcon />
-            </div>
-          </div>
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Dokumen
+          </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
             {overview.total_documents}
           </div>

@@ -43,7 +43,7 @@ export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: Unauthor
         </div>
 
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-error/10 text-error text-[11px] font-bold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-error/10 text-error text-[11px] font-bold">
             <ShieldTaxIcon className="text-xs" />
             <span>403 &bull; Akses Ditolak (Unauthorized)</span>
           </div>
@@ -65,7 +65,7 @@ export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: Unauthor
               {allowedRoles.map((r) => (
                 <span
                   key={r}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium"
                 >
                   {r === "user" ? "Klien" : r === "admin" ? "Staff Admin" : "Superadmin"}
                 </span>

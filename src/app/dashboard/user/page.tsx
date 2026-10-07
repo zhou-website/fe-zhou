@@ -6,10 +6,7 @@ import { useAuth, isDummyTicket } from "@/context/AuthContext";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
 import {
   Card,
   CardHeader,
@@ -18,10 +15,9 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import {
-  ClockIcon,
   CheckCircleIcon,
-  DocumentIcon,
   CheckIcon,
+  DocumentIcon,
   CloseIcon,
   DownloadIcon,
 } from "@/components/icons";
@@ -144,16 +140,6 @@ export default function UserDashboardPage() {
     loadClientData();
   }, []);
 
-  // Modal Create Ticket State
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newTicketData, setNewTicketData] = useState({
-    title: "",
-    category: "Tax Service Core" as Ticket["category"],
-    description: "",
-  });
-  const [createError, setCreateError] = useState("");
-  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
-
   // Filtered tickets
   const filteredTickets = tickets.filter((t) => {
     if (filterStatus === "ALL") return true;
@@ -162,54 +148,6 @@ export default function UserDashboardPage() {
 
   const activeCount = tickets.filter((t) => t.status === "In Progress").length;
   const completedCount = tickets.filter((t) => t.status === "Completed").length;
-
-  const handleCreateTicketSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTicketData.title.trim() || !newTicketData.description.trim()) {
-      setCreateError("Judul dan deskripsi masalah konsultasi wajib diisi.");
-      return;
-    }
-
-    setIsSubmittingTicket(true);
-    setCreateError("");
-
-    try {
-      await clientApi.escalateChatbot({
-        message: `[${newTicketData.category}] ${newTicketData.title}: ${newTicketData.description}`,
-        category: newTicketData.category,
-      });
-    } catch (err) {
-      console.warn("Backend ticket creation notice:", err);
-    }
-
-    const newTicket: Ticket = {
-      id: `TK-2026-0${Math.floor(100 + Math.random() * 900)}`,
-      title: newTicketData.title,
-      category: newTicketData.category,
-      consultant: "Staf Alokasi Konsultan Zhou",
-      status: "In Progress",
-      progress: 20,
-      updatedAt: "Baru saja",
-      checklists: [
-        { text: "Registrasi dan telaah awal permohonan konsultasi", done: true },
-        { text: "Alokasi tim konsultan spesialis sesuai kategori", done: false },
-        { text: "Penyusunan kertas kerja dan evaluasi regulasi fiskal", done: false },
-        { text: "Finalisasi laporan dan penerbitan berkas luaran", done: false },
-      ],
-      deliverableFile: undefined,
-    };
-
-    setTickets((prev) => {
-      const updated = [newTicket, ...prev];
-      try {
-        localStorage.setItem("zhou_client_custom_tickets", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    setNewTicketData({ title: "", category: "Tax Service Core", description: "" });
-    setIsSubmittingTicket(false);
-    setShowCreateModal(false);
-  };
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -254,22 +192,8 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
         </div>
       )}
 
-      {/* Top Breadcrumb & Title Bar */}
+      {/* Page Title Bar */}
       <div>
-        <nav className="flex text-xs text-text-secondary mb-2" aria-label="Breadcrumb">
-          <ol className="inline-flex items-center space-x-1 sm:space-x-2">
-            <li>
-              <Link href="/" className="hover:text-primary transition-colors">
-                Beranda
-              </Link>
-            </li>
-            <li>
-              <span className="mx-1 text-silver">/</span>
-              <span className="text-primary font-bold">Dashboard Saya</span>
-            </li>
-          </ol>
-        </nav>
-
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-primary tracking-tight mb-1">
             Dashboard Saya
@@ -281,56 +205,41 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
       </div>
 
       {/* Row 3 Metric Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Card 1: Active Tickets */}
-        <Card className="border-navy-light bg-white shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                Konsultasi Aktif Berjalan
-              </div>
-              <div className="text-3xl font-bold text-primary">
-                {activeCount < 10 ? `0${activeCount}` : activeCount}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <ClockIcon className="text-lg" />
-            </div>
-          </CardContent>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Konsultasi Aktif Berjalan
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{activeCount < 10 ? `0${activeCount}` : activeCount}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Tiket</span>
+          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Konsultasi sedang diproses konsultan</div>
         </Card>
 
         {/* Card 2: Completed Reports */}
-        <Card className="border-navy-light bg-white shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                Laporan &amp; Kepatuhan Selesai
-              </div>
-              <div className="text-3xl font-bold text-success">
-                {completedCount < 10 ? `0${completedCount}` : completedCount}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-success/10 text-success flex items-center justify-center shrink-0">
-              <CheckCircleIcon className="text-lg" />
-            </div>
-          </CardContent>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Laporan &amp; Kepatuhan Selesai
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{completedCount < 10 ? `0${completedCount}` : completedCount}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Selesai</span>
+          </div>
+          <div className="text-[10px] text-emerald-700 mt-1">Luaran deliverable terbit</div>
         </Card>
 
         {/* Card 3: Secured Documents */}
-        <Card className="border-navy-light bg-white shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-text-secondary mb-1">
-                Dokumen Pajak Tersimpan
-              </div>
-              <div className="text-3xl font-bold text-primary">
-                {documents.length < 10 ? `0${documents.length}` : documents.length}
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-surface text-primary border border-navy-light flex items-center justify-center shrink-0">
-              <DocumentIcon className="text-lg" />
-            </div>
-          </CardContent>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Dokumen Pajak Tersimpan
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{documents.length < 10 ? `0${documents.length}` : documents.length}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Dokumen</span>
+          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Arsip aman dalam vault</div>
         </Card>
       </div>
 
@@ -352,14 +261,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setShowCreateModal(true)}
-              className="text-xs py-1.5 px-3 h-auto shadow-sm"
-            >
-              Buat Konsultasi Baru
-            </Button>
-
             {/* Filter Tabs */}
             <div className="inline-flex rounded-lg bg-surface p-1 border border-navy-light text-xs">
               <button
@@ -715,116 +616,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
         </div>
       )}
 
-      {/* MODAL 2: Buat Tiket Konsultasi Baru */}
-      {showCreateModal && (
-        <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto"
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl max-w-lg w-full border border-navy-light shadow-xl p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between pb-3 border-b border-navy-light">
-              <div>
-                <h3 className="text-base font-bold text-primary">
-                  Buat Konsultasi Baru
-                </h3>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  Sampaikan permohonan analisis atau pendampingan fiskal lanjutan dari entitas Anda.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="p-1 text-text-secondary hover:text-error"
-              >
-                <CloseIcon className="text-xs" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateTicketSubmit} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <Label htmlFor="ticketTitle" className="text-xs font-semibold text-text-primary">
-                  Judul Permohonan / Topik Kasus <span className="text-error">*</span>
-                </Label>
-                <Input
-                  id="ticketTitle"
-                  placeholder="Subjek permohonan / kasus konsultasi"
-                  value={newTicketData.title}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, title: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="ticketCategory" className="text-xs font-semibold text-text-primary">
-                  Kategori Divisi Layanan
-                </Label>
-                <Select
-                  id="ticketCategory"
-                  value={newTicketData.category}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, category: e.target.value as Ticket["category"] })}
-                  className="bg-white border-navy-light text-xs"
-                >
-                  <option value="Tax Service Core">Tax Service Core (Pajak &amp; Coretax)</option>
-                  <option value="Accounting Service">Accounting Service (SAK &amp; Laporan)</option>
-                  <option value="Legal">Legal (Hukum Bisnis &amp; Kontrak)</option>
-                  <option value="Business Consulting">Business Consulting (Finansial &amp; Valuasi)</option>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="ticketDesc" className="text-xs font-semibold text-text-primary">
-                  Rincian Kebutuhan atau Kendala Fiskal <span className="text-error">*</span>
-                </Label>
-                <Textarea
-                  id="ticketDesc"
-                  rows={4}
-                  placeholder="Jelaskan secara ringkas dokumen apa saja yang telah disiapkan dan tenggat waktu yang diharapkan..."
-                  value={newTicketData.description}
-                  onChange={(e) => setNewTicketData({ ...newTicketData, description: e.target.value })}
-                />
-              </div>
-
-              {createError && (
-                <p className="text-[11px] text-error font-medium">{createError}</p>
-              )}
-
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateModal(false)}
-                  disabled={isSubmittingTicket}
-                  className="border-navy-light text-xs"
-                >
-                  Batal
-                </Button>
-
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isSubmittingTicket}
-                  className="text-xs inline-flex items-center gap-1.5"
-                >
-                  {isSubmittingTicket ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Kirim Permohonan Konsultasi</span>
-                      <CheckIcon className="text-xs" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

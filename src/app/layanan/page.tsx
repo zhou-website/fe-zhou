@@ -132,7 +132,7 @@ export default function LayananIndexPage() {
         <section className="bg-primary text-white py-16 md:py-20 lg:py-24 border-b border-primary-dark relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
           <div className="container-custom relative z-10 space-y-6 text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/10 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
               <ShieldTaxIcon className="text-secondary" />
               <span>Katalog Layanan Profesional Terpadu</span>
             </div>

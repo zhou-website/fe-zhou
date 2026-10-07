@@ -120,15 +120,6 @@ export default function ClientChatbotPage() {
 
     const currentTime = getCurrentTime();
 
-    try {
-      clientApi.escalateChatbot({
-        message: `Inquiry FAQ: ${faq.question}`,
-        category: "Chatbot",
-      });
-    } catch {
-      // non-blocking
-    }
-
     setTimeout(() => {
       const newExchange: ChatExchange = {
         id: `exch-${Date.now()}`,
@@ -203,7 +194,7 @@ export default function ClientChatbotPage() {
         </CardHeader>
 
         {/* Chat Feed */}
-        <CardContent className="p-4 sm:p-6 space-y-6 bg-gradient-to-b from-white to-surface/20 min-h-[520px]">
+        <CardContent className="p-4 sm:p-6 space-y-6 bg-white min-h-[520px]">
           {/* Centered Session Badge */}
           <div className="flex items-center justify-center my-1">
             <span className="text-[11px] font-medium text-text-muted px-3.5 py-1 bg-surface border border-primary-light/80 rounded-md shadow-2xs">
@@ -247,7 +238,7 @@ export default function ClientChatbotPage() {
                           <QuestionCircleIcon className="text-text-muted group-hover:text-primary text-sm shrink-0 transition-colors mt-0.5" />
                           <div className="space-y-0.5 min-w-0">
                             {faq.category && (
-                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary mb-0.5">
+                              <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary mb-0.5">
                                 {faq.category}
                               </span>
                             )}

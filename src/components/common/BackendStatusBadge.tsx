@@ -43,7 +43,7 @@ export function BackendStatusBadge({ compact = false, className = "" }: BackendS
   if (compact) {
     return (
       <div
-        className={`relative inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors cursor-pointer ${
+        className={`relative inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium border transition-colors cursor-pointer ${
           status === "online"
             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
             : status === "checking"

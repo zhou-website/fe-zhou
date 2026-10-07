@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { userApi } from "@/lib/api";
 import { useAuth, isDummyValue } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -332,16 +331,9 @@ export default function ClientProfileSecurityPage() {
         </div>
       )}
 
-      {/* Top Header & Breadcrumb */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
         <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <Link href="/dashboard/user" className="hover:text-primary transition-colors">
-              Dashboard Saya
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Pengaturan Profil</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Pengaturan Profil &amp; Keamanan Akun
           </h1>
@@ -357,7 +349,7 @@ export default function ClientProfileSecurityPage() {
         <div className="lg:col-span-4 flex flex-col space-y-6">
           <Card className="rounded-2xl border-primary-light bg-white shadow-sm overflow-hidden flex flex-col h-full">
             {/* Header Visual Banner with MMS Avatar and Direct Pencil Edit Button */}
-            <div className="relative h-24 bg-gradient-to-r from-primary via-primary-hover to-primary px-6 flex items-end">
+            <div className="relative h-24 bg-primary px-6 flex items-end">
               {/* Dynamic Initials Badge with generous overhang */}
               <div className="w-16 h-16 rounded-2xl bg-white border-2 border-primary-light shadow-lg flex items-center justify-center font-bold text-primary text-xl translate-y-1/2 shrink-0 select-none">
                 {profile.initials || "-"}

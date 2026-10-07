@@ -38,6 +38,8 @@ import {
   faCircleQuestion,
   faCalendarDays,
   faGears,
+  faBell,
+  faTriangleExclamation,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -104,6 +106,8 @@ export const EyeIcon = createIcon(faEye);
 export const QuestionCircleIcon = createIcon(faCircleQuestion);
 export const CalendarIcon = createIcon(faCalendarDays);
 export const SettingsIcon = createIcon(faGears);
+export const BellIcon = createIcon(faBell);
+export const AlertIcon = createIcon(faTriangleExclamation);
 
 // Brands
 export const WhatsappIcon = createIcon(faWhatsapp);

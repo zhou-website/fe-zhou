@@ -102,16 +102,19 @@ export function isDummyTicket(c: { project_code?: string; title?: string; id?: s
   return (
     code.includes("prj-tax-2026-001") ||
     code.includes("tk-1") ||
+    code.includes("tck-") ||
     title.includes("maju sukses") ||
     title.includes("spt tahunan badan pt maju") ||
     title.includes("dummy") ||
-    title.includes("mock")
+    title.includes("mock") ||
+    title.includes("chatbot") ||
+    title.includes("konsultasi baru (chatbot)")
   );
 }
 
 function cleanCompany(comp?: string, role?: string): string | undefined {
   if (!comp || isDummyValue(comp)) {
-    return role === "admin" ? "Zhou Consulting Internal" : undefined;
+    return role === "admin" ? "Zhou Consulting" : undefined;
   }
   return comp;
 }
@@ -368,13 +371,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (role === "admin") {
       name = "Konsultan Senior Zhou";
-      company = "Zhou Consulting Internal";
+      company = "Zhou Consulting";
       avatarText = "KZ";
     } else if (role === "superadmin") {
       name = "Super Administrator Zhou";
-      company = "Zhou Consulting Leadership";
+      company = "Zhou Consulting";
       avatarText = "SZ";
     }
+
+    const resolvedToken =
+      customData?.token || getAuthToken() || `demo_token_${role}_${Date.now()}`;
 
     const authData: AuthUser = {
       name: customData?.name || name,
@@ -384,6 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       avatarText: customData?.avatarText || avatarText,
       avatarUrl: customData?.avatarUrl,
       provider: customData?.provider || "credentials",
+      token: resolvedToken,
     };
 
     try {
@@ -392,6 +399,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Gagal menyimpan sesi auth ke localStorage:", err);
     }
 
+    setAuthToken(resolvedToken);
+    setTokenState(resolvedToken);
     setUser(authData);
     setIsAuthenticated(true);
 

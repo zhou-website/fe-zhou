@@ -11,10 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
 import {
-  ShieldTaxIcon,
   CheckCircleIcon,
   CheckIcon,
-  ClockIcon,
   DocumentIcon,
   SearchIcon,
   CloseIcon,
@@ -84,7 +82,7 @@ export default function AdminUploadBillingPage() {
           const mapped: ReportItem[] = docRes.value.data.map((d: ClientDocumentItem, idx: number) => ({
             id: `REP-BE-${d.id}`,
             ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
-            clientName: "PT Klien Terdaftar",
+            clientName: "Klien Terdaftar",
             clientNpwp: "-",
             fileName: d.file_name,
             fileSize: d.file_size || "1.5 MB",
@@ -238,160 +236,137 @@ export default function AdminUploadBillingPage() {
         </div>
       )}
 
-      {/* Top Header & Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
-        <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <span className="text-text-muted">Dashboard Staf &amp; Administrasi</span>
-            <span>/</span>
-            <span className="text-primary font-bold">Upload Laporan &amp; Billing</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Upload Laporan Kertas Kerja &amp; Billing Klien
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
-            Unggah deliverable laporan final (PDF/XLSX), tautkan ke tiket penugasan klien, dan terbitkan invoice billing resmi terenkripsi 256-bit.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center justify-center"
-          >
-            <span>Upload Berkas Laporan Baru</span>
-          </Button>
-        </div>
+      {/* Top Header */}
+      <div className="pb-6 border-b border-primary-light">
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
+          Upload Laporan &amp; Billing Klien
+        </h1>
+        <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
+          Unggah deliverable laporan final (PDF/XLSX), tautkan ke tiket penugasan klien, dan terbitkan invoice billing resmi terenkripsi 256-bit.
+        </p>
       </div>
 
       {/* 4 TOP OPERATIONAL METRIC CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Berkas Terunggah
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <DocumentIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Berkas Terunggah
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{totalReportsCount < 10 ? `0${totalReportsCount}` : totalReportsCount}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Berkas</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              {totalReportsCount < 10 ? `0${totalReportsCount}` : totalReportsCount}
-            </span>
-            <span className="text-xs text-text-secondary">Berkas</span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Seluruh deliverable resmi</div>
         </Card>
 
         {/* Card 2 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Menunggu Pembayaran
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-silver/30 flex items-center justify-center text-text-primary text-xs">
-              <ClockIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
+          <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
+            Menunggu Pembayaran
+          </span>
+          <div className="mt-2 text-2xl font-bold text-amber-800 font-mono flex items-baseline gap-1.5">
+            <span>0{pendingPaymentCount}</span>
+            <span className="text-xs text-amber-700 font-sans font-normal">Tagihan</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              0{pendingPaymentCount}
-            </span>
-            <span className="text-xs text-text-secondary">Tagihan</span>
-          </div>
+          <div className="text-[10px] text-amber-700 mt-1">Faktur belum terverifikasi</div>
         </Card>
 
         {/* Card 3 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Billing Lunas Bulan Ini
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-success/15 flex items-center justify-center text-success text-xs">
-              <CheckCircleIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Billing Lunas Bulan Ini
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{paidCount < 10 ? `0${paidCount}` : paidCount}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Faktur</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-success font-mono">
-              {paidCount < 10 ? `0${paidCount}` : paidCount}
-            </span>
-            <span className="text-xs text-text-secondary">Faktur</span>
-          </div>
+          <div className="text-[10px] text-emerald-700 mt-1">Pembayaran terkonfirmasi</div>
         </Card>
 
         {/* Card 4 */}
-        <Card className="p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted font-bold uppercase tracking-wider">
-              Rata-Rata Waktu Rilis
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-primary-light flex items-center justify-center text-primary text-xs">
-              <ClockIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Rata-Rata Waktu Rilis
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{totalReportsCount > 0 ? "1.2" : "0"}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Hari Kerja</span>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary font-mono">
-              {totalReportsCount > 0 ? "1.2" : "0"}
-            </span>
-            <span className="text-xs text-text-secondary">Hari Kerja</span>
-          </div>
+          <div className="text-[10px] text-text-secondary mt-1">Penerbitan ke vault klien</div>
         </Card>
       </div>
 
-      {/* FILTER & SEARCH BAR */}
-      <div className="bg-white rounded-2xl border border-primary-light p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
-          <Input
-            type="text"
-            placeholder="Cari berkas, nama klien, tiket, atau invoice..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 text-xs h-9 bg-surface border-primary-light focus:bg-white"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-auto min-w-[160px]"
-          >
-            <option value="ALL">Semua Kategori</option>
-            <option value="Tax Service Core">Tax Service Core</option>
-            <option value="Accounting Service">Accounting Service</option>
-            <option value="Business Financial Consulting">Business Financial Consulting</option>
-            <option value="Legal">Legal</option>
-          </Select>
-
-          <Select
-            value={billingFilter}
-            onChange={(e) => setBillingFilter(e.target.value)}
-            className="w-auto min-w-[170px]"
-          >
-            <option value="ALL">Semua Status Billing</option>
-            <option value="Lunas">Lunas</option>
-            <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
-            <option value="Terkirim">Terkirim</option>
-          </Select>
-        </div>
-      </div>
-
-      {/* MASTER DELIVERABLE & BILLING TABLE */}
+      {/* MASTER DELIVERABLE & BILLING CARD (WITH INTEGRATED SEARCH, FILTER & ACTION TOOLBAR) */}
       <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
-        <div className="p-4 bg-surface/60 border-b border-primary-light flex items-center justify-between">
-          <span className="text-xs font-bold text-primary">
-            Daftar Berkas Deliverable Kertas Kerja &amp; Faktur Billing ({filteredReports.length})
-          </span>
-          <span className="text-[11px] text-text-muted">
-            Tersinkronisasi otomatis dengan modul Vault Dokumen pada Dashboard Klien.
-          </span>
+        {/* Header & Subtitle */}
+        <div className="p-5 sm:p-6 border-b border-primary-light">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold text-primary">
+                Daftar Berkas Deliverable Kertas Kerja &amp; Faktur Billing ({filteredReports.length})
+              </h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                Tersinkronisasi otomatis dengan modul Vault Dokumen pada Dashboard Klien.
+              </p>
+            </div>
+          </div>
+
+          {/* Search, Filter & Upload Button Toolbar */}
+          <div className="mt-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+              <div className="relative flex-1 min-w-[200px]">
+                <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
+                <Input
+                  type="text"
+                  placeholder="Cari berkas, nama klien, tiket, atau invoice..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 text-xs h-9 bg-surface border-primary-light focus:bg-white w-full"
+                />
+              </div>
+
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                <Select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full sm:w-auto min-w-[150px] text-xs h-9"
+                >
+                  <option value="ALL">Semua Kategori</option>
+                  <option value="Tax Service Core">Tax Service Core</option>
+                  <option value="Accounting Service">Accounting Service</option>
+                  <option value="Business Financial Consulting">Business Financial Consulting</option>
+                  <option value="Legal">Legal</option>
+                </Select>
+
+                <Select
+                  value={billingFilter}
+                  onChange={(e) => setBillingFilter(e.target.value)}
+                  className="w-full sm:w-auto min-w-[160px] text-xs h-9"
+                >
+                  <option value="ALL">Semua Status Billing</option>
+                  <option value="Lunas">Lunas</option>
+                  <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                  <option value="Terkirim">Terkirim</option>
+                </Select>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex items-center">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setIsUploadModalOpen(true)}
+                className="w-full sm:w-auto text-xs font-semibold h-9 px-4 shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <span>Upload Berkas Baru</span>
+              </Button>
+            </div>
+          </div>
         </div>
 
+        {/* Deliverable Items List */}
         <div className="divide-y divide-primary-light">
           {filteredReports.length === 0 ? (
             <div className="p-8 text-center text-xs text-text-muted">
@@ -524,204 +499,6 @@ export default function AdminUploadBillingPage() {
         )}
       </Card>
 
-      {/* BOTTOM SPLIT SECTION (2 COLUMNS): Quick Upload Form & Security Assurance */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* COLUMN 1: Quick Upload Form */}
-        <div className="lg:col-span-7">
-          <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
-            <div>
-              <h3 className="text-base font-bold text-primary">
-                Formulir Cepat Upload Laporan Hasil Kerja
-              </h3>
-              <p className="text-xs text-text-secondary mt-0.5">
-                Unggah berkas deliverable final untuk secara otomatis diterbitkan ke akun Vault klien.
-              </p>
-            </div>
-
-            <form onSubmit={handleUploadSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">
-                    Pilih Tiket Penugasan Selesai <span className="text-error">*</span>
-                  </Label>
-                  <Select
-                    value={uploadForm.ticketId}
-                    onChange={(e) => {
-                      const tId = e.target.value;
-                      const matched = availableTickets.find((t) => t.id === tId);
-                      setUploadForm((prev) => ({
-                        ...prev,
-                        ticketId: tId,
-                        clientName: matched ? matched.clientName : (tId ? "Klien Terdaftar" : ""),
-                        clientNpwp: "-",
-                      }));
-                    }}
-                    className="mt-1"
-                  >
-                    <option value="">-- Pilih Tiket Penugasan --</option>
-                    {availableTickets.length > 0 ? (
-                      availableTickets.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.id} ({t.clientName})
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>Belum ada tiket penugasan tersedia</option>
-                    )}
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">
-                    Nomor Faktur / Invoice <span className="text-error">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={uploadForm.invoiceNumber}
-                    onChange={(e) =>
-                      setUploadForm((prev) => ({ ...prev, invoiceNumber: e.target.value }))
-                    }
-                    className="text-xs h-9 bg-surface border-primary-light focus:bg-white font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Drag and Drop Zone */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">
-                  Nama Berkas Deliverable (PDF / XLSX maks. 25MB) <span className="text-error">*</span>
-                </Label>
-                <div className="border-2 border-dashed border-primary-light rounded-xl p-6 text-center bg-surface/40 hover:bg-surface transition-colors space-y-2">
-                  <DocumentIcon className="text-2xl text-primary mx-auto" />
-                  <div className="text-xs font-semibold text-primary">
-                    Ketik nama berkas deliverable yang telah siap:
-                  </div>
-                  <Input
-                    type="text"
-                    required
-                    placeholder="Masukkan nama berkas deliverable"
-                    value={uploadForm.fileName}
-                    onChange={(e) =>
-                      setUploadForm((prev) => ({ ...prev, fileName: e.target.value }))
-                    }
-                    className="max-w-md mx-auto text-xs h-9 bg-white border-primary-light"
-                  />
-                  <p className="text-[10px] text-text-muted">
-                    Format resmi didukung: PDF, XLSX, ZIP berenkripsi SSL 256-bit.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">
-                    Nominal Honorarium Penugasan (IDR) <span className="text-error">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={uploadForm.amount}
-                    onChange={(e) =>
-                      setUploadForm((prev) => ({ ...prev, amount: e.target.value }))
-                    }
-                    className="text-xs h-9 bg-surface border-primary-light focus:bg-white font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">
-                    Konsultan Penanggung Jawab
-                  </Label>
-                  <Input
-                    type="text"
-                    disabled
-                    value={uploadForm.consultant}
-                    className="text-xs h-9 bg-surface/70 border-primary-light cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={uploadForm.sendNotification}
-                    onChange={(e) =>
-                      setUploadForm((prev) => ({ ...prev, sendNotification: e.target.checked }))
-                    }
-                    className="rounded border-primary-light text-primary focus:ring-primary w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-xs text-text-secondary">
-                    Kirim notifikasi otomatis secara langsung via WhatsApp &amp; Email resmi PIC Klien.
-                  </span>
-                </label>
-              </div>
-
-              <div className="pt-3 border-t border-primary-light flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  className="text-xs h-9 px-5 font-semibold shadow-xs"
-                >
-                  Unggah &amp; Terbitkan ke Vault Klien
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-
-        {/* COLUMN 2: Security & Digital Signature Assurance */}
-        <div className="lg:col-span-5 space-y-6">
-          <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
-            <div className="flex items-center gap-2.5 text-primary font-bold text-sm">
-              <ShieldTaxIcon className="text-base" />
-              <span>Integritas Dokumen &amp; Tanda Tangan Digital</span>
-            </div>
-
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Seluruh laporan yang diunggah melalui konsol ini secara otomatis dihitung nilai hash kriptografisnya (SHA-256) untuk menjamin berkas tidak mengalami manipulasi di kemudian hari.
-            </p>
-
-            <div className="p-3.5 rounded-xl bg-surface border border-primary-light space-y-2 text-xs">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted font-semibold">Protokol Enkripsi:</span>
-                <span className="font-mono font-bold text-primary">AES-256 &bull; TLS 1.3</span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted font-semibold">UU PDP No. 27/2022:</span>
-                <span className="text-success font-semibold flex items-center gap-1">
-                  <CheckIcon className="text-[9px]" /> Patuh Penuh
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted font-semibold">Tanda Tangan Elektronik:</span>
-                <span className="text-primary font-semibold">BKP &amp; Akuntan CA</span>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-primary-light text-xs">
-              <span className="font-bold text-primary block">Ketentuan Rilis Berkas Klien:</span>
-              <ul className="space-y-1.5 text-[11px] text-text-secondary">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">&bull;</span>
-                  <span>Berkas laporan langsung muncul di menu &quot;Dokumen Pajak&quot; pada dashboard klien.</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">&bull;</span>
-                  <span>Status tagihan terintegrasi otomatis dengan konfirmasi transfer rekening Zhou Consulting.</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-primary font-bold">&bull;</span>
-                  <span>Penerbitan faktur pajak keluaran (e-Faktur PPN) diproses setelah pembayaran lunas.</span>
-                </li>
-              </ul>
-            </div>
-          </Card>
-        </div>
-      </div>
-
       {/* INVOICE DETAIL MODAL */}
       {selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
@@ -807,7 +584,7 @@ export default function AdminUploadBillingPage() {
                 Bank Mandiri &bull; Rekening: 122-00-198822-1
               </p>
               <p className="text-[11px] text-text-secondary">
-                Atas Nama: <strong>PT Zhou Konsultindo Nusantara</strong>
+                Atas Nama: <strong>Zhou Consulting</strong>
               </p>
             </div>
 

@@ -79,15 +79,8 @@ export default function AdminProfilePage() {
         </div>
       )}
 
-      {/* Breadcrumb & Header */}
+      {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 text-xs text-text-muted">
-          <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-            Admin Portal
-          </Link>
-          <span>/</span>
-          <span className="text-text-primary font-medium">Pengaturan Profil</span>
-        </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
           <div>
             <h1 className="text-2xl font-bold text-primary font-serif">
@@ -107,7 +100,7 @@ export default function AdminProfilePage() {
       <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#0B1533] to-[#1E3A8A] text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-xl shadow-md shrink-0">
               {user?.name ? user.name.slice(0, 2).toUpperCase() : "AD"}
             </div>
             <div className="space-y-1">
@@ -115,7 +108,7 @@ export default function AdminProfilePage() {
                 <h2 className="text-lg font-bold text-primary">
                   {user?.name || "Staff Administrator"}
                 </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Akun Aktif
                 </span>
               </div>

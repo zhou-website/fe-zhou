@@ -103,7 +103,7 @@ export default function TaxServicePage() {
             <section className="py-14 md:py-20 bg-surface border-b border-primary-light">
               <div className="container-custom space-y-10">
                 <div className="max-w-3xl space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary/10 text-primary text-xs font-semibold">
                     <ShieldTaxIcon />
                     <span>{service?.badge || "Tax Services"}</span>
                   </div>

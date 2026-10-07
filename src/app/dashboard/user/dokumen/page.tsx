@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { clientApi, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +15,9 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import {
-  DocumentIcon,
   CheckCircleIcon,
-  ShieldTaxIcon,
   SearchIcon,
   CloseIcon,
-  BriefcaseIcon,
 } from "@/components/icons";
 
 interface VaultDocument {
@@ -184,16 +180,9 @@ export default function ClientDocumentVaultPage() {
         </div>
       )}
 
-      {/* Top Header & Breadcrumb */}
+      {/* Top Header */}
       <div className="pb-6 border-b border-primary-light">
         <div>
-          <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-            <Link href="/dashboard/user" className="hover:text-primary transition-colors">
-              Dashboard Saya
-            </Link>
-            <span>/</span>
-            <span className="text-primary font-bold">Dokumen Pajak</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Vault Dokumen Pajak &amp; Berkas Kerja
           </h1>
@@ -204,41 +193,38 @@ export default function ClientDocumentVaultPage() {
       </div>
 
       {/* Row 3 Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Total Dokumen Tersimpan</span>
-              <div className="text-3xl font-bold text-primary">{String(documents.length).padStart(2, "0")}</div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
-              <DocumentIcon />
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Total Dokumen Tersimpan
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{String(documents.length).padStart(2, "0")}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Berkas</span>
           </div>
+          <div className="text-[10px] text-text-secondary mt-1">Arsip aman dalam vault</div>
         </Card>
 
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Dokumen Pajak &amp; BPE</span>
-              <div className="text-3xl font-bold text-success">{String(taxCount).padStart(2, "0")}</div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center text-success text-xl">
-              <ShieldTaxIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+            Dokumen Pajak &amp; BPE
+          </span>
+          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
+            <span>{String(taxCount).padStart(2, "0")}</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Terbit</span>
           </div>
+          <div className="text-[10px] text-emerald-700 mt-1">Bukti Penerimaan Elektronik</div>
         </Card>
 
-        <Card className="rounded-xl border-primary-light bg-white p-5 hover:shadow-sm transition-shadow">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-text-muted font-medium">Laporan Keuangan &amp; Legal</span>
-              <div className="text-3xl font-bold text-primary">{String(legalAuditCount).padStart(2, "0")}</div>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xl">
-              <BriefcaseIcon />
-            </div>
+        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+            Laporan Keuangan &amp; Legal
+          </span>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono flex items-baseline gap-1.5">
+            <span>{String(legalAuditCount).padStart(2, "0")}</span>
+            <span className="text-xs text-text-secondary font-sans font-normal">Laporan</span>
           </div>
+          <div className="text-[10px] text-text-secondary mt-1">Kompilasi audit &amp; legalitas</div>
         </Card>
       </div>
 

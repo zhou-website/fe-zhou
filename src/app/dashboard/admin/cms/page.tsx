@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,13 +75,13 @@ interface KursRateInput {
 }
 
 const INITIAL_BATCH_KURS: KursRateInput[] = [
-  { currency: "USD", name: "Dolar Amerika Serikat", rate: "15.890,00", flag: "🇺🇸" },
-  { currency: "EUR", name: "Euro", rate: "17.250,50", flag: "🇪🇺" },
-  { currency: "SGD", name: "Dolar Singapura", rate: "11.890,00", flag: "🇸🇬" },
-  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", flag: "🇯🇵" },
-  { currency: "GBP", name: "Poundsterling Inggris", rate: "20.120,00", flag: "🇬🇧" },
-  { currency: "AUD", name: "Dolar Australia", rate: "10.340,00", flag: "🇦🇺" },
-  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "🇨🇳" },
+  { currency: "USD", name: "Dolar Amerika Serikat", rate: "15.890,00", flag: "" },
+  { currency: "EUR", name: "Euro", rate: "17.250,50", flag: "" },
+  { currency: "SGD", name: "Dolar Singapura", rate: "11.890,00", flag: "" },
+  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", flag: "" },
+  { currency: "GBP", name: "Poundsterling Inggris", rate: "20.120,00", flag: "" },
+  { currency: "AUD", name: "Dolar Australia", rate: "10.340,00", flag: "" },
+  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "" },
 ];
 
 function AdminCMSPageContent() {
@@ -155,7 +154,7 @@ function AdminCMSPageContent() {
   });
 
   const [contactForm, setContactForm] = useState({
-    companyName: "Zhou Consulting Group",
+    companyName: "Zhou Consulting",
     email: "contact@zhouconsulting.com",
     phone: "+62 21 555 8899",
     address: "Sudirman Central Business District (SCBD) Lot 28, Jakarta Selatan",
@@ -844,17 +843,10 @@ function AdminCMSPageContent() {
 
       {/* 1. CLEAN PAGE HEADER */}
       <div className="space-y-1 pb-4 border-b border-primary-light">
-        <div className="flex items-center gap-2 text-xs text-text-muted mb-1">
-          <Link href="/dashboard/admin" className="hover:text-primary transition-colors">
-            Dashboard Operasional
-          </Link>
-          <span>/</span>
-          <span className="text-primary font-bold">Pusat Manajemen CMS</span>
-        </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight flex items-center gap-2.5">
           <span>Pusat Manajemen Konten Website (CMS)</span>
           {isLoading && (
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-semibold animate-pulse">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-700 font-semibold animate-pulse">
               Sinkronisasi Backend...
             </span>
           )}
@@ -1098,7 +1090,7 @@ function AdminCMSPageContent() {
               }}
               className="text-xs font-semibold h-9 px-4 shadow-sm"
             >
-              + Tambah Konten Baru
+              Tambah Konten Baru
             </Button>
           </div>
         </div>
@@ -1146,7 +1138,7 @@ function AdminCMSPageContent() {
 
                     {/* 3. Kategori */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-md bg-primary/10 text-primary">
                         {item.category}
                       </span>
                     </td>
@@ -1938,9 +1930,8 @@ function AdminCMSPageContent() {
                 {kursRates.map((kr, idx) => (
                   <div key={kr.currency} className="p-3 rounded-xl border border-primary-light bg-surface space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-primary flex items-center gap-1.5">
-                        <span>{kr.flag}</span>
-                        <span>{kr.currency}</span>
+                      <span className="font-bold text-xs text-primary">
+                        {kr.currency}
                       </span>
                       <span className="text-[10px] text-text-muted">{kr.name}</span>
                     </div>

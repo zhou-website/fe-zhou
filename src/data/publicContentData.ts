@@ -121,7 +121,7 @@ export interface CompanyProfileContent {
 
 export const INITIAL_COMPANY_PROFILE: CompanyProfileContent = {
   companyName: "Zhou Consulting",
-  legalEntity: "PT Zhou Konsultan Indonesia",
+  legalEntity: "Zhou Consulting",
   licenseNumber: "BKP-2024-8891 / KEP-102/KM.1/2024",
   profileStatement:
     "Kami hadir untuk memastikan ekspansi bisnis Anda berjalan tanpa hambatan regulasi. Dengan memadukan analisis pajak, presisi akuntansi, dan perlindungan hukum, kami membangun benteng pertahanan bisnis yang kokoh sekaligus membuka peluang pertumbuhan baru bagi perusahaan Anda.",

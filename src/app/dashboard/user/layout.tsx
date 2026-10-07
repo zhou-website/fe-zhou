@@ -1,5 +1,6 @@
 import React from "react";
 import { UserSidebar } from "@/components/dashboard/UserSidebar";
+import { DashboardTopNav } from "@/components/dashboard/DashboardTopNav";
 import { DashboardGuard } from "@/components/auth/DashboardGuard";
 
 export const metadata = {
@@ -15,11 +16,14 @@ export default function UserDashboardLayout({
 }) {
   return (
     <DashboardGuard allowedRoles={["user", "superadmin"]} requiredRoleLabel="Klien (User)">
-      <div className="min-h-screen bg-surface flex flex-col font-sans text-text-primary antialiased">
+      <div className="min-h-screen bg-white flex font-sans text-text-primary antialiased">
         <UserSidebar />
-        <div className="lg:pl-64 flex flex-col flex-1 min-w-0">
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-            {children}
+        <div className="lg:pl-64 flex flex-col flex-1 min-w-0 transition-all duration-300">
+          <DashboardTopNav role="user" profileUrl="/dashboard/user/profil" />
+          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)] transition-all">
+            <div className="max-w-[1600px] w-full mx-auto">
+              {children}
+            </div>
           </main>
         </div>
       </div>
