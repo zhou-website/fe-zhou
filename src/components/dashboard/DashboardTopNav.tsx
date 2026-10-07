@@ -94,103 +94,107 @@ export function DashboardTopNav({
 
         {/* Right Side: Action Icons & Profile Card */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Help Button (?) */}
-          <div className="relative" ref={helpRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setHelpOpen(!helpOpen);
-                setNotificationsOpen(false);
-                setMessagesOpen(false);
-                setProfileDropdownOpen(false);
-              }}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
-                helpOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
-              }`}
-              title="Pusat Bantuan"
-              aria-label="Pusat Bantuan"
-            >
-              <QuestionCircleIcon className="text-sm sm:text-base" />
-            </button>
+          {/* Help Button (?) - Hanya untuk portal User/Klien */}
+          {role === "user" && (
+            <div className="relative" ref={helpRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setHelpOpen(!helpOpen);
+                  setNotificationsOpen(false);
+                  setMessagesOpen(false);
+                  setProfileDropdownOpen(false);
+                }}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
+                  helpOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
+                }`}
+                title="Pusat Bantuan"
+                aria-label="Pusat Bantuan"
+              >
+                <QuestionCircleIcon className="text-sm sm:text-base" />
+              </button>
 
-            {helpOpen && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="font-bold text-slate-900 text-sm mb-1">Pusat Bantuan &amp; Dukungan</div>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Butuh konsultasi lanjutan atau panduan operasional sistem?
-                </p>
-                <div className="space-y-2">
-                  <Link
-                    href="/dashboard/user/chatbot"
-                    onClick={() => setHelpOpen(false)}
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 hover:bg-primary-light/40 border border-slate-200/60 transition-colors"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center text-xs shrink-0">
-                      <ChatbotIcon />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900">AI Konsultan Pajak</div>
-                      <div className="text-[10px] text-slate-500">Tanya jawab instan regulasi UU HPP &amp; PPh</div>
-                    </div>
-                  </Link>
+              {helpOpen && (
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="font-bold text-slate-900 text-sm mb-1">Pusat Bantuan &amp; Dukungan</div>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Butuh konsultasi lanjutan atau panduan operasional sistem?
+                  </p>
+                  <div className="space-y-2">
+                    <Link
+                      href="/dashboard/user/chatbot"
+                      onClick={() => setHelpOpen(false)}
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 hover:bg-primary-light/40 border border-slate-200/60 transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center text-xs shrink-0">
+                        <ChatbotIcon />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-900">AI Konsultan Pajak</div>
+                        <div className="text-[10px] text-slate-500">Tanya jawab instan regulasi UU HPP &amp; PPh</div>
+                      </div>
+                    </Link>
 
-                  <a
-                    href="https://wa.me/6281234567890?text=Halo%20Admin%20Zhou%20Consulting,%20saya%20butuh%20bantuan."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/60 border border-emerald-200/60 text-emerald-900 transition-colors"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0">
-                      <WhatsappIcon />
-                    </div>
-                    <div>
-                      <div className="font-bold text-emerald-950">Customer Care WhatsApp</div>
-                      <div className="text-[10px] text-emerald-700">Respons langsung staf penugasan kami</div>
-                    </div>
-                  </a>
+                    <a
+                      href="https://wa.me/6281234567890?text=Halo%20Admin%20Zhou%20Consulting,%20saya%20butuh%20bantuan."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/60 border border-emerald-200/60 text-emerald-900 transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0">
+                        <WhatsappIcon />
+                      </div>
+                      <div>
+                        <div className="font-bold text-emerald-950">Customer Care WhatsApp</div>
+                        <div className="text-[10px] text-emerald-700">Respons langsung staf penugasan kami</div>
+                      </div>
+                    </a>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
-          {/* Messages / Inbox Button */}
-          <div className="relative" ref={messagesRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setMessagesOpen(!messagesOpen);
-                setHelpOpen(false);
-                setNotificationsOpen(false);
-                setProfileDropdownOpen(false);
-              }}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
-                messagesOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
-              }`}
-              title="Pesan & Komunikasi"
-              aria-label="Pesan & Komunikasi"
-            >
-              <EnvelopeIcon className="text-sm sm:text-base" />
-            </button>
+          {/* Messages / Inbox Button - Hanya untuk portal User/Klien */}
+          {role === "user" && (
+            <div className="relative" ref={messagesRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMessagesOpen(!messagesOpen);
+                  setHelpOpen(false);
+                  setNotificationsOpen(false);
+                  setProfileDropdownOpen(false);
+                }}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
+                  messagesOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
+                }`}
+                title="Pesan & Komunikasi"
+                aria-label="Pesan & Komunikasi"
+              >
+                <EnvelopeIcon className="text-sm sm:text-base" />
+              </button>
 
-            {messagesOpen && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-900 text-sm">Saluran Komunikasi</span>
-                  <span className="text-[10px] font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-md">
-                    Aktif
-                  </span>
+              {messagesOpen && (
+                <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-slate-900 text-sm">Saluran Komunikasi</span>
+                    <span className="text-[10px] font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-md">
+                      Aktif
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Koordinasi berkas resmi terhubung dengan PIC konsultan bersertifikat BKP.
+                  </p>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-700 space-y-1">
+                    <div className="font-semibold text-slate-900">Email Resmi Korespondensi:</div>
+                    <div className="font-mono text-primary">client.support@zhouconsulting.co.id</div>
+                    <div className="text-[10px] text-slate-500">Senin - Jumat (09:00 - 18:00 WIB)</div>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-500 mb-3">
-                  Koordinasi berkas resmi terhubung dengan PIC konsultan bersertifikat BKP.
-                </p>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-700 space-y-1">
-                  <div className="font-semibold text-slate-900">Email Resmi Korespondensi:</div>
-                  <div className="font-mono text-primary">client.support@zhouconsulting.co.id</div>
-                  <div className="text-[10px] text-slate-500">Senin - Jumat (09:00 - 18:00 WIB)</div>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Notifications Button (Bell with unread dot) */}
           <div className="relative" ref={notifRef}>
