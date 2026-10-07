@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
 import { UnauthorizedAccess } from "./UnauthorizedAccess";
 
 interface DashboardGuardProps {
@@ -48,8 +48,9 @@ export function DashboardGuard({
     );
   }
 
-  // Role authorization check
-  const isAuthorized = allowedRoles.includes(user.role);
+  // Role authorization check (case-insensitive & robust, backed by normalizeRole)
+  const normalizedUserRole = normalizeRole(user?.role, user?.email);
+  const isAuthorized = allowedRoles.some((r) => r.toLowerCase() === normalizedUserRole);
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-surface py-12">

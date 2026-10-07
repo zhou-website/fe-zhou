@@ -539,6 +539,11 @@ export const adminCmsApi = {
   getJobApplications: () =>
     apiFetch<JobApplicationItem[]>("/api/v1/admin/cms/job-applications"),
 
+  deleteJobApplication: (id: number | string) =>
+    apiFetch(`/api/v1/admin/cms/job-applications/${id}`, {
+      method: "DELETE",
+    }),
+
   getFaqs: () => apiFetch<ChatbotFaqItem[]>("/api/v1/admin/cms/faqs"),
 
   createFaq: (payload: { category: string; question: string; answer_template: string }) =>

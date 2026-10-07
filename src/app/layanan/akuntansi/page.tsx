@@ -13,8 +13,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  BookIcon,
-  ChevronDownIcon,
   CheckIcon,
 } from "@/components/icons";
 import {
@@ -24,7 +22,6 @@ import {
 } from "@/data/layananStorage";
 
 export default function AccountingServicePage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [service, setService] = useState<StoredServiceItem | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
 
@@ -44,14 +41,9 @@ export default function AccountingServicePage() {
     };
   }, []);
 
-  const toggleFaq = (index: number) => {
-    setOpenFaq(openFaq === index ? null : index);
-  };
-
   const serviceScopes = service?.pillars || [];
   const workflowSteps = service?.workflow || [];
   const deliverables = service?.deliverables || [];
-  const faqs = service?.faqs || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
@@ -118,18 +110,13 @@ export default function AccountingServicePage() {
                         key={idx}
                         className="rounded-xl border-primary-light bg-white hover:shadow-md hover:border-silver transition-all duration-200 flex flex-col justify-between"
                       >
-                        <CardHeader className="space-y-3 pb-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary-light text-primary flex items-center justify-center text-base">
-                            <BookIcon />
-                          </div>
-                          <div>
-                            <CardTitle className="text-card-heading font-semibold text-primary">
-                              {scope.title}
-                            </CardTitle>
-                            <CardDescription className="text-xs text-text-secondary mt-1 leading-relaxed">
-                              {scope.description}
-                            </CardDescription>
-                          </div>
+                        <CardHeader className="space-y-1.5 pb-3">
+                          <CardTitle className="text-card-heading font-semibold text-primary">
+                            {scope.title}
+                          </CardTitle>
+                          <CardDescription className="text-xs text-text-secondary mt-1 leading-relaxed">
+                            {scope.description}
+                          </CardDescription>
                         </CardHeader>
                       </Card>
                     ))}
@@ -189,47 +176,6 @@ export default function AccountingServicePage() {
                         <span className="text-xs font-semibold text-primary leading-relaxed">
                           {item}
                         </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* FAQ Section if available */}
-            {faqs.length > 0 && (
-              <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
-                <div className="container-custom max-w-3xl space-y-10">
-                  <div className="text-center space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                      Tanya Jawab Layanan
-                    </h2>
-                  </div>
-
-                  <div className="space-y-3">
-                    {faqs.map((faq, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-lg bg-white border border-primary-light overflow-hidden transition-colors"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleFaq(idx)}
-                          className="w-full flex items-center justify-between p-4 text-left font-semibold text-xs text-primary hover:bg-surface/50 transition-colors"
-                          aria-expanded={openFaq === idx}
-                        >
-                          <span>{faq.q}</span>
-                          <ChevronDownIcon
-                            className={`text-[10px] text-silver transition-transform duration-200 ${
-                              openFaq === idx ? "rotate-180 text-primary" : ""
-                            }`}
-                          />
-                        </button>
-                        {openFaq === idx && (
-                          <div className="px-4 pb-4 pt-1 text-xs text-text-secondary leading-relaxed border-t border-primary-light/50">
-                            {faq.a}
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
+
 export type RegulationCategory =
   | "Regulasi Zhou"
   | "Undang-Undang"
@@ -8,7 +10,7 @@ export type RegulationCategory =
   | "Peraturan DJP"
   | "Keputusan KMK";
 
-export type RegulationStatus = "Berlaku" | "Pembaruan";
+export type RegulationStatus = "Berlaku" | "Pembaruan" | "Draft" | "Published";
 
 export interface StoredRegulationItem {
   id: string;
@@ -47,17 +49,14 @@ export function getStoredRegulations(): StoredRegulationItem[] {
 
   try {
     const raw = localStorage.getItem(REGULATIONS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_REGULATIONS;
+    const source: StoredRegulationItem[] = raw ? JSON.parse(raw) : DEFAULT_REGULATIONS;
+    if (Array.isArray(source)) {
+      return source.filter((item) => !isCmsItemDeleted(item.id, item.title, undefined, item.docNumber));
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    return DEFAULT_REGULATIONS;
+    return DEFAULT_REGULATIONS.filter((item) => !isCmsItemDeleted(item.id, item.title, undefined, item.docNumber));
   } catch (error) {
     console.error("Gagal membaca zhou_regulations_data dari localStorage:", error);
-    return DEFAULT_REGULATIONS;
+    return DEFAULT_REGULATIONS.filter((item) => !isCmsItemDeleted(item.id, item.title, undefined, item.docNumber));
   }
 }
 
@@ -121,9 +120,24 @@ export function updateRegulation(
 /**
  * Menghapus regulasi / dokumen peraturan (DELETE)
  */
-export function deleteRegulation(id: string): StoredRegulationItem[] {
+export function deleteRegulation(idOrTitle: string): StoredRegulationItem[] {
+  recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
   const current = getStoredRegulations();
-  const updated = current.filter((item) => item.id !== id);
+  const target = idOrTitle.trim().toLowerCase();
+  const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
+  const updated = current.filter((item) => {
+    if (isCmsItemDeleted(item.id, item.title, undefined, item.docNumber)) return false;
+    const rTitle = item.title.trim().toLowerCase();
+    const rId = item.id.trim().toLowerCase();
+    const rDoc = item.docNumber.trim().toLowerCase();
+    return (
+      item.id !== idOrTitle &&
+      rId !== target &&
+      rId !== targetSlug &&
+      rTitle !== target &&
+      rDoc !== target
+    );
+  });
   saveStoredRegulations(updated);
   return updated;
 }

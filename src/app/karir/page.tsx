@@ -9,6 +9,7 @@ import {
   CAREER_SETTINGS_EVENT,
   JobPosition,
 } from "@/data/karirStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { publicApi, CareerItem } from "@/lib/api";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -79,7 +80,9 @@ export default function CareerPage() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiJobs: JobPosition[] = res.data.map((c: CareerItem) => {
+          const apiJobs: JobPosition[] = res.data
+            .filter((c: CareerItem) => !isCmsItemDeleted(c.id, c.position_title, undefined, c.position_code))
+            .map((c: CareerItem) => {
             const titleLower = (c.position_title || "").toLowerCase();
             const deptKey = (titleLower.includes("tax") || titleLower.includes("pajak")
               ? "tax"
@@ -87,7 +90,7 @@ export default function CareerPage() {
               ? "accounting"
               : titleLower.includes("legal") || titleLower.includes("hukum")
               ? "legal"
-              : "all") as JobPosition["deptKey"];
+              : "business") as JobPosition["deptKey"];
 
             const department =
               deptKey === "tax"
@@ -95,7 +98,7 @@ export default function CareerPage() {
                 : deptKey === "accounting"
                 ? "Accounting Service"
                 : deptKey === "legal"
-                ? "Legal Services"
+                ? "Legal Compliance"
                 : "Konsultasi Bisnis";
 
             return {
@@ -121,6 +124,7 @@ export default function CareerPage() {
                 "Asuransi kesehatan dan fasilitas kerja fleksibel.",
               ],
               skills: ["Analisis Fiskal", "Akuntansi", "Kepatuhan"],
+              status: (c.is_active ? "Published" : "Draft") as "Published" | "Draft",
             };
           });
 
@@ -173,9 +177,14 @@ export default function CareerPage() {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [registrationCode, setRegistrationCode] = useState<string>("");
 
-  // Filtering Logic
-  const filteredJobs = jobsList.filter((job) => {
-    const matchesTab = activeTab === "all" || job.deptKey === activeTab;
+  // Filtering Logic (Hanya tampilkan lowongan berstatus Published untuk publik)
+  const publishedJobs = jobsList.filter((job) => job.status !== "Draft");
+
+  const filteredJobs = publishedJobs.filter((job) => {
+    const matchesTab =
+      activeTab === "all" ||
+      job.deptKey === activeTab ||
+      (activeTab === "business" && (job.deptKey === "business" || job.department.toLowerCase().includes("bisnis")));
     const matchesQuery =
       searchQuery.trim() === "" ||
       job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -353,7 +362,7 @@ export default function CareerPage() {
               </p>
             </div>
 
-            {!careerSettings.isOpen ? (
+            {!(careerSettings.isOpen || publishedJobs.length > 0) ? (
               /* Tampilan Statis Saat Lowongan Periode Ini Belum Dibuka */
               <div className="rounded-2xl border border-primary-light bg-white p-8 sm:p-12 text-center max-w-2xl mx-auto shadow-sm space-y-6 my-6 animate-in fade-in duration-200">
                 <div className="w-16 h-16 rounded-full bg-surface border border-primary-light flex items-center justify-center mx-auto text-primary text-2xl shadow-2xs">
@@ -405,16 +414,19 @@ export default function CareerPage() {
                     >
                       <TabsList className="bg-white border border-primary-light">
                         <TabsTrigger value="all" className="text-xs">
-                          Semua Bidang ({CAREER_JOBS.length})
+                          Semua Bidang ({publishedJobs.length})
                         </TabsTrigger>
                         <TabsTrigger value="tax" className="text-xs">
-                          Tax Service Core
+                          Tax Service Core ({publishedJobs.filter((j) => j.deptKey === "tax").length})
                         </TabsTrigger>
                         <TabsTrigger value="accounting" className="text-xs">
-                          Accounting Service
+                          Accounting Service ({publishedJobs.filter((j) => j.deptKey === "accounting").length})
                         </TabsTrigger>
                         <TabsTrigger value="legal" className="text-xs">
-                          Legal Compliance
+                          Legal Compliance ({publishedJobs.filter((j) => j.deptKey === "legal").length})
+                        </TabsTrigger>
+                        <TabsTrigger value="business" className="text-xs">
+                          Konsultasi Bisnis ({publishedJobs.filter((j) => j.deptKey === "business" || j.department.toLowerCase().includes("bisnis")).length})
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
@@ -833,7 +845,7 @@ export default function CareerPage() {
                     placeholder="Ringkasan motivasi atau keahlian utama Anda..."
                     value={coverLetter}
                     onChange={(e) => setCoverLetter(e.target.value)}
-                    className="w-full rounded-md border border-primary-light bg-white p-2.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-md border border-primary-light bg-white p-2.5 text-xs text-slate-600 placeholder:text-slate-400 placeholder:text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
 

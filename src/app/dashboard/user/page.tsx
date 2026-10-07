@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth, isDummyTicket } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useAuth, isDummyTicket, normalizeRole } from "@/context/AuthContext";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,17 @@ import {
   CloseIcon,
   DownloadIcon,
 } from "@/components/icons";
+import {
+  getStoredClientTickets,
+  getStoredDocuments,
+  TICKETS_UPDATED_EVENT,
+  DOCUMENTS_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
 
 interface Ticket {
   id: string;
   title: string;
-  category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting";
+  category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting" | string;
   consultant: string;
   status: "In Progress" | "Completed";
   progress: number;
@@ -39,55 +46,63 @@ interface Ticket {
 interface ClientDocument {
   id: string;
   name: string;
-  category: "Pajak" | "Akuntansi" | "Legal";
+  category: "Pajak" | "Akuntansi" | "Legal" | string;
   date: string;
   size: string;
   ticketRef: string;
 }
 
 export default function UserDashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  // Sync consultations & documents with backend, filtering dummy data
+  // Auto redirect superadmin and admin to their respective portals
   useEffect(() => {
-    let customTickets: Ticket[] = [];
-    try {
-      const saved = localStorage.getItem("zhou_client_custom_tickets");
-      if (saved) {
-        const parsed = JSON.parse(saved) as Ticket[];
-        const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
-        customTickets = filteredSaved.map((t) => ({
-          id: t.id,
-          title: t.title,
-          category: t.category || "Tax Service Core",
-          consultant: t.consultant || "Konsultan Zhou",
-          status: t.status === "Completed" ? "Completed" : "In Progress",
-          progress: t.progress || 20,
-          updatedAt: t.updatedAt || "Baru saja",
-          checklists: t.checklists || [
-            { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-            { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: false },
-            { text: "Penyusunan berkas luaran & final review", done: false },
-          ],
-          deliverableFile: t.deliverableFile,
-          deliverableSize: t.deliverableSize,
-        }));
-        if (customTickets.length > 0) {
-          setTickets(customTickets);
-        }
-      }
-    } catch {}
+    if (!user) return;
+    const role = normalizeRole(user.role, user.email);
+    if (role === "superadmin") {
+      router.replace("/dashboard/superadmin");
+    } else if (role === "admin") {
+      router.replace("/dashboard/admin");
+    }
+  }, [user, router]);
 
+  // Sync consultations & documents with backend, shared tickets, and uploaded documents
+  useEffect(() => {
     async function loadClientData() {
+      // 1. Tiket yang dibuat secara lokal / booking
+      const storedClientTickets = getStoredClientTickets();
+      const filteredCustom = storedClientTickets.filter((t) => !isDummyTicket(t));
+      const customTickets: Ticket[] = filteredCustom.map((t) => ({
+        id: t.id,
+        title: t.title,
+        category: t.category || "Tax Service Core",
+        consultant: t.consultant || "Konsultan Zhou",
+        status: t.status.toLowerCase().includes("selesai") || t.status === "Completed" ? "Completed" : "In Progress",
+        progress: t.progress || 25,
+        updatedAt: t.createdAt || "Baru saja",
+        checklists: (t.milestones && t.milestones.length > 0)
+          ? t.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
+          : [
+              { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: false },
+              { text: "Penyusunan berkas luaran & final review", done: false },
+            ],
+        deliverableFile: t.deliverables?.[0]?.name,
+        deliverableSize: t.deliverables?.[0]?.size,
+      }));
+
+      // 2. Tiket dari backend
+      let backendTickets: Ticket[] = [];
       try {
         const res = await clientApi.getConsultations();
         if (res.success && Array.isArray(res.data)) {
           const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
-          const mapped: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
+          backendTickets = validConsultations.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-${c.id}`,
             title: c.title,
             category: "Tax Service Core",
@@ -107,19 +122,26 @@ export default function UserDashboardPage() {
             deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
             deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
           }));
-
-          const combined = [...customTickets];
-          mapped.forEach((m) => {
-            if (!combined.some((item) => item.id === m.id)) {
-              combined.push(m);
-            }
-          });
-          setTickets(combined);
         }
+      } catch {
+        // silent fallback
+      }
 
+      // Gabungkan tiket tanpa duplikasi
+      const combinedTickets = [...customTickets];
+      backendTickets.forEach((m) => {
+        if (!combinedTickets.some((item) => item.id.toLowerCase() === m.id.toLowerCase())) {
+          combinedTickets.push(m);
+        }
+      });
+      setTickets(combinedTickets);
+
+      // 3. Dokumen dari backend
+      let backendDocs: ClientDocument[] = [];
+      try {
         const docRes = await clientApi.getDocuments();
         if (docRes.success && Array.isArray(docRes.data)) {
-          const mappedDocs: ClientDocument[] = docRes.data.map((d: ClientDocumentItem) => ({
+          backendDocs = docRes.data.map((d: ClientDocumentItem) => ({
             id: String(d.id),
             name: d.file_name,
             category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
@@ -131,13 +153,40 @@ export default function UserDashboardPage() {
             size: d.file_size || "1.2 MB",
             ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
           }));
-          setDocuments(mappedDocs);
         }
       } catch {
         // silent fallback
       }
+
+      // 4. Dokumen yang diunggah Admin dari storage bersama
+      const localDocs = getStoredDocuments();
+      const mappedLocalDocs: ClientDocument[] = localDocs.map((d) => ({
+        id: d.id,
+        name: d.fileName,
+        category: d.category.includes("Tax") ? "Pajak" : d.category.includes("Account") ? "Akuntansi" : "Legal",
+        date: d.uploadDate || "Hari ini",
+        size: d.fileSize || "2.1 MB",
+        ticketRef: d.ticketId || "-",
+      }));
+
+      const combinedDocs = [...mappedLocalDocs];
+      backendDocs.forEach((b) => {
+        if (!combinedDocs.some((cd) => cd.id.toLowerCase() === b.id.toLowerCase() || cd.name.toLowerCase() === b.name.toLowerCase())) {
+          combinedDocs.push(b);
+        }
+      });
+      setDocuments(combinedDocs);
     }
+
     loadClientData();
+    window.addEventListener(TICKETS_UPDATED_EVENT, loadClientData);
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadClientData);
+    window.addEventListener("storage", loadClientData);
+    return () => {
+      window.removeEventListener(TICKETS_UPDATED_EVENT, loadClientData);
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadClientData);
+      window.removeEventListener("storage", loadClientData);
+    };
   }, []);
 
   // Filtered tickets

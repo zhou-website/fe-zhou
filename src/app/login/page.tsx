@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
 import { authApi, setAuthToken } from "@/lib/api";
 import {
   LockIcon,
@@ -75,11 +75,7 @@ function LoginFormContent() {
           setAuthToken(res.data.token);
 
           if (res.data.user) {
-            const role = (res.data.user.role?.toLowerCase() === "superadmin"
-              ? "superadmin"
-              : res.data.user.role?.toLowerCase() === "admin"
-              ? "admin"
-              : "user") as "user" | "admin" | "superadmin";
+            const role = normalizeRole(res.data.user.role, res.data.user.email);
 
             login(res.data.user.email, role, redirectParam || "/dashboard", {
               name: res.data.user.name,

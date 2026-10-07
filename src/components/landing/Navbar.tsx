@@ -12,13 +12,14 @@ import {
   LogoutIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
 
 export function Navbar() {
   const pathname = usePathname();
   const isHome = pathname === "/";
   const { language, setLanguage, t } = useLanguage();
   const { user, isAuthenticated, logout } = useAuth();
+  const userRole = normalizeRole(user?.role, user?.email);
 
   const getAuthHref = (target: string) => {
     if (isAuthenticated) return target;
@@ -364,7 +365,7 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             {isAuthenticated && user ? (
               <>
-                {user.role === "superadmin" ? (
+                {userRole === "superadmin" ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -373,7 +374,7 @@ export function Navbar() {
                   >
                     <Link href="/dashboard/superadmin">Superadmin Portal</Link>
                   </Button>
-                ) : user.role === "admin" ? (
+                ) : userRole === "admin" ? (
                   <Button
                     variant="primary"
                     size="sm"
@@ -392,27 +393,6 @@ export function Navbar() {
                     <Link href="/dashboard/user">Dashboard Saya</Link>
                   </Button>
                 )}
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  asChild
-                  className="h-8 w-8 p-0 rounded-lg border-primary-light text-text-secondary hover:text-primary hover:border-primary hover:bg-surface transition-colors shrink-0"
-                  title="Profil Pengguna"
-                  aria-label="Profil Pengguna"
-                >
-                  <Link
-                    href={
-                      user.role === "superadmin"
-                        ? "/dashboard/superadmin/users"
-                        : user.role === "admin"
-                        ? "/dashboard/admin?section=company"
-                        : "/dashboard/user/profil"
-                    }
-                  >
-                    <UserIcon className="text-xs" />
-                  </Link>
-                </Button>
 
                 <Button
                   variant="outline"
@@ -478,16 +458,16 @@ export function Navbar() {
             >
               <Link
                 href={
-                  user.role === "superadmin"
+                  userRole === "superadmin"
                     ? "/dashboard/superadmin"
-                    : user.role === "admin"
+                    : userRole === "admin"
                     ? "/dashboard/admin"
                     : "/dashboard/user"
                 }
               >
-                {user.role === "superadmin"
+                {userRole === "superadmin"
                   ? "Superadmin Portal"
-                  : user.role === "admin"
+                  : userRole === "admin"
                   ? "Admin Portal"
                   : "Dashboard Saya"}
               </Link>
@@ -747,9 +727,9 @@ export function Navbar() {
                 <div className="px-3 py-2 rounded-lg bg-surface text-xs text-text-secondary flex items-center justify-between">
                   <span className="font-semibold text-text-primary truncate">{user.name}</span>
                   <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-primary/10 text-primary">
-                    {user.role === "superadmin"
+                    {userRole === "superadmin"
                       ? "Superadmin"
-                      : user.role === "admin"
+                      : userRole === "admin"
                       ? "Staff Admin"
                       : "Klien"}
                   </span>
@@ -764,57 +744,34 @@ export function Navbar() {
                 >
                   <Link
                     href={
-                      user.role === "superadmin"
+                      userRole === "superadmin"
                         ? "/dashboard/superadmin"
-                        : user.role === "admin"
+                        : userRole === "admin"
                         ? "/dashboard/admin"
                         : "/dashboard/user"
                     }
                   >
-                    {user.role === "superadmin"
+                    {userRole === "superadmin"
                       ? "Superadmin Portal"
-                      : user.role === "admin"
+                      : userRole === "admin"
                       ? "Admin Portal"
                       : "Dashboard Saya"}
                   </Link>
                 </Button>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="default"
-                    asChild
-                    className="w-full font-semibold text-xs justify-center border-primary-light text-text-primary hover:bg-surface gap-1.5"
-                    onClick={closeAllMenus}
-                  >
-                    <Link
-                      href={
-                        user.role === "superadmin"
-                          ? "/dashboard/superadmin/users"
-                          : user.role === "admin"
-                          ? "/dashboard/admin?section=company"
-                          : "/dashboard/user/profil"
-                      }
-                    >
-                      <UserIcon className="text-xs" />
-                      <span>Profil</span>
-                    </Link>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="default"
-                    type="button"
-                    onClick={() => {
-                      closeAllMenus();
-                      logout();
-                    }}
-                    className="w-full font-semibold text-xs justify-center border-error/30 text-error hover:bg-error/10 cursor-pointer gap-1.5"
-                  >
-                    <LogoutIcon className="text-xs" />
-                    <span>Logout</span>
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="default"
+                  type="button"
+                  onClick={() => {
+                    closeAllMenus();
+                    logout();
+                  }}
+                  className="w-full font-semibold text-xs justify-center border-error/30 text-error hover:bg-error/10 cursor-pointer gap-1.5"
+                >
+                  <LogoutIcon className="text-xs" />
+                  <span>Logout</span>
+                </Button>
               </>
             ) : (
               <div className="grid grid-cols-2 gap-2.5">

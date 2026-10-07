@@ -42,6 +42,7 @@ import {
   faTriangleExclamation,
   faImage,
   faUpload,
+  faEllipsisVertical,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -112,6 +113,7 @@ export const BellIcon = createIcon(faBell);
 export const AlertIcon = createIcon(faTriangleExclamation);
 export const ImageIcon = createIcon(faImage);
 export const UploadIcon = createIcon(faUpload);
+export const MoreVerticalIcon = createIcon(faEllipsisVertical);
 
 // Brands
 export const WhatsappIcon = createIcon(faWhatsapp);

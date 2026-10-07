@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
 
 export default function DashboardIndexPage() {
   const router = useRouter();
@@ -16,12 +16,13 @@ export default function DashboardIndexPage() {
       return;
     }
 
-    if (user.role === "admin") {
-      router.replace("/dashboard/admin");
-    } else if (user.role === "superadmin") {
+    const role = normalizeRole(user.role, user.email);
+
+    if (role === "superadmin") {
       router.replace("/dashboard/superadmin");
+    } else if (role === "admin") {
+      router.replace("/dashboard/admin");
     } else {
-      // Default client role
       router.replace("/dashboard/user");
     }
   }, [user, isAuthenticated, isLoading, router]);

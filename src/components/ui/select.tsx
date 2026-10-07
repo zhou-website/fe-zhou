@@ -167,7 +167,7 @@ export const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           disabled={disabled}
           onClick={() => setIsOpen((prev) => !prev)}
           className={cn(
-            "flex h-9 w-full items-center justify-between gap-2.5 rounded-xl border border-primary-light bg-surface px-3 py-2 text-xs font-medium text-text-primary transition-colors hover:bg-white focus:bg-white focus:outline-none shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 text-left",
+            "flex h-9 w-full items-center justify-between gap-2.5 rounded-xl border border-primary-light bg-surface px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-white focus:bg-white focus:outline-none shadow-2xs disabled:cursor-not-allowed disabled:opacity-50 text-left",
             error && "border-error focus-visible:border-error",
             triggerClassName
           )}

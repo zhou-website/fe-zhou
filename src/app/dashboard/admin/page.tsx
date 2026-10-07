@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   adminApi,
   ConsultationItem,
-  AdminDashboardOverviewData,
 } from "@/lib/api";
 import { isDummyTicket } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -20,14 +19,15 @@ import {
   CloseIcon,
 } from "@/components/icons";
 
+import {
+  getStoredClientTickets,
+  saveStoredClientTickets,
+  convertTicketToConsultationItem,
+  updateStoredClientTicketStatus,
+  TICKETS_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
+
 function AdminDashboardContent() {
-  const [overview, setOverview] = useState<AdminDashboardOverviewData>({
-    total_consultations: 0,
-    active_consultations: 0,
-    completed_consultations: 0,
-    total_clients: 0,
-    total_documents: 0,
-  });
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,43 +42,104 @@ function AdminDashboardContent() {
 
   const loadData = async () => {
     setIsLoading(true);
+    let backendList: ConsultationItem[] = [];
     try {
-      const [overviewRes, consultRes] = await Promise.allSettled([
-        adminApi.getDashboardOverview(),
-        adminApi.getConsultations(),
-      ]);
-
-      if (overviewRes.status === "fulfilled" && overviewRes.value.data) {
-        setOverview(overviewRes.value.data);
-      }
-      if (consultRes.status === "fulfilled" && Array.isArray(consultRes.value.data)) {
-        const validConsultations = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
-        setConsultations(validConsultations);
+      const consultRes = await adminApi.getConsultations();
+      if (consultRes?.data && Array.isArray(consultRes.data)) {
+        backendList = consultRes.data.filter((c: ConsultationItem) => !isDummyTicket(c));
       }
     } catch (err) {
       console.warn("Gagal memuat data operasional:", err);
-    } finally {
-      setIsLoading(false);
     }
+
+    // Tiket yang dibuat/dibooking oleh pengguna (dari form konsultasi & user dashboard)
+    const clientTickets = getStoredClientTickets();
+    const mappedClient = clientTickets.map(convertTicketToConsultationItem);
+
+    // Gabungkan tiket pengguna dan tiket backend tanpa duplikasi
+    const combined: ConsultationItem[] = [...mappedClient];
+    for (const b of backendList) {
+      if (
+        !combined.some(
+          (c) =>
+            String(c.id).toLowerCase() === String(b.id).toLowerCase() ||
+            (b.project_code && c.project_code && c.project_code.toLowerCase() === b.project_code.toLowerCase())
+        )
+      ) {
+        combined.push(b);
+      }
+    }
+
+    setConsultations(combined);
+    setIsLoading(false);
   };
 
   useEffect(() => {
     loadData();
+    window.addEventListener(TICKETS_UPDATED_EVENT, loadData);
+    window.addEventListener("storage", loadData);
+    return () => {
+      window.removeEventListener(TICKETS_UPDATED_EVENT, loadData);
+      window.removeEventListener("storage", loadData);
+    };
   }, []);
 
   const handleUpdateStatus = async (
-    id: number,
+    item: ConsultationItem,
     newStatus: "PENDING" | "IN_PROGRESS" | "COMPLETED"
   ) => {
     try {
-      await adminApi.updateConsultationStatus(id, newStatus);
-      setConsultations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
-      );
-      if (selectedConsultation?.id === id) {
-        setSelectedConsultation((prev) => (prev ? { ...prev, status: newStatus } : null));
+      // 1. Coba update backend API jika ada di backend
+      try {
+        if (typeof item.id === "number" || !isNaN(Number(item.id))) {
+          await adminApi.updateConsultationStatus(item.id, newStatus);
+        }
+      } catch (backendErr) {
+        console.warn("Backend consultation update notice:", backendErr);
       }
-      showToast(`Status perikatan konsultasi #${id} berhasil diubah ke ${newStatus}.`);
+
+      // 2. Perbarui tiket di storage lokal (agar portal user langsung tersinkron statusnya)
+      const clientStatus =
+        newStatus === "COMPLETED"
+          ? "Completed"
+          : newStatus === "IN_PROGRESS"
+          ? "In Progress"
+          : "Pending";
+      const clientProgress = newStatus === "COMPLETED" ? 100 : 50;
+
+      if (item.project_code) {
+        updateStoredClientTicketStatus(item.project_code, clientStatus, clientProgress);
+      }
+      updateStoredClientTicketStatus(item.id, clientStatus, clientProgress);
+      if (item.title) {
+        updateStoredClientTicketStatus(item.title, clientStatus, clientProgress);
+      }
+
+      // 3. Update state di UI admin secara instan
+      setConsultations((prev) =>
+        prev.map((c) =>
+          c.id === item.id || (item.project_code && c.project_code === item.project_code)
+            ? { ...c, status: newStatus, progress_percent: clientProgress }
+            : c
+        )
+      );
+
+      if (
+        selectedConsultation &&
+        (selectedConsultation.id === item.id ||
+          (item.project_code && selectedConsultation.project_code === item.project_code))
+      ) {
+        setSelectedConsultation((prev) =>
+          prev ? { ...prev, status: newStatus, progress_percent: clientProgress } : null
+        );
+      }
+
+      const displayLabel = item.project_code || item.title || `#${item.id}`;
+      showToast(
+        newStatus === "COMPLETED"
+          ? `Perikatan ${displayLabel} berhasil diverifikasi selesai!`
+          : `Perikatan ${displayLabel} berhasil dibuka kembali (Sedang Berjalan).`
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memperbarui status";
       showToast(msg);
@@ -98,6 +159,41 @@ function AdminDashboardContent() {
       return matchesStatus && matchesSearch;
     });
   }, [consultations, statusFilter, searchQuery]);
+
+  const computedOverview = useMemo(() => {
+    if (consultations.length > 0) {
+      const total = consultations.length;
+      const active = consultations.filter(
+        (c) => c.status === "IN_PROGRESS" || c.status === "PENDING"
+      ).length;
+      const completed = consultations.filter((c) => c.status === "COMPLETED").length;
+      const clients = new Set(
+        consultations
+          .map((c) => c.client_id || c.client?.id || c.client?.name)
+          .filter(Boolean)
+      ).size;
+      const docs = consultations.reduce(
+        (acc, curr) => acc + (curr.documents?.length || 0),
+        0
+      );
+      return {
+        total_consultations: total,
+        active_consultations: active,
+        completed_consultations: completed,
+        total_clients: clients,
+        total_documents: docs,
+      };
+    }
+
+    // Ketika tidak ada perikatan/konsultasi yang masuk, metrik akurat bernilai 0
+    return {
+      total_consultations: 0,
+      active_consultations: 0,
+      completed_consultations: 0,
+      total_clients: 0,
+      total_documents: 0,
+    };
+  }, [consultations]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -133,7 +229,7 @@ function AdminDashboardContent() {
             Total Konsultasi
           </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
-            {overview.total_consultations}
+            {computedOverview.total_consultations}
           </div>
           <div className="text-[10px] text-text-secondary mt-1">Seluruh proyek terdaftar</div>
         </Card>
@@ -143,7 +239,7 @@ function AdminDashboardContent() {
             Sedang Berjalan
           </span>
           <div className="mt-2 text-2xl font-bold text-amber-800 font-mono">
-            {overview.active_consultations}
+            {computedOverview.active_consultations}
           </div>
           <div className="text-[10px] text-amber-700 mt-1">Perikatan aktif tim BKP</div>
         </Card>
@@ -153,7 +249,7 @@ function AdminDashboardContent() {
             Konsultasi Selesai
           </span>
           <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono">
-            {overview.completed_consultations}
+            {computedOverview.completed_consultations}
           </div>
           <div className="text-[10px] text-emerald-700 mt-1">Laporan luaran terbit</div>
         </Card>
@@ -163,7 +259,7 @@ function AdminDashboardContent() {
             Total Klien
           </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
-            {overview.total_clients}
+            {computedOverview.total_clients}
           </div>
           <div className="text-[10px] text-text-secondary mt-1">Entitas korporasi &amp; pribadi</div>
         </Card>
@@ -173,7 +269,7 @@ function AdminDashboardContent() {
             Total Dokumen
           </span>
           <div className="mt-2 text-2xl font-bold text-primary font-mono">
-            {overview.total_documents}
+            {computedOverview.total_documents}
           </div>
           <div className="text-[10px] text-text-secondary mt-1">Berkas &amp; kertas kerja</div>
         </Card>
@@ -281,7 +377,7 @@ function AdminDashboardContent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => handleUpdateStatus(item.id, "COMPLETED")}
+                        onClick={() => handleUpdateStatus(item, "COMPLETED")}
                         className="text-[11px] h-7 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-200"
                       >
                         Tandai Selesai
@@ -291,7 +387,7 @@ function AdminDashboardContent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => handleUpdateStatus(item.id, "IN_PROGRESS")}
+                        onClick={() => handleUpdateStatus(item, "IN_PROGRESS")}
                         className="text-[11px] h-7 px-2.5"
                       >
                         Buka Kembali
@@ -396,7 +492,28 @@ function AdminDashboardContent() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-primary-light">
+            <div className="flex justify-end items-center gap-2 pt-2 border-t border-primary-light">
+              {selectedConsultation.status !== "COMPLETED" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUpdateStatus(selectedConsultation, "COMPLETED")}
+                  className="text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 font-semibold"
+                >
+                  Tandai Selesai
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUpdateStatus(selectedConsultation, "IN_PROGRESS")}
+                  className="text-xs text-primary font-semibold"
+                >
+                  Buka Kembali
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"

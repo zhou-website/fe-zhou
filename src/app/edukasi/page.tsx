@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -44,12 +43,16 @@ import {
   ZHOU_ARTICLES,
   BELAJAR_PAJAK_LINKS,
   ZhouArticle,
+  BelajarPajakLink,
 } from "@/data/edukasiData";
 import {
   getStoredZhouArticles,
   ZHOU_ARTICLES_EVENT,
   extractEducationImageAndBody,
+  getStoredBelajarPajakLinks,
+  GOV_LINKS_EVENT,
 } from "@/data/edukasiStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 const CATEGORIES = [
@@ -66,6 +69,8 @@ function EducationPortalContent() {
 
   // Dynamic Zhou Articles from storage
   const [articlesList, setArticlesList] = useState<ZhouArticle[]>([]);
+  // Dynamic Belajar Pajak Links from storage (managed by Admin)
+  const [belajarPajakList, setBelajarPajakList] = useState<BelajarPajakLink[]>([]);
 
   // State for Edukasi Zhou
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -82,6 +87,7 @@ function EducationPortalContent() {
   useEffect(() => {
     let isMounted = true;
     setArticlesList(getStoredZhouArticles());
+    setBelajarPajakList(getStoredBelajarPajakLinks());
 
     // Fetch from live backend API
     publicApi
@@ -89,7 +95,9 @@ function EducationPortalContent() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+          const apiArticles: ZhouArticle[] = res.data
+            .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title))
+            .map((item: EducationItem) => {
             const { image, cleanBody } = extractEducationImageAndBody(
               item.body,
               item.file_path,
@@ -158,12 +166,20 @@ function EducationPortalContent() {
       setArticlesList(getStoredZhouArticles());
     };
 
+    const handleGovLinksUpdate = () => {
+      setBelajarPajakList(getStoredBelajarPajakLinks());
+    };
+
     window.addEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
+    window.addEventListener(GOV_LINKS_EVENT, handleGovLinksUpdate);
     window.addEventListener("storage", handleArticlesUpdate);
+    window.addEventListener("storage", handleGovLinksUpdate);
     return () => {
       isMounted = false;
       window.removeEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
+      window.removeEventListener(GOV_LINKS_EVENT, handleGovLinksUpdate);
       window.removeEventListener("storage", handleArticlesUpdate);
+      window.removeEventListener("storage", handleGovLinksUpdate);
     };
   }, []);
 
@@ -195,9 +211,14 @@ function EducationPortalContent() {
     });
   }, [articlesList, selectedCategory, searchQuery]);
 
-  // Filtered Belajar Pajak Links
+  // Filtered Belajar Pajak Links (Dikelola Dinamis oleh Admin CMS)
+  const activeBelajarPajakSource = useMemo(() => {
+    return belajarPajakList.length > 0 ? belajarPajakList : BELAJAR_PAJAK_LINKS;
+  }, [belajarPajakList]);
+
   const filteredBelajarPajak = useMemo(() => {
-    return BELAJAR_PAJAK_LINKS.filter((item) => {
+    return activeBelajarPajakSource.filter((item) => {
+      if (item.status === "Draft") return false;
       const matchInst =
         bpInstitutionFilter === "all" || item.institution === bpInstitutionFilter;
       const matchType =
@@ -213,7 +234,7 @@ function EducationPortalContent() {
         item.type.toLowerCase().includes(q);
       return matchInst && matchType && matchQuery;
     });
-  }, [bpInstitutionFilter, bpTypeFilter, bpSearchQuery]);
+  }, [activeBelajarPajakSource, bpInstitutionFilter, bpTypeFilter, bpSearchQuery]);
 
   // Featured articles list for carousel (managed by Admin)
   const featuredArticles = useMemo(() => {
@@ -361,36 +382,31 @@ function EducationPortalContent() {
                 onTouchEnd={onTouchEnd}
                 className="bg-white rounded-2xl border border-primary-light p-6 md:p-8 lg:p-10 shadow-sm relative overflow-hidden transition-all duration-300"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                  {/* Visual Cover Kolom Kiri */}
-                  <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none bg-surface">
-                    {currentFeatured.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                <div
+                  className={`grid grid-cols-1 ${
+                    currentFeatured.image ? "lg:grid-cols-12 gap-8 items-center" : "gap-6"
+                  }`}
+                >
+                  {/* Visual Cover Kolom Kiri (Hanya tampil jika ada gambar unggahan resmi) */}
+                  {currentFeatured.image && (
+                    <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none bg-surface">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={currentFeatured.image}
                         alt={currentFeatured.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                    ) : (
-                      <Image
-                        src="/images/education-featured.jpg"
-                        alt={currentFeatured.title}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 40vw"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        priority
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent pointer-events-none" />
-                    <div className="absolute bottom-4 left-4 z-10">
-                      <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
-                        {currentFeatured.category}
-                      </Badge>
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent pointer-events-none" />
+                      <div className="absolute bottom-4 left-4 z-10">
+                        <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
+                          {currentFeatured.category}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Info & Konten Kolom Kanan */}
-                  <div className="lg:col-span-7 space-y-4">
+                  {/* Info & Konten Kolom Kanan / Full Width jika tanpa gambar */}
+                  <div className={`${currentFeatured.image ? "lg:col-span-7" : "w-full max-w-4xl"} space-y-4`}>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
                       <Badge variant="success" size="sm">
                         {currentFeatured.category}
@@ -697,7 +713,7 @@ function EducationPortalContent() {
                           : "bg-white text-text-secondary border border-primary-light hover:text-primary"
                       }`}
                     >
-                      Semua ({BELAJAR_PAJAK_LINKS.length})
+                      Semua ({activeBelajarPajakSource.length})
                     </button>
                     <button
                       type="button"
@@ -841,7 +857,7 @@ function EducationPortalContent() {
                             Cakupan Materi Pembelajaran:
                           </span>
                           <ul className="space-y-1 text-xs text-text">
-                            {item.highlights.map((point, pIdx) => (
+                            {(item.highlights || [item.type, item.institutionName]).map((point, pIdx) => (
                               <li key={pIdx} className="flex items-start gap-2">
                                 <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
                                 <span className="text-[11px] leading-tight text-text-secondary">

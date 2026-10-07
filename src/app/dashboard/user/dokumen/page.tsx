@@ -20,6 +20,11 @@ import {
   CloseIcon,
 } from "@/components/icons";
 
+import {
+  getStoredDocuments,
+  DOCUMENTS_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
+
 interface VaultDocument {
   id: string;
   name: string;
@@ -47,13 +52,14 @@ export default function ClientDocumentVaultPage() {
   const [selectedDoc, setSelectedDoc] = useState<VaultDocument | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync documents with live backend
+  // Sync documents with live backend and shared admin uploads
   useEffect(() => {
     async function loadBackendDocuments() {
+      let backendDocs: VaultDocument[] = [];
       try {
         const res = await clientApi.getDocuments();
         if (res.success && Array.isArray(res.data)) {
-          const mapped: VaultDocument[] = res.data.map((d: ClientDocumentItem) => ({
+          backendDocs = res.data.map((d: ClientDocumentItem) => ({
             id: `DOC-BE-${d.id}`,
             name: d.file_name,
             category: "Pajak",
@@ -74,13 +80,47 @@ export default function ClientDocumentVaultPage() {
             signatory: "Zhou Consulting Cloud Vault",
             description: `Dokumen resmi ${d.file_name} yang tersimpan aman pada storage terenkripsi.`,
           }));
-          setDocuments(mapped);
         }
       } catch {
         // quiet fallback
       }
+
+      // Berkas yang diunggah oleh admin untuk klien
+      const localDocs = getStoredDocuments();
+      const mappedLocal: VaultDocument[] = localDocs.map((d) => ({
+        id: d.id,
+        name: d.fileName,
+        category: d.category.includes("Tax") ? "Pajak" : d.category.includes("Account") ? "Akuntansi" : "Legal",
+        format: d.fileType === "XLSX" ? "XLSX" : "PDF",
+        ticketRef: d.ticketId || "TK-2026",
+        ticketTitle: `Layanan ${d.category} - ${d.clientName}`,
+        date: d.uploadDate || "Hari ini",
+        year: "2026",
+        size: d.fileSize || "2.1 MB",
+        bytes: 2200000,
+        statusBadge: d.billingStatus === "Lunas" ? "Terverifikasi Lunas" : "Dokumen Diterbitkan",
+        statusType: "success",
+        sha256Hash: d.sha256 || "sha256-hash",
+        signatory: d.consultant || "Tim Konsultan Zhou",
+        description: `Berkas resmi ${d.fileName} yang diterbitkan oleh konsultan untuk penugasan ${d.ticketId}.`,
+      }));
+
+      const combined = [...mappedLocal];
+      for (const b of backendDocs) {
+        if (!combined.some((c) => c.id.toLowerCase() === b.id.toLowerCase() || c.name.toLowerCase() === b.name.toLowerCase())) {
+          combined.push(b);
+        }
+      }
+      setDocuments(combined);
     }
+
     loadBackendDocuments();
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+    window.addEventListener("storage", loadBackendDocuments);
+    return () => {
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+      window.removeEventListener("storage", loadBackendDocuments);
+    };
   }, []);
 
   const showToast = (msg: string) => {

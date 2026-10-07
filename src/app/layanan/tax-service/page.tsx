@@ -13,8 +13,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
-  ShieldTaxIcon,
-  ChevronDownIcon,
   CheckIcon,
 } from "@/components/icons";
 import {
@@ -24,7 +22,6 @@ import {
 } from "@/data/layananStorage";
 
 export default function TaxServicePage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [service, setService] = useState<StoredServiceItem | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
 
@@ -44,14 +41,9 @@ export default function TaxServicePage() {
     };
   }, []);
 
-  const toggleFaq = (index: number) => {
-    setOpenFaq(openFaq === index ? null : index);
-  };
-
   const serviceScopes = service?.pillars || [];
   const workflowSteps = service?.workflow || [];
   const deliverables = service?.deliverables || [];
-  const faqs = service?.faqs || [];
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
@@ -78,15 +70,13 @@ export default function TaxServicePage() {
         {!service && loaded ? (
           /* Empty State when no data entered by admin */
           <section className="py-20 bg-white">
-            <div className="container-custom max-w-2xl text-center space-y-5">
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-primary tracking-tight">
-                  Informasi Layanan Belum Tersedia
-                </h1>
-                <p className="text-sm text-text-secondary leading-relaxed max-w-md mx-auto">
-                  Rincian modul kepatuhan SPT, integrasi Coretax DJP, dan pendampingan SP2DK sedang dalam proses pembaruan oleh administrator.
-                </p>
-              </div>
+            <div className="container-custom max-w-xl text-center space-y-4">
+              <h2 className="text-xl font-bold text-primary">
+                Layanan Sedang Dimutakhirkan
+              </h2>
+              <p className="text-xs text-text-secondary leading-relaxed">
+                Detail modul dan silabus layanan perpajakan ini sedang disesuaikan dengan regulasi terbaru oleh konsultan Zhou Consulting.
+              </p>
               <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
                 <Button variant="primary" size="default" asChild className="text-xs font-semibold shadow-xs">
                   <Link href="/konsultasi">Konsultasi dengan Kami</Link>
@@ -103,10 +93,6 @@ export default function TaxServicePage() {
             <section className="py-14 md:py-20 bg-surface border-b border-primary-light">
               <div className="container-custom space-y-10">
                 <div className="max-w-3xl space-y-3">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-primary/10 text-primary text-xs font-semibold">
-                    <ShieldTaxIcon />
-                    <span>{service?.badge || "Tax Services"}</span>
-                  </div>
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                     {service?.name || "Tax Services & Kepatuhan Coretax"}
                   </h1>
@@ -122,18 +108,13 @@ export default function TaxServicePage() {
                         key={idx}
                         className="rounded-xl border-primary-light bg-white hover:shadow-md hover:border-silver transition-all duration-200 flex flex-col justify-between"
                       >
-                        <CardHeader className="space-y-3 pb-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary-light text-primary flex items-center justify-center text-base">
-                            <ShieldTaxIcon />
-                          </div>
-                          <div>
-                            <CardTitle className="text-card-heading font-semibold text-primary">
-                              {scope.title}
-                            </CardTitle>
-                            <CardDescription className="text-xs text-text-secondary mt-1 leading-relaxed">
-                              {scope.description}
-                            </CardDescription>
-                          </div>
+                        <CardHeader className="space-y-1.5 pb-3">
+                          <CardTitle className="text-card-heading font-semibold text-primary">
+                            {scope.title}
+                          </CardTitle>
+                          <CardDescription className="text-xs text-text-secondary mt-1 leading-relaxed">
+                            {scope.description}
+                          </CardDescription>
                         </CardHeader>
                       </Card>
                     ))}
@@ -193,47 +174,6 @@ export default function TaxServicePage() {
                         <span className="text-xs font-semibold text-primary leading-relaxed">
                           {item}
                         </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* FAQ Section if available */}
-            {faqs.length > 0 && (
-              <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
-                <div className="container-custom max-w-3xl space-y-10">
-                  <div className="text-center space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                      Tanya Jawab Layanan
-                    </h2>
-                  </div>
-
-                  <div className="space-y-3">
-                    {faqs.map((faq, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-lg bg-white border border-primary-light overflow-hidden transition-colors"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleFaq(idx)}
-                          className="w-full flex items-center justify-between p-4 text-left font-semibold text-xs text-primary hover:bg-surface/50 transition-colors"
-                          aria-expanded={openFaq === idx}
-                        >
-                          <span>{faq.q}</span>
-                          <ChevronDownIcon
-                            className={`text-[10px] text-silver transition-transform duration-200 ${
-                              openFaq === idx ? "rotate-180 text-primary" : ""
-                            }`}
-                          />
-                        </button>
-                        {openFaq === idx && (
-                          <div className="px-4 pb-4 pt-1 text-xs text-text-secondary leading-relaxed border-t border-primary-light/50">
-                            {faq.a}
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>

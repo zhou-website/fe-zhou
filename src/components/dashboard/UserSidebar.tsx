@@ -89,9 +89,9 @@ export function UserSidebar({
         />
       )}
 
-      {/* Modern Seamless Sidebar Container */}
+      {/* Modern Seamless Sidebar Container (Zhou Navy Theme) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-white flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#0B1533] flex flex-col justify-between transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -99,18 +99,20 @@ export function UserSidebar({
           {/* Top Brand Logo */}
           <div className="p-5 flex items-center justify-between">
             <Link
-              href="/"
+              href="/dashboard/user"
               className="flex items-center gap-3 group"
-              onClick={() => setMobileOpenState(false)}
+              onClick={() => {
+                if (isMobileOpen) setMobileOpenState(false);
+              }}
             >
-              <div className="w-9 h-9 rounded-xl bg-primary text-white font-extrabold text-base flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white text-[#0B1533] font-extrabold text-base flex items-center justify-center shadow-md group-hover:scale-105 transition-transform shrink-0">
                 Z
               </div>
               <div className="min-w-0">
-                <span className="text-sm font-bold tracking-tight text-slate-900 block leading-tight">
+                <span className="text-sm font-bold tracking-tight text-white block leading-tight">
                   ZHOU CONSULTING
                 </span>
-                <span className="text-[10px] text-slate-400 block uppercase font-semibold tracking-wider">
+                <span className="text-[10px] text-blue-200/60 block uppercase font-semibold tracking-wider">
                   Portal Klien
                 </span>
               </div>
@@ -119,7 +121,7 @@ export function UserSidebar({
             <button
               type="button"
               onClick={() => setMobileOpenState(false)}
-              className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              className="lg:hidden p-1.5 text-blue-200/60 hover:text-white rounded-lg hover:bg-white/10 cursor-pointer"
               aria-label="Tutup menu navigasi"
             >
               <CloseIcon className="text-xs" />
@@ -127,15 +129,15 @@ export function UserSidebar({
           </div>
 
           {/* Search Box in Sidebar */}
-          <div className="px-4 pt-4 pb-2">
+          <div className="px-4 pt-1 pb-3">
             <div className="relative">
-              <SearchIcon className="absolute left-3 top-2.5 text-slate-400 text-xs" />
+              <SearchIcon className="absolute left-3 top-2.5 text-blue-200/50 text-xs" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search menu..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white/10 hover:bg-white/15 focus:bg-white/20 border-0 rounded-xl text-white placeholder-blue-200/50 focus:outline-none focus:ring-1 focus:ring-white/25 transition-colors"
               />
             </div>
           </div>
@@ -144,7 +146,7 @@ export function UserSidebar({
           <nav className="p-3 space-y-4 flex-1" aria-label="Navigasi Dashboard Klien">
             {/* Section 1: MAIN MENU */}
             <div>
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-blue-200/50 block mb-1.5">
                 MAIN MENU
               </span>
               <div className="space-y-1">
@@ -156,17 +158,19 @@ export function UserSidebar({
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={() => setMobileOpenState(false)}
-                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-all ${
+                      onClick={() => {
+                        if (isMobileOpen) setMobileOpenState(false);
+                      }}
+                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs transition-colors group ${
                         isActive
-                          ? "bg-primary text-white font-bold shadow-md shadow-primary/20"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 font-semibold"
+                          ? "bg-white/15 text-white font-bold"
+                          : "text-blue-100/70 hover:text-white hover:bg-white/10 font-semibold"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <IconComp
                           className={`text-xs ${
-                            isActive ? "text-white" : "text-slate-400"
+                            isActive ? "text-white" : "text-blue-200/60 group-hover:text-white"
                           }`}
                         />
                         <span>{item.label}</span>

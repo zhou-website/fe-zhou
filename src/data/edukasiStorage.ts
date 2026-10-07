@@ -1,6 +1,7 @@
 "use client";
 
 import { ZHOU_ARTICLES, ZhouArticle } from "./edukasiData";
+import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
 
 export const ZHOU_ARTICLES_STORAGE_KEY = "zhou_articles_data_v2";
 export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
@@ -120,20 +121,19 @@ export function getStoredZhouArticles(): ZhouArticle[] {
 
   try {
     const raw = localStorage.getItem(ZHOU_ARTICLES_STORAGE_KEY);
-    if (!raw) {
-      return ZHOU_ARTICLES;
+    const baseList: ZhouArticle[] = raw ? JSON.parse(raw) : ZHOU_ARTICLES;
+    if (Array.isArray(baseList)) {
+      return baseList
+        .filter((item) => !isCmsItemDeleted(item.id, item.title))
+        .map((item, idx) => ({
+          ...item,
+          isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
+        }));
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed.map((item, idx) => ({
-        ...item,
-        isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
-      }));
-    }
-    return ZHOU_ARTICLES;
+    return ZHOU_ARTICLES.filter((item) => !isCmsItemDeleted(item.id, item.title));
   } catch (error) {
     console.error("Gagal membaca zhou_articles_data dari localStorage:", error);
-    return ZHOU_ARTICLES;
+    return ZHOU_ARTICLES.filter((item) => !isCmsItemDeleted(item.id, item.title));
   }
 }
 
@@ -203,9 +203,24 @@ export function updateZhouArticle(
 /**
  * Menghapus modul / materi (DELETE)
  */
-export function deleteZhouArticle(id: string): ZhouArticle[] {
+export function deleteZhouArticle(idOrTitle: string): ZhouArticle[] {
+  recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
   const current = getStoredZhouArticles();
-  const updated = current.filter((item) => item.id !== id);
+  const target = idOrTitle.trim().toLowerCase();
+  const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
+  const updated = current.filter((item) => {
+    if (isCmsItemDeleted(item.id, item.title)) return false;
+    const itemTitle = item.title.trim().toLowerCase();
+    const itemId = item.id.trim().toLowerCase();
+    return (
+      item.id !== idOrTitle &&
+      itemId !== target &&
+      itemId !== targetSlug &&
+      itemTitle !== target &&
+      !itemId.includes(target) &&
+      !target.includes(itemId)
+    );
+  });
   saveStoredZhouArticles(updated);
   return updated;
 }
@@ -268,11 +283,13 @@ export function getStoredBelajarPajakLinks(): BelajarPajakLink[] {
   }
   try {
     const raw = localStorage.getItem(GOV_LINKS_STORAGE_KEY);
-    if (!raw) return BELAJAR_PAJAK_LINKS;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : BELAJAR_PAJAK_LINKS;
+    const source: BelajarPajakLink[] = raw ? JSON.parse(raw) : BELAJAR_PAJAK_LINKS;
+    if (Array.isArray(source)) {
+      return source.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
+    }
+    return BELAJAR_PAJAK_LINKS.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
   } catch {
-    return BELAJAR_PAJAK_LINKS;
+    return BELAJAR_PAJAK_LINKS.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
   }
 }
 
@@ -305,8 +322,15 @@ export function updateStoredBelajarPajakLink(id: string, changes: Partial<Belaja
 }
 
 export function deleteStoredBelajarPajakLink(id: string): BelajarPajakLink[] {
+  recordDeletedCmsItem({ id, title: id });
   const current = getStoredBelajarPajakLinks();
-  const updated = current.filter((l) => l.id !== id);
+  const target = id.trim().toLowerCase();
+  const updated = current.filter((l) => {
+    if (isCmsItemDeleted(l.id, l.title, undefined, l.url)) return false;
+    const lId = l.id.trim().toLowerCase();
+    const lTitle = l.title.trim().toLowerCase();
+    return l.id !== id && lId !== target && lTitle !== target;
+  });
   saveStoredBelajarPajakLinks(updated);
   return updated;
 }

@@ -2,6 +2,7 @@
 
 import { ContentStatus } from "./publicContentData";
 import { adminCmsApi } from "@/lib/api";
+import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
 
 export interface ServicePillar {
   title: string;
@@ -134,17 +135,14 @@ export function getStoredServices(): StoredServiceItem[] {
 
   try {
     const raw = localStorage.getItem(SERVICES_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_SERVICES;
+    const source: StoredServiceItem[] = raw ? JSON.parse(raw) : DEFAULT_SERVICES;
+    if (Array.isArray(source)) {
+      return source.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    return DEFAULT_SERVICES;
+    return DEFAULT_SERVICES.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
   } catch (error) {
     console.error("Gagal membaca zhou_services_data dari localStorage:", error);
-    return DEFAULT_SERVICES;
+    return DEFAULT_SERVICES.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
   }
 }
 
@@ -262,16 +260,29 @@ export function updateStoredService(
 /**
  * Menghapus layanan (DELETE)
  */
-export function deleteStoredService(id: string): boolean {
+export function deleteStoredService(idOrTitle: string): boolean {
+  recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
   const current = getStoredServices();
-  const filtered = current.filter((s) => s.id !== id);
-
-  if (filtered.length === current.length) return false;
+  const target = idOrTitle.trim().toLowerCase();
+  const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
+  const filtered = current.filter((s) => {
+    if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return false;
+    const sName = s.name.trim().toLowerCase();
+    const sId = s.id.trim().toLowerCase();
+    const sCode = (s.code || "").trim().toLowerCase();
+    return (
+      s.id !== idOrTitle &&
+      sId !== target &&
+      sId !== targetSlug &&
+      sName !== target &&
+      sCode !== target
+    );
+  });
 
   saveStoredServices(filtered);
 
   // Sambungkan penghapusan ke Backend API
-  adminCmsApi.deleteService(id).catch((err) => {
+  adminCmsApi.deleteService(idOrTitle).catch((err) => {
     console.warn("adminCmsApi.deleteService fallback:", err);
   });
 

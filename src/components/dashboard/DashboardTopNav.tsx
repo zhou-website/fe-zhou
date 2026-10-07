@@ -19,7 +19,7 @@ import {
 
 interface DashboardTopNavProps {
   role: "user" | "admin" | "superadmin";
-  profileUrl: string;
+  profileUrl?: string;
 }
 
 export function DashboardTopNav({
@@ -72,21 +72,21 @@ export function DashboardTopNav({
   const displayRoleLabel = role === "superadmin" ? "Superadmin" : role === "admin" ? "Staf Konsultan" : "Klien Terdaftar";
 
   return (
-    <header className="sticky top-0 z-30 bg-white px-4 sm:px-6 lg:px-8 py-4 transition-all">
+    <header className="sticky top-0 z-30 bg-[#0B1533] px-4 sm:px-6 lg:px-8 py-4">
       <div className="flex items-center justify-between gap-4 max-w-[1600px] mx-auto w-full">
         {/* Left Side: Mobile Menu Button & Personalized Greeting */}
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
             onClick={handleToggleMobileMenu}
-            className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-primary hover:bg-slate-100 border border-slate-200 transition-colors"
+            className="lg:hidden p-2 rounded-xl text-white hover:bg-white/10 border border-white/20 transition-colors"
             aria-label="Buka menu navigasi"
           >
             <MenuIcon className="text-sm" />
           </button>
 
           <div>
-            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 tracking-tight truncate">
+            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-white tracking-tight truncate">
               Welcome back, {displayName}
             </h1>
           </div>
@@ -105,8 +105,8 @@ export function DashboardTopNav({
                   setMessagesOpen(false);
                   setProfileDropdownOpen(false);
                 }}
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
-                  helpOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 shadow-2xs flex items-center justify-center text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer ${
+                  helpOpen ? "bg-white/20 ring-2 ring-white/30" : ""
                 }`}
                 title="Pusat Bantuan"
                 aria-label="Pusat Bantuan"
@@ -166,8 +166,8 @@ export function DashboardTopNav({
                   setNotificationsOpen(false);
                   setProfileDropdownOpen(false);
                 }}
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
-                  messagesOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 shadow-2xs flex items-center justify-center text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer ${
+                  messagesOpen ? "bg-white/20 ring-2 ring-white/30" : ""
                 }`}
                 title="Pesan & Komunikasi"
                 aria-label="Pesan & Komunikasi"
@@ -206,14 +206,14 @@ export function DashboardTopNav({
                 setMessagesOpen(false);
                 setProfileDropdownOpen(false);
               }}
-              className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-slate-600 hover:text-primary hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer ${
-                notificationsOpen ? "border-primary text-primary ring-2 ring-primary/10" : ""
+              className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 shadow-2xs flex items-center justify-center text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer ${
+                notificationsOpen ? "bg-white/20 ring-2 ring-white/30" : ""
               }`}
               title="Pemberitahuan Sistem"
               aria-label="Pemberitahuan Sistem"
             >
               <BellIcon className="text-sm sm:text-base" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-error ring-2 ring-white" />
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-error ring-2 ring-[#0B1533]" />
             </button>
 
             {notificationsOpen && (
@@ -273,29 +273,29 @@ export function DashboardTopNav({
                 setNotificationsOpen(false);
                 setMessagesOpen(false);
               }}
-              className={`flex items-center gap-2 sm:gap-3 p-1 sm:pl-1.5 sm:pr-3 sm:py-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer group ${
-                profileDropdownOpen ? "border-primary ring-2 ring-primary/10" : ""
+              className={`flex items-center gap-2 sm:gap-3 p-1 sm:pl-1.5 sm:pr-3 sm:py-1.5 rounded-2xl bg-white/10 border border-white/15 hover:border-white/30 hover:bg-white/15 transition-all cursor-pointer group ${
+                profileDropdownOpen ? "bg-white/20 ring-2 ring-white/30" : ""
               }`}
               aria-label="Menu Profil Pengguna"
             >
               {/* Avatar circle */}
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs border border-white ring-2 ring-slate-100">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#0B1533] font-bold flex items-center justify-center text-xs shrink-0 shadow-xs ring-2 ring-white/20">
                 {user?.name ? user.name.slice(0, 2).toUpperCase() : "ZH"}
               </div>
 
               {/* Name & Email (desktop) */}
               <div className="hidden sm:block text-left min-w-0 max-w-[130px] lg:max-w-[170px]">
-                <span className="text-xs font-bold text-slate-900 block truncate leading-tight group-hover:text-primary transition-colors">
+                <span className="text-xs font-bold text-white block truncate leading-tight">
                   {displayName}
                 </span>
-                <span className="text-[10px] text-slate-400 block truncate leading-tight mt-0.5">
+                <span className="text-[10px] text-blue-200/70 block truncate leading-tight mt-0.5">
                   {displayEmail}
                 </span>
               </div>
 
               <ChevronDownIcon
-                className={`text-[10px] text-slate-400 group-hover:text-slate-600 transition-transform hidden sm:block ${
-                  profileDropdownOpen ? "rotate-180 text-primary" : ""
+                className={`text-[10px] text-blue-200/60 group-hover:text-white transition-transform hidden sm:block ${
+                  profileDropdownOpen ? "rotate-180 text-white" : ""
                 }`}
               />
             </button>
@@ -312,15 +312,6 @@ export function DashboardTopNav({
                 </div>
 
                 <div className="py-1">
-                  <Link
-                    href={profileUrl}
-                    onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors font-medium"
-                  >
-                    <UserIcon className="text-xs text-slate-400" />
-                    <span>Pengaturan Profil</span>
-                  </Link>
-
                   <Link
                     href="/"
                     onClick={() => setProfileDropdownOpen(false)}

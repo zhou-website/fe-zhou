@@ -43,6 +43,7 @@ export default function SuperadminUsersPage() {
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedStaffForDetail, setSelectedStaffForDetail] = useState<StaffAdmin | null>(null);
   const [editingStaff, setEditingStaff] = useState<StaffAdmin | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<StaffAdmin | null>(null);
 
@@ -296,8 +297,8 @@ export default function SuperadminUsersPage() {
         </div>
       )}
 
-      {/* Top Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
+      {/* Top Header */}
+      <div className="pb-6 border-b border-primary-light">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Kelola Akun Staf Konsultan &amp; Admin
@@ -305,18 +306,6 @@ export default function SuperadminUsersPage() {
           <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
             Manajemen akun kredensial staf operasional, penetapan hak akses role-based (RBAC), penugasan divisi, dan penegakan keamanan multi-faktor (2FA).
           </p>
-        </div>
-
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => setIsAddModalOpen(true)}
-            className="text-xs font-semibold h-10 px-4 shadow-sm flex items-center justify-center"
-          >
-            <span>Tambah Akun Staf Baru</span>
-          </Button>
         </div>
       </div>
 
@@ -359,70 +348,94 @@ export default function SuperadminUsersPage() {
         </Card>
       </div>
 
-      {/* FILTER & SEARCH BAR */}
-      <div className="bg-white rounded-2xl border border-primary-light p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
-          <Input
-            type="text"
-            placeholder="Cari staf, email, NIP, atau keahlian..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 text-xs h-9 bg-surface border-primary-light focus:bg-white"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={divisionFilter}
-            onChange={(e) => setDivisionFilter(e.target.value)}
-            className="text-xs h-9 min-w-[140px]"
-          >
-            <option value="ALL">Semua Divisi</option>
-            <option value="Tax Service Core">Tax Service Core</option>
-            <option value="Accounting Service">Accounting Service</option>
-            <option value="Business Financial Consulting">Business Financial Consulting</option>
-            <option value="Legal Compliance">Legal Compliance</option>
-            <option value="IT & Operasional">IT &amp; Operasional</option>
-          </Select>
-
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs h-9 min-w-[120px]"
-          >
-            <option value="ALL">Semua Status</option>
-            <option value="Aktif">Aktif</option>
-            <option value="Nonaktif">Nonaktif</option>
-          </Select>
-
-          <Select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="text-xs h-9 min-w-[120px]"
-          >
-            <option value="ALL">Semua Peran</option>
-            <option value="Admin">Admin</option>
-            <option value="Superadmin">Superadmin</option>
-          </Select>
-        </div>
-      </div>
-
-      {/* MASTER STAFF TABLE */}
+      {/* MASTER STAFF MANAGEMENT MODULE - UNIFIED CONTAINER */}
       <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
-        <div className="p-4 bg-surface/60 border-b border-primary-light flex items-center justify-between">
-          <span className="text-xs font-bold text-primary">
-            Daftar Akun Staf Konsultan &amp; Otoritas RBAC ({filteredStaff.length})
-          </span>
-          <span className="text-[11px] text-text-muted hidden sm:inline">
-            Akses root penuh untuk menambah, menyunting peran, dan menonaktifkan akun staf operasional.
-          </span>
+        {/* Module Header & Compact Filter Controls */}
+        <div className="p-5 sm:p-6 space-y-4">
+          {/* Section Title & Description */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-primary tracking-tight">
+                Daftar Akun Staf Konsultan &amp; Otoritas RBAC ({filteredStaff.length})
+              </h2>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Akses root penuh untuk menambah, menyunting peran, dan menonaktifkan akun staf operasional.
+              </p>
+            </div>
+          </div>
+
+          {/* Search Field, Compact Horizontal Filter Dropdowns, and Tambah Akun Staf Button */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+              <div className="relative flex-1 min-w-[200px]">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Cari staf, email, NIP, atau keahlian..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 text-xs h-9 bg-surface border-primary-light focus:bg-white"
+                />
+              </div>
+
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+                <Select
+                  value={divisionFilter}
+                  onChange={(e) => setDivisionFilter(e.target.value)}
+                  className="text-xs h-9 min-w-[140px] bg-white"
+                >
+                  <option value="ALL">Semua Divisi</option>
+                  <option value="Tax Service Core">Tax Service Core</option>
+                  <option value="Accounting Service">Accounting Service</option>
+                  <option value="Business Financial Consulting">Business Financial Consulting</option>
+                  <option value="Legal Compliance">Legal Compliance</option>
+                  <option value="IT & Operasional">IT &amp; Operasional</option>
+                </Select>
+
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs h-9 min-w-[120px] bg-white"
+                >
+                  <option value="ALL">Semua Status</option>
+                  <option value="Aktif">Aktif</option>
+                  <option value="Nonaktif">Nonaktif</option>
+                </Select>
+
+                <Select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="text-xs h-9 min-w-[120px] bg-white"
+                >
+                  <option value="ALL">Semua Peran</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Superadmin">Superadmin</option>
+                </Select>
+              </div>
+            </div>
+
+            {/* Tombol Tambah Akun Staf Baru (Di sebelah kanan dropdown peran) */}
+            <div className="shrink-0 self-start lg:self-auto">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setIsAddModalOpen(true)}
+                className="text-xs font-semibold h-9 px-4 shadow-sm flex items-center justify-center whitespace-nowrap"
+              >
+                <span>Tambah Akun Staf Baru</span>
+              </Button>
+            </div>
+          </div>
         </div>
+
+        {/* Subtle Divider */}
+        <div className="border-t border-primary-light" />
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-surface border-b border-primary-light text-text-muted font-bold uppercase tracking-wider text-[10px]">
+              <tr className="bg-surface/70 border-b border-primary-light text-text-muted font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3.5 px-4">Staf &amp; NIP</th>
                 <th className="py-3.5 px-4">Divisi Penugasan</th>
                 <th className="py-3.5 px-4">Peran RBAC</th>
@@ -517,10 +530,8 @@ export default function SuperadminUsersPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            showToast(`Melihat detail izin RBAC untuk: ${staff.name}`);
-                          }}
-                          className="h-8 px-2.5 text-xs border-primary-light hover:bg-surface text-primary"
+                          onClick={() => setSelectedStaffForDetail(staff)}
+                          className="h-8 px-2.5 text-xs border border-primary-light rounded-lg hover:bg-surface text-primary font-semibold inline-flex items-center gap-1.5 bg-white shadow-2xs"
                           title="Lihat Detail Izin RBAC"
                         >
                           <EyeIcon className="text-xs mr-1" />
@@ -531,7 +542,7 @@ export default function SuperadminUsersPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setEditingStaff(staff)}
-                          className="h-8 px-2 text-xs border-primary-light hover:bg-surface text-primary"
+                          className="h-8 w-8 p-0 text-xs border border-primary-light rounded-lg hover:bg-surface text-primary flex items-center justify-center bg-white shadow-2xs"
                           title="Ubah Data / Hak Akses"
                         >
                           <EditIcon className="text-xs" />
@@ -541,10 +552,10 @@ export default function SuperadminUsersPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setDeletingStaff(staff)}
-                          className="h-8 px-2.5 text-xs border-primary-light hover:bg-red-50 hover:text-error hover:border-error/30 text-text-muted"
+                          className="h-8 w-8 p-0 text-xs border border-primary-light rounded-lg hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-red-500 flex items-center justify-center bg-white shadow-2xs"
                           title="Hapus Akun Staf"
                         >
-                          <TrashIcon className="text-xs" />
+                          <TrashIcon className="text-xs text-red-500" />
                         </Button>
                       </div>
                     </td>
@@ -921,6 +932,103 @@ export default function SuperadminUsersPage() {
                 className="text-xs h-9 px-4 bg-error hover:bg-red-700 text-white font-semibold"
               >
                 {deletingStaff.tasksCount > 0 ? "Nonaktifkan Saja" : "Hapus Permanen"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: DETAIL AKUN STAF */}
+      {selectedStaffForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
+            <button
+              onClick={() => setSelectedStaffForDetail(null)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
+              aria-label="Tutup modal"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+
+            <div>
+              <span className="text-[10px] font-mono text-text-muted font-bold block uppercase">
+                DETAIL KREDENSIAL &bull; {selectedStaffForDetail.nip}
+              </span>
+              <h3 className="text-lg font-bold text-primary">{selectedStaffForDetail.name}</h3>
+              <p className="text-xs text-text-secondary">{selectedStaffForDetail.email}</p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-surface border border-primary-light space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Divisi Penugasan</span>
+                  <div className="font-semibold text-primary mt-0.5">{selectedStaffForDetail.division}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Peran RBAC</span>
+                  <div className="mt-0.5">
+                    <Badge
+                      variant={selectedStaffForDetail.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
+                      className="text-[10px]"
+                    >
+                      {selectedStaffForDetail.role}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-primary-light grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Kontak WhatsApp</span>
+                  <div className="font-mono text-text-secondary mt-0.5">{selectedStaffForDetail.phone}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Status Akun</span>
+                  <div className="mt-0.5">
+                    <Badge variant={selectedStaffForDetail.status === "Aktif" ? "success" : "silver"} size="sm">
+                      {selectedStaffForDetail.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-primary-light flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Keamanan 2FA</span>
+                  <div className="mt-0.5">
+                    {selectedStaffForDetail.twoFactorEnabled ? (
+                      <span className="text-success font-semibold text-xs">Aktif Terproteksi</span>
+                    ) : (
+                      <span className="text-amber-700 font-semibold text-xs">Non-Aktif</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Tanggal Bergabung</span>
+                  <div className="font-mono text-text-secondary mt-0.5">{selectedStaffForDetail.joinDate}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-primary-light flex items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingStaff(selectedStaffForDetail);
+                  setSelectedStaffForDetail(null);
+                }}
+                className="text-xs h-9 px-4 border-primary-light text-primary"
+              >
+                Ubah Profil
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setSelectedStaffForDetail(null)}
+                className="text-xs h-9 px-4"
+              >
+                Tutup
               </Button>
             </div>
           </div>

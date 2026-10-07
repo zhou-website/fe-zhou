@@ -35,6 +35,7 @@ import {
   getStoredKmkRates,
   KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
 export default function PeraturanPage() {
@@ -60,7 +61,9 @@ export default function PeraturanPage() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiRegs: StoredRegulationItem[] = res.data.map((item: RegulationItem) => ({
+          const apiRegs: StoredRegulationItem[] = res.data
+            .filter((item: RegulationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
+            .map((item: RegulationItem) => ({
             id: `BE-${item.id}`,
             docNumber: item.title,
             title: item.title,
@@ -125,14 +128,15 @@ export default function PeraturanPage() {
     };
   }, []);
 
-  // Total count per category for badge counters
+  // Total count per category for badge counters (hanya hitung peraturan yang dipublikasikan)
   const categoryCounts = useMemo(() => {
+    const published = regulations.filter((r) => r.status !== "Draft");
     const counts: Record<string, number> = {
-      Semua: regulations.length,
+      Semua: published.length,
     };
     REGULATION_CATEGORIES.forEach((cat) => {
       if (cat !== "Semua") {
-        counts[cat] = regulations.filter((r) => r.category === cat).length;
+        counts[cat] = published.filter((r) => r.category === cat).length;
       }
     });
     return counts;
@@ -145,9 +149,10 @@ export default function PeraturanPage() {
     setCurrentPage(1);
   };
 
-  // Filter regulations based on category, status, and search query
+  // Filter regulations based on category, status, and search query (Sembunyikan status Draft)
   const filteredRegulations = useMemo(() => {
     return regulations.filter((item) => {
+      if (item.status === "Draft") return false;
       const matchCategory =
         selectedCategory === "Semua" || item.category === selectedCategory;
       const matchStatus =

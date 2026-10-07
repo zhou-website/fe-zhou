@@ -6,7 +6,6 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingWhatsAppCTA } from "@/components/landing/FloatingWhatsAppCTA";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardHeader,
@@ -17,8 +16,6 @@ import {
 } from "@/components/ui/card";
 import {
   CheckCircleIcon,
-  BookIcon,
-  ShieldTaxIcon,
   ArrowRightIcon,
 } from "@/components/icons";
 import {
@@ -26,6 +23,7 @@ import {
   getStoredServices,
   SERVICES_EVENT,
 } from "@/data/layananStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 export default function LayananIndexPage() {
@@ -48,7 +46,9 @@ export default function LayananIndexPage() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiServices: StoredServiceItem[] = res.data.map((item: PublicServiceItem) => {
+          const apiServices: StoredServiceItem[] = res.data
+            .filter((item: PublicServiceItem) => !isCmsItemDeleted(item.id, item.service_name, undefined, item.service_code))
+            .map((item: PublicServiceItem) => {
             const catLower = (item.category || "").toLowerCase();
             const codeUpper = (item.service_code || "").toUpperCase();
             const catKey =
@@ -132,10 +132,6 @@ export default function LayananIndexPage() {
         <section className="bg-primary text-white py-16 md:py-20 lg:py-24 border-b border-primary-dark relative overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
           <div className="container-custom relative z-10 space-y-6 text-center max-w-4xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-white/10 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
-              <ShieldTaxIcon className="text-secondary" />
-              <span>Katalog Layanan Profesional Terpadu</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight">
               Solusi Terpadu Akuntansi, Perpajakan &amp; Hukum Korporat
             </h1>
@@ -204,21 +200,13 @@ export default function LayananIndexPage() {
                     key={service.id}
                     className="bg-white border-primary-light hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between"
                   >
-                    <CardHeader className="space-y-3 pb-3">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="silver" size="sm">
-                          {service.badge || service.categoryKey.toUpperCase()}
-                        </Badge>
-                        <BookIcon className="text-primary opacity-60 text-sm" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base sm:text-lg font-bold text-primary">
-                          {service.name}
-                        </CardTitle>
-                        <CardDescription className="text-xs text-text-secondary mt-1.5 leading-relaxed line-clamp-2">
-                          {service.subtitle}
-                        </CardDescription>
-                      </div>
+                    <CardHeader className="space-y-1.5 pb-3">
+                      <CardTitle className="text-base sm:text-lg font-bold text-primary">
+                        {service.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs text-text-secondary mt-1.5 leading-relaxed line-clamp-2">
+                        {service.subtitle}
+                      </CardDescription>
                     </CardHeader>
 
                     <CardContent className="space-y-2 text-xs text-text-primary flex-1 pt-0">

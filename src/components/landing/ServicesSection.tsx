@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -173,9 +172,6 @@ export function ServicesSection() {
                 className="flex flex-col justify-between w-full rounded-xl bg-white border-primary-light p-6 space-y-4"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between h-6">
-                    <Skeleton className="h-5 w-24 rounded-full" />
-                  </div>
                   <div className="space-y-2">
                     <Skeleton className="h-5 w-3/4" />
                     <Skeleton className="h-3.5 w-full" />
@@ -219,20 +215,13 @@ export function ServicesSection() {
                 key={service.id}
                 className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-xl bg-white border-primary-light"
               >
-                <CardHeader className="space-y-3 pb-3">
-                  <div className="flex items-center justify-between h-6">
-                    <Badge variant="silver" size="sm">
-                      {service.badge || service.categoryKey.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div>
-                    <CardTitle className="text-card-heading font-bold text-primary">
-                      {service.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs text-text-secondary mt-1 line-clamp-2">
-                      {service.subtitle}
-                    </CardDescription>
-                  </div>
+                <CardHeader className="space-y-1.5 pb-3">
+                  <CardTitle className="text-card-heading font-bold text-primary">
+                    {service.name}
+                  </CardTitle>
+                  <CardDescription className="text-xs text-text-secondary mt-1 line-clamp-2">
+                    {service.subtitle}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-xs text-text flex-1 pt-0">
                   {service.pillars?.slice(0, 3).map((pillar, idx) => (

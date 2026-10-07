@@ -13,6 +13,7 @@ import {
   SearchIcon,
   ExportIcon,
   EyeIcon,
+  EditIcon,
   TrashIcon,
   CheckCircleIcon,
 } from "@/components/icons";
@@ -48,6 +49,10 @@ export default function SuperadminDashboard() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
 
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [selectedAdminForDetail, setSelectedAdminForDetail] = useState<AdminUser | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [deletingAdmin, setDeletingAdmin] = useState<AdminUser | null>(null);
+  const [adminCurrentPage, setAdminCurrentPage] = useState(1);
   const [newAdmin, setNewAdmin] = useState({
     name: "",
     email: "",
@@ -237,6 +242,38 @@ export default function SuperadminDashboard() {
     showToast(`Akun admin ${admin.name} berhasil dihapus permanen.`);
   };
 
+  const handleEditAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAdmin) return;
+    setAdmins((prev) => {
+      const updated = prev.map((a) => (a.id === editingAdmin.id ? editingAdmin : a));
+      try {
+        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast(`Data administrator ${editingAdmin.name} berhasil diperbarui.`);
+    setEditingAdmin(null);
+  };
+
+  const handleConfirmDeleteAdmin = async () => {
+    if (!deletingAdmin) return;
+    if (deletingAdmin.taskCount > 0) {
+      handleToggleStatus(deletingAdmin.id);
+      showToast(`Akun ${deletingAdmin.name} dinonaktifkan (soft delete) karena memiliki riwayat tugas.`);
+    } else {
+      await handleDeleteAdmin(deletingAdmin);
+    }
+    setDeletingAdmin(null);
+  };
+
+  const adminItemsPerPage = 6;
+  const adminTotalPages = Math.ceil(admins.length / adminItemsPerPage) || 1;
+  const paginatedAdmins = admins.slice(
+    (adminCurrentPage - 1) * adminItemsPerPage,
+    adminCurrentPage * adminItemsPerPage
+  );
+
   // Filtered logs
   const filteredLogs = auditLogs.filter((log) => {
     if (filterAdmin !== "ALL" && !log.adminName.includes(filterAdmin)) return false;
@@ -265,6 +302,37 @@ export default function SuperadminDashboard() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Status badge styling: In Progress = Kuning, Update = Hijau, Done = Biru
+  const renderStatusBadge = (status: string) => {
+    const s = (status || "").toLowerCase().trim();
+    if (s.includes("progress") || s.includes("proses") || s.includes("pending")) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-amber-50 text-amber-700 border border-amber-300">
+          {status}
+        </span>
+      );
+    }
+    if (s.includes("update") || s.includes("perbarui")) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-emerald-50 text-emerald-700 border border-emerald-300">
+          {status}
+        </span>
+      );
+    }
+    if (s.includes("done") || s.includes("selesai") || s.includes("complet")) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-blue-50 text-blue-700 border border-blue-300">
+          {status}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-slate-100 text-slate-700 border border-slate-300">
+        {status}
+      </span>
+    );
+  };
 
   // Export functions
   const handleExportCSV = async () => {
@@ -318,7 +386,7 @@ export default function SuperadminDashboard() {
       )}
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-primary-light">
+      <div className="pb-6 border-b border-primary-light">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
             Log Audit Perubahan Status &amp; Aktivitas
@@ -326,27 +394,6 @@ export default function SuperadminDashboard() {
           <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
             Pencatatan riwayat perubahan status penugasan klien, unggahan berkas, dan aktivitas administratif yang bersifat <em>immutable</em> &amp; <em>append-only</em> sesuai UU PDP No. 27/2022.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            className="text-xs h-9 px-3 border-primary-light font-semibold"
-          >
-            <ExportIcon className="text-xs mr-1.5" />
-            Ekspor CSV
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleExportPDF}
-            className="text-xs h-9 px-3.5 font-semibold shadow-xs"
-          >
-            <ExportIcon className="text-xs mr-1.5" />
-            Laporan PDF
-          </Button>
         </div>
       </div>
 
@@ -447,9 +494,9 @@ export default function SuperadminDashboard() {
                       <th className="py-3 px-5">Email Resmi</th>
                       <th className="py-3 px-5">Peran RBAC</th>
                       <th className="py-3 px-5">Spesialisasi</th>
-                      <th className="py-3 px-5 text-center">Status</th>
-                      <th className="py-3 px-5 text-center">Riwayat Tugas</th>
-                      <th className="py-3 px-5 text-right">Aksi Kelola</th>
+                      <th className="py-3.5 px-4 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-center">Riwayat Tugas</th>
+                      <th className="py-3.5 px-4 text-right font-bold uppercase tracking-wider text-[11px] text-primary">AKSI SUPERADMIN</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-primary-light text-text">
@@ -460,7 +507,7 @@ export default function SuperadminDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      admins.map((admin) => (
+                      paginatedAdmins.map((admin) => (
                         <tr key={admin.id} className="hover:bg-surface/50 transition-colors">
                         <td className="py-4 px-5">
                           <div className="font-bold text-primary">{admin.name}</div>
@@ -492,34 +539,30 @@ export default function SuperadminDashboard() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleToggleStatus(admin.id)}
-                              className="text-[11px] py-1 px-2.5 h-auto"
+                              onClick={() => setSelectedAdminForDetail(admin)}
+                              className="h-8 px-2.5 text-xs border-primary-light hover:bg-surface text-primary font-semibold"
+                              title="Lihat Detail Admin"
                             >
-                              {admin.status === "Active" ? "Nonaktifkan" : "Aktifkan"}
+                              <EyeIcon className="text-xs mr-1" />
+                              Detail
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => showToast(`Tautan reset password untuk ${admin.email} berhasil dikirimkan ke email resmi.`)}
-                              className="text-[11px] py-1 px-2.5 h-auto cursor-pointer"
+                              onClick={() => setEditingAdmin(admin)}
+                              className="h-8 w-8 p-0 text-xs border-primary-light hover:bg-surface text-primary flex items-center justify-center"
+                              title="Ubah Data Admin"
                             >
-                              Reset
+                              <EditIcon className="text-xs" />
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={admin.taskCount > 0}
-                              onClick={() => handleDeleteAdmin(admin)}
-                              className={`text-[11px] py-1 px-2 h-auto text-error hover:text-error ${
-                                admin.taskCount > 0 ? "opacity-30 cursor-not-allowed" : ""
-                              }`}
-                              title={
-                                admin.taskCount > 0
-                                  ? "Tidak dapat dihapus permanen karena memiliki riwayat tugas"
-                                  : "Hapus permanen"
-                              }
+                              onClick={() => setDeletingAdmin(admin)}
+                              className="h-8 w-8 p-0 text-xs border border-primary-light rounded-lg hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-red-500 flex items-center justify-center bg-white shadow-2xs"
+                              title="Hapus Akun Admin"
                             >
-                              <TrashIcon className="text-xs" />
+                              <TrashIcon className="text-xs text-red-500" />
                             </Button>
                           </div>
                         </td>
@@ -529,100 +572,119 @@ export default function SuperadminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {admins.length > 0 && (
+                <div className="p-4 bg-surface border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
+                  <span>
+                    Menampilkan {(adminCurrentPage - 1) * adminItemsPerPage + 1} &ndash;{" "}
+                    {Math.min(adminCurrentPage * adminItemsPerPage, admins.length)} dari {admins.length} administrator terdaftar
+                  </span>
+                  <Pagination
+                    currentPage={adminCurrentPage}
+                    totalPages={adminTotalPages}
+                    onPageChange={setAdminCurrentPage}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* TAB 2: LOG AUDIT PERUBAHAN STATUS (APPEND-ONLY) */}
         {activeTab === "audit" && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
+            {/* Header, Description & Filter / Export Actions */}
+            <div className="p-5 sm:p-6 space-y-4">
               <div>
-                <h2 className="text-base font-bold text-primary">
+                <h2 className="text-base sm:text-lg font-bold text-primary tracking-tight">
                   Log Audit Perubahan Status Tiket &amp; Lembar Kerja
                 </h2>
-                <p className="text-xs text-text-secondary">
-                  Catatan audit mutlak tidak dapat diedit atau dihapus (*append-only*).
+                <p className="text-xs text-text-secondary mt-1">
+                  Catatan audit mutlak tidak dapat diedit atau dihapus (<em>append-only</em>).
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCSV}
-                  className="text-xs font-semibold inline-flex items-center gap-1.5"
-                >
-                  <ExportIcon className="text-xs" />
-                  <span>Ekspor CSV</span>
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleExportPDF}
-                  className="text-xs font-semibold inline-flex items-center gap-1.5"
-                >
-                  <ExportIcon className="text-xs" />
-                  <span>Ekspor PDF</span>
-                </Button>
+              {/* Filter Row + Export Actions Row */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+                {/* Left: Admin Filter & Search */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-semibold text-text-secondary text-xs whitespace-nowrap">Admin:</span>
+                    <Select
+                      value={filterAdmin}
+                      onChange={(e) => setFilterAdmin(e.target.value)}
+                      className="h-9 min-w-[150px] text-xs bg-white"
+                    >
+                      <option value="ALL">Semua Admin</option>
+                      {admins.map((a) => (
+                        <option key={a.id} value={a.name}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari ID Tiket (TK-...) atau ID Klien (CL-...)..."
+                      className="pl-9 h-9 text-xs bg-surface border-primary-light focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Right: Export Actions */}
+                <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCSV}
+                    className="text-xs font-semibold h-9 px-3.5 border-primary-light hover:bg-surface text-primary"
+                  >
+                    Ekspor CSV
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleExportPDF}
+                    className="text-xs font-semibold h-9 px-4 shadow-xs"
+                  >
+                    Ekspor PDF
+                  </Button>
+                </div>
               </div>
             </div>
 
-            {/* Audit Filter Controls */}
-            <div className="p-4 rounded-xl bg-white border border-primary-light shadow-sm flex flex-col sm:flex-row items-center gap-3 text-xs">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="font-semibold text-text-secondary whitespace-nowrap">Admin:</span>
-                <Select
-                  value={filterAdmin}
-                  onChange={(e) => setFilterAdmin(e.target.value)}
-                  className="h-9 min-w-[140px] text-xs"
-                >
-                  <option value="ALL">Semua Admin</option>
-                  {admins.map((a) => (
-                    <option key={a.id} value={a.name}>
-                      {a.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+            {/* Divider */}
+            <div className="border-t border-primary-light" />
 
-              <div className="relative flex-1 w-full">
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari ID Tiket (TK-...) atau ID Klien (CL-...)..."
-                  className="pl-8 h-9 text-xs"
-                />
-                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-silver text-xs pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Immutable Audit Table */}
-            <div className="bg-white rounded-xl border border-primary-light shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase">
+            {/* Audit Table (Seamless within container) */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-surface/70 border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Waktu (Timestamp)</th>
+                    <th className="py-3 px-4">Admin Bertugas</th>
+                    <th className="py-3 px-4">ID Klien</th>
+                    <th className="py-3 px-4">ID Tiket</th>
+                    <th className="py-3 px-4 text-center">Status Sebelum</th>
+                    <th className="py-3 px-4 text-center">Status Sesudah</th>
+                    <th className="py-3 px-4">Berkas Terkait</th>
+                    <th className="py-3 px-4 text-right">Detail / Inspeksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-primary-light text-text">
+                  {paginatedLogs.length === 0 ? (
                     <tr>
-                      <th className="py-3 px-4">Waktu (Timestamp)</th>
-                      <th className="py-3 px-4">Admin Bertugas</th>
-                      <th className="py-3 px-4">ID Klien</th>
-                      <th className="py-3 px-4">ID Tiket</th>
-                      <th className="py-3 px-4 text-center">Status Sebelum</th>
-                      <th className="py-3 px-4 text-center">Status Sesudah</th>
-                      <th className="py-3 px-4">Berkas Terkait</th>
-                      <th className="py-3 px-4 text-right">Detail</th>
+                      <td colSpan={8} className="py-10 text-center text-xs text-text-muted">
+                        Belum ada catatan log aktivitas yang terekam.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary-light text-text">
-                    {paginatedLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-8 text-center text-xs text-text-muted">
-                          Belum ada catatan log aktivitas yang terekam.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-surface/50 transition-colors">
+                  ) : (
+                    paginatedLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-surface/50 transition-colors">
                         <td className="py-3.5 px-4 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                           {log.timestamp}
                         </td>
@@ -632,14 +694,10 @@ export default function SuperadminDashboard() {
                         <td className="py-3.5 px-4 font-mono">{log.clientId}</td>
                         <td className="py-3.5 px-4 font-mono font-bold text-primary">{log.ticketId}</td>
                         <td className="py-3.5 px-4 text-center">
-                          <Badge variant="secondary" className="text-[10px] font-mono">
-                            {log.statusBefore}
-                          </Badge>
+                          {renderStatusBadge(log.statusBefore)}
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <Badge variant="success" className="text-[10px] font-mono">
-                            {log.statusAfter}
-                          </Badge>
+                          {renderStatusBadge(log.statusAfter)}
                         </td>
                         <td className="py-3.5 px-4 text-text-secondary font-mono text-[11px]">
                           {log.relatedFile}
@@ -649,7 +707,7 @@ export default function SuperadminDashboard() {
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedLog(log)}
-                            className="text-[11px] py-1 px-2.5 h-auto inline-flex items-center gap-1"
+                            className="text-[11px] py-1 px-2.5 h-auto inline-flex items-center gap-1 border-primary-light hover:bg-surface text-primary"
                           >
                             <EyeIcon className="text-[10px]" />
                             <span>Inspeksi</span>
@@ -658,25 +716,25 @@ export default function SuperadminDashboard() {
                       </tr>
                     ))
                   )}
-                  </tbody>
-                </table>
-              </div>
-
-              {filteredLogs.length > 0 && (
-                <div className="p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
-                  <span>
-                    Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
-                    {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan audit log
-                  </span>
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                  />
-                </div>
-              )}
+                </tbody>
+              </table>
             </div>
-          </div>
+
+            {/* Pagination inside container footer */}
+            {filteredLogs.length > 0 && (
+              <div className="p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
+                <span>
+                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan audit log
+                </span>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </Card>
         )}
 
       {/* Modal: Tambah Admin Baru */}
@@ -825,14 +883,14 @@ export default function SuperadminDashboard() {
               <div className="pt-2 border-t border-primary-light grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-secondary">Status Sebelum:</span>
-                  <div>
-                    <Badge variant="secondary">{selectedLog.statusBefore}</Badge>
+                  <div className="mt-0.5">
+                    {renderStatusBadge(selectedLog.statusBefore)}
                   </div>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-secondary">Status Sesudah:</span>
-                  <div>
-                    <Badge variant="success">{selectedLog.statusAfter}</Badge>
+                  <div className="mt-0.5">
+                    {renderStatusBadge(selectedLog.statusAfter)}
                   </div>
                 </div>
               </div>
@@ -851,6 +909,282 @@ export default function SuperadminDashboard() {
             <div className="flex justify-end pt-1">
               <Button variant="primary" size="sm" onClick={() => setSelectedLog(null)} className="text-xs">
                 Tutup Inspeksi
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DETAIL ADMINISTRATOR */}
+      {selectedAdminForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
+            <button
+              onClick={() => setSelectedAdminForDetail(null)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
+              aria-label="Tutup"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+
+            <div>
+              <span className="text-[10px] font-mono text-text-muted font-bold block uppercase">
+                DETAIL ADMINISTRATOR &bull; {selectedAdminForDetail.id}
+              </span>
+              <h3 className="text-lg font-bold text-primary">{selectedAdminForDetail.name}</h3>
+              <p className="text-xs text-text-secondary">{selectedAdminForDetail.email}</p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-surface border border-primary-light space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Peran RBAC</span>
+                  <div className="mt-0.5">
+                    <Badge
+                      variant={selectedAdminForDetail.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
+                      className="text-[10px]"
+                    >
+                      {selectedAdminForDetail.role}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Status Akun</span>
+                  <div className="mt-0.5">
+                    <Badge
+                      variant={selectedAdminForDetail.status === "Active" ? "success" : "secondary"}
+                      className="text-[10px]"
+                    >
+                      {selectedAdminForDetail.status === "Active" ? "Aktif" : "Nonaktif"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-primary-light">
+                <span className="text-[10px] uppercase font-bold text-text-secondary">Spesialisasi Penugasan</span>
+                <p className="font-semibold text-primary mt-0.5">{selectedAdminForDetail.specialty}</p>
+              </div>
+
+              <div className="pt-2 border-t border-primary-light flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-text-secondary">Riwayat Beban Tugas</span>
+                <span className="font-bold text-primary font-mono">{selectedAdminForDetail.taskCount} Tiket</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    handleToggleStatus(selectedAdminForDetail.id);
+                    setSelectedAdminForDetail(null);
+                  }}
+                  className="text-xs h-9 px-3 border-primary-light text-primary flex-1 sm:flex-none"
+                >
+                  {selectedAdminForDetail.status === "Active" ? "Nonaktifkan" : "Aktifkan"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    showToast(`Tautan reset sandi telah dikirim ke ${selectedAdminForDetail.email}`);
+                    setSelectedAdminForDetail(null);
+                  }}
+                  className="text-xs h-9 px-3 border-primary-light text-primary flex-1 sm:flex-none"
+                >
+                  Reset Sandi
+                </Button>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setSelectedAdminForDetail(null)}
+                className="text-xs h-9 px-4 w-full sm:w-auto"
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT ADMINISTRATOR */}
+      {editingAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setEditingAdmin(null)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
+              aria-label="Tutup"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+
+            <div>
+              <span className="text-[10px] font-mono text-text-muted font-bold block uppercase">
+                EDIT ADMINISTRATOR &bull; {editingAdmin.id}
+              </span>
+              <h3 className="text-lg font-bold text-primary">Perbarui Data Administrator</h3>
+            </div>
+
+            <form onSubmit={handleEditAdminSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">Nama Lengkap &amp; Gelar</Label>
+                <Input
+                  type="text"
+                  required
+                  value={editingAdmin.name}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, name: e.target.value })}
+                  className="text-xs h-9 bg-white border-primary-light"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">Alamat Email Kantor</Label>
+                <Input
+                  type="email"
+                  required
+                  value={editingAdmin.email}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, email: e.target.value })}
+                  className="text-xs h-9 bg-white border-primary-light font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">Peran RBAC</Label>
+                  <Select
+                    value={editingAdmin.role.toLowerCase().includes("superadmin") ? "superadmin" : "admin"}
+                    onChange={(e) =>
+                      setEditingAdmin({
+                        ...editingAdmin,
+                        role: e.target.value === "superadmin" ? "Superadmin" : "Admin",
+                      })
+                    }
+                    className="w-full text-xs h-9 font-medium"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">Status</Label>
+                  <Select
+                    value={editingAdmin.status}
+                    onChange={(e) =>
+                      setEditingAdmin({
+                        ...editingAdmin,
+                        status: e.target.value as "Active" | "Inactive",
+                      })
+                    }
+                    className="w-full text-xs h-9 font-medium"
+                  >
+                    <option value="Active">Aktif</option>
+                    <option value="Inactive">Nonaktif</option>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-primary">Spesialisasi Penugasan</Label>
+                <Select
+                  value={editingAdmin.specialty}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, specialty: e.target.value })}
+                  className="w-full text-xs h-9 font-medium"
+                >
+                  <option value="Tax Service Core">Tax Service Core (Coretax DJP)</option>
+                  <option value="Accounting Service">Accounting Service (SAK)</option>
+                  <option value="Business Financial Consulting">Business &amp; Financial Consulting</option>
+                  <option value="Legal & Corporate Compliance">Legal &amp; Corporate Compliance</option>
+                  <option value="Core Tax & Legal Compliance">Core Tax &amp; Legal Compliance</option>
+                </Select>
+              </div>
+
+              <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditingAdmin(null)}
+                  className="text-xs h-9 px-4 border-primary-light"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="text-xs h-9 px-5 font-semibold shadow-xs"
+                >
+                  Simpan Perubahan
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: KONFIRMASI HAPUS ADMINISTRATOR */}
+      {deletingAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
+            <button
+              onClick={() => setDeletingAdmin(null)}
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
+              aria-label="Tutup"
+            >
+              <CloseIcon className="text-sm" />
+            </button>
+
+            <div className="flex items-center gap-3 text-error">
+              <div className="w-10 h-10 rounded-xl bg-error/15 flex items-center justify-center text-error text-base">
+                <TrashIcon />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-primary">Konfirmasi Hapus Administrator</h3>
+                <span className="text-xs text-text-muted font-mono">{deletingAdmin.id} &bull; {deletingAdmin.name}</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-text-secondary space-y-2">
+              <p>
+                Apakah Anda yakin ingin menghapus akun administrator <strong>{deletingAdmin.name}</strong>?
+              </p>
+              {deletingAdmin.taskCount > 0 ? (
+                <div className="p-3 bg-error/10 border border-error/25 rounded-xl text-text-primary text-xs space-y-1">
+                  <span className="font-bold text-error block">Peringatan Audit Trail:</span>
+                  <p className="text-[11px] text-text-secondary">
+                    Administrator ini memiliki <strong>{deletingAdmin.taskCount} riwayat tugas aktif</strong>. Menghapus permanen akan merusak integritas audit. Sistem akan mengalihkan status akun ke <strong>Nonaktif (Soft Delete)</strong>.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-text-muted">
+                  Akun tidak memiliki riwayat tugas aktif dan dapat dihapus permanen dari basis data.
+                </p>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeletingAdmin(null)}
+                className="text-xs h-9 px-4 border-primary-light"
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmDeleteAdmin}
+                className="text-xs h-9 px-4 bg-error hover:bg-red-700 text-white font-semibold"
+              >
+                {deletingAdmin.taskCount > 0 ? "Nonaktifkan Saja" : "Hapus Permanen"}
               </Button>
             </div>
           </div>

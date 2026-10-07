@@ -30,10 +30,10 @@ export interface BelajarPajakLink {
   type: "Situs Web" | "Portal Web" | "Simulator DJP" | "Video Tutorial" | "E-Learning" | "Buku Panduan (PDF)";
   badge: string;
   description: string;
-  highlights: string[];
-  isOfficial: boolean;
+  highlights?: string[];
+  isOfficial?: boolean;
   status?: "Published" | "Draft";
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export const ZHOU_ARTICLES: ZhouArticle[] = [];

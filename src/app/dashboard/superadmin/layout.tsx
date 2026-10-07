@@ -16,11 +16,11 @@ export default function SuperadminLayout({
 }) {
   return (
     <DashboardGuard allowedRoles={["superadmin"]} requiredRoleLabel="Superadmin">
-      <div className="min-h-screen bg-white flex font-sans text-text-primary antialiased">
+      <div className="min-h-screen bg-[#0B1533] flex font-sans text-text-primary antialiased">
         <SuperadminSidebar />
-        <div className="lg:pl-64 flex flex-col flex-1 min-w-0 transition-all duration-300">
-          <DashboardTopNav role="superadmin" profileUrl="/dashboard/superadmin/profil" />
-          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)] transition-all">
+        <div className="lg:pl-64 flex flex-col flex-1 min-w-0 bg-[#0B1533]">
+          <DashboardTopNav role="superadmin" />
+          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)]">
             <div className="max-w-[1600px] w-full mx-auto">
               {children}
             </div>

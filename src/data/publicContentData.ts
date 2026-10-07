@@ -572,13 +572,13 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
       category: gov.institution === "DJP" ? "Direktorat Jenderal Pajak" : "Kementerian Keuangan RI",
       summary: gov.description,
       status: gov.status || "Published",
-      lastUpdated: gov.updatedAt,
+      lastUpdated: gov.updatedAt || "Terbaru",
       editor: gov.institutionName,
       url: gov.url,
       institution: gov.institution,
       mediaType: gov.type,
       badge: gov.badge,
-      points: gov.highlights,
+      points: gov.highlights || [],
     });
   });
 

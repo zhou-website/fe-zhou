@@ -18,6 +18,14 @@ import {
 } from "@/components/ui/card";
 import { isDummyTicket } from "@/context/AuthContext";
 import {
+  getStoredClientTickets,
+  addStoredClientTicket,
+  getStoredDocuments,
+  TICKETS_UPDATED_EVENT,
+  DOCUMENTS_UPDATED_EVENT,
+  ClientTicket,
+} from "@/data/sharedTicketsStorage";
+import {
   CheckCircleIcon,
   DocumentIcon,
   CloseIcon,
@@ -25,6 +33,8 @@ import {
   UserIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  DownloadIcon,
+  CheckIcon,
 } from "@/components/icons";
 
 interface Milestone {
@@ -38,14 +48,15 @@ interface Milestone {
 interface Deliverable {
   name: string;
   size: string;
-  format: "XLSX" | "PDF";
+  format: string;
   date: string;
+  downloadUrl?: string;
 }
 
 interface Correspondence {
   id: string;
   sender: string;
-  role: "Konsultan" | "Klien";
+  role: "Konsultan" | "Klien" | string;
   date: string;
   message: string;
 }
@@ -53,9 +64,9 @@ interface Correspondence {
 interface Ticket {
   id: string;
   title: string;
-  category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting";
+  category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting" | string;
   consultant: string;
-  status: "In Progress" | "Completed";
+  status: "In Progress" | "Completed" | string;
   progress: number;
   createdAt: string;
   estimatedCompletion: string;
@@ -66,95 +77,207 @@ interface Ticket {
 
 export default function ClientTicketMonitoringPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Sync consultations, filtering out any backend dummy seed projects
+  // Sync consultations & deliverables, filtering out any backend dummy seed projects
   useEffect(() => {
-    // 1. Cek tiket yang dibuat oleh klien secara lokal
-    try {
-      const saved = localStorage.getItem("zhou_client_custom_tickets");
-      if (saved) {
-        const parsed = JSON.parse(saved) as Ticket[];
-        const filteredSaved = parsed.filter((t) => !isDummyTicket(t));
-        if (filteredSaved.length > 0) {
-          setTickets(filteredSaved);
-        }
-      }
-    } catch {}
+    async function loadAllTickets() {
+      // 1. Ambil dokumen yang diunggah Admin dari shared storage
+      const storedDocs = getStoredDocuments();
 
-    // 2. Muat tiket backend dan filter keluar tiket dummy (PRJ-TAX-2026-001 / Maju Sukses)
-    async function loadBackendTickets() {
+      // 2. Cek tiket yang dibuat oleh klien secara lokal / booking
+      const stored = getStoredClientTickets().filter((t) => !isDummyTicket(t));
+      const mappedStored: Ticket[] = stored.map((t) => {
+        // Berkas deliverable yang dikirim admin khusus untuk tiket ini
+        const docDeliverables: Deliverable[] = storedDocs
+          .filter((d) => d.ticketId && d.ticketId.toLowerCase() === t.id.toLowerCase())
+          .map((d) => ({
+            name: d.fileName,
+            size: d.fileSize || "1.8 MB",
+            format: d.fileType || "PDF",
+            date: d.uploadDate || "Hari ini",
+            downloadUrl: d.downloadUrl,
+          }));
+
+        const existingDelivs: Deliverable[] = (t.deliverables || []).map((d) => ({
+          name: d.name,
+          size: d.size,
+          format: d.type || "PDF",
+          date: d.date,
+          downloadUrl: d.downloadUrl,
+        }));
+
+        const combinedDeliverables = [...existingDelivs];
+        docDeliverables.forEach((dd) => {
+          if (!combinedDeliverables.some((cd) => cd.name.toLowerCase() === dd.name.toLowerCase())) {
+            combinedDeliverables.push(dd);
+          }
+        });
+
+        const isCompleted =
+          t.status === "Completed" ||
+          t.status.toLowerCase().includes("selesai") ||
+          (combinedDeliverables.length > 0 && t.progress === 100);
+
+        return {
+          id: t.id,
+          title: t.title,
+          category: t.category,
+          consultant: t.consultant,
+          status: isCompleted ? "Completed" : "In Progress",
+          progress: t.progress || (combinedDeliverables.length > 0 ? 75 : 25),
+          createdAt: t.createdAt || "Hari ini",
+          estimatedCompletion: t.estimatedCompletion || "Sesuai Jadwal SLA",
+          milestones:
+            t.milestones && t.milestones.length > 0
+              ? t.milestones.map((m, idx) => ({
+                  ...m,
+                  status:
+                    idx === 2 && isCompleted
+                      ? "completed"
+                      : idx === 1 && combinedDeliverables.length > 0
+                      ? "completed"
+                      : m.status,
+                }))
+              : [
+                  {
+                    step: "01",
+                    title: "Intake & Verifikasi Berkas Awal",
+                    status: "completed",
+                    date: "Hari ke-1",
+                    description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
+                  },
+                  {
+                    step: "02",
+                    title: "Analisis & Pengerjaan Lembar Kerja",
+                    status: combinedDeliverables.length > 0 ? "completed" : "in_progress",
+                    date: "Proses",
+                    description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
+                  },
+                  {
+                    step: "03",
+                    title: "Finalisasi & Penyampaian Hasil",
+                    status: isCompleted ? "completed" : combinedDeliverables.length > 0 ? "in_progress" : "pending",
+                    date: "Final",
+                    description: "Penerbitan dokumen deliverable resmi.",
+                  },
+                ],
+          deliverables: combinedDeliverables,
+          correspondences: t.correspondences || [],
+        };
+      });
+
+      // 3. Muat tiket backend dan filter keluar tiket dummy (PRJ-TAX-2026-001 / Maju Sukses)
+      let backendTickets: Ticket[] = [];
       try {
         const res = await clientApi.getConsultations();
         if (res.success && Array.isArray(res.data)) {
           const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
           if (validConsultations.length > 0) {
-            const mapped: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
-              id: c.project_code || `TK-${c.id}`,
-              title: c.title,
-              category: "Tax Service Core",
-              consultant: "Tim Konsultan Zhou",
-              status: c.status === "COMPLETED" ? "Completed" : "In Progress",
-              progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
-              createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
-              estimatedCompletion: "Sesuai Jadwal SLA",
-              milestones: [
-                {
-                  step: "01",
-                  title: "Intake & Verifikasi Berkas Awal",
-                  status: "completed",
-                  date: "Hari ke-1",
-                  description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
-                },
-                {
-                  step: "02",
-                  title: "Analisis & Pengerjaan Lembar Kerja",
-                  status: c.status === "COMPLETED" ? "completed" : "in_progress",
-                  date: "Proses",
-                  description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
-                },
-                {
-                  step: "03",
-                  title: "Finalisasi & Penyampaian Hasil",
-                  status: c.status === "COMPLETED" ? "completed" : "pending",
-                  date: "Final",
-                  description: "Penerbitan dokumen deliverable resmi.",
-                },
-              ],
-              deliverables: c.status === "COMPLETED" ? [
-                {
-                  name: "Laporan_Resmi_Konsultasi_Zhou.pdf",
-                  size: "1.8 MB",
-                  format: "PDF",
-                  date: "Selesai",
-                }
-              ] : [],
-              correspondences: [
-                {
-                  id: `msg-${c.id}`,
-                  sender: "Tim Konsultan Zhou (Sistem Penugasan)",
-                  role: "Konsultan",
-                  date: "Terbaru",
-                  message: c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
-                },
-              ],
-            }));
-            setTickets((prev) => {
-              const combined = [...prev, ...mapped.filter((m) => !prev.some((p) => p.id === m.id))];
-              return combined;
+            backendTickets = validConsultations.map((c: ConsultationItem) => {
+              const ticketCode = c.project_code || `TK-${c.id}`;
+              const matchingDocs: Deliverable[] = storedDocs
+                .filter((d) => d.ticketId && d.ticketId.toLowerCase() === ticketCode.toLowerCase())
+                .map((d) => ({
+                  name: d.fileName,
+                  size: d.fileSize || "1.8 MB",
+                  format: d.fileType || "PDF",
+                  date: d.uploadDate || "Hari ini",
+                  downloadUrl: d.downloadUrl,
+                }));
+
+              const isCompleted = c.status === "COMPLETED";
+
+              return {
+                id: ticketCode,
+                title: c.title,
+                category: "Tax Service Core",
+                consultant: "Tim Konsultan Zhou",
+                status: isCompleted ? "Completed" : "In Progress",
+                progress: c.progress_percent || (isCompleted ? 100 : matchingDocs.length > 0 ? 75 : 40),
+                createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
+                estimatedCompletion: "Sesuai Jadwal SLA",
+                milestones: [
+                  {
+                    step: "01",
+                    title: "Intake & Verifikasi Berkas Awal",
+                    status: "completed",
+                    date: "Hari ke-1",
+                    description: "Permohonan konsultasi diterima sistem operasional dan diverifikasi.",
+                  },
+                  {
+                    step: "02",
+                    title: "Analisis & Pengerjaan Lembar Kerja",
+                    status: isCompleted || matchingDocs.length > 0 ? "completed" : "in_progress",
+                    date: "Proses",
+                    description: "Peninjauan dokumen pendukung dan penyusunan kertas kerja.",
+                  },
+                  {
+                    step: "03",
+                    title: "Finalisasi & Penyampaian Hasil",
+                    status: isCompleted ? "completed" : matchingDocs.length > 0 ? "in_progress" : "pending",
+                    date: "Final",
+                    description: "Penerbitan dokumen deliverable resmi.",
+                  },
+                ],
+                deliverables:
+                  matchingDocs.length > 0
+                    ? matchingDocs
+                    : isCompleted
+                    ? [
+                        {
+                          name: "Laporan_Resmi_Konsultasi_Zhou.pdf",
+                          size: "1.8 MB",
+                          format: "PDF",
+                          date: "Selesai",
+                        },
+                      ]
+                    : [],
+                correspondences: [
+                  {
+                    id: `msg-${c.id}`,
+                    sender: "Tim Konsultan Zhou (Sistem Penugasan)",
+                    role: "Konsultan",
+                    date: "Terbaru",
+                    message:
+                      c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
+                  },
+                ],
+              };
             });
           }
         }
       } catch (err) {
         console.warn("Backend tickets load fallback:", err);
       }
+
+      // Gabungkan tanpa duplikasi ID
+      const combined = [...mappedStored];
+      backendTickets.forEach((bt) => {
+        if (!combined.some((item) => item.id.toLowerCase() === bt.id.toLowerCase())) {
+          combined.push(bt);
+        }
+      });
+
+      setTickets(combined);
+      setSelectedTicketId((prev) => (prev && combined.some((t) => t.id === prev) ? prev : combined[0]?.id || null));
     }
-    loadBackendTickets();
+
+    loadAllTickets();
+    window.addEventListener(TICKETS_UPDATED_EVENT, loadAllTickets);
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadAllTickets);
+    window.addEventListener("storage", loadAllTickets);
+    return () => {
+      window.removeEventListener(TICKETS_UPDATED_EVENT, loadAllTickets);
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadAllTickets);
+      window.removeEventListener("storage", loadAllTickets);
+    };
   }, []);
 
   // Modal State for New Ticket
@@ -171,9 +294,15 @@ export default function ClientTicketMonitoringPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const storedDocs = typeof window !== "undefined" ? getStoredDocuments() : [];
   const activeCount = tickets.filter((t) => t.status === "In Progress").length;
   const completedCount = tickets.filter((t) => t.status === "Completed").length;
-  const totalDeliverablesCount = tickets.reduce((acc, t) => acc + (t.deliverables?.length || 0), 0);
+
+  // Total Dokumen Layanan mencakup seluruh berkas deliverable tiket & dokumen yang dikirim Admin
+  const allDocNames = new Set<string>();
+  tickets.forEach((t) => (t.deliverables || []).forEach((d) => allDocNames.add(d.name.toLowerCase())));
+  storedDocs.forEach((d) => allDocNames.add(d.fileName.toLowerCase()));
+  const totalDeliverablesCount = allDocNames.size;
 
   // Filtering Logic
   const filteredTickets = tickets.filter((ticket) => {
@@ -191,6 +320,31 @@ export default function ClientTicketMonitoringPage() {
 
     return true;
   });
+
+  const selectedTicket = tickets.find((t) => t.id === selectedTicketId) || filteredTickets[0] || null;
+
+  // Handle Download File Deliverable
+  const handleDownloadFile = (fileName: string) => {
+    const fileContent = `======================================================
+ZHOU CONSULTING - DIGITAL CLIENT VAULT
+======================================================
+Berkas Resmi : ${fileName}
+Tiket Ref    : ${selectedTicket?.id || "-"}
+Subjek       : ${selectedTicket?.title || "-"}
+Divisi       : ${selectedTicket?.category || "-"}
+Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
+Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
+======================================================`;
+    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName.endsWith(".pdf") ? fileName.replace(".pdf", ".txt") : fileName;
+    document.body.appendChild(link);
+    link.click();
+    showToast(`Berkas "${fileName}" berhasil diunduh.`);
+  };
 
   // Handle New Ticket Submit
   const handleCreateTicket = async (e: React.FormEvent) => {
@@ -210,7 +364,7 @@ export default function ClientTicketMonitoringPage() {
     }
 
     const newId = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
-    const newTicketItem: Ticket = {
+    const newTicketItem: ClientTicket = {
       id: newId,
       title: newTitle,
       category: newCategory,
@@ -254,13 +408,9 @@ export default function ClientTicketMonitoringPage() {
       ],
     };
 
-    setTickets((prev) => {
-      const updated = [newTicketItem, ...prev];
-      try {
-        localStorage.setItem("zhou_client_custom_tickets", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    // Tambah ke storage bersama sehingga admin langsung dapat melihat tiket ini
+    addStoredClientTicket(newTicketItem);
+    setSelectedTicketId(newId);
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");
@@ -417,62 +567,71 @@ export default function ClientTicketMonitoringPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTickets.map((ticket) => (
-                    <tr
-                      key={ticket.id}
-                      className="hover:bg-surface/50 transition-colors"
-                    >
-                      <td className="py-3.5 px-4 font-mono font-bold text-primary">
-                        {ticket.id}
-                      </td>
-                      <td className="py-3.5 px-4 max-w-xs">
-                        <div className="text-primary line-clamp-1 font-bold">
-                          {ticket.title}
-                        </div>
-                        <div className="text-[11px] text-text-muted mt-0.5">
-                          Dibuat: {ticket.createdAt}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="text-[11px] text-text-secondary">
-                          {ticket.category}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5 text-text-primary">
-                          <UserIcon className="text-[10px] text-text-muted" />
-                          <span>{ticket.consultant}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-surface border border-primary-light h-2 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                ticket.progress === 100 ? "bg-success" : "bg-primary"
-                              }`}
-                              style={{ width: `${ticket.progress}%` }}
-                            />
+                  filteredTickets.map((ticket) => {
+                    const isSelected = selectedTicket?.id === ticket.id;
+                    return (
+                      <tr
+                        key={ticket.id}
+                        onClick={() => setSelectedTicketId(ticket.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-primary/5 border-l-4 border-l-primary font-medium"
+                            : "hover:bg-surface/50"
+                        }`}
+                        title="Klik untuk membuka lembar kerja & berkas deliverable di panel bawah"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-bold text-primary">
+                          {ticket.id}
+                        </td>
+                        <td className="py-3.5 px-4 max-w-xs">
+                          <div className="text-primary line-clamp-1 font-bold">
+                            {ticket.title}
                           </div>
-                          <span className="text-[11px] font-bold text-primary">
-                            {ticket.progress}%
+                          <div className="text-[11px] text-text-muted mt-0.5">
+                            Dibuat: {ticket.createdAt}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="text-[11px] text-text-secondary">
+                            {ticket.category}
                           </span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] px-2 py-0.5 font-semibold ${
-                            ticket.status === "Completed"
-                              ? "bg-success/15 text-success border-success/30"
-                              : "bg-primary/10 text-primary border-primary/20"
-                          }`}
-                        >
-                          {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5 text-text-primary">
+                            <UserIcon className="text-[10px] text-text-muted" />
+                            <span>{ticket.consultant}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-surface border border-primary-light h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  ticket.progress === 100 ? "bg-success" : "bg-primary"
+                                }`}
+                                style={{ width: `${ticket.progress}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-bold text-primary">
+                              {ticket.progress}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-2 py-0.5 font-semibold ${
+                              ticket.status === "Completed"
+                                ? "bg-success/15 text-success border-success/30"
+                                : "bg-primary/10 text-primary border-primary/20"
+                            }`}
+                          >
+                            {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -512,6 +671,180 @@ export default function ClientTicketMonitoringPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* PANEL BAWAH: LEMBAR KERJA & BERKAS DELIVERABLE KONSULTASI */}
+      {selectedTicket && (
+        <Card className="rounded-2xl border-primary-light bg-white shadow-sm overflow-hidden animate-in fade-in">
+          <CardHeader className="p-5 sm:p-6 border-b border-primary-light bg-surface/40">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="font-mono text-xs font-bold text-primary bg-white border border-primary-light px-2.5 py-0.5 rounded-md">
+                    {selectedTicket.id}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-2 py-0.5 font-semibold ${
+                      selectedTicket.status === "Completed"
+                        ? "bg-success/15 text-success border-success/30"
+                        : "bg-primary/10 text-primary border-primary/20"
+                    }`}
+                  >
+                    {selectedTicket.status === "Completed" ? "Selesai" : "Dalam Proses"}
+                  </Badge>
+                  <span className="text-xs text-text-secondary">
+                    Divisi: <strong className="text-primary font-medium">{selectedTicket.category}</strong>
+                  </span>
+                </div>
+                <CardTitle className="text-base sm:text-lg font-bold text-primary">
+                  Lembar Kerja &amp; Berkas: {selectedTicket.title}
+                </CardTitle>
+                <CardDescription className="text-xs text-text-secondary mt-0.5">
+                  Konsultan Lead: <strong>{selectedTicket.consultant}</strong> &bull; Dibuat: {selectedTicket.createdAt}
+                </CardDescription>
+              </div>
+
+              <div className="flex items-center gap-2.5 self-start sm:self-center bg-white p-2.5 rounded-xl border border-primary-light">
+                <div className="text-right">
+                  <span className="text-[10px] text-text-muted uppercase font-bold block">Penyelesaian</span>
+                  <span className="text-sm font-bold text-primary font-mono">{selectedTicket.progress}%</span>
+                </div>
+                <div className="w-16 bg-surface border border-primary-light h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      selectedTicket.progress === 100 ? "bg-success" : "bg-primary"
+                    }`}
+                    style={{ width: `${selectedTicket.progress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-5 sm:p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Kolom 1: Tahapan Pengerjaan & Milestone */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                  <CheckCircleIcon className="text-primary text-xs" />
+                  <span>Tahapan Pengerjaan Kertas Kerja Konsultan</span>
+                </h4>
+                <div className="space-y-2.5">
+                  {selectedTicket.milestones.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl border text-xs flex items-start gap-3 transition-colors ${
+                        m.status === "completed"
+                          ? "bg-success/5 border-success/30"
+                          : m.status === "in_progress"
+                          ? "bg-primary/5 border-primary/30"
+                          : "bg-surface border-primary-light text-text-muted"
+                      }`}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold ${
+                          m.status === "completed"
+                            ? "bg-success text-white"
+                            : m.status === "in_progress"
+                            ? "bg-primary text-white"
+                            : "bg-surface border border-primary-light text-text-muted"
+                        }`}
+                      >
+                        {m.status === "completed" ? <CheckIcon className="text-[9px]" /> : m.step}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-primary">{m.title}</span>
+                          <span className="text-[10px] text-text-muted font-mono">{m.date}</span>
+                        </div>
+                        <p className="text-[11px] text-text-secondary mt-1">{m.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Kolom 2: Berkas Deliverable dari Admin & Konsultan */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                    <DocumentIcon className="text-primary text-xs" />
+                    <span>Daftar Berkas Deliverable dari Admin / Konsultan</span>
+                  </h4>
+                  <span className="text-[11px] font-semibold text-text-secondary">
+                    {selectedTicket.deliverables.length} Berkas
+                  </span>
+                </div>
+
+                {selectedTicket.deliverables.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-dashed border-primary-light bg-surface/50 text-center space-y-2">
+                    <DocumentIcon className="mx-auto text-2xl text-text-muted" />
+                    <p className="text-xs font-semibold text-primary">Belum Ada Berkas Deliverable Masuk</p>
+                    <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
+                      Konsultan sedang menyelesaikan kertas kerja penugasan. Ketika admin mengunggah dokumen di menu Upload Berkas, file resmi akan langsung tampil di sini dan dapat Anda unduh.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {selectedTicket.deliverables.map((d, dIdx) => (
+                      <div
+                        key={dIdx}
+                        className="p-3.5 bg-white rounded-xl border border-primary-light hover:border-primary/50 shadow-xs flex items-center justify-between gap-3 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
+                              d.format.toLowerCase() === "xlsx" || d.format.toLowerCase() === "xls"
+                                ? "bg-emerald-600"
+                                : "bg-primary"
+                            }`}
+                          >
+                            {d.format.toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-primary truncate text-xs">{d.name}</p>
+                            <p className="text-[10px] text-text-muted">
+                              {d.size} &bull; {d.date} &bull; <span className="text-success font-semibold">Tervalidasi Resmi</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadFile(d.name)}
+                          className="shrink-0 text-xs h-8 px-3 border-primary-light text-primary hover:bg-surface font-semibold flex items-center gap-1.5"
+                        >
+                          <DownloadIcon className="text-xs" />
+                          <span>Unduh</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Korespondensi / Catatan Tim */}
+                {selectedTicket.correspondences && selectedTicket.correspondences.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-primary-light space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-text-muted tracking-wider block">
+                      Catatan Terkini dari Tim Penugasan
+                    </span>
+                    {selectedTicket.correspondences.map((c) => (
+                      <div key={c.id} className="p-3 bg-surface rounded-xl border border-primary-light text-xs">
+                        <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
+                          <span className="font-semibold text-primary">{c.sender}</span>
+                          <span>{c.date}</span>
+                        </div>
+                        <p className="text-text-secondary text-[11px]">{c.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
 
       {/* MODAL: BUAT TIKET KONSULTASI BARU */}

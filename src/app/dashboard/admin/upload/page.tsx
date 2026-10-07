@@ -20,6 +20,14 @@ import {
   SendIcon,
 } from "@/components/icons";
 
+import {
+  getStoredDocuments,
+  addStoredDocument,
+  getStoredClientTickets,
+  TICKETS_UPDATED_EVENT,
+  DOCUMENTS_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
+
 interface ReportItem {
   id: string;
   ticketId: string;
@@ -70,9 +78,12 @@ export default function AdminUploadBillingPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Sync reports & documents with live backend
+  // Sync reports & documents with live backend and local shared storage
   useEffect(() => {
     async function loadBackendDocuments() {
+      let backendDocs: ReportItem[] = [];
+      let backendTicketList: { id: string; clientName: string }[] = [];
+
       try {
         const [docRes, consultRes] = await Promise.allSettled([
           adminApi.getAllDocuments(),
@@ -80,7 +91,7 @@ export default function AdminUploadBillingPage() {
         ]);
 
         if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
-          const mapped: ReportItem[] = docRes.value.data.map((d: ClientDocumentItem, idx: number) => ({
+          backendDocs = docRes.value.data.map((d: ClientDocumentItem, idx: number) => ({
             id: `REP-BE-${d.id}`,
             ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
             clientName: "Klien Terdaftar",
@@ -100,29 +111,62 @@ export default function AdminUploadBillingPage() {
             consultant: "Staf Konsultan",
             sha256: `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
           }));
-          setReports(mapped);
         }
 
         if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
           const valid = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
-          const list = valid.map((c: ConsultationItem) => ({
+          backendTicketList = valid.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-2026-0${c.id}`,
             clientName: c.title || "Klien Terdaftar",
           }));
-          setAvailableTickets(list);
-          if (list.length > 0) {
-            setUploadForm((prev) => ({
-              ...prev,
-              ticketId: prev.ticketId || list[0].id,
-              clientName: prev.clientName || list[0].clientName,
-            }));
-          }
         }
       } catch {
         // silent fallback
       }
+
+      // Ambil tiket yang dibuat klien (misal TK-2026-179)
+      const clientTickets = getStoredClientTickets();
+      const clientTicketList = clientTickets.map((t) => ({
+        id: t.id,
+        clientName: `${t.title} (${t.clientName || "Klien"})`,
+      }));
+
+      // Gabungkan daftar tiket
+      const combinedTickets = [...clientTicketList];
+      for (const bt of backendTicketList) {
+        if (!combinedTickets.some((ct) => ct.id.toLowerCase() === bt.id.toLowerCase())) {
+          combinedTickets.push(bt);
+        }
+      }
+      setAvailableTickets(combinedTickets);
+      if (combinedTickets.length > 0) {
+        setUploadForm((prev) => ({
+          ...prev,
+          ticketId: prev.ticketId || combinedTickets[0].id,
+          clientName: prev.clientName || combinedTickets[0].clientName,
+        }));
+      }
+
+      // Ambil berkas tersimpan di storage lokal
+      const storedDocs = getStoredDocuments();
+      const combinedDocs: ReportItem[] = [...storedDocs];
+      for (const bd of backendDocs) {
+        if (!combinedDocs.some((cd) => cd.id.toLowerCase() === bd.id.toLowerCase() || cd.fileName.toLowerCase() === bd.fileName.toLowerCase())) {
+          combinedDocs.push(bd);
+        }
+      }
+      setReports(combinedDocs);
     }
+
     loadBackendDocuments();
+    window.addEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+    window.addEventListener("storage", loadBackendDocuments);
+    return () => {
+      window.removeEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+      window.removeEventListener("storage", loadBackendDocuments);
+    };
   }, []);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
@@ -170,7 +214,8 @@ export default function AdminUploadBillingPage() {
       sha256: "c" + Math.random().toString(16).substring(2) + "94ca495991b7852b855e3b0c442",
     };
 
-    setReports((prev) => [newReport, ...prev]);
+    addStoredDocument(newReport);
+    setReports((prev) => [newReport, ...prev.filter((p) => p.id !== newReport.id)]);
     setIsUploadModalOpen(false);
     setUploadedFile(null);
     setUploadForm({
@@ -197,11 +242,26 @@ export default function AdminUploadBillingPage() {
   };
 
   const handleDownloadFile = (fileName: string) => {
-    alert(`Mengunduh berkas: ${fileName}`);
+    const fileContent = `======================================================\nZHOU CONSULTING - DELIVERABLE DOKUMEN PERIKATAN\n======================================================\nBerkas       : ${fileName}\nWaktu Unduh  : ${new Date().toLocaleString("id-ID")}\nKeamanan     : SHA-256 Verifikasi Klien\n======================================================`;
+    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName.endsWith(".pdf") ? fileName.replace(".pdf", ".txt") : fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Berkas ${fileName} berhasil diunduh.`);
   };
 
   const handleDownloadInvoice = (invoiceNumber: string) => {
-    alert(`Mengunduh faktur: ${invoiceNumber}`);
+    const found = reports.find((r) => r.invoiceNumber === invoiceNumber);
+    if (found) {
+      setSelectedInvoice(found);
+    } else {
+      showToast(`Membuka faktur ${invoiceNumber}...`);
+    }
   };
 
   // Filtered reports
@@ -476,7 +536,7 @@ export default function AdminUploadBillingPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownloadInvoice(report.invoiceNumber)}
+                    onClick={() => setSelectedInvoice(report)}
                     className="text-[11px] h-8 px-2.5 border-primary-light text-primary hover:bg-surface font-semibold"
                   >
                     <DocumentIcon className="text-xs mr-1" />

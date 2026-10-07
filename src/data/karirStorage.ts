@@ -4,12 +4,13 @@
  */
 
 import { ContentStatus } from "./publicContentData";
+import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
 
 export interface JobPosition {
   id: string;
   title: string;
   department: string;
-  deptKey: "all" | "tax" | "accounting" | "legal";
+  deptKey: "all" | "tax" | "accounting" | "legal" | "business";
   type: string;
   location: string;
   experience: string;
@@ -100,7 +101,8 @@ export function resetStoredCareerSettings(): void {
  */
 export function getStoredCareerPositions(): JobPosition[] {
   const settings = getStoredCareerSettings();
-  return settings.positions || [];
+  const list = settings.positions || [];
+  return list.filter((pos) => !isCmsItemDeleted(pos.id, pos.title));
 }
 
 /**
@@ -109,9 +111,12 @@ export function getStoredCareerPositions(): JobPosition[] {
 export function addStoredCareerPosition(position: JobPosition): JobPosition[] {
   const settings = getStoredCareerSettings();
   const currentPositions = settings.positions || [];
-  const updatedPositions = [position, ...currentPositions];
+  const filtered = currentPositions.filter((p) => p.id !== position.id);
+  const updatedPositions = [position, ...filtered];
+  const shouldOpen = position.status === "Published" ? true : settings.isOpen;
   saveStoredCareerSettings({
     ...settings,
+    isOpen: shouldOpen,
     positions: updatedPositions,
     lastUpdated: new Date().toLocaleDateString("id-ID", {
       day: "numeric",
@@ -134,8 +139,10 @@ export function updateStoredCareerPosition(
   const updatedPositions = currentPositions.map((pos) =>
     pos.id === id ? { ...pos, ...changes } : pos
   );
+  const hasPublished = updatedPositions.some((p) => p.status === "Published");
   saveStoredCareerSettings({
     ...settings,
+    isOpen: hasPublished ? true : settings.isOpen,
     positions: updatedPositions,
     lastUpdated: new Date().toLocaleDateString("id-ID", {
       day: "numeric",
@@ -149,10 +156,23 @@ export function updateStoredCareerPosition(
 /**
  * Menghapus posisi lowongan karir
  */
-export function deleteStoredCareerPosition(id: string): JobPosition[] {
+export function deleteStoredCareerPosition(idOrTitle: string): JobPosition[] {
+  recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
   const settings = getStoredCareerSettings();
   const currentPositions = settings.positions || [];
-  const updatedPositions = currentPositions.filter((pos) => pos.id !== id);
+  const target = idOrTitle.trim().toLowerCase();
+  const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
+  const updatedPositions = currentPositions.filter((pos) => {
+    if (isCmsItemDeleted(pos.id, pos.title)) return false;
+    const pTitle = pos.title.trim().toLowerCase();
+    const pId = pos.id.trim().toLowerCase();
+    return (
+      pos.id !== idOrTitle &&
+      pId !== target &&
+      pId !== targetSlug &&
+      pTitle !== target
+    );
+  });
   saveStoredCareerSettings({
     ...settings,
     positions: updatedPositions,

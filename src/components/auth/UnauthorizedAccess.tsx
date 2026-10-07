@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
 import { ShieldTaxIcon, LockIcon } from "@/components/icons";
 
 interface UnauthorizedAccessProps {
@@ -13,25 +13,26 @@ interface UnauthorizedAccessProps {
 
 export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: UnauthorizedAccessProps) {
   const { user, logout } = useAuth();
+  const currentRole = normalizeRole(user?.role, user?.email);
 
   const currentRoleLabel =
-    user?.role === "superadmin"
+    currentRole === "superadmin"
       ? "Superadmin"
-      : user?.role === "admin"
+      : currentRole === "admin"
       ? "Staff Admin"
       : "Klien / Pengguna Publik";
 
   const ownDashboardPath =
-    user?.role === "superadmin"
+    currentRole === "superadmin"
       ? "/dashboard/superadmin"
-      : user?.role === "admin"
+      : currentRole === "admin"
       ? "/dashboard/admin"
       : "/dashboard/user";
 
   const ownDashboardLabel =
-    user?.role === "superadmin"
+    currentRole === "superadmin"
       ? "Superadmin Portal"
-      : user?.role === "admin"
+      : currentRole === "admin"
       ? "Admin Portal"
       : "Dashboard Saya";
 

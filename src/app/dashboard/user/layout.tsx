@@ -15,12 +15,12 @@ export default function UserDashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardGuard allowedRoles={["user", "superadmin"]} requiredRoleLabel="Klien (User)">
-      <div className="min-h-screen bg-white flex font-sans text-text-primary antialiased">
+    <DashboardGuard allowedRoles={["user"]} requiredRoleLabel="Klien (User)">
+      <div className="min-h-screen bg-[#0B1533] flex font-sans text-text-primary antialiased">
         <UserSidebar />
-        <div className="lg:pl-64 flex flex-col flex-1 min-w-0 transition-all duration-300">
-          <DashboardTopNav role="user" profileUrl="/dashboard/user/profil" />
-          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)] transition-all">
+        <div className="lg:pl-64 flex flex-col flex-1 min-w-0 bg-[#0B1533]">
+          <DashboardTopNav role="user" />
+          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)]">
             <div className="max-w-[1600px] w-full mx-auto">
               {children}
             </div>

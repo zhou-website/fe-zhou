@@ -60,8 +60,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_STORAGE_KEY = "zhou_auth_user";
 
-function normalizeRole(backendRole: string): "user" | "admin" | "superadmin" {
-  const lower = backendRole.toLowerCase();
+export function normalizeRole(backendRole?: string | null, email?: string | null): "user" | "admin" | "superadmin" {
+  const emailLower = String(email || "").toLowerCase().trim();
+  if (emailLower.includes("superadmin")) return "superadmin";
+  if (emailLower.startsWith("admin@") || emailLower.includes("admin@") || emailLower.includes("konsultan@")) return "admin";
+
+  if (!backendRole) return "user";
+  const lower = String(backendRole).toLowerCase().trim();
   if (lower.includes("super")) return "superadmin";
   if (lower.includes("admin")) return "admin";
   return "user";
@@ -101,14 +106,9 @@ export function isDummyTicket(c: { project_code?: string; title?: string; id?: s
   const title = (c.title || "").toLowerCase();
   return (
     code.includes("prj-tax-2026-001") ||
-    code.includes("tk-1") ||
-    code.includes("tck-") ||
-    title.includes("maju sukses") ||
     title.includes("spt tahunan badan pt maju") ||
     title.includes("dummy") ||
-    title.includes("mock") ||
-    title.includes("chatbot") ||
-    title.includes("konsultasi baru (chatbot)")
+    title.includes("mock")
   );
 }
 
@@ -140,31 +140,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Helper redirect according to role matrix
   const navigateByRole = useCallback(
-    (role: "user" | "admin" | "superadmin", redirectUrl?: string | null) => {
-      let destination = "/";
-      if (role === "admin") {
-        destination = "/dashboard/admin";
-      } else if (role === "superadmin") {
-        destination = "/dashboard/superadmin";
-      } else {
-        destination = "/";
-      }
+    (rawRole: string, redirectUrl?: string | null, email?: string | null) => {
+      const role = normalizeRole(rawRole, email);
+      let destination =
+        role === "superadmin"
+          ? "/dashboard/superadmin"
+          : role === "admin"
+          ? "/dashboard/admin"
+          : "/dashboard/user";
 
       if (
         redirectUrl &&
         redirectUrl.trim() !== "" &&
         redirectUrl !== "/login" &&
-        redirectUrl !== "/register"
+        redirectUrl !== "/register" &&
+        redirectUrl !== "/dashboard"
       ) {
-        const isTryingAdmin = redirectUrl.startsWith("/dashboard/admin");
-        const isTryingSuperadmin = redirectUrl.startsWith("/dashboard/superadmin");
-
-        if (role === "user") {
-          destination = isTryingAdmin || isTryingSuperadmin ? "/" : redirectUrl;
+        if (role === "superadmin") {
+          // Superadmin default adalah /dashboard/superadmin. Cegah terlempar ke /dashboard/user
+          destination = redirectUrl.startsWith("/dashboard/user") ? "/dashboard/superadmin" : redirectUrl;
         } else if (role === "admin") {
-          destination = isTryingSuperadmin ? "/dashboard/admin" : redirectUrl;
+          // Admin default adalah /dashboard/admin. Cegah terlempar ke /dashboard/superadmin atau /dashboard/user
+          destination =
+            redirectUrl.startsWith("/dashboard/superadmin") || redirectUrl.startsWith("/dashboard/user")
+              ? "/dashboard/admin"
+              : redirectUrl;
         } else {
-          destination = redirectUrl;
+          // Klien biasa tidak boleh mengakses portal admin atau superadmin
+          destination =
+            redirectUrl.startsWith("/dashboard/admin") || redirectUrl.startsWith("/dashboard/superadmin")
+              ? "/dashboard/user"
+              : redirectUrl;
         }
       }
 
@@ -182,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await userApi.getProfile();
       if (res.success && res.data) {
         const profile = res.data;
-        const mappedRole = normalizeRole(profile.role);
+        const mappedRole = normalizeRole(profile.role, profile.email);
         setUser((prev) => {
           const comp = cleanCompany(profile.company_name, mappedRole) || cleanCompany(prev?.company, mappedRole);
           const ph = cleanPhone(profile.phone) || cleanPhone(prev?.phone);
@@ -231,6 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (stored) {
         const parsed = JSON.parse(stored) as AuthUser;
         if (parsed && parsed.email) {
+          parsed.role = normalizeRole(parsed.role, parsed.email);
           if (parsed.company && isDummyValue(parsed.company)) {
             parsed.company = undefined;
           }
@@ -278,12 +285,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { token: jwtToken, user: backendUser } = res.data;
-      const role = normalizeRole(backendUser.role);
+      const userEmail = backendUser.email || email;
+      const role = normalizeRole(backendUser.role, userEmail);
 
       const authData: AuthUser = {
         id: backendUser.id,
         name: backendUser.name,
-        email: backendUser.email,
+        email: userEmail,
         role,
         company: cleanCompany(backendUser.company_name, role),
         phone: cleanPhone(backendUser.phone),
@@ -305,7 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true);
       setIsLoading(false);
 
-      navigateByRole(role, redirectUrl);
+      navigateByRole(role, redirectUrl, userEmail);
 
       return {
         success: true,
@@ -361,31 +369,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    */
   const login = (
     email: string,
-    role: "user" | "admin" | "superadmin" = "user",
+    role?: "user" | "admin" | "superadmin",
     redirectUrl?: string | null,
     customData?: Partial<AuthUser>
   ) => {
+    const resolvedRole = normalizeRole(role, email);
     let name = "-";
     let company: string | undefined = undefined;
     let avatarText = "-";
 
-    if (role === "admin") {
+    if (resolvedRole === "admin") {
       name = "Konsultan Senior Zhou";
       company = "Zhou Consulting";
       avatarText = "KZ";
-    } else if (role === "superadmin") {
+    } else if (resolvedRole === "superadmin") {
       name = "Super Administrator Zhou";
       company = "Zhou Consulting";
       avatarText = "SZ";
     }
 
     const resolvedToken =
-      customData?.token || getAuthToken() || `demo_token_${role}_${Date.now()}`;
+      customData?.token || getAuthToken() || `demo_token_${resolvedRole}_${Date.now()}`;
 
     const authData: AuthUser = {
       name: customData?.name || name,
       email: customData?.email || email,
-      role,
+      role: resolvedRole,
       company: customData?.company || company,
       avatarText: customData?.avatarText || avatarText,
       avatarUrl: customData?.avatarUrl,
@@ -404,7 +413,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(authData);
     setIsAuthenticated(true);
 
-    navigateByRole(role, redirectUrl);
+    navigateByRole(resolvedRole, redirectUrl, email);
   };
 
   /**

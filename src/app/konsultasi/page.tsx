@@ -36,6 +36,7 @@ import {
   WhatsappIcon,
   QuestionCircleIcon,
 } from "@/components/icons";
+import { addStoredClientTicket } from "@/data/sharedTicketsStorage";
 
 // Data Model: Layanan Spesialis
 interface ServiceCategory {
@@ -307,7 +308,7 @@ export default function ConsultationPage() {
     setFormErrors({});
 
     setTimeout(() => {
-      const randomTicket = `ZHOU-CNS-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const randomTicket = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
       setTicketNumber(randomTicket);
       setConfirmationDate(new Date().toLocaleDateString("id-ID", {
         day: "numeric",
@@ -316,6 +317,67 @@ export default function ConsultationPage() {
         hour: "2-digit",
         minute: "2-digit",
       }));
+
+      // Simpan ke storage bersama agar muncul di User Dashboard dan Admin Portal
+      try {
+        const catName = currentService.title.includes("Pajak")
+          ? "Tax Service Core"
+          : currentService.title.includes("Akuntansi")
+          ? "Accounting Service"
+          : currentService.title.includes("Hukum")
+          ? "Legal"
+          : "Business Financial Consulting";
+
+        addStoredClientTicket({
+          id: randomTicket,
+          title: `${clientData.subTopic || currentService.title}`,
+          category: catName,
+          consultant: currentService.leadConsultant,
+          status: "In Progress",
+          progress: 25,
+          createdAt: "Hari ini",
+          estimatedCompletion: "Dalam Proses",
+          clientName: clientData.picName,
+          clientEmail: clientData.email,
+          clientCompany: clientData.companyName,
+          milestones: [
+            {
+              step: "01",
+              title: "Intake & Verifikasi Berkas Awal",
+              status: "in_progress",
+              date: "Hari ini",
+              description: "Permohonan konsultasi diterima sistem operasional dan sedang dialokasikan ke lead konsultan terkait.",
+            },
+            {
+              step: "02",
+              title: "Analisis & Pengerjaan Lembar Kerja",
+              status: "pending",
+              date: selectedDateObj?.formatted || "Sesuai Jadwal",
+              description: `Sesi ${meetingFormat === "offline" ? "Tatap Muka" : "Video Conference Daring"} jam ${currentSlot?.time || "09.00 WIB"}.`,
+            },
+            {
+              step: "03",
+              title: "Finalisasi & Penyampaian Hasil",
+              status: "pending",
+              date: "Estimasi 7 hari",
+              description: "Penerbitan dokumen deliverable resmi.",
+            },
+          ],
+          deliverables: [],
+          correspondences: [
+            {
+              id: `msg-${Date.now()}`,
+              sender: "Tim Konsultan Zhou (Sistem Penugasan)",
+              role: "Konsultan",
+              date: "Hari ini • Baru saja",
+              message: `Reservasi konsultasi telah diterima untuk ${clientData.picName} (${clientData.companyName}). Jadwal: ${selectedDateObj?.formatted} (${currentSlot?.time}).`,
+            },
+          ],
+        });
+      } catch (err) {
+        console.warn("Gagal menyimpan tiket reservasi:", err);
+      }
+
       setIsSubmitting(false);
       setIsConfirmed(true);
       window.scrollTo({ top: 350, behavior: "smooth" });
