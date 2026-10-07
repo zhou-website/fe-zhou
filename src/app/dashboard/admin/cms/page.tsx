@@ -17,7 +17,10 @@ import {
   TrashIcon,
   ChevronDownIcon,
   CheckIcon,
+  ImageIcon,
+  UploadIcon,
 } from "@/components/icons";
+import { addZhouArticle } from "@/data/edukasiStorage";
 import {
   adminCmsApi,
   publicApi,
@@ -181,7 +184,79 @@ function AdminCMSPageContent() {
     content_type: "ARTICLE" as "ARTICLE" | "GUIDE",
     body: "",
     file_path: "",
+    file_name: "",
+    file_size: "",
+    image: "",
+    image_name: "",
   });
+
+  // Handler Upload Gambar Sampul Edukasi (Opsional)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Format berkas harus berupa gambar (JPG, PNG, WEBP).");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Ukuran gambar melebihi batas maksimal 5 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setEduForm((prev) => ({
+        ...prev,
+        image: result,
+        image_name: file.name,
+      }));
+      showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
+    };
+    reader.onerror = () => {
+      showToast("Gagal membaca file gambar.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handler Upload Berkas PDF Edukasi (Opsional)
+  const handleEduPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    setEduForm((prev) => ({
+      ...prev,
+      file_path: `/docs/${file.name}`,
+      file_name: file.name,
+      file_size: sizeStr,
+    }));
+    showToast(`Berkas PDF "${file.name}" (${sizeStr}) siap dilampirkan.`);
+  };
+
+  // Handler Upload Berkas PDF Regulasi
+  const handleRegPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    setRegForm((prev) => ({
+      ...prev,
+      file_path: `/docs/${file.name}`,
+      file_size: sizeStr,
+    }));
+    showToast(`Berkas Regulasi "${file.name}" (${sizeStr}) berhasil dipilih.`);
+  };
 
   // 2. Services
   const [serviceForm, setServiceForm] = useState({
@@ -492,7 +567,47 @@ function AdminCMSPageContent() {
           content_type: eduForm.content_type,
           body: eduForm.body,
           file_path: eduForm.file_path || undefined,
+          image: eduForm.image || undefined,
         });
+
+        // Sinkronisasi lokal ke portal edukasi publik Zhou
+        addZhouArticle({
+          title: eduForm.title,
+          category: eduForm.category,
+          categoryKey: eduForm.category.toLowerCase().includes("pph")
+            ? "pph-ppn"
+            : eduForm.category.toLowerCase().includes("sp2dk")
+            ? "sp2dk"
+            : eduForm.category.toLowerCase().includes("akun")
+            ? "akuntansi"
+            : eduForm.category.toLowerCase().includes("leg")
+            ? "legal"
+            : "coretax",
+          date: new Date().toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          readTime: "5 menit baca",
+          author: "Tim Riset Fiskal Zhou",
+          summary: eduForm.body.slice(0, 160) + (eduForm.body.length > 160 ? "..." : ""),
+          takeaways: [
+            "Kepatuhan regulasi fiskal dan pembukuan komersial.",
+            "Mitigasi risiko sanksi administratif dan ekualisasi data.",
+          ],
+          content: [eduForm.body],
+          status: "Published",
+          image: eduForm.image || undefined,
+          attachment: eduForm.file_path
+            ? {
+                name: eduForm.file_name || "modul-panduan.pdf",
+                size: eduForm.file_size || "1.2 MB",
+                type: "PDF",
+              }
+            : undefined,
+          isFeatured: true,
+        });
+
         showToast("Materi edukasi berhasil ditambahkan ke database!");
         if (res.data && (res.data as Record<string, unknown>).id) {
           const id = Number((res.data as Record<string, unknown>).id);
@@ -514,6 +629,18 @@ function AdminCMSPageContent() {
         } else {
           loadAllCMS();
         }
+
+        setEduForm({
+          title: "",
+          category: "Coretax DJP",
+          content_type: "ARTICLE",
+          body: "",
+          file_path: "",
+          file_name: "",
+          file_size: "",
+          image: "",
+          image_name: "",
+        });
       } else if (modalSection === "services") {
         const res = await adminCmsApi.createService({
           service_code: serviceForm.service_code || `SRV-${Date.now().toString().slice(-4)}`,
@@ -774,6 +901,19 @@ function AdminCMSPageContent() {
   const openAddModal = (sec: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs") => {
     setEditingFaq(null);
     setModalSection(sec);
+    if (sec === "edukasi") {
+      setEduForm({
+        title: "",
+        category: "Coretax DJP",
+        content_type: "ARTICLE",
+        body: "",
+        file_path: "",
+        file_name: "",
+        file_size: "",
+        image: "",
+        image_name: "",
+      });
+    }
     if (sec === "faqs") {
       setFaqForm({
         category: "Layanan Perpajakan",
@@ -1408,6 +1548,76 @@ function AdminCMSPageContent() {
                       </Select>
                     </div>
                   </div>
+
+                  {/* Upload Gambar Sampul / Banner (Opsional) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-semibold text-primary">
+                        Gambar Sampul / Banner Artikel (Opsional)
+                      </Label>
+                      <span className="text-[10px] text-text-muted">JPG, PNG, WEBP (Maks. 5 MB)</span>
+                    </div>
+
+                    {eduForm.image ? (
+                      <div className="p-2.5 bg-surface rounded-xl border border-primary/20 space-y-2">
+                        <div className="relative w-full h-36 rounded-lg overflow-hidden border border-primary-light bg-black/5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={eduForm.image}
+                            alt="Preview sampul artikel"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2 bg-primary/80 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[10px] font-medium">
+                            Sampul Terpilih
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs pt-0.5">
+                          <div className="flex items-center gap-1.5 text-text-secondary truncate max-w-[240px]">
+                            <ImageIcon className="text-primary text-xs shrink-0" />
+                            <span className="truncate font-medium">{eduForm.image_name || "gambar-sampul.jpg"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
+                              Ganti
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleImageUpload}
+                              />
+                            </label>
+                            <span className="text-gray-300">|</span>
+                            <button
+                              type="button"
+                              onClick={() => setEduForm((prev) => ({ ...prev, image: "", image_name: "" }))}
+                              className="text-[11px] font-semibold text-red-600 hover:underline cursor-pointer"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-primary/25 hover:border-primary rounded-xl cursor-pointer bg-surface/50 hover:bg-surface transition-all group">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform mb-1.5">
+                          <ImageIcon className="text-sm" />
+                        </div>
+                        <span className="text-xs font-semibold text-primary">
+                          Pilih / Unggah Gambar Sampul
+                        </span>
+                        <span className="text-[10px] text-text-muted mt-0.5 text-center">
+                          Opsional — jika tidak diunggah, kartu artikel akan menggunakan visual default
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+                      </label>
+                    )}
+                  </div>
+
                   <div>
                     <Label className="font-semibold text-primary">Isi Materi Lengkap *</Label>
                     <Textarea
@@ -1419,15 +1629,84 @@ function AdminCMSPageContent() {
                       className="text-xs mt-1"
                     />
                   </div>
-                  <div>
-                    <Label className="font-semibold text-primary">Path Berkas PDF (Opsional)</Label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. /docs/panduan-coretax.pdf"
-                      value={eduForm.file_path}
-                      onChange={(e) => setEduForm((prev) => ({ ...prev, file_path: e.target.value }))}
-                      className="text-xs h-9 mt-1"
-                    />
+
+                  {/* Upload Berkas PDF (Opsional) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-semibold text-primary">
+                        Lampiran Berkas PDF / Panduan (Opsional)
+                      </Label>
+                      <span className="text-[10px] text-text-muted">Dokumen PDF</span>
+                    </div>
+
+                    {eduForm.file_path ? (
+                      <div className="p-2.5 bg-surface rounded-xl border border-primary/20 flex items-center justify-between">
+                        <div className="flex items-center gap-2 truncate max-w-[280px]">
+                          <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 font-bold text-[10px]">
+                            PDF
+                          </div>
+                          <div className="truncate">
+                            <p className="text-xs font-semibold text-primary truncate">
+                              {eduForm.file_name || eduForm.file_path}
+                            </p>
+                            <p className="text-[10px] text-text-muted">
+                              {eduForm.file_size || "Dokumen PDF terlampir"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
+                            Ganti
+                            <input
+                              type="file"
+                              accept=".pdf,application/pdf"
+                              className="hidden"
+                              onChange={handleEduPdfUpload}
+                            />
+                          </label>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEduForm((prev) => ({
+                                ...prev,
+                                file_path: "",
+                                file_name: "",
+                                file_size: "",
+                              }))
+                            }
+                            className="text-[11px] font-semibold text-red-600 hover:underline cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-between p-3 border border-dashed border-primary/30 hover:border-primary rounded-xl cursor-pointer bg-white hover:bg-surface transition-all">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <UploadIcon className="text-xs" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-semibold text-primary block">
+                              Pilih Berkas Dokumen PDF
+                            </span>
+                            <span className="text-[10px] text-text-muted block">
+                              Opsional — untuk pembaca yang ingin mengunduh modul PDF
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold px-2.5 py-1 bg-primary text-white rounded-lg">
+                          Pilih PDF
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          className="hidden"
+                          onChange={handleEduPdfUpload}
+                        />
+                      </label>
+                    )}
                   </div>
                 </>
               )}
@@ -1511,28 +1790,33 @@ function AdminCMSPageContent() {
                       <option value="SE">Surat Edaran Dirjen Pajak (SE)</option>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="font-semibold text-primary">File Path / URL Berkas *</Label>
+                  <div className="space-y-1.5">
+                    <Label className="font-semibold text-primary">Berkas Dokumen PDF Regulasi *</Label>
+                    <div className="flex items-center gap-2">
                       <Input
                         type="text"
                         required
                         placeholder="/docs/pmk-168-2023.pdf"
                         value={regForm.file_path}
                         onChange={(e) => setRegForm((prev) => ({ ...prev, file_path: e.target.value }))}
-                        className="text-xs h-9 mt-1"
+                        className="text-xs h-9 flex-1"
                       />
+                      <label className="h-9 px-3 bg-surface hover:bg-white border border-primary-light text-primary rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shrink-0">
+                        <UploadIcon className="text-xs" />
+                        <span>Pilih PDF</span>
+                        <input
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          className="hidden"
+                          onChange={handleRegPdfUpload}
+                        />
+                      </label>
                     </div>
-                    <div>
-                      <Label className="font-semibold text-primary">Ukuran File</Label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. 2.4 MB"
-                        value={regForm.file_size}
-                        onChange={(e) => setRegForm((prev) => ({ ...prev, file_size: e.target.value }))}
-                        className="text-xs h-9 mt-1"
-                      />
-                    </div>
+                    {regForm.file_size && (
+                      <span className="text-[10px] text-text-muted block">
+                        Ukuran berkas terdeteksi: {regForm.file_size}
+                      </span>
+                    )}
                   </div>
                 </>
               )}

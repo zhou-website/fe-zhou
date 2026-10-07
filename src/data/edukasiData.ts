@@ -18,6 +18,7 @@ export interface ZhouArticle {
   status?: "Published" | "Draft";
   attachment?: ZhouArticleAttachment;
   isFeatured?: boolean;
+  image?: string;
 }
 
 export interface BelajarPajakLink {

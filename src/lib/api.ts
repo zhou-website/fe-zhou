@@ -404,6 +404,8 @@ export interface CreateEducationPayload {
   body: string;
   content_type?: "ARTICLE" | "GUIDE" | string;
   file_path?: string;
+  image?: string;
+  image_url?: string;
   author?: string;
   excerpt?: string;
 }
@@ -619,6 +621,8 @@ export interface PublicEducationItem {
   content_type: string;
   body?: string;
   file_path?: string;
+  image?: string;
+  image_url?: string;
   created_at: string;
 }
 

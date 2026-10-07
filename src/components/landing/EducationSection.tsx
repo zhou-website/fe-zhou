@@ -36,6 +36,7 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
+import { getStoredZhouArticles, ZHOU_ARTICLES_EVENT } from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
@@ -64,7 +65,14 @@ export function EducationSection() {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch from live backend API only (no mock data fallback)
+    // Load initial from local storage
+    const stored = getStoredZhouArticles();
+    if (stored.length > 0) {
+      setArticles(stored);
+      setIsLoading(false);
+    }
+
+    // Fetch from live backend API
     publicApi
       .getEducation()
       .then((res) => {
@@ -96,17 +104,19 @@ export function EducationSection() {
               content: [rawBody],
               status: "Published",
               isFeatured: true,
+              image: item.image || item.image_url || undefined,
             };
           });
 
-          setArticles(apiArticles);
-        } else {
-          setArticles([]);
+          setArticles((prev) => {
+            const titles = new Set(apiArticles.map((a) => a.title.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
+            return [...apiArticles, ...localOnly];
+          });
         }
       })
       .catch((err) => {
         console.warn("publicApi.getEducation in EducationSection:", err);
-        setArticles([]);
       })
       .finally(() => {
         if (isMounted) {
@@ -114,8 +124,17 @@ export function EducationSection() {
         }
       });
 
+    const handleUpdate = () => {
+      setArticles(getStoredZhouArticles());
+    };
+
+    window.addEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
 
@@ -217,8 +236,21 @@ export function EducationSection() {
             {filteredArticles.map((article) => (
               <Card
                 key={article.id}
-                className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white"
+                className="flex flex-col justify-between hover:border-primary hover:shadow-md transition-all duration-200 group bg-white overflow-hidden"
               >
+                {article.image && (
+                  <div
+                    onClick={() => handleReadArticle(article)}
+                    className="relative w-full h-36 overflow-hidden bg-surface border-b border-primary-light shrink-0 cursor-pointer"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={article.image}
+                      alt={article.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                )}
                 <CardHeader className="space-y-3 pb-3">
                   <div className="flex items-center justify-end text-xs text-text-secondary gap-2">
                     <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary whitespace-nowrap">
@@ -311,6 +343,17 @@ export function EducationSection() {
                   Disusun oleh {selectedArticle.author || "Tim Konsultan Zhou Consulting"}
                 </DialogDescription>
               </DialogHeader>
+
+              {selectedArticle.image && (
+                <div className="relative w-full h-48 sm:h-56 rounded-xl overflow-hidden border border-primary-light my-2 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedArticle.image}
+                    alt={selectedArticle.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
 
               <div className="space-y-6 py-4 text-xs sm:text-sm text-text leading-relaxed">
                 {selectedArticle.takeaways && selectedArticle.takeaways.length > 0 && (

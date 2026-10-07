@@ -119,6 +119,7 @@ function EducationPortalContent() {
               ],
               content: [rawBody],
               status: "Published",
+              image: item.image || item.image_url || undefined,
             };
           });
 
@@ -342,17 +343,26 @@ function EducationPortalContent() {
               >
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   {/* Visual Cover Kolom Kiri */}
-                  <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none">
-                    <Image
-                      src="/images/education-featured.jpg"
-                      alt={currentFeatured.title}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 40vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent" />
-                    <div className="absolute bottom-4 left-4">
+                  <div className="lg:col-span-5 relative w-full h-64 sm:h-72 lg:h-84 rounded-xl overflow-hidden shadow-md group select-none bg-surface">
+                    {currentFeatured.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={currentFeatured.image}
+                        alt={currentFeatured.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <Image
+                        src="/images/education-featured.jpg"
+                        alt={currentFeatured.title}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 40vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        priority
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute bottom-4 left-4 z-10">
                       <Badge variant="primary" size="sm" className="bg-primary text-white text-[10px]">
                         {currentFeatured.category}
                       </Badge>
@@ -550,8 +560,18 @@ function EducationPortalContent() {
                     {filteredArticles.map((article) => (
                       <Card
                         key={article.id}
-                        className="rounded-xl border-primary-light bg-white hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                        className="rounded-xl border-primary-light bg-white hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between overflow-hidden"
                       >
+                        {article.image && (
+                          <div className="relative w-full h-44 overflow-hidden bg-surface border-b border-primary-light shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={article.image}
+                              alt={article.title}
+                              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+                        )}
                         <CardHeader className="space-y-3 pb-3">
                           <div className="flex items-center justify-between text-xs text-text-secondary">
                             <Badge variant="outline" size="sm" className="text-[10px] border-primary-light">
@@ -908,6 +928,17 @@ function EducationPortalContent() {
                 Penulis: <strong className="text-primary font-semibold">{activeArticleModal.author}</strong>
               </DialogDescription>
             </DialogHeader>
+
+            {activeArticleModal.image && (
+              <div className="relative w-full h-48 sm:h-64 rounded-xl overflow-hidden border border-primary-light my-2 shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={activeArticleModal.image}
+                  alt={activeArticleModal.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             <div className="space-y-4 py-3 text-xs sm:text-sm text-text leading-relaxed">
               {/* Takeaways Box */}
