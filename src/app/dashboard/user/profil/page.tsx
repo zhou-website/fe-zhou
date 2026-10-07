@@ -19,10 +19,7 @@ import {
   CheckIcon,
   ShieldTaxIcon,
   CloseIcon,
-  UserIcon,
-  LockIcon,
   BuildingIcon,
-  ClockIcon,
   EyeIcon,
   PencilIcon,
 } from "@/components/icons";
@@ -416,40 +413,37 @@ export default function ClientProfileSecurityPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("info")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                   activeTab === "info"
                     ? "bg-primary text-white shadow-xs"
                     : "text-text-secondary hover:text-primary hover:bg-white"
                 }`}
               >
-                <UserIcon className="text-xs" />
-                <span>Informasi Entitas &amp; PIC</span>
+                Informasi Entitas &amp; PIC
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab("security")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                   activeTab === "security"
                     ? "bg-primary text-white shadow-xs"
                     : "text-text-secondary hover:text-primary hover:bg-white"
                 }`}
               >
-                <LockIcon className="text-xs" />
-                <span>Keamanan &amp; Kata Sandi</span>
+                Keamanan &amp; Kata Sandi
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab("sessions")}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 shrink-0 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                   activeTab === "sessions"
                     ? "bg-primary text-white shadow-xs"
                     : "text-text-secondary hover:text-primary hover:bg-white"
                 }`}
               >
-                <ClockIcon className="text-xs" />
-                <span>Log Sesi &amp; Perangkat ({sessions.length})</span>
+                Log Sesi &amp; Perangkat ({sessions.length})
               </button>
             </div>
 
