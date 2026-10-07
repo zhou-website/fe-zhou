@@ -359,7 +359,7 @@ export function Hero() {
       {/* Main Content Container (relative z-10 for sharp focus, high contrast & zero glare) */}
       <div className="container-custom relative z-10">
         {isLoading ? (
-          <div className="max-w-3xl space-y-6 sm:space-y-8 animate-in fade-in duration-200">
+          <div className="max-w-3xl space-y-6 sm:space-y-8 animate-in fade-in duration-200 text-left">
             {/* Main Hero Headline Skeleton */}
             <div className="space-y-3">
               <Skeleton className="h-10 sm:h-12 lg:h-14 w-11/12 bg-white/10 rounded-lg" />
@@ -373,41 +373,38 @@ export function Hero() {
             </div>
 
             {/* Action Buttons Skeleton */}
-            <div className="flex flex-wrap items-center gap-4 pt-3">
-              <Skeleton className="h-11 w-44 bg-white/10 rounded-md" />
-              <Skeleton className="h-11 w-40 bg-white/10 rounded-md" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-5 pt-3">
+              <Skeleton className="h-12 w-full sm:w-44 bg-white/10 rounded-[8px]" />
+              <Skeleton className="h-12 w-full sm:w-40 bg-white/10 rounded-[8px]" />
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl space-y-6 sm:space-y-8">
+          <div className="max-w-3xl space-y-6 sm:space-y-8 text-left">
             {/* Main Hero Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.1]">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight lg:leading-[1.1] text-left">
               {heroData?.title || t.hero.title}
             </h1>
 
             {/* Subtitles */}
-            <div className="space-y-2">
-              <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug">
+            <div className="space-y-2 text-left">
+              <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug text-left">
                 {heroData?.content || t.hero.subtitle2}
               </p>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-5 pt-2">
               <Button
-                variant="outline"
-                size="lg"
                 asChild
-                className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md shadow-sm transition-all duration-200 active:scale-[0.98]"
+                className="h-12 px-6 sm:px-7 rounded-[8px] bg-[#FFFFFF] text-[#0B1533] hover:bg-slate-100 hover:text-[#0B1533] border-none font-semibold text-sm sm:text-base shadow-sm transition-colors duration-150 cursor-pointer w-full sm:w-auto active:scale-[0.98]"
               >
                 <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
               </Button>
 
               <Button
                 variant="outline"
-                size="lg"
                 asChild
-                className="border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white font-semibold text-sm px-6 py-2.5 rounded-md transition-all duration-200 active:scale-[0.98]"
+                className="h-12 px-6 sm:px-7 rounded-[8px] bg-transparent text-[#FFFFFF] border border-white/35 hover:bg-white/10 hover:border-white/50 hover:text-white font-semibold text-sm sm:text-base transition-colors duration-150 cursor-pointer w-full sm:w-auto active:scale-[0.98]"
               >
                 <Link href="/#layanan">{t.hero.ctaServices}</Link>
               </Button>

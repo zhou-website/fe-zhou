@@ -25,7 +25,7 @@ export const translations = {
       register: "Daftar",
     },
     hero: {
-      title: "Zhou Consulting",
+      title: "Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial",
       subtitle1: "Tax and accounting, finance and law services",
       subtitle2: "Strategic Advisory in Tax, Accounting & Business Law",
       ctaConsult: "Mulai Konsultasi",
