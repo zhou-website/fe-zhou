@@ -163,6 +163,7 @@ export default function ClientTicketMonitoringPage() {
   const [newCategory, setNewCategory] = useState<Ticket["category"]>("Tax Service Core");
   const [newUrgency, setNewUrgency] = useState("Normal");
   const [newDescription, setNewDescription] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -263,6 +264,7 @@ export default function ClientTicketMonitoringPage() {
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");
+    setAttachedFile(null);
     showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}.`);
   };
 
@@ -600,14 +602,77 @@ export default function ClientTicketMonitoringPage() {
                 />
               </div>
 
-              <div className="p-3 bg-surface border border-dashed border-primary-light rounded-xl text-center">
-                <DocumentIcon className="mx-auto text-primary text-lg mb-1" />
-                <span className="text-[11px] text-text-secondary block">
-                  Unggah berkas lampiran pendukung (PDF / XLSX maks. 10MB)
-                </span>
-                <span className="text-[10px] text-text-muted block mt-0.5">
-                  Otomatis terenkripsi dan terikat perjanjian kerahasiaan NDA
-                </span>
+              <div className="space-y-1.5">
+                <input
+                  type="file"
+                  id="ticket-attachment-input"
+                  accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setAttachedFile(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                {attachedFile ? (
+                  <div className="p-3 bg-surface rounded-xl border border-primary-light flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
+                          attachedFile.name.toLowerCase().endsWith(".xlsx") ||
+                          attachedFile.name.toLowerCase().endsWith(".xls")
+                            ? "bg-emerald-600"
+                            : "bg-primary"
+                        }`}
+                      >
+                        {attachedFile.name.toLowerCase().endsWith(".xlsx") ||
+                        attachedFile.name.toLowerCase().endsWith(".xls")
+                          ? "XLS"
+                          : "PDF"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-primary truncate text-xs">
+                          {attachedFile.name}
+                        </p>
+                        <p className="text-[10px] text-text-muted">
+                          {(attachedFile.size / (1024 * 1024)).toFixed(2)} MB &bull; Terenkripsi NDA
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <label
+                        htmlFor="ticket-attachment-input"
+                        className="px-2.5 py-1 text-[11px] rounded-lg border border-primary-light bg-white hover:bg-surface text-primary font-medium cursor-pointer transition-colors"
+                      >
+                        Ganti
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFile(null)}
+                        className="p-1 text-text-muted hover:text-error cursor-pointer rounded"
+                        title="Hapus berkas"
+                      >
+                        <CloseIcon className="text-xs" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="ticket-attachment-input"
+                    className="p-3.5 bg-surface hover:bg-surface/80 border border-dashed border-primary-light hover:border-primary/50 rounded-xl text-center block cursor-pointer transition-colors group"
+                  >
+                    <DocumentIcon className="mx-auto text-primary/70 group-hover:text-primary text-lg mb-1" />
+                    <span className="text-[11px] font-bold text-primary block">
+                      Unggah berkas lampiran pendukung (PDF / XLSX maks. 10MB)
+                    </span>
+                    <span className="text-[10px] text-text-muted block mt-0.5">
+                      Otomatis terenkripsi dan terikat perjanjian kerahasiaan NDA
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-primary-light">
@@ -615,7 +680,10 @@ export default function ClientTicketMonitoringPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsNewTicketModalOpen(false)}
+                  onClick={() => {
+                    setIsNewTicketModalOpen(false);
+                    setAttachedFile(null);
+                  }}
                 >
                   Batal
                 </Button>

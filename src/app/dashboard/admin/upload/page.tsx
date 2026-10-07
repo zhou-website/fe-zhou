@@ -52,6 +52,7 @@ export default function AdminUploadBillingPage() {
 
   // New report modal state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState({
     ticketId: "",
     clientName: "",
@@ -126,36 +127,52 @@ export default function AdminUploadBillingPage() {
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadForm.fileName.trim()) return;
+    const currentFileName = uploadedFile ? uploadedFile.name : uploadForm.fileName.trim();
+    if (!currentFileName) return;
 
     try {
       const fd = new FormData();
-      fd.append("file_name", uploadForm.fileName.trim());
+      if (uploadedFile) {
+        fd.append("file", uploadedFile);
+        fd.append("file_name", uploadedFile.name);
+      } else {
+        fd.append("file_name", currentFileName);
+      }
       await adminApi.uploadDocument(1, fd);
     } catch (err) {
       console.warn("Backend document upload notice:", err);
     }
 
-    const ext = uploadForm.fileName.endsWith(".xlsx") ? "XLSX" : "PDF";
+    const isExcel = currentFileName.toLowerCase().endsWith(".xlsx") || currentFileName.toLowerCase().endsWith(".xls");
+    const ext = isExcel ? "XLSX" : "PDF";
+    const calculatedSize = uploadedFile
+      ? `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`
+      : "2.4 MB";
+
     const newReport: ReportItem = {
       id: "REP-0" + (reports.length + 1),
       ticketId: uploadForm.ticketId,
       clientName: uploadForm.clientName,
       clientNpwp: uploadForm.clientNpwp,
-      fileName: uploadForm.fileName.trim(),
-      fileSize: "3.8 MB",
+      fileName: currentFileName,
+      fileSize: calculatedSize,
       fileType: ext,
       category: uploadForm.category,
       invoiceNumber: uploadForm.invoiceNumber,
       amount: uploadForm.amount,
       billingStatus: "Menunggu Verifikasi",
-      uploadDate: "18 Sep 2026",
+      uploadDate: new Date().toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
       consultant: uploadForm.consultant,
       sha256: "c" + Math.random().toString(16).substring(2) + "94ca495991b7852b855e3b0c442",
     };
 
     setReports((prev) => [newReport, ...prev]);
     setIsUploadModalOpen(false);
+    setUploadedFile(null);
     setUploadForm({
       ticketId: availableTickets[0]?.id || "",
       clientName: availableTickets[0]?.clientName || "",
@@ -691,18 +708,83 @@ export default function AdminUploadBillingPage() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-primary">
-                  Nama Berkas Deliverable (PDF / XLSX) <span className="text-error">*</span>
+                  Berkas Deliverable (PDF / XLSX) <span className="text-error">*</span>
                 </Label>
-                <Input
-                  type="text"
-                  required
-                  placeholder="e.g. Laporan_Audit_SAK_Final_2026.pdf"
-                  value={uploadForm.fileName}
-                  onChange={(e) =>
-                    setUploadForm((prev) => ({ ...prev, fileName: e.target.value }))
-                  }
-                  className="text-xs h-9 bg-white border-primary-light"
+
+                <input
+                  type="file"
+                  id="deliverable-file-upload"
+                  accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setUploadedFile(file);
+                      setUploadForm((prev) => ({ ...prev, fileName: file.name }));
+                    }
+                  }}
+                  className="hidden"
                 />
+
+                {uploadedFile ? (
+                  <div className="p-3 bg-surface rounded-xl border border-primary-light flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${
+                          uploadedFile.name.toLowerCase().endsWith(".xlsx") ||
+                          uploadedFile.name.toLowerCase().endsWith(".xls")
+                            ? "bg-emerald-600"
+                            : "bg-primary"
+                        }`}
+                      >
+                        {uploadedFile.name.toLowerCase().endsWith(".xlsx") ||
+                        uploadedFile.name.toLowerCase().endsWith(".xls")
+                          ? "XLS"
+                          : "PDF"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-primary truncate text-xs">
+                          {uploadedFile.name}
+                        </p>
+                        <p className="text-[10px] text-text-muted">
+                          {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB &bull; Siap Diterbitkan
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <label
+                        htmlFor="deliverable-file-upload"
+                        className="px-2.5 py-1 text-[11px] rounded-lg border border-primary-light bg-white hover:bg-surface text-primary font-medium cursor-pointer transition-colors"
+                      >
+                        Ganti
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadedFile(null);
+                          setUploadForm((prev) => ({ ...prev, fileName: "" }));
+                        }}
+                        className="p-1 text-text-muted hover:text-error cursor-pointer rounded"
+                        title="Hapus berkas"
+                      >
+                        <CloseIcon className="text-xs" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="deliverable-file-upload"
+                    className="flex flex-col items-center justify-center p-4 bg-surface hover:bg-surface/80 border-2 border-dashed border-primary-light rounded-xl cursor-pointer transition-all group"
+                  >
+                    <DocumentIcon className="text-2xl text-primary/70 group-hover:text-primary transition-colors mb-1" />
+                    <span className="text-xs font-bold text-primary">
+                      Pilih berkas dari komputer (PDF / XLSX)
+                    </span>
+                    <span className="text-[10px] text-text-muted mt-0.5">
+                      Format resmi didukung: PDF, XLSX (Maksimal 25MB)
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -762,6 +844,7 @@ export default function AdminUploadBillingPage() {
                   type="submit"
                   variant="primary"
                   size="sm"
+                  disabled={!uploadedFile && !uploadForm.fileName.trim()}
                   className="text-xs h-9 px-5 font-semibold shadow-xs"
                 >
                   Unggah &amp; Terbitkan
