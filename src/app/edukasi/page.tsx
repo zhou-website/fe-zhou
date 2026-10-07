@@ -48,6 +48,7 @@ import {
 import {
   getStoredZhouArticles,
   ZHOU_ARTICLES_EVENT,
+  extractEducationImageAndBody,
 } from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
@@ -89,7 +90,11 @@ function EducationPortalContent() {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
-            const rawBody = item.body || item.title || "";
+            const { image, cleanBody } = extractEducationImageAndBody(
+              item.body,
+              item.file_path,
+              item.image || item.image_url
+            );
             return {
               id: `be-${item.id}`,
               title: item.title,
@@ -112,21 +117,36 @@ function EducationPortalContent() {
                 : "2026",
               author: "Tim Riset Fiskal Zhou",
               readTime: "5 menit baca",
-              summary: rawBody.slice(0, 160) + "...",
+              summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
               takeaways: [
                 "Kepatuhan regulasi fiskal dan pembukuan komersial.",
                 "Mitigasi risiko sanksi administratif dan ekualisasi data.",
               ],
-              content: [rawBody],
+              content: [cleanBody],
               status: "Published",
-              image: item.image || item.image_url || undefined,
+              image: image,
             };
           });
 
           setArticlesList((prev) => {
-            const titles = new Set(apiArticles.map((a) => a.title.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
-            return [...apiArticles, ...localOnly];
+            const localMap = new Map(
+              prev.map((p) => [p.title.toLowerCase().trim(), p])
+            );
+            const mergedApi: ZhouArticle[] = apiArticles.map((apiItem) => {
+              const localMatch = localMap.get(apiItem.title.toLowerCase().trim());
+              return {
+                ...apiItem,
+                image: apiItem.image || localMatch?.image || undefined,
+                attachment: apiItem.attachment || localMatch?.attachment || undefined,
+              };
+            });
+            const apiTitles = new Set(
+              apiArticles.map((a) => a.title.toLowerCase().trim())
+            );
+            const localOnly = prev.filter(
+              (p) => !apiTitles.has(p.title.toLowerCase().trim())
+            );
+            return [...mergedApi, ...localOnly];
           });
         }
       })

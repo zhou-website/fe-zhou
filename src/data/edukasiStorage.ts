@@ -6,6 +6,110 @@ export const ZHOU_ARTICLES_STORAGE_KEY = "zhou_articles_data_v2";
 export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
 
 /**
+ * Ekstraksi gambar sampul dan pembersihan teks body materi edukasi.
+ * Mendukung tag metadata database `<!--ZHOU_IMAGE:...-->`, markdown image, dan image file path.
+ */
+export function extractEducationImageAndBody(
+  rawBody?: string,
+  filePath?: string,
+  explicitImage?: string
+): {
+  image?: string;
+  cleanBody: string;
+} {
+  let image: string | undefined = explicitImage;
+  let cleanBody = rawBody || "";
+
+  // 1. Ekstrak dari metadata tag <!--ZHOU_IMAGE:...--> yang tersimpan di kolom body DB
+  const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
+  if (tagMatch) {
+    if (!image) {
+      image = tagMatch[1].trim();
+    }
+    cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
+  }
+
+  // 2. Ekstrak dari markdown image di awal teks body: ![...](...)
+  const mdMatch = cleanBody.match(/^!\[.*?\]\((.*?)\)\r?\n?/);
+  if (mdMatch) {
+    if (!image) {
+      image = mdMatch[1].trim();
+    }
+    cleanBody = cleanBody.replace(/^!\[.*?\]\(.*?\)\r?\n?/, "").trim();
+  }
+
+  // 3. Fallback jika filePath adalah image URL atau Base64 Data URL
+  if (!image && filePath) {
+    const isImg =
+      /\.(jpg|jpeg|png|webp|svg|gif)($|\?)/i.test(filePath) ||
+      filePath.startsWith("data:image/") ||
+      filePath.startsWith("http");
+    if (isImg) {
+      image = filePath;
+    }
+  }
+
+  return { image, cleanBody };
+}
+
+/**
+ * Menyematkan gambar sampul ke dalam kolom body agar tersimpan 100% di database backend
+ */
+export function formatEducationBodyWithImage(body: string, image?: string): string {
+  const clean = body.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
+  if (!image) return clean;
+  return `<!--ZHOU_IMAGE:${image}-->\n${clean}`;
+}
+
+/**
+ * Kompresi dan resize gambar di browser client via HTML5 Canvas
+ * Mengubah foto 2MB-10MB menjadi ~60-120KB JPEG berkualitas tajam agar muat di kolom TEXT database & request body.
+ */
+export function compressImageFile(
+  file: File,
+  maxWidth = 1200,
+  maxHeight = 800,
+  quality = 0.82
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      resolve("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Mendapatkan daftar artikel/modul edukasi Zhou Consulting.
  * Jika tersedia di localStorage, gunakan data tersebut. Jika belum, gunakan data default (kosong).
  */

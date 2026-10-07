@@ -20,7 +20,12 @@ import {
   ImageIcon,
   UploadIcon,
 } from "@/components/icons";
-import { addZhouArticle } from "@/data/edukasiStorage";
+import {
+  addZhouArticle,
+  extractEducationImageAndBody,
+  formatEducationBodyWithImage,
+  compressImageFile,
+} from "@/data/edukasiStorage";
 import {
   adminCmsApi,
   publicApi,
@@ -174,6 +179,7 @@ function AdminCMSPageContent() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isBatchKursModalOpen, setIsBatchKursModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<ChatbotFaqItem | null>(null);
+  const [editingEduId, setEditingEduId] = useState<number | null>(null);
   const [modalSection, setModalSection] = useState<"edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs">("edukasi");
 
   // Form states strictly matching backend request bodies:
@@ -191,7 +197,7 @@ function AdminCMSPageContent() {
   });
 
   // Handler Upload Gambar Sampul Edukasi (Opsional)
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -200,25 +206,24 @@ function AdminCMSPageContent() {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Ukuran gambar melebihi batas maksimal 5 MB.");
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("Ukuran gambar melebihi batas maksimal 8 MB.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
+    try {
+      // Kompresi otomatis ke resolusi optimal 1200x800 & JPEG kualitas 82% agar muat di kolom TEXT database
+      const compressedDataUrl = await compressImageFile(file, 1200, 800, 0.82);
       setEduForm((prev) => ({
         ...prev,
-        image: result,
+        image: compressedDataUrl,
         image_name: file.name,
       }));
       showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
-    };
-    reader.onerror = () => {
-      showToast("Gagal membaca file gambar.");
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Gagal memproses file gambar:", err);
+      showToast("Gagal memproses file gambar.");
+    }
   };
 
   // Handler Upload Berkas PDF Edukasi (Opsional)
@@ -336,6 +341,11 @@ function AdminCMSPageContent() {
       // 1. Education
       if (eduRes.status === "fulfilled" && Array.isArray(eduRes.value.data) && eduRes.value.data.length > 0) {
         eduRes.value.data.forEach((e: PublicEducationItem) => {
+          const { image, cleanBody } = extractEducationImageAndBody(
+            e.body,
+            e.file_path,
+            e.image || e.image_url
+          );
           items.push({
             id: `EDU-${e.id}`,
             numericId: e.id,
@@ -343,10 +353,10 @@ function AdminCMSPageContent() {
             title: e.title,
             category: "Edukasi",
             subcategory: e.category || "Coretax DJP",
-            summary: e.body ? e.body.slice(0, 140) + "..." : "Artikel edukasi perpajakan",
+            summary: cleanBody ? cleanBody.slice(0, 140) + "..." : "Artikel edukasi perpajakan",
             status: "Published",
             updatedAt: e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID") : "Terbaru",
-            raw: e,
+            raw: { ...e, image, body: cleanBody },
           });
         });
       }
@@ -561,17 +571,36 @@ function AdminCMSPageContent() {
     e.preventDefault();
     try {
       if (modalSection === "edukasi") {
-        const res = await adminCmsApi.createEducation({
-          title: eduForm.title,
-          category: eduForm.category,
-          content_type: eduForm.content_type,
-          body: eduForm.body,
-          file_path: eduForm.file_path || undefined,
-          image: eduForm.image || undefined,
-        });
+        // Sematkan gambar ke format database <!--ZHOU_IMAGE:...--> agar tersimpan permanen di database backend
+        const bodyWithImage = formatEducationBodyWithImage(eduForm.body, eduForm.image);
+
+        if (editingEduId) {
+          // UPDATE ke backend database
+          await adminCmsApi.updateEducation(editingEduId, {
+            title: eduForm.title,
+            category: eduForm.category,
+            content_type: eduForm.content_type,
+            body: bodyWithImage,
+            file_path: eduForm.file_path || undefined,
+            image: eduForm.image || undefined,
+          });
+          showToast("Materi edukasi berhasil diperbarui di database!");
+        } else {
+          // CREATE ke backend database
+          await adminCmsApi.createEducation({
+            title: eduForm.title,
+            category: eduForm.category,
+            content_type: eduForm.content_type,
+            body: bodyWithImage,
+            file_path: eduForm.file_path || undefined,
+            image: eduForm.image || undefined,
+          });
+          showToast("Materi edukasi berhasil ditambahkan ke database!");
+        }
 
         // Sinkronisasi lokal ke portal edukasi publik Zhou
         addZhouArticle({
+          id: editingEduId ? `be-${editingEduId}` : undefined,
           title: eduForm.title,
           category: eduForm.category,
           categoryKey: eduForm.category.toLowerCase().includes("pph")
@@ -608,27 +637,8 @@ function AdminCMSPageContent() {
           isFeatured: true,
         });
 
-        showToast("Materi edukasi berhasil ditambahkan ke database!");
-        if (res.data && (res.data as Record<string, unknown>).id) {
-          const id = Number((res.data as Record<string, unknown>).id);
-          setCmsItems((prev) => [
-            {
-              id: `EDU-${id}`,
-              numericId: id,
-              section: "edukasi",
-              title: eduForm.title,
-              category: "Edukasi",
-              subcategory: eduForm.category,
-              summary: eduForm.body.slice(0, 140) + "...",
-              status: "Published",
-              updatedAt: "Baru saja",
-              raw: { id, ...eduForm },
-            },
-            ...prev,
-          ]);
-        } else {
-          loadAllCMS();
-        }
+        loadAllCMS();
+        setEditingEduId(null);
 
         setEduForm({
           title: "",
@@ -900,6 +910,7 @@ function AdminCMSPageContent() {
 
   const openAddModal = (sec: "edukasi" | "services" | "regulasi" | "kurs" | "karir" | "faqs") => {
     setEditingFaq(null);
+    setEditingEduId(null);
     setModalSection(sec);
     if (sec === "edukasi") {
       setEduForm({
@@ -924,7 +935,32 @@ function AdminCMSPageContent() {
     setIsAddModalOpen(true);
   };
 
+  const openEditEducation = (item: UnifiedCMSItem) => {
+    const raw = item.raw as (PublicEducationItem & { image?: string }) | undefined;
+    setEditingFaq(null);
+    setEditingEduId(item.numericId);
+    const { image, cleanBody } = extractEducationImageAndBody(
+      raw?.body || item.summary,
+      raw?.file_path,
+      raw?.image || raw?.image_url
+    );
+    setEduForm({
+      title: item.title,
+      category: item.subcategory || "Coretax DJP",
+      content_type: (raw?.content_type === "GUIDE" ? "GUIDE" : "ARTICLE"),
+      body: cleanBody || "",
+      file_path: raw?.file_path || "",
+      file_name: raw?.file_path ? raw.file_path.split("/").pop() || "" : "",
+      file_size: "",
+      image: image || "",
+      image_name: image ? "sampul-terpasang.jpg" : "",
+    });
+    setModalSection("edukasi");
+    setIsAddModalOpen(true);
+  };
+
   const openEditFaq = (f: ChatbotFaqItem) => {
+    setEditingEduId(null);
     setEditingFaq(f);
     setFaqForm({
       category: f.category || "Layanan Perpajakan",
@@ -1319,6 +1355,20 @@ function AdminCMSPageContent() {
                         </Button>
                       )}
 
+                      {/* Edit Edukasi */}
+                      {item.section === "edukasi" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditEducation(item)}
+                          className="text-[11px] h-7 px-2.5 border-primary-light text-primary hover:bg-white inline-flex items-center gap-1"
+                        >
+                          <EditIcon className="text-xs" />
+                          <span>Edit</span>
+                        </Button>
+                      )}
+
                       {/* Edit FAQ */}
                       {isFaq && (
                         <Button
@@ -1472,7 +1522,9 @@ function AdminCMSPageContent() {
               </span>
               <h3 className="text-base font-bold text-primary mt-0.5">
                 {modalSection === "edukasi"
-                  ? "Tambah Materi Edukasi Pajak"
+                  ? editingEduId
+                    ? "Edit Materi Edukasi Pajak"
+                    : "Tambah Materi Edukasi Pajak"
                   : modalSection === "services"
                   ? "Tambah Katalog Layanan Bisnis"
                   : modalSection === "regulasi"
@@ -2028,7 +2080,11 @@ function AdminCMSPageContent() {
                   Batal
                 </Button>
                 <Button type="submit" variant="primary" size="sm" className="text-xs h-8 font-semibold cursor-pointer">
-                  {editingFaq && modalSection === "faqs" ? "Simpan Perubahan FAQ" : "Simpan ke Database"}
+                  {editingFaq && modalSection === "faqs"
+                    ? "Simpan Perubahan FAQ"
+                    : editingEduId && modalSection === "edukasi"
+                    ? "Simpan Perubahan Edukasi"
+                    : "Simpan ke Database"}
                 </Button>
               </div>
             </form>

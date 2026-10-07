@@ -36,7 +36,11 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
-import { getStoredZhouArticles, ZHOU_ARTICLES_EVENT } from "@/data/edukasiStorage";
+import {
+  getStoredZhouArticles,
+  ZHOU_ARTICLES_EVENT,
+  extractEducationImageAndBody,
+} from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
@@ -79,7 +83,11 @@ export function EducationSection() {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
-            const rawBody = item.body || item.title || "";
+            const { image, cleanBody } = extractEducationImageAndBody(
+              item.body,
+              item.file_path,
+              item.image || item.image_url
+            );
             return {
               id: `be-${item.id}`,
               title: item.title,
@@ -96,22 +104,36 @@ export function EducationSection() {
               }),
               readTime: "5 menit baca",
               author: "Tim Konsultan Zhou Consulting",
-              summary: rawBody.slice(0, 160) + (rawBody.length > 160 ? "..." : ""),
+              summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
               takeaways: [
                 "Kepatuhan regulasi perpajakan nasional dan mitigasi risiko.",
                 "Penyelarasan bukti potong dan rekonsiliasi data fiskal berkala.",
               ],
-              content: [rawBody],
+              content: [cleanBody],
               status: "Published",
               isFeatured: true,
-              image: item.image || item.image_url || undefined,
+              image: image,
             };
           });
 
           setArticles((prev) => {
-            const titles = new Set(apiArticles.map((a) => a.title.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
-            return [...apiArticles, ...localOnly];
+            const localMap = new Map(
+              prev.map((p) => [p.title.toLowerCase().trim(), p])
+            );
+            const mergedApi: ZhouArticle[] = apiArticles.map((apiItem) => {
+              const localMatch = localMap.get(apiItem.title.toLowerCase().trim());
+              return {
+                ...apiItem,
+                image: apiItem.image || localMatch?.image || undefined,
+              };
+            });
+            const apiTitles = new Set(
+              apiArticles.map((a) => a.title.toLowerCase().trim())
+            );
+            const localOnly = prev.filter(
+              (p) => !apiTitles.has(p.title.toLowerCase().trim())
+            );
+            return [...mergedApi, ...localOnly];
           });
         }
       })
