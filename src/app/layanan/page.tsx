@@ -24,6 +24,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 export default function LayananIndexPage() {
@@ -32,14 +33,19 @@ export default function LayananIndexPage() {
 
   useEffect(() => {
     let isMounted = true;
-    setServices(getStoredServices());
-
-    const handleUpdate = () => {
-      setServices(getStoredServices());
+    const loadServicesData = () => {
+      const stored = getStoredServices().map((s) => ({
+        ...s,
+        status: getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]),
+      }));
+      setServices(stored);
     };
 
-    window.addEventListener(SERVICES_EVENT, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
+    loadServicesData();
+
+    window.addEventListener(SERVICES_EVENT, loadServicesData);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, loadServicesData);
+    window.addEventListener("storage", loadServicesData);
 
     publicApi
       .getServices()
@@ -91,7 +97,7 @@ export default function LayananIndexPage() {
                 "Penyampaian Laporan Final",
               ],
               deliverables: ["Laporan Hasil Kerja & Risalah Penugasan Resmi"],
-              status: item.is_active ? "Published" : "Draft",
+              status: getCmsItemStatus(item.service_code || `BE-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id]),
               lastUpdated: item.created_at
                 ? new Date(item.created_at).toLocaleDateString("id-ID", { month: "short", year: "numeric" })
                 : "Oktober 2026",
@@ -111,8 +117,9 @@ export default function LayananIndexPage() {
 
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener(SERVICES_EVENT, loadServicesData);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, loadServicesData);
+      window.removeEventListener("storage", loadServicesData);
     };
   }, []);
 

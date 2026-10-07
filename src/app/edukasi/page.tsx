@@ -53,6 +53,7 @@ import {
   GOV_LINKS_EVENT,
 } from "@/data/edukasiStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 const CATEGORIES = [
@@ -131,7 +132,7 @@ function EducationPortalContent() {
                 "Mitigasi risiko sanksi administratif dan ekualisasi data.",
               ],
               content: [cleanBody],
-              status: "Published",
+              status: getCmsItemStatus(`be-${item.id}`, item.title, "Published", [item.id]),
               image: image,
             };
           });
@@ -172,12 +173,14 @@ function EducationPortalContent() {
 
     window.addEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
     window.addEventListener(GOV_LINKS_EVENT, handleGovLinksUpdate);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleArticlesUpdate);
     window.addEventListener("storage", handleArticlesUpdate);
     window.addEventListener("storage", handleGovLinksUpdate);
     return () => {
       isMounted = false;
       window.removeEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
       window.removeEventListener(GOV_LINKS_EVENT, handleGovLinksUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleArticlesUpdate);
       window.removeEventListener("storage", handleArticlesUpdate);
       window.removeEventListener("storage", handleGovLinksUpdate);
     };

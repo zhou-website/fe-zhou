@@ -71,6 +71,11 @@ import {
   CMS_DELETED_ITEMS_EVENT,
 } from "@/data/cmsDeletedStorage";
 import {
+  getCmsItemStatus,
+  setCmsItemStatus,
+  CMS_STATUS_UPDATED_EVENT,
+} from "@/data/cmsStatusStorage";
+import {
   adminCmsApi,
   publicApi,
   parseContactSettings,
@@ -487,7 +492,7 @@ function AdminCMSPageContent() {
             category: "Edukasi Zhou",
             subcategory: e.category || "Coretax DJP",
             summary: cleanBody ? cleanBody.slice(0, 140) + "..." : "Artikel edukasi perpajakan",
-            status: "Published",
+            status: getCmsItemStatus(id, e.title, "Published", [e.id, `be-${e.id}`]),
             updatedAt: e.created_at ? new Date(e.created_at).toLocaleDateString("id-ID") : "Terbaru",
             raw: { ...e, image, body: cleanBody },
           });
@@ -512,7 +517,7 @@ function AdminCMSPageContent() {
             category: "Edukasi Zhou",
             subcategory: art.category || "Coretax DJP",
             summary: art.summary || (Array.isArray(art.content) ? art.content.join(" ").slice(0, 140) : ""),
-            status: art.status === "Draft" ? "Draft" : "Published",
+            status: getCmsItemStatus(displayId, art.title, art.status === "Draft" ? "Draft" : "Published", [art.id, numId]),
             updatedAt: art.date || "Terbaru",
             raw: {
               ...art,
@@ -537,7 +542,7 @@ function AdminCMSPageContent() {
           category: "Tautan Edukasi DJP",
           subcategory: `Tautan DJP (${link.type})`,
           summary: `${link.url} — ${link.description}`,
-          status: link.status === "Draft" ? "Draft" : "Published",
+          status: getCmsItemStatus(displayId, link.title, link.status === "Draft" ? "Draft" : "Published", [link.id, numId]),
           updatedAt: link.institution || "DJP",
           raw: { ...link, isDjpLink: true },
         });
@@ -561,7 +566,7 @@ function AdminCMSPageContent() {
             category: "Katalog Layanan",
             subcategory: s.category || "Akuntansi",
             summary: s.description || "Layanan konsultasi resmi",
-            status: s.is_active ? "Published" : "Draft",
+            status: getCmsItemStatus(id, s.service_name, s.is_active ? "Published" : "Draft", [s.id, s.service_code]),
             updatedAt: "Aktif",
             raw: s,
           });
@@ -584,7 +589,7 @@ function AdminCMSPageContent() {
             category: "Katalog Layanan",
             subcategory: s.categoryKey || "Akuntansi",
             summary: s.subtitle || "Layanan konsultasi resmi",
-            status: s.status === "Draft" ? "Draft" : "Published",
+            status: getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]),
             updatedAt: s.lastUpdated || "Aktif",
             raw: s,
           });
@@ -609,7 +614,7 @@ function AdminCMSPageContent() {
             category: "Peraturan",
             subcategory: r.regulation_type || "PMK",
             summary: `Berkas: ${r.file_path} (${r.file_size || "PDF"})`,
-            status: "Published",
+            status: getCmsItemStatus(id, r.title, "Published", [r.id]),
             updatedAt: r.created_at ? new Date(r.created_at).toLocaleDateString("id-ID") : "Terbaru",
             raw: r,
           });
@@ -632,7 +637,7 @@ function AdminCMSPageContent() {
             category: "Peraturan",
             subcategory: r.category || r.scope || "PMK",
             summary: `Berkas: ${r.downloadUrl || r.docNumber} (${r.fileSize || "PDF"})`,
-            status: r.status === "Draft" || r.status === "Pembaruan" ? "Draft" : "Published",
+            status: getCmsItemStatus(r.id, r.title, r.status === "Draft" || r.status === "Pembaruan" ? "Draft" : "Published", [r.docNumber]),
             updatedAt: r.effectiveDate || "Terbaru",
             raw: r,
           });
@@ -652,7 +657,7 @@ function AdminCMSPageContent() {
             category: "Kurs Pajak",
             subcategory: t.currency_code,
             summary: `Berlaku: ${t.effective_start_date ? new Date(t.effective_start_date).toLocaleDateString("id-ID") : "-"} s/d ${t.effective_end_date ? new Date(t.effective_end_date).toLocaleDateString("id-ID") : "Seterusnya"}`,
-            status: "Published",
+            status: getCmsItemStatus(id, t.currency_code, "Published", [t.id]),
             updatedAt: "KMK Aktif",
             raw: t,
           });
@@ -669,7 +674,7 @@ function AdminCMSPageContent() {
             category: "Kurs Pajak",
             subcategory: k.currency,
             summary: `Kurs Pajak KMK Resmi - ${k.name}`,
-            status: "Published",
+            status: getCmsItemStatus(id, k.currency, "Published", [k.name]),
             updatedAt: "KMK Aktif",
             raw: {
               currency_code: k.currency,
@@ -699,7 +704,7 @@ function AdminCMSPageContent() {
             category: "Lowongan Karir",
             subcategory: `${c.level} (${c.location})`,
             summary: c.description || "Lowongan karir aktif di Zhou Consulting",
-            status: c.is_active ? "Published" : "Draft",
+            status: getCmsItemStatus(id, c.position_title, c.is_active ? "Published" : "Draft", [c.id, c.position_code]),
             updatedAt: "Rekrutmen Buka",
             raw: c,
           });
@@ -722,7 +727,7 @@ function AdminCMSPageContent() {
             category: "Lowongan Karir",
             subcategory: `${pos.type} (${pos.location})`,
             summary: pos.summary || "Lowongan karir aktif di Zhou Consulting",
-            status: pos.status === "Draft" ? "Draft" : "Published",
+            status: getCmsItemStatus(pos.id, pos.title, pos.status === "Draft" ? "Draft" : "Published"),
             updatedAt: "Rekrutmen Buka",
             raw: pos,
           });
@@ -742,7 +747,7 @@ function AdminCMSPageContent() {
             category: "FAQ Chatbot",
             subcategory: f.category || "Layanan Perpajakan",
             summary: f.answer_template ? f.answer_template.slice(0, 140) + "..." : "Respon otomatis chatbot",
-            status: "Published",
+            status: getCmsItemStatus(id, f.question, "Published", [f.id]),
             updatedAt: "Bot Knowledge",
             raw: f,
           });
@@ -773,7 +778,7 @@ function AdminCMSPageContent() {
           category: "Profil & Kontak",
           subcategory: "Hero Headline",
           summary: heroForm.headline || "Teks utama headline dan subheadline beranda publik",
-          status: "Published",
+          status: getCmsItemStatus("CFG-HERO", "Headline Hero Landing Page", "Published"),
           updatedAt: "Aktif",
         });
       }
@@ -787,7 +792,7 @@ function AdminCMSPageContent() {
           category: "Profil & Kontak",
           subcategory: "Kontak & Alamat",
           summary: `${contactForm.companyName} | ${contactForm.email} | ${contactForm.phone} | WA: ${contactForm.whatsapp}`,
-          status: "Published",
+          status: getCmsItemStatus("CFG-CONTACT", "Informasi Kontak & CS Resmi", "Published"),
           updatedAt: "Aktif",
         });
       }
@@ -813,6 +818,7 @@ function AdminCMSPageContent() {
     window.addEventListener(REGULATIONS_EVENT, handleStorageUpdate);
     window.addEventListener(CAREER_SETTINGS_EVENT, handleStorageUpdate);
     window.addEventListener(CMS_DELETED_ITEMS_EVENT, handleStorageUpdate);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleStorageUpdate);
 
     return () => {
       window.removeEventListener(ZHOU_ARTICLES_EVENT, handleStorageUpdate);
@@ -821,6 +827,7 @@ function AdminCMSPageContent() {
       window.removeEventListener(REGULATIONS_EVENT, handleStorageUpdate);
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleStorageUpdate);
       window.removeEventListener(CMS_DELETED_ITEMS_EVENT, handleStorageUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleStorageUpdate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -934,29 +941,51 @@ function AdminCMSPageContent() {
     const isActive = nextStatus === "Published";
 
     try {
+      // 1. Simpan override status ke cmsStatusStorage agar persisten saat refresh!
+      setCmsItemStatus(
+        {
+          id: item.id,
+          numericId: item.numericId,
+          title: item.title,
+          code:
+            (item.raw as { service_code?: string; position_code?: string; docNumber?: string; currency_code?: string })?.service_code ||
+            (item.raw as { position_code?: string })?.position_code ||
+            (item.raw as { docNumber?: string })?.docNumber ||
+            (item.raw as { currency_code?: string })?.currency_code,
+        },
+        nextStatus
+      );
+
       if (item.section === "services") {
         try {
           await adminCmsApi.updateService(item.numericId, { is_active: isActive });
         } catch (apiErr) {
           console.warn("Backend service status update fallback:", apiErr);
         }
-        updateStoredService(`SVC-${item.numericId}`, {
-          status: nextStatus,
-        });
+        updateStoredService(`SVC-${item.numericId}`, { status: nextStatus });
+        updateStoredService(item.id, { status: nextStatus });
       } else if (item.section === "karir") {
         try {
           await adminCmsApi.updateCareer(item.numericId, { is_active: isActive });
         } catch (apiErr) {
           console.warn("Backend career status update fallback:", apiErr);
         }
-        updateStoredCareerPosition(`CAR-${item.numericId}`, {
-          status: nextStatus,
-        });
+        updateStoredCareerPosition(`CAR-${item.numericId}`, { status: nextStatus });
+        updateStoredCareerPosition(item.id, { status: nextStatus });
       } else if (item.section === "edukasi") {
         toggleArticleStatus(`be-${item.numericId}`);
+        toggleArticleStatus(item.id);
+        updateZhouArticle(item.id, { status: nextStatus });
+        updateZhouArticle(`be-${item.numericId}`, { status: nextStatus });
+        if ((item.raw as { isDjpLink?: boolean })?.isDjpLink) {
+          updateStoredBelajarPajakLink(item.id, { status: nextStatus });
+        }
       } else if (item.section === "regulasi") {
         toggleRegulationStatus(`REG-${item.numericId}`);
+        toggleRegulationStatus(item.id);
+        updateRegulation(item.id, { status: nextStatus === "Draft" ? "Draft" : "Berlaku" });
       }
+
       setCmsItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus } : i))
       );
@@ -1008,11 +1037,20 @@ function AdminCMSPageContent() {
                 }
               : undefined,
           });
-          showToast("Materi edukasi berhasil diperbarui!");
+          setCmsItemStatus(
+            {
+              id: `EDU-${editingEduId}`,
+              numericId: editingEduId,
+              title: eduForm.title,
+            },
+            eduForm.status
+          );
+          showToast(eduForm.status === "Published" ? "Materi edukasi berhasil diperbarui & dipublikasikan!" : "Materi edukasi berhasil disimpan sebagai draf!");
         } else {
           // CREATE ke backend database & local storage
+          let createdNumId: number | undefined = undefined;
           try {
-            await adminCmsApi.createEducation({
+            const createRes = await adminCmsApi.createEducation({
               title: eduForm.title,
               category: eduForm.category,
               content_type: eduForm.content_type,
@@ -1020,10 +1058,13 @@ function AdminCMSPageContent() {
               file_path: eduForm.file_path || undefined,
               image: eduForm.image || undefined,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdNumId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createEducation fallback:", apiErr);
           }
-          addZhouArticle({
+          const createdArt = addZhouArticle({
             title: eduForm.title,
             category: eduForm.category,
             categoryKey: eduForm.category.toLowerCase().includes("pph")
@@ -1059,7 +1100,15 @@ function AdminCMSPageContent() {
               : undefined,
             isFeatured: true,
           });
-          showToast(eduForm.status === "Published" ? "Materi edukasi berhasil ditambahkan!" : "Materi edukasi berhasil disimpan sebagai draf!");
+          setCmsItemStatus(
+            {
+              id: createdArt?.id || (createdNumId ? `EDU-${createdNumId}` : undefined),
+              numericId: createdNumId,
+              title: eduForm.title,
+            },
+            eduForm.status
+          );
+          showToast(eduForm.status === "Published" ? "Materi edukasi berhasil ditambahkan & dipublikasikan!" : "Materi edukasi berhasil disimpan sebagai draf!");
         }
 
         loadAllCMS();
@@ -1091,9 +1140,16 @@ function AdminCMSPageContent() {
             description: djpLinkForm.description,
             status: djpLinkForm.status,
           });
+          setCmsItemStatus(
+            {
+              id: editingDjpLinkId,
+              title: djpLinkForm.title,
+            },
+            djpLinkForm.status
+          );
           showToast("Tautan edukasi DJP berhasil diperbarui!");
         } else {
-          addStoredBelajarPajakLink({
+          const created = addStoredBelajarPajakLink({
             title: djpLinkForm.title,
             url: djpLinkForm.url,
             institution: djpLinkForm.institution,
@@ -1106,7 +1162,14 @@ function AdminCMSPageContent() {
             description: djpLinkForm.description,
             status: djpLinkForm.status,
           });
-          showToast(djpLinkForm.status === "Published" ? "Tautan edukasi DJP baru berhasil ditambahkan!" : "Tautan edukasi DJP disimpan sebagai draf!");
+          setCmsItemStatus(
+            {
+              id: created[0]?.id,
+              title: djpLinkForm.title,
+            },
+            djpLinkForm.status
+          );
+          showToast(djpLinkForm.status === "Published" ? "Tautan edukasi DJP baru berhasil ditambahkan & dipublikasikan!" : "Tautan edukasi DJP disimpan sebagai draf!");
         }
         loadAllCMS();
         resetAllEditingState();
@@ -1121,6 +1184,7 @@ function AdminCMSPageContent() {
           status: "Published",
         });
       } else if (modalSection === "services") {
+        const srvStatus = serviceForm.is_active ? "Published" : "Draft";
         if (editingServiceId) {
           try {
             await adminCmsApi.updateService(editingServiceId, {
@@ -1137,23 +1201,37 @@ function AdminCMSPageContent() {
             name: serviceForm.service_name,
             categoryKey: serviceForm.category,
             subtitle: serviceForm.description,
-            status: serviceForm.is_active ? "Published" : "Draft",
+            status: srvStatus,
           });
+          setCmsItemStatus(
+            {
+              id: `SVC-${editingServiceId}`,
+              numericId: editingServiceId,
+              title: serviceForm.service_name,
+              code: serviceForm.service_code,
+            },
+            srvStatus
+          );
           showToast("Layanan bisnis berhasil diperbarui!");
         } else {
+          const srvCode = serviceForm.service_code || `SRV-${Date.now().toString().slice(-4)}`;
+          let createdNumId: number | undefined = undefined;
           try {
-            await adminCmsApi.createService({
-              service_code: serviceForm.service_code || `SRV-${Date.now().toString().slice(-4)}`,
+            const createRes = await adminCmsApi.createService({
+              service_code: srvCode,
               service_name: serviceForm.service_name,
               category: serviceForm.category,
               description: serviceForm.description,
               is_active: serviceForm.is_active,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdNumId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createService fallback:", apiErr);
           }
           addStoredService({
-            id: `SRV-${Date.now().toString().slice(-4)}`,
+            id: srvCode,
             name: serviceForm.service_name,
             categoryKey: serviceForm.category,
             subtitle: serviceForm.description,
@@ -1162,9 +1240,18 @@ function AdminCMSPageContent() {
             pillars: [],
             workflow: [],
             deliverables: [],
-            status: serviceForm.is_active ? "Published" : "Draft",
+            status: srvStatus,
           });
-          showToast("Layanan baru berhasil diterbitkan!");
+          setCmsItemStatus(
+            {
+              id: srvCode,
+              numericId: createdNumId,
+              title: serviceForm.service_name,
+              code: srvCode,
+            },
+            srvStatus
+          );
+          showToast(srvStatus === "Published" ? "Layanan baru berhasil diterbitkan!" : "Layanan baru disimpan sebagai draf!");
         }
         loadAllCMS();
         resetAllEditingState();
@@ -1188,19 +1275,31 @@ function AdminCMSPageContent() {
             downloadUrl: regForm.file_path,
             status: regForm.status === "Draft" ? "Draft" : "Published",
           });
+          setCmsItemStatus(
+            {
+              id: `REG-${editingRegId}`,
+              numericId: editingRegId,
+              title: regForm.title,
+            },
+            regForm.status
+          );
           showToast("Dokumen regulasi DJP berhasil diperbarui!");
         } else {
+          let createdRegNumId: number | undefined = undefined;
           try {
-            await adminCmsApi.createRegulation({
+            const createRes = await adminCmsApi.createRegulation({
               title: regForm.title,
               regulation_type: regForm.regulation_type,
               file_path: regForm.file_path,
               file_size: regForm.file_size,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdRegNumId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createRegulation fallback:", apiErr);
           }
-          addRegulation({
+          const createdReg = addRegulation({
             docNumber: regForm.title,
             title: regForm.title,
             category: regForm.regulation_type as RegulationCategory,
@@ -1210,6 +1309,14 @@ function AdminCMSPageContent() {
             status: regForm.status === "Draft" ? "Draft" : "Published",
             downloadUrl: regForm.file_path,
           });
+          setCmsItemStatus(
+            {
+              id: createdReg?.id || (createdRegNumId ? `REG-${createdRegNumId}` : undefined),
+              numericId: createdRegNumId,
+              title: regForm.title,
+            },
+            regForm.status
+          );
           showToast(regForm.status === "Published" ? "Dokumen regulasi DJP berhasil diunggah!" : "Dokumen regulasi DJP disimpan sebagai draf!");
         }
         loadAllCMS();
@@ -1233,6 +1340,14 @@ function AdminCMSPageContent() {
           } catch (apiErr) {
             console.warn("Backend updateTaxRate fallback:", apiErr);
           }
+          setCmsItemStatus(
+            {
+              id: `TAX-${editingKursId}`,
+              numericId: editingKursId,
+              title: kursForm.currency_code,
+            },
+            kursForm.status
+          );
           setCmsItems((prev) =>
             prev.map((i) =>
               i.numericId === editingKursId && i.section === "kurs"
@@ -1248,16 +1363,28 @@ function AdminCMSPageContent() {
           );
           showToast(`Kurs pajak ${kursForm.currency_code} berhasil diperbarui!`);
         } else {
+          let createdRateId: number | undefined = undefined;
           try {
-            await adminCmsApi.createTaxRate({
+            const createRes = await adminCmsApi.createTaxRate({
               currency_code: kursForm.currency_code,
               rate_value: Number(kursForm.rate_value),
               effective_start_date: kursForm.effective_start_date,
               effective_end_date: kursForm.effective_end_date,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdRateId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createTaxRate fallback:", apiErr);
           }
+          setCmsItemStatus(
+            {
+              id: createdRateId ? `TAX-${createdRateId}` : undefined,
+              numericId: createdRateId,
+              title: kursForm.currency_code,
+            },
+            kursForm.status
+          );
           showToast(kursForm.status === "Published" ? "Kurs pajak KMK berhasil disimpan & dipublikasikan!" : "Kurs pajak KMK disimpan sebagai draf!");
         }
         loadAllCMS();
@@ -1303,11 +1430,21 @@ function AdminCMSPageContent() {
             summary: careerForm.description,
             status: jobStatus,
           });
+          setCmsItemStatus(
+            {
+              id: `CAR-${editingCareerId}`,
+              numericId: editingCareerId,
+              title: careerForm.position_title,
+              code: careerForm.position_code,
+            },
+            jobStatus
+          );
           showToast("Lowongan karir berhasil diperbarui!");
         } else {
           const newPosCode = careerForm.position_code || `POS-${Date.now().toString().slice(-4)}`;
+          let createdCarId: number | undefined = undefined;
           try {
-            await adminCmsApi.createCareer({
+            const createRes = await adminCmsApi.createCareer({
               position_code: newPosCode,
               position_title: careerForm.position_title,
               level: careerForm.level,
@@ -1315,6 +1452,9 @@ function AdminCMSPageContent() {
               description: careerForm.description,
               is_active: careerForm.is_active,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdCarId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createCareer fallback:", apiErr);
           }
@@ -1343,6 +1483,15 @@ function AdminCMSPageContent() {
             ],
             status: jobStatus,
           });
+          setCmsItemStatus(
+            {
+              id: newPosCode,
+              numericId: createdCarId,
+              title: careerForm.position_title,
+              code: newPosCode,
+            },
+            jobStatus
+          );
           showToast(jobStatus === "Published" ? "Lowongan karir baru berhasil dipublikasikan!" : "Lowongan karir berhasil disimpan sebagai draf!");
         }
         loadAllCMS();
@@ -1367,6 +1516,14 @@ function AdminCMSPageContent() {
           } catch (apiErr) {
             console.warn("Backend updateFaq fallback:", apiErr);
           }
+          setCmsItemStatus(
+            {
+              id: `FAQ-${editingFaq.id}`,
+              numericId: editingFaq.id,
+              title: faqForm.question,
+            },
+            faqForm.status
+          );
           setCmsItems((prev) =>
             prev.map((i) =>
               i.numericId === editingFaq.id && i.section === "faqs"
@@ -1382,15 +1539,27 @@ function AdminCMSPageContent() {
           );
           showToast("FAQ chatbot berhasil diperbarui!");
         } else {
+          let createdFaqId: number | undefined = undefined;
           try {
-            await adminCmsApi.createFaq({
+            const createRes = await adminCmsApi.createFaq({
               category: faqForm.category,
               question: faqForm.question,
               answer_template: faqForm.answer_template,
             });
+            if (createRes?.data && (createRes.data as { id?: number })?.id) {
+              createdFaqId = (createRes.data as { id: number }).id;
+            }
           } catch (apiErr) {
             console.warn("Backend createFaq fallback:", apiErr);
           }
+          setCmsItemStatus(
+            {
+              id: createdFaqId ? `FAQ-${createdFaqId}` : undefined,
+              numericId: createdFaqId,
+              title: faqForm.question,
+            },
+            faqForm.status
+          );
           showToast(faqForm.status === "Published" ? "FAQ chatbot baru berhasil disimpan & dipublikasikan!" : "FAQ chatbot disimpan sebagai draf!");
         }
         loadAllCMS();

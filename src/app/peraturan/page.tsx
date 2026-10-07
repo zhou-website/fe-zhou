@@ -27,6 +27,7 @@ import {
 
 import {
   StoredRegulationItem,
+  RegulationStatus,
   REGULATION_CATEGORIES,
   getStoredRegulations,
   REGULATIONS_EVENT,
@@ -36,6 +37,7 @@ import {
   KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
 
 export default function PeraturanPage() {
@@ -75,7 +77,7 @@ export default function PeraturanPage() {
             }),
             scope: item.regulation_type || "Regulasi kepatuhan perpajakan nasional.",
             fileSize: item.file_size || "1.2 MB",
-            status: "Berlaku",
+            status: (getCmsItemStatus(`BE-${item.id}`, item.title, "Published", [item.id]) === "Draft" ? "Draft" : "Berlaku") as RegulationStatus,
             downloadUrl: item.file_path || "#",
           }));
 
@@ -113,17 +115,25 @@ export default function PeraturanPage() {
       });
 
     const handleUpdate = () => {
-      setRegulations(getStoredRegulations());
+      const stored: StoredRegulationItem[] = getStoredRegulations().map((r) => ({
+        ...r,
+        status: (getCmsItemStatus(r.id, r.title, r.status === "Draft" ? "Draft" : "Published", [r.docNumber]) === "Draft"
+          ? "Draft"
+          : (r.status === "Draft" ? "Berlaku" : r.status)) as RegulationStatus,
+      }));
+      setRegulations(stored);
       setKmkData(getStoredKmkRates());
     };
 
     window.addEventListener(REGULATIONS_EVENT, handleUpdate);
     window.addEventListener(KMK_RATES_EVENT, handleUpdate);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
       isMounted = false;
       window.removeEventListener(REGULATIONS_EVENT, handleUpdate);
       window.removeEventListener(KMK_RATES_EVENT, handleUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
   }, []);

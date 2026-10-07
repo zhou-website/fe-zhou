@@ -53,6 +53,7 @@ import {
   EnvelopeIcon,
   UserIcon,
 } from "@/components/icons";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 
 const CAREER_JOBS: JobPosition[] = [];
 
@@ -124,7 +125,7 @@ export default function CareerPage() {
                 "Asuransi kesehatan dan fasilitas kerja fleksibel.",
               ],
               skills: ["Analisis Fiskal", "Akuntansi", "Kepatuhan"],
-              status: (c.is_active ? "Published" : "Draft") as "Published" | "Draft",
+              status: getCmsItemStatus(c.position_code || String(c.id), c.position_title, c.is_active ? "Published" : "Draft", [c.id]),
             };
           });
 
@@ -143,15 +144,21 @@ export default function CareerPage() {
       const updated = getStoredCareerSettings();
       setCareerSettings(updated);
       if (updated.positions && updated.positions.length > 0) {
-        setJobsList(updated.positions);
+        const mapped = updated.positions.map((p) => ({
+          ...p,
+          status: getCmsItemStatus(p.id, p.title, p.status === "Draft" ? "Draft" : "Published"),
+        }));
+        setJobsList(mapped);
       }
     };
 
     window.addEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleCareerUpdate);
     window.addEventListener("storage", handleCareerUpdate);
     return () => {
       isMounted = false;
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleCareerUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleCareerUpdate);
       window.removeEventListener("storage", handleCareerUpdate);
     };
   }, []);
