@@ -214,7 +214,8 @@ export function addStoredService(
 }
 
 /**
- * Memperbarui layanan yang ada (UPDATE)
+ * Memperbarui layanan yang ada (UPDATE).
+ * Jika tidak ditemukan, upsert (tambah baru) agar edit layanan dari backend juga tersimpan lokal.
  */
 export function updateStoredService(
   id: string,
@@ -223,38 +224,54 @@ export function updateStoredService(
   const current = getStoredServices();
   const index = current.findIndex((s) => s.id === id);
 
-  if (index === -1) return null;
-
   const today = new Date().toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 
-  const updatedItem: StoredServiceItem = {
-    ...current[index],
-    ...updates,
-    lastUpdated: today,
-  };
+  if (index !== -1) {
+    const updatedItem: StoredServiceItem = {
+      ...current[index],
+      ...updates,
+      lastUpdated: today,
+    };
+    const updatedList = [...current];
+    updatedList[index] = updatedItem;
+    saveStoredServices(updatedList);
 
-  const updatedList = [...current];
-  updatedList[index] = updatedItem;
+    adminCmsApi
+      .updateService(id, {
+        service_name: updatedItem.name,
+        category: updatedItem.categoryKey,
+        description: updatedItem.subtitle,
+        is_active: updatedItem.status === "Published",
+      })
+      .catch((err) => {
+        console.warn("adminCmsApi.updateService fallback:", err);
+      });
 
-  saveStoredServices(updatedList);
-
-  // Sambungkan pembaruan ke Backend API
-  adminCmsApi
-    .updateService(id, {
-      service_name: updatedItem.name,
-      category: updatedItem.categoryKey,
-      description: updatedItem.subtitle,
-      is_active: updatedItem.status === "Published",
-    })
-    .catch((err) => {
-      console.warn("adminCmsApi.updateService fallback:", err);
-    });
-
-  return updatedItem;
+    return updatedItem;
+  } else {
+    // Upsert: backend item not in localStorage, create it
+    const upserted: StoredServiceItem = {
+      id,
+      code: (updates as StoredServiceItem).code,
+      categoryKey: (updates as StoredServiceItem).categoryKey || "tax-service",
+      name: (updates as StoredServiceItem).name || id,
+      subtitle: (updates as StoredServiceItem).subtitle || "",
+      badge: (updates as StoredServiceItem).badge || "LAYANAN",
+      route: (updates as StoredServiceItem).route || "/layanan",
+      pillars: (updates as StoredServiceItem).pillars || [],
+      workflow: (updates as StoredServiceItem).workflow || [],
+      deliverables: (updates as StoredServiceItem).deliverables || [],
+      status: (updates as StoredServiceItem).status || "Published",
+      lastUpdated: today,
+      ...updates,
+    };
+    saveStoredServices([upserted, ...current]);
+    return upserted;
+  }
 }
 
 /**

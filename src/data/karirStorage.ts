@@ -128,7 +128,8 @@ export function addStoredCareerPosition(position: JobPosition): JobPosition[] {
 }
 
 /**
- * Memperbarui data posisi lowongan karir
+ * Memperbarui data posisi lowongan karir.
+ * Jika tidak ditemukan, upsert agar edit lowongan dari backend juga tersimpan lokal.
  */
 export function updateStoredCareerPosition(
   id: string,
@@ -136,9 +137,31 @@ export function updateStoredCareerPosition(
 ): JobPosition[] {
   const settings = getStoredCareerSettings();
   const currentPositions = settings.positions || [];
-  const updatedPositions = currentPositions.map((pos) =>
-    pos.id === id ? { ...pos, ...changes } : pos
-  );
+  const existingIndex = currentPositions.findIndex((pos) => pos.id === id);
+
+  let updatedPositions: JobPosition[];
+  if (existingIndex !== -1) {
+    updatedPositions = currentPositions.map((pos) =>
+      pos.id === id ? { ...pos, ...changes } : pos
+    );
+  } else {
+    // Upsert: backend item not in local, create entry
+    const upserted: JobPosition = {
+      id,
+      title: changes.title || id,
+      department: changes.department || "Tax Service Core",
+      deptKey: changes.deptKey || "tax",
+      type: changes.type || "Senior Associate",
+      location: changes.location || "Jakarta",
+      experience: changes.experience || "Min. 1-3 tahun",
+      summary: changes.summary || "",
+      skills: changes.skills || [],
+      status: changes.status || "Published",
+      ...changes,
+    };
+    updatedPositions = [upserted, ...currentPositions];
+  }
+
   const hasPublished = updatedPositions.some((p) => p.status === "Published");
   saveStoredCareerSettings({
     ...settings,

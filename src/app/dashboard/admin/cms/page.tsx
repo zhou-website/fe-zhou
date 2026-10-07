@@ -1045,6 +1045,20 @@ function AdminCMSPageContent() {
             },
             eduForm.status
           );
+          // Optimistic update: langsung perbarui state tabel CMS
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.numericId === editingEduId && i.section === "edukasi"
+                ? {
+                    ...i,
+                    title: eduForm.title,
+                    subcategory: eduForm.category,
+                    summary: eduForm.body.slice(0, 140) + (eduForm.body.length > 140 ? "..." : ""),
+                    status: eduForm.status,
+                  }
+                : i
+            )
+          );
           showToast(eduForm.status === "Published" ? "Materi edukasi berhasil diperbarui & dipublikasikan!" : "Materi edukasi berhasil disimpan sebagai draf!");
         } else {
           // CREATE ke backend database & local storage
@@ -1147,6 +1161,19 @@ function AdminCMSPageContent() {
             },
             djpLinkForm.status
           );
+          // Optimistic update
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.id === editingDjpLinkId || i.id === `DJP-${editingDjpLinkId}`
+                ? {
+                    ...i,
+                    title: djpLinkForm.title,
+                    summary: `${djpLinkForm.url} — ${djpLinkForm.description}`,
+                    status: djpLinkForm.status,
+                  }
+                : i
+            )
+          );
           showToast("Tautan edukasi DJP berhasil diperbarui!");
         } else {
           const created = addStoredBelajarPajakLink({
@@ -1211,6 +1238,20 @@ function AdminCMSPageContent() {
               code: serviceForm.service_code,
             },
             srvStatus
+          );
+          // Optimistic update
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.numericId === editingServiceId && i.section === "services"
+                ? {
+                    ...i,
+                    title: serviceForm.service_name,
+                    subcategory: serviceForm.category,
+                    summary: serviceForm.description.slice(0, 140) + (serviceForm.description.length > 140 ? "..." : ""),
+                    status: srvStatus,
+                  }
+                : i
+            )
           );
           showToast("Layanan bisnis berhasil diperbarui!");
         } else {
@@ -1282,6 +1323,19 @@ function AdminCMSPageContent() {
               title: regForm.title,
             },
             regForm.status
+          );
+          // Optimistic update
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.numericId === editingRegId && i.section === "regulasi"
+                ? {
+                    ...i,
+                    title: regForm.title,
+                    subcategory: regForm.regulation_type,
+                    status: regForm.status,
+                  }
+                : i
+            )
           );
           showToast("Dokumen regulasi DJP berhasil diperbarui!");
         } else {
@@ -1438,6 +1492,20 @@ function AdminCMSPageContent() {
               code: careerForm.position_code,
             },
             jobStatus
+          );
+          // Optimistic update
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.numericId === editingCareerId && i.section === "karir"
+                ? {
+                    ...i,
+                    title: careerForm.position_title,
+                    subcategory: `${careerForm.level} (${careerForm.location})`,
+                    summary: careerForm.description.slice(0, 140) + (careerForm.description.length > 140 ? "..." : ""),
+                    status: jobStatus,
+                  }
+                : i
+            )
           );
           showToast("Lowongan karir berhasil diperbarui!");
         } else {

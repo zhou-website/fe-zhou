@@ -96,26 +96,45 @@ export function addRegulation(
 }
 
 /**
- * Memperbarui regulasi / dokumen peraturan (UPDATE)
+ * Memperbarui regulasi / dokumen peraturan (UPDATE).
+ * Jika tidak ditemukan, upsert agar edit regulasi dari backend juga tersimpan lokal.
  */
 export function updateRegulation(
   id: string,
   changes: Partial<StoredRegulationItem>
 ): StoredRegulationItem[] {
   const current = getStoredRegulations();
-  const updated = current.map((item) => {
-    if (item.id === id) {
-      return {
-        ...item,
-        ...changes,
-      };
-    }
-    return item;
-  });
+  const existingIndex = current.findIndex((item) => item.id === id);
 
-  saveStoredRegulations(updated);
-  return updated;
+  if (existingIndex !== -1) {
+    const updated = current.map((item) => {
+      if (item.id === id) {
+        return { ...item, ...changes };
+      }
+      return item;
+    });
+    saveStoredRegulations(updated);
+    return updated;
+  } else {
+    // Upsert: backend item not in localStorage
+    const upserted: StoredRegulationItem = {
+      id,
+      docNumber: changes.docNumber || id,
+      title: changes.title || id,
+      category: changes.category || "Peraturan Menteri",
+      effectiveDate: changes.effectiveDate || new Date().toLocaleDateString("id-ID"),
+      scope: changes.scope || "",
+      fileSize: changes.fileSize || "PDF",
+      status: changes.status || "Published",
+      downloadUrl: changes.downloadUrl,
+      ...changes,
+    };
+    const updated = [upserted, ...current];
+    saveStoredRegulations(updated);
+    return updated;
+  }
 }
+
 
 /**
  * Menghapus regulasi / dokumen peraturan (DELETE)

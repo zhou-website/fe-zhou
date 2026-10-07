@@ -179,26 +179,51 @@ export function addZhouArticle(
 }
 
 /**
- * Memperbarui modul / materi yang ada (UPDATE)
+ * Memperbarui modul / materi yang ada (UPDATE).
+ * Jika ID tidak ditemukan di local storage, upsert (tambahkan sebagai baru) agar edit artikel
+ * dari backend juga tersimpan secara lokal dan tidak hilang saat reload.
  */
 export function updateZhouArticle(
   id: string,
   changes: Partial<ZhouArticle>
 ): ZhouArticle[] {
   const current = getStoredZhouArticles();
-  const updated = current.map((item) => {
-    if (item.id === id) {
-      return {
-        ...item,
-        ...changes,
-      };
-    }
-    return item;
-  });
+  const existingIndex = current.findIndex((item) => item.id === id);
 
-  saveStoredZhouArticles(updated);
-  return updated;
+  if (existingIndex !== -1) {
+    // Normal update
+    const updated = current.map((item) => {
+      if (item.id === id) {
+        return { ...item, ...changes };
+      }
+      return item;
+    });
+    saveStoredZhouArticles(updated);
+    return updated;
+  } else {
+    // Upsert: item dari backend tidak ada di localStorage, buat entri baru
+    const upserted: ZhouArticle = {
+      id,
+      title: changes.title || id,
+      category: changes.category || "Coretax DJP 2026",
+      categoryKey: changes.categoryKey || "coretax",
+      date: changes.date || new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+      author: changes.author || "Tim Riset Fiskal Zhou",
+      readTime: changes.readTime || "5 menit baca",
+      summary: changes.summary || "",
+      takeaways: changes.takeaways || [],
+      content: changes.content || [],
+      status: changes.status || "Published",
+      image: changes.image,
+      isFeatured: changes.isFeatured ?? true,
+      attachment: changes.attachment,
+    };
+    const updated = [upserted, ...current];
+    saveStoredZhouArticles(updated);
+    return updated;
+  }
 }
+
 
 /**
  * Menghapus modul / materi (DELETE)
