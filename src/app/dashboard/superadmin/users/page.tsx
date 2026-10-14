@@ -18,6 +18,11 @@ import {
   EyeIcon,
 } from "@/components/icons";
 import { superadminApi, AdminUserItem } from "@/lib/api";
+import {
+  getStoredClientTickets,
+  TICKETS_UPDATED_EVENT,
+  STAFF_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
 
 export interface StaffAdmin {
   id: string;
@@ -32,6 +37,57 @@ export interface StaffAdmin {
   twoFactorEnabled: boolean;
   joinDate: string;
 }
+
+const DELETED_STAFF_IDS_KEY = "zhou_deleted_staff_ids_v2";
+
+function getDeletedStaffIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_STAFF_IDS_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function recordDeletedStaffId(id: string | number): void {
+  if (typeof window === "undefined") return;
+  try {
+    const set = getDeletedStaffIds();
+    set.add(String(id));
+    localStorage.setItem(DELETED_STAFF_IDS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+const isDummyAdmin = (adm: {
+  id?: string | number;
+  name?: string;
+  email?: string;
+}): boolean => {
+  const email = (adm.email || "").toLowerCase();
+  const name = (adm.name || "").toLowerCase();
+  const idStr = String(adm.id || "");
+
+  if (getDeletedStaffIds().has(idStr)) return true;
+
+  return (
+    email.includes("deact.") ||
+    email.includes("staff.admin.") ||
+    email.includes("test") ||
+    email.includes("dummy") ||
+    email.includes("mock") ||
+    name.includes("test runner") ||
+    name.includes("to deactivate") ||
+    name.includes("dummy") ||
+    name.includes("mock") ||
+    /\b17\d{10,12}\b/.test(email) ||
+    /\b17\d{10,12}\b/.test(name)
+  );
+};
+
+const cleanAdminName = (rawName: string) => {
+  return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
+};
 
 export default function SuperadminUsersPage() {
   const [staffList, setStaffList] = useState<StaffAdmin[]>([]);
@@ -58,42 +114,86 @@ export default function SuperadminUsersPage() {
     twoFactorEnabled: true,
   });
 
-  // Sync staff with Backend API
+  // Sync staff with Backend API and calculate assigned tasks
   useEffect(() => {
     let isMounted = true;
 
-    superadminApi
-      .getAdmins()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data)) {
-          const apiStaff: StaffAdmin[] = res.data.map((adm: AdminUserItem, idx: number) => ({
-            id: `STF-BE-${adm.id}`,
-            name: adm.name,
-            nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
-            email: adm.email,
-            phone: adm.phone || "+62 812-9876-" + (1200 + idx),
-            role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
-            division: "Tax Service Core",
-            tasksCount: 0,
-            status: adm.is_active ? "Aktif" : "Nonaktif",
-            twoFactorEnabled: true,
-            joinDate: new Date(adm.created_at || Date.now()).toLocaleDateString("id-ID", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            }),
-          }));
+    const calculateTasks = (staffEmail: string, staffName: string) => {
+      const tickets = getStoredClientTickets();
+      const sEmail = String(staffEmail || "").toLowerCase().trim();
+      const sName = String(staffName || "").toLowerCase().trim();
+      return tickets.filter((t) => {
+        const tEmail = String(t.assignedAdminEmail || "").toLowerCase().trim();
+        const tName = String(t.assignedAdminName || t.consultant || "").toLowerCase().trim();
+        return (
+          (Boolean(sEmail) && Boolean(tEmail) && tEmail === sEmail) ||
+          (Boolean(sName) && Boolean(tName) && (tName.includes(sName) || sName.includes(tName)))
+        );
+      }).length;
+    };
 
-          setStaffList(apiStaff);
-        }
-      })
-      .catch(() => {
-        // silent fallback
-      });
+    const loadStaff = () => {
+      superadminApi
+        .getAdmins()
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.data && Array.isArray(res.data)) {
+            // Purge dummy test runner accounts from backend in background
+            res.data.forEach((adm: AdminUserItem) => {
+              if (isDummyAdmin(adm)) {
+                try {
+                  superadminApi.deleteAdmin(adm.id);
+                } catch {}
+              }
+            });
+
+            const validAdmins = res.data.filter((adm: AdminUserItem) => !isDummyAdmin(adm));
+            const apiStaff: StaffAdmin[] = validAdmins.map((adm: AdminUserItem, idx: number) => ({
+              id: `STF-BE-${adm.id}`,
+              name: cleanAdminName(adm.name),
+              nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
+              email: adm.email,
+              phone: adm.phone || "+62 812-9876-" + (1200 + idx),
+              role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
+              division: "Tax Service Core",
+              tasksCount: calculateTasks(adm.email, adm.name),
+              status: adm.is_active ? "Aktif" : "Nonaktif",
+              twoFactorEnabled: true,
+              joinDate: new Date(adm.created_at || Date.now()).toLocaleDateString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              }),
+            }));
+
+            setStaffList(apiStaff);
+          }
+        })
+        .catch(() => {
+          // silent fallback
+        });
+    };
+
+    loadStaff();
+
+    const handleSync = () => {
+      setStaffList((prev) =>
+        prev.map((s) => ({
+          ...s,
+          tasksCount: calculateTasks(s.email, s.name),
+        }))
+      );
+    };
+
+    window.addEventListener(TICKETS_UPDATED_EVENT, handleSync);
+    window.addEventListener(STAFF_UPDATED_EVENT, handleSync);
+    window.addEventListener("storage", handleSync);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSync);
+      window.removeEventListener(STAFF_UPDATED_EVENT, handleSync);
+      window.removeEventListener("storage", handleSync);
     };
   }, []);
 
@@ -226,8 +326,10 @@ export default function SuperadminUsersPage() {
       return;
     }
 
+    const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
+    recordDeletedStaffId(rawId);
+    recordDeletedStaffId(deletingStaff.id);
     try {
-      const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
       await superadminApi.deleteAdmin(rawId);
     } catch (err) {
       console.warn("superadminApi.deleteAdmin fallback to local state:", err);

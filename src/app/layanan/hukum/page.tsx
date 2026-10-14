@@ -1,189 +1,227 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingWhatsAppCTA } from "@/components/landing/FloatingWhatsAppCTA";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
+  CardFooter,
 } from "@/components/ui/card";
 import {
-  CheckIcon,
+  CheckCircleIcon,
+  WhatsappIcon,
 } from "@/components/icons";
 import {
-  StoredServiceItem,
-  getStoredServiceByCategory,
+  getStoredServices,
   SERVICES_EVENT,
 } from "@/data/layananStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+
+interface LegalModuleItem {
+  id: string;
+  code: string;
+  title: string;
+  badge: string;
+  subtitle: string;
+  scopes: string[];
+  deliverable: string;
+  topicParam: string;
+  waTemplate: string;
+}
+
+const LEGAL_SERVICE_MODULES: LegalModuleItem[] = [
+  {
+    id: "kontrak-komersial",
+    code: "LAW-CTR",
+    title: "Drafting & Review Kontrak Komersial",
+    badge: "KONTRAK & PERJANJIAN BISNIS",
+    subtitle: "Penyusunan dan penelaahan perjanjian kerjasama, NDA, MoU, perjanjian pemegang saham, dan kontrak vendor.",
+    scopes: [
+      "Penyusunan klausul mitigasi risiko sengketa perdata & force majeure",
+      "Klausul ganti rugi (indemnification), batasan tanggung jawab, & dispute settlement",
+      "Review kepatuhan terhadap Kitab Undang-Undang Hukum Perdata (KUHPerdata)",
+      "Penyelarasan hak kekayaan intelektual (HAKI) dan kerahasiaan data komersial",
+    ],
+    deliverable: "Final Draft Kontrak Bahasa Indonesia / Bilingual & Legal Opinion Ringkas.",
+    topicParam: "kontrak-komersial",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai pembuatan dan penelaahan Kontrak Bisnis / Komersial.",
+  },
+  {
+    id: "perizinan-oss",
+    code: "LAW-OSS",
+    title: "Perizinan Usaha Berbasis Risiko OSS-RBA",
+    badge: "PERIZINAN BERUSAHA & KBLI",
+    subtitle: "Pendampingan penerbitan NIB, Sertifikat Standar, dan izin operasional komersial melalui sistem OSS terintegrasi.",
+    scopes: [
+      "Pemetaan Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) 2020 yang tepat",
+      "Penerbitan Nomor Induk Berusaha (NIB) dan pemenuhan persyaratan komitmen",
+      "Pengurusan Kesesuaian Kegiatan Pemanfaatan Ruang (KKPR) dan Persetujuan Lingkungan",
+      "Migrasi data profil perizinan dan updating penanggung jawab usaha",
+    ],
+    deliverable: "NIB Terverifikasi, Sertifikat Standar / Izin Operasional Resmi OSS.",
+    topicParam: "perizinan-oss",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perizinan usaha OSS-RBA dan penyesuaian KBLI perusahaan.",
+  },
+  {
+    id: "kepatuhan-pdp",
+    code: "LAW-PDP",
+    title: "Kepatuhan UU Pelindungan Data Pribadi (UU PDP)",
+    badge: "PRIVACY COMPLIANCE UU 27/2022",
+    subtitle: "Audit tata kelola pemrosesan data pribadi konsumen/karyawan, privacy policy, dan penunjukan DPO eksternal.",
+    scopes: [
+      "Data Protection Impact Assessment (DPIA) dan pemetaan inventaris data pribadi",
+      "Penyusunan Kebijakan Privasi (Privacy Policy) & Formulir Persetujuan (Consent)",
+      "Klausul Data Processing Agreement (DPA) dengan pihak ketiga dan vendor TI",
+      "Protokol penanganan insiden kebocoran data (Data Breach Notification SOP)",
+    ],
+    deliverable: "Laporan Audit Kepatuhan PDP, Dokumen Privacy Policy Terstandar, & SOP Penanganan Insiden.",
+    topicParam: "kepatuhan-pdp",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai audit dan kepatuhan UU Pelindungan Data Pribadi (UU PDP).",
+  },
+  {
+    id: "restrukturisasi-pt",
+    code: "LAW-CORP",
+    title: "Restrukturisasi Legalitas & Anggaran Dasar PT",
+    badge: "HUKUM PERSEROAN TERBATAS",
+    subtitle: "Penyesuaian anggaran dasar, peralihan saham, perubahan susunan direksi/komisaris, dan penerbitan akta notaris Kemenkumham.",
+    scopes: [
+      "Penyelenggaraan Rapat Umum Pemegang Saham (RUPS) fisik maupun sirkuler",
+      "Penyusunan risalah RUPS untuk peningkatan modal disetor dan jual beli saham",
+      "Pendampingan penerbitan Surat Keputusan (SK) Pengesahan AHU Kemenkumham",
+      "Due diligence legalitas perizinan perseroan dan kelengkapan dokumen pendirian",
+    ],
+    deliverable: "Risalah RUPS Resmi, Akta Notaris Perubahan, & SK AHU Kemenkumham.",
+    topicParam: "restrukturisasi-pt",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perubahan anggaran dasar PT, RUPS, dan legalitas perseroan.",
+  },
+];
 
 export default function KonsultasiHukumPage() {
-  const [service, setService] = useState<StoredServiceItem | undefined>(undefined);
-  const [loaded, setLoaded] = useState(false);
+  const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6281234567890";
+  const [extraModules, setExtraModules] = useState<LegalModuleItem[]>([]);
 
   useEffect(() => {
-    setService(getStoredServiceByCategory("hukum"));
-    setLoaded(true);
-
-    const handleUpdate = () => {
-      setService(getStoredServiceByCategory("hukum"));
+    const syncModules = () => {
+      const stored = getStoredServices();
+      const customItems = stored.filter(
+        (s) =>
+          (s.categoryKey?.toLowerCase() === "hukum" || s.categoryKey?.toLowerCase() === "legal") &&
+          s.status === "Published" &&
+          !isCmsItemDeleted(s.id, s.name, undefined, s.code) &&
+          s.id !== "SRV-LEGAL-TAX"
+      );
+      setExtraModules(
+        customItems.map((c) => ({
+          id: c.id,
+          code: c.code || c.id,
+          title: c.name,
+          badge: c.badge || "LAW SERVICES",
+          subtitle: c.subtitle,
+          scopes: c.pillars?.map((p) => p.title || p.description) || [
+            "Pendampingan aspek kepatuhan hukum dan perizinan bisnis",
+            "Mitigasi risiko sengketa perdata dan telaah kontrak komersial",
+          ],
+          deliverable: c.deliverables?.[0] || "Dokumen Legal Opinion & Panduan Kepatuhan Regulasi",
+          topicParam: "hukum",
+          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+        }))
+      );
     };
 
-    window.addEventListener(SERVICES_EVENT, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    return () => {
-      window.removeEventListener(SERVICES_EVENT, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
+    syncModules();
+    window.addEventListener(SERVICES_EVENT, syncModules);
+    return () => window.removeEventListener(SERVICES_EVENT, syncModules);
   }, []);
 
-  const serviceScopes = service?.pillars || [];
-  const workflowSteps = service?.workflow || [];
-  const deliverables = service?.deliverables || [];
+  const visibleModules = [
+    ...LEGAL_SERVICE_MODULES.filter(
+      (m) => !isCmsItemDeleted(m.id, m.title, undefined, m.code)
+    ),
+    ...extraModules,
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
       <Navbar />
 
       <main className="flex-1">
-        {/* Breadcrumb Section */}
-        <section className="py-6 bg-surface border-b border-primary-light">
-          <div className="container-custom">
-            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
-              <Link href="/" className="hover:text-primary transition-colors">
-                Beranda
-              </Link>
-              <span>/</span>
-              <Link href="/layanan" className="hover:text-primary transition-colors">
-                Layanan
-              </Link>
-              <span>/</span>
-              <span className="text-primary font-semibold">Law Services</span>
-            </nav>
+        {/* 4 Core Legal Services Cards Grid */}
+        <section className="py-14 md:py-20 bg-white border-b border-primary-light">
+          <div className="container-custom space-y-10">
+            <div className="space-y-2 text-center md:text-left max-w-2xl">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-primary tracking-tight">
+                Layanan Law Services Zhou Consulting
+              </h1>
+              <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+                Setiap modul dirancang untuk memitigasi risiko gugatan hukum, menjaga integritas reputasi korporasi, dan menjamin kepatuhan penuh undang-undang.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+              {visibleModules.map((item) => (
+                <Card
+                  key={item.id}
+                  id={item.id}
+                  className="scroll-mt-24 rounded-2xl border-primary-light hover:border-primary hover:shadow-lg transition-all duration-200 bg-white flex flex-col justify-between"
+                >
+                  <CardHeader className="space-y-2.5 pb-3">
+                    <div className="flex items-center justify-end">
+                      <span className="text-[10px] font-mono font-semibold text-text-muted">
+                        {item.code}
+                      </span>
+                    </div>
+                    <CardTitle className="text-lg font-bold text-primary leading-snug">
+                      {item.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-text-secondary leading-relaxed">
+                      {item.subtitle}
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3.5 text-xs text-text-primary flex-1 pt-0">
+                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                      <span className="text-[11px] font-bold text-primary block">
+                        Cakupan Layanan:
+                      </span>
+                      {item.scopes.map((scope, sIdx) => (
+                        <div key={sIdx} className="flex items-start gap-2">
+                          <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
+                          <span className="leading-snug text-text-secondary text-[11px]">{scope}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-surface border border-primary-light/70 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block">
+                        Luaran / Deliverable:
+                      </span>
+                      <p className="text-[11px] text-primary font-medium leading-relaxed">
+                        {item.deliverable}
+                      </p>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="pt-3 border-t border-primary-light">
+                    <a
+                      href={`https://wa.me/${waPhone}?text=${encodeURIComponent(item.waTemplate)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-emerald-600/30 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold text-xs transition-colors"
+                    >
+                      <WhatsappIcon className="text-xs" />
+                      <span>Konsultasi</span>
+                    </a>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
-
-        {!service && loaded ? (
-          /* Empty State when no data entered by admin */
-          <section className="py-20 bg-white">
-            <div className="container-custom max-w-2xl text-center space-y-5">
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-primary tracking-tight">
-                  Informasi Layanan Belum Tersedia
-                </h1>
-                <p className="text-sm text-text-secondary leading-relaxed max-w-md mx-auto">
-                  Rincian telaah kontrak bisnis, perizinan OSS RBA, dan advisori hukum korporat sedang dalam proses pembaruan oleh administrator.
-                </p>
-              </div>
-              <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-                <Button variant="primary" size="default" asChild className="text-xs font-semibold shadow-xs">
-                  <Link href="/konsultasi">Konsultasi dengan Kami</Link>
-                </Button>
-                <Button variant="outline" size="default" asChild className="text-xs font-semibold border-primary-light">
-                  <Link href="/layanan">Kembali ke Katalog Layanan</Link>
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          /* Dynamic Service Details */
-          <>
-            <section className="py-14 md:py-20 bg-surface border-b border-primary-light">
-              <div className="container-custom space-y-10">
-                <div className="max-w-3xl space-y-3">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
-                    {service?.name || "Cakupan Layanan Konsultasi Hukum Korporat"}
-                  </h1>
-                  <p className="text-body-regular text-text-secondary leading-relaxed">
-                    {service?.subtitle || "Pendekatan hukum preventif untuk melindungi aset, reputasi, dan kelangsungan operasional bisnis perusahaan Anda."}
-                  </p>
-                </div>
-
-                {serviceScopes.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-                    {serviceScopes.map((scope, idx) => (
-                      <Card
-                        key={idx}
-                        className="rounded-xl border-primary-light bg-white hover:shadow-md hover:border-silver transition-all duration-200 flex flex-col justify-between"
-                      >
-                        <CardHeader className="space-y-1.5 pb-3">
-                          <CardTitle className="text-card-heading font-semibold text-primary">
-                            {scope.title}
-                          </CardTitle>
-                          <CardDescription className="text-xs text-text-secondary mt-1 leading-relaxed">
-                            {scope.description}
-                          </CardDescription>
-                        </CardHeader>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Workflow Steps if available */}
-            {workflowSteps.length > 0 && (
-              <section className="py-16 md:py-20 bg-white border-b border-primary-light">
-                <div className="container-custom space-y-12">
-                  <div className="text-center max-w-2xl mx-auto space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                      Tahapan Sistematis Pelaksanaan Layanan
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {workflowSteps.map((wf, idx) => (
-                      <div
-                        key={idx}
-                        className="p-5 rounded-xl bg-surface border border-primary-light space-y-3 flex flex-col justify-between"
-                      >
-                        <span className="text-2xl font-bold text-primary/30 tracking-tight">
-                          0{idx + 1}
-                        </span>
-                        <p className="text-xs text-text-secondary leading-relaxed">
-                          {wf}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Deliverables if available */}
-            {deliverables.length > 0 && (
-              <section className="py-16 md:py-20 bg-surface border-b border-primary-light">
-                <div className="container-custom space-y-10">
-                  <div className="max-w-2xl space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                      Luaran Nyata yang Diterima Klien
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {deliverables.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-lg bg-white border border-primary-light flex items-start gap-3 shadow-sm"
-                      >
-                        <div className="w-7 h-7 rounded-md bg-success/10 text-success flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <CheckIcon className="text-xs" />
-                        </div>
-                        <span className="text-xs font-semibold text-primary leading-relaxed">
-                          {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
-          </>
-        )}
       </main>
 
       <Footer />

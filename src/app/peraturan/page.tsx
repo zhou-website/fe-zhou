@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { FloatingWhatsAppCTA } from "@/components/landing/FloatingWhatsAppCTA";
@@ -19,26 +18,28 @@ import {
 } from "@/components/ui/table";
 import {
   SearchIcon,
-  FilterIcon,
   CloseIcon,
   CheckCircleIcon,
-  ChevronRightIcon,
 } from "@/components/icons";
 
 import {
   StoredRegulationItem,
+  RegulationCategory,
   RegulationStatus,
   REGULATION_CATEGORIES,
   getStoredRegulations,
   REGULATIONS_EVENT,
+  mapToRegulationCategory,
+  getStoredRegulationLegalMeta,
   StoredKmkData,
   DEFAULT_KMK_DATA,
   getStoredKmkRates,
+  syncKmkRatesFromDjp,
   KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
-import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
+import { publicApi, RegulationItem } from "@/lib/api";
 
 export default function PeraturanPage() {
   const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
@@ -54,7 +55,38 @@ export default function PeraturanPage() {
   // Load from localStorage or defaults and listen to updates from Admin CRUD & KMK
   useEffect(() => {
     let isMounted = true;
-    setRegulations(getStoredRegulations());
+    const legalMeta = getStoredRegulationLegalMeta();
+    const initialStored = getStoredRegulations().map((r) => {
+      const meta =
+        legalMeta[r.title.trim().toLowerCase()] ||
+        legalMeta[r.id] ||
+        legalMeta[r.docNumber] ||
+        (r.legalStatus ? { status: r.legalStatus, replacementRef: r.replacementRef } : undefined) ||
+        {
+          status: (r.status === "Tidak Berlaku"
+            ? "Tidak Berlaku"
+            : r.status === "Pembaruan" || r.status === "Diperbarui"
+            ? "Diperbarui"
+            : "Berlaku") as "Berlaku" | "Diperbarui" | "Tidak Berlaku",
+          replacementRef: r.replacementRef,
+        };
+
+      const pubStatus = getCmsItemStatus(
+        r.id,
+        r.title,
+        r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+        [r.docNumber]
+      );
+
+      return {
+        ...r,
+        category: mapToRegulationCategory(r.category || r.scope, r.title),
+        legalStatus: meta.status,
+        replacementRef: meta.replacementRef || r.replacementRef,
+        status: pubStatus as RegulationStatus,
+      };
+    });
+    setRegulations(initialStored);
     setKmkData(getStoredKmkRates());
 
     // Fetch from live Backend API with fallback
@@ -65,21 +97,32 @@ export default function PeraturanPage() {
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const apiRegs: StoredRegulationItem[] = res.data
             .filter((item: RegulationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
-            .map((item: RegulationItem) => ({
-            id: `BE-${item.id}`,
-            docNumber: item.title,
-            title: item.title,
-            category: "Peraturan Menteri",
-            effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            scope: item.regulation_type || "Regulasi kepatuhan perpajakan nasional.",
-            fileSize: item.file_size || "1.2 MB",
-            status: (getCmsItemStatus(`BE-${item.id}`, item.title, "Published", [item.id]) === "Draft" ? "Draft" : "Berlaku") as RegulationStatus,
-            downloadUrl: item.file_path || "#",
-          }));
+            .map((item: RegulationItem) => {
+              const category = mapToRegulationCategory(item.regulation_type, item.title);
+              const meta =
+                legalMeta[item.title.trim().toLowerCase()] ||
+                legalMeta[`BE-${item.id}`] ||
+                legalMeta[String(item.id)] ||
+                { status: "Berlaku" as const };
+              const pubStatus = getCmsItemStatus(`BE-${item.id}`, item.title, "Published", [item.id]);
+              return {
+                id: `BE-${item.id}`,
+                docNumber: item.title,
+                title: item.title,
+                category,
+                effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
+                scope: item.regulation_type || category,
+                fileSize: item.file_size || "1.2 MB",
+                legalStatus: meta.status,
+                replacementRef: meta.replacementRef,
+                status: pubStatus as RegulationStatus,
+                downloadUrl: item.file_path || "#",
+              };
+            });
 
           setRegulations((prev) => {
             const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
@@ -92,35 +135,48 @@ export default function PeraturanPage() {
         console.warn("publicApi.getRegulations fallback:", err);
       });
 
-    publicApi
-      .getLatestTaxRates()
-      .then((res) => {
+    // Sinkronisasi otomatis kurs KMK langsung dari DJP / Kementerian Keuangan
+    syncKmkRatesFromDjp()
+      .then((liveKmk) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const mappedRates = res.data.map((r: TaxRateItem) => ({
-            currency: r.currency_code,
-            name: r.currency_code === "USD" ? "Dolar Amerika Serikat" : r.currency_code,
-            rate: `Rp ${Number(r.rate_value).toLocaleString("id-ID")},00`,
-            change: "+0,00%",
-            trend: "flat" as const,
-          }));
-          setKmkData((prev) => ({
-            ...prev,
-            rates: mappedRates,
-          }));
-        }
+        setKmkData(liveKmk);
       })
       .catch((err) => {
-        console.warn("publicApi.getLatestTaxRates fallback:", err);
+        console.warn("syncKmkRatesFromDjp di Peraturan page:", err);
       });
 
     const handleUpdate = () => {
-      const stored: StoredRegulationItem[] = getStoredRegulations().map((r) => ({
-        ...r,
-        status: (getCmsItemStatus(r.id, r.title, r.status === "Draft" ? "Draft" : "Published", [r.docNumber]) === "Draft"
-          ? "Draft"
-          : (r.status === "Draft" ? "Berlaku" : r.status)) as RegulationStatus,
-      }));
+      const legalMeta = getStoredRegulationLegalMeta();
+      const stored: StoredRegulationItem[] = getStoredRegulations().map((r) => {
+        const meta =
+          legalMeta[r.title.trim().toLowerCase()] ||
+          legalMeta[r.id] ||
+          legalMeta[r.docNumber] ||
+          (r.legalStatus ? { status: r.legalStatus, replacementRef: r.replacementRef } : undefined) ||
+          {
+            status: (r.status === "Tidak Berlaku"
+              ? "Tidak Berlaku"
+              : r.status === "Pembaruan" || r.status === "Diperbarui"
+              ? "Diperbarui"
+              : "Berlaku") as "Berlaku" | "Diperbarui" | "Tidak Berlaku",
+            replacementRef: r.replacementRef,
+          };
+
+        const pubStatus = getCmsItemStatus(
+          r.id,
+          r.title,
+          r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+          [r.docNumber]
+        );
+
+        return {
+          ...r,
+          category: mapToRegulationCategory(r.category || r.scope, r.title),
+          legalStatus: meta.status,
+          replacementRef: meta.replacementRef || r.replacementRef,
+          status: pubStatus as RegulationStatus,
+        };
+      });
       setRegulations(stored);
       setKmkData(getStoredKmkRates());
     };
@@ -140,7 +196,7 @@ export default function PeraturanPage() {
 
   // Total count per category for badge counters (hanya hitung peraturan yang dipublikasikan)
   const categoryCounts = useMemo(() => {
-    const published = regulations.filter((r) => r.status !== "Draft");
+    const published = regulations.filter((r) => r.status === "Published");
     const counts: Record<string, number> = {
       Semua: published.length,
     };
@@ -159,14 +215,21 @@ export default function PeraturanPage() {
     setCurrentPage(1);
   };
 
-  // Filter regulations based on category, status, and search query (Sembunyikan status Draft)
+  // Filter regulations based on category, status, and search query (Sembunyikan status Draft & Archived)
   const filteredRegulations = useMemo(() => {
     return regulations.filter((item) => {
-      if (item.status === "Draft") return false;
+      // HANYA tampilkan dokumen berstatus Published ke pengunjung umum
+      if (item.status !== "Published") return false;
+
       const matchCategory =
         selectedCategory === "Semua" || item.category === selectedCategory;
+
+      const currentLegal = item.legalStatus || "Berlaku";
       const matchStatus =
-        selectedStatus === "Semua" || item.status === selectedStatus;
+        selectedStatus === "Semua" ||
+        currentLegal === selectedStatus ||
+        (selectedStatus === "Diperbarui" && (currentLegal === "Diperbarui" || (item.status as string) === "Pembaruan"));
+
       const q = searchQuery.toLowerCase().trim();
       const matchQuery =
         q === "" ||
@@ -184,8 +247,146 @@ export default function PeraturanPage() {
     return filteredRegulations.slice(start, start + itemsPerPage);
   }, [filteredRegulations, currentPage]);
 
-  const handleDownload = (docNumber: string, title: string) => {
-    setDownloadNotice(`Mengunduh salinan resmi: ${docNumber} - ${title}...`);
+  const generateRegulationPdf = (item: {
+    docNumber: string;
+    title: string;
+    category?: string;
+    effectiveDate?: string;
+    scope?: string;
+  }): string => {
+    const escapePdf = (str: string) => (str || "").replace(/[\\()]/g, "");
+
+    const safeDoc = escapePdf(item.docNumber || "REGULASI-ZHOU");
+    const safeCat = escapePdf(item.category || "Regulasi Perpajakan");
+    const safeDate = escapePdf(item.effectiveDate || "-");
+    const safeTitle = escapePdf(item.title || "Salinan Regulasi Resmi").slice(0, 90);
+    const safeScope = escapePdf(item.scope || "Ketentuan perpajakan resmi Zhou Consulting.").slice(0, 120);
+
+    const stream = [
+      "BT",
+      "/F1 16 Tf",
+      "50 780 Td",
+      "(ZHOU CONSULTING - ARSIP REGULASI RESMI) Tj",
+      "0 -30 Td",
+      "/F1 11 Tf",
+      `(${escapePdf("Nomor Dokumen : " + safeDoc)}) Tj`,
+      "0 -18 Td",
+      `(${escapePdf("Kategori      : " + safeCat)}) Tj`,
+      "0 -18 Td",
+      `(${escapePdf("Tanggal Berlaku: " + safeDate)}) Tj`,
+      "0 -30 Td",
+      "/F1 13 Tf",
+      "(Judul Peraturan:) Tj",
+      "0 -18 Td",
+      "/F1 10 Tf",
+      `(${safeTitle}) Tj`,
+      "0 -30 Td",
+      "/F1 13 Tf",
+      "(Deskripsi / Ruang Lingkup:) Tj",
+      "0 -18 Td",
+      "/F1 10 Tf",
+      `(${safeScope}) Tj`,
+      "0 -40 Td",
+      "/F1 8 Tf",
+      "(Dokumen ini adalah salinan digital resmi yang diterbitkan melalui Zhou Consulting Portal.) Tj",
+      "0 -14 Td",
+      "(Terverifikasi Enkripsi SHA-256 & Akreditasi Konsultan Berizin BKP DJP.) Tj",
+      "ET",
+    ].join("\n");
+
+    const streamLen = new TextEncoder().encode(stream).length;
+
+    let pdf = "%PDF-1.4\n";
+    const offsets: number[] = [];
+
+    const addObj = (str: string) => {
+      offsets.push(new TextEncoder().encode(pdf).length);
+      pdf += str + "\n";
+    };
+
+    addObj("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
+    addObj("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj");
+    addObj(
+      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj"
+    );
+    addObj(`4 0 obj\n<< /Length ${streamLen} >>\nstream\n${stream}\nendstream\nendobj`);
+    addObj("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj");
+
+    const startxref = new TextEncoder().encode(pdf).length;
+    pdf += "xref\n0 6\n0000000000 65535 f \n";
+    for (let i = 0; i < offsets.length; i++) {
+      const offStr = String(offsets[i]).padStart(10, "0");
+      pdf += offStr + " 00000 n \n";
+    }
+    pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${startxref}\n%%EOF`;
+    return pdf;
+  };
+
+  const handleDownload = (
+    docNumberOrItem: string | StoredRegulationItem,
+    customTitle?: string,
+    category = "Regulasi Perpajakan",
+    scope = "Ketentuan perpajakan resmi Zhou Consulting."
+  ) => {
+    const item: StoredRegulationItem =
+      typeof docNumberOrItem === "object"
+        ? docNumberOrItem
+        : {
+            id: `doc-${Date.now()}`,
+            docNumber: docNumberOrItem,
+            title: customTitle || docNumberOrItem,
+            category: category as RegulationCategory,
+            effectiveDate: new Date().toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            scope,
+            fileSize: "1.2 MB",
+            status: "Berlaku",
+          };
+
+    setDownloadNotice(`Mengunduh salinan resmi: ${item.docNumber} - ${item.title}...`);
+
+    try {
+      if (item.fileDataUrl || (item.downloadUrl && item.downloadUrl.startsWith("data:application/pdf"))) {
+        const link = document.createElement("a");
+        link.href = item.fileDataUrl || item.downloadUrl!;
+        const cleanFileName = (item.docNumber || item.title || "Salinan-Regulasi")
+          .replace(/[^a-zA-Z0-9_\-]/g, "_")
+          .substring(0, 60);
+        link.download = `${cleanFileName}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else if (item.downloadUrl && item.downloadUrl !== "#" && item.downloadUrl.startsWith("http")) {
+        const link = document.createElement("a");
+        link.href = item.downloadUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.download = `${(item.docNumber || item.title || "Salinan-Regulasi").replace(/[^a-zA-Z0-9_\-]/g, "_")}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const pdfString = generateRegulationPdf(item);
+        const blob = new Blob([pdfString], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const cleanFileName = (item.docNumber || item.title || "Salinan-Regulasi")
+          .replace(/[^a-zA-Z0-9_\-]/g, "_")
+          .substring(0, 60);
+        link.download = `${cleanFileName}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error("Gagal mengunduh berkas regulasi:", err);
+    }
+
     setTimeout(() => {
       setDownloadNotice(null);
     }, 4000);
@@ -208,25 +409,6 @@ export default function PeraturanPage() {
         {/* 2. Top Section: Arsip Regulasi Perpajakan Resmi (Pencarian & Tabel Peraturan) */}
         <section id="unduh-peraturan" className="py-12 md:py-16 bg-surface border-b border-primary-light">
           <div className="container-custom space-y-6">
-            <nav aria-label="Breadcrumb">
-              <ol className="flex items-center space-x-2 text-xs text-text-secondary font-medium">
-                <li>
-                  <Link
-                    href="/"
-                    className="hover:text-primary transition-colors duration-150"
-                  >
-                    Beranda
-                  </Link>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <ChevronRightIcon className="text-[9px] text-silver" />
-                  <span className="text-primary font-semibold">
-                    Peraturan Perpajakan &amp; Kurs KMK
-                  </span>
-                </li>
-              </ol>
-            </nav>
-
             <div className="space-y-2">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Daftar Arsip Regulasi Perpajakan Resmi
@@ -236,215 +418,221 @@ export default function PeraturanPage() {
               </p>
             </div>
 
-            {/* Filter & Pencarian Dokumen Regulasi */}
-            <div className="bg-white p-4 rounded-xl border border-primary-light space-y-3.5 shadow-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-8 relative">
-                  <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-silver text-xs" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Saring cepat nomor dokumen, judul, atau ruang lingkup peraturan..."
-                    className="w-full pl-9 pr-8 py-2 text-xs bg-white border border-primary-light rounded-lg text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary shadow-2xs"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setCurrentPage(1);
-                      }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-text-secondary hover:text-text-primary p-1 cursor-pointer"
-                      title="Hapus pencarian"
-                    >
-                      <CloseIcon className="text-[10px]" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="sm:col-span-4 flex items-center gap-2">
-                  <div className="w-full">
-                    <Select
-                      value={selectedStatus}
+            {/* Container Terpadu: Filter, Toolbar, Tabel Regulasi, & Pagination Menjadi Satu Kesatuan */}
+            <div className="bg-white rounded-2xl border border-primary-light shadow-xs overflow-hidden">
+              {/* Bagian Atas: Filter & Pencarian Dokumen Regulasi */}
+              <div className="p-4 sm:p-5 space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                  <div className="sm:col-span-8 relative">
+                    <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-silver text-xs" />
+                    <input
+                      type="text"
+                      value={searchQuery}
                       onChange={(e) => {
-                        setSelectedStatus(e.target.value);
+                        setSearchQuery(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="text-xs h-9 py-1 px-3"
-                    >
-                      <option value="Semua">Semua Status</option>
-                      <option value="Berlaku">Status: Berlaku</option>
-                      <option value="Pembaruan">Status: Pembaruan</option>
-                    </Select>
+                      placeholder="Saring cepat nomor dokumen, judul, atau ruang lingkup peraturan..."
+                      className="w-full pl-9 pr-8 py-2 text-xs bg-surface border border-primary-light rounded-lg text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary shadow-2xs"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setCurrentPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-text-secondary hover:text-text-primary p-1 cursor-pointer"
+                        title="Hapus pencarian"
+                      >
+                        <CloseIcon className="text-[10px]" />
+                      </button>
+                    )}
                   </div>
 
-                  {(selectedCategory !== "Semua" || selectedStatus !== "Semua" || searchQuery) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleResetFilters}
-                      className="text-xs px-3 h-9 shrink-0 text-text-secondary hover:text-error hover:border-error"
-                      title="Reset semua filter"
+                  <div className="sm:col-span-4 flex items-center gap-2">
+                    <div className="w-full">
+                      <Select
+                        value={selectedStatus}
+                        onChange={(e) => {
+                          setSelectedStatus(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="text-xs h-9 py-1 px-3 bg-surface"
+                      >
+                        <option value="Semua">Semua Status</option>
+                        <option value="Berlaku">Status: Berlaku</option>
+                        <option value="Diperbarui">Status: Diperbarui</option>
+                        <option value="Tidak Berlaku">Status: Tidak Berlaku</option>
+                      </Select>
+                    </div>
+
+                    {(selectedCategory !== "Semua" || selectedStatus !== "Semua" || searchQuery) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="text-xs px-3 h-9 shrink-0 text-text-secondary hover:text-error hover:border-error"
+                        title="Reset semua filter"
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Category Pills directly above table */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 border-t border-primary-light/60 pb-1 text-xs">
+                  {REGULATION_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 rounded-full font-semibold transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] text-xs ${
+                        selectedCategory === cat
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-surface text-text-secondary border border-primary-light hover:border-primary hover:text-primary hover:bg-white"
+                      }`}
                     >
-                      Reset
-                    </Button>
-                  )}
+                      {cat} <span className="opacity-80 text-[10px]">({categoryCounts[cat] || 0})</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Category Pills directly above table */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pt-2 border-t border-primary-light/60 pb-1 text-xs">
-                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mr-1 shrink-0 flex items-center">
-                  <FilterIcon className="mr-1 text-[10px]" /> Kategori:
-                </span>
-                {REGULATION_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setCurrentPage(1);
-                    }}
-                    className={`px-3 py-1.5 rounded-full font-semibold transition-all whitespace-nowrap cursor-pointer active:scale-[0.98] text-xs ${
-                      selectedCategory === cat
-                        ? "bg-primary text-white shadow-sm"
-                        : "bg-surface text-text-secondary border border-primary-light hover:border-primary hover:text-primary hover:bg-white"
-                    }`}
-                  >
-                    {cat} <span className="opacity-80 text-[10px]">({categoryCounts[cat] || 0})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Header info tabel regulasi */}
-            <div className="flex items-center justify-between text-xs text-text-secondary pt-1">
-              <div>
-                Menampilkan <span className="font-semibold text-text-primary">{filteredRegulations.length}</span> dari {regulations.length} dokumen hukum perpajakan resmi.
-              </div>
-              {(selectedCategory !== "Semua" || selectedStatus !== "Semua" || searchQuery) && (
-                <div className="flex items-center gap-1">
-                  <span>Filter: <strong>{selectedCategory}</strong> ({selectedStatus})</span>
-                </div>
-              )}
-            </div>
-
-            {/* Tabel Arsip Peraturan */}
-            <div className="border border-primary-light rounded-lg overflow-hidden shadow-sm bg-white">
-              <Table>
-                <TableHeader className="bg-surface">
-                  <TableRow>
-                    <TableHead className="w-[130px] font-bold text-xs text-primary">
-                      Nomor Dokumen
-                    </TableHead>
-                    <TableHead className="font-bold text-xs text-primary min-w-[240px]">
-                      Judul &amp; Ruang Lingkup Regulasi
-                    </TableHead>
-                    <TableHead className="font-bold text-xs text-primary w-[160px]">
-                      Kategori
-                    </TableHead>
-                    <TableHead className="font-bold text-xs text-primary w-[130px]">
-                      Berlaku Mulai
-                    </TableHead>
-                    <TableHead className="font-bold text-xs text-primary w-[100px] text-center">
-                      Status
-                    </TableHead>
-                    <TableHead className="font-bold text-xs text-primary w-[110px] text-right">
-                      Aksi Unduh
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedData.length > 0 ? (
-                    paginatedData.map((item) => (
-                      <TableRow key={item.id} className="hover:bg-surface/60 transition-colors">
-                        <TableCell className="font-semibold text-xs text-primary align-top">
-                          {item.docNumber}
-                        </TableCell>
-                        <TableCell className="align-top">
-                          <div className="text-xs font-semibold text-text-primary">
-                            {item.title}
-                          </div>
-                          <div className="text-[11px] text-text-secondary mt-1 leading-relaxed">
-                            {item.scope}
-                          </div>
-                        </TableCell>
-                        <TableCell className="align-top">
-                          {item.category === "Regulasi Zhou" ? (
-                            <Badge variant="primary" className="text-[10px] font-bold bg-primary text-white border-primary shadow-2xs">
-                              {item.category}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] font-medium">
-                              {item.category}
-                            </Badge>
+              {/* Tabel Arsip Peraturan (Langsung menyambung dari filter tanpa space di tengah) */}
+              <div className="overflow-x-auto border-t border-primary-light">
+                <Table>
+                  <TableHeader className="bg-surface">
+                    <TableRow>
+                      <TableHead className="w-[210px] min-w-[190px] font-bold text-xs text-primary">
+                        Nomor Dokumen
+                      </TableHead>
+                      <TableHead className="font-bold text-xs text-primary min-w-[240px]">
+                        Judul &amp; Ruang Lingkup Regulasi
+                      </TableHead>
+                      <TableHead className="font-bold text-xs text-primary w-[160px]">
+                        Kategori
+                      </TableHead>
+                      <TableHead className="font-bold text-xs text-primary w-[130px]">
+                        Berlaku Mulai
+                      </TableHead>
+                      <TableHead className="font-bold text-xs text-primary w-[100px] text-center">
+                        Status
+                      </TableHead>
+                      <TableHead className="font-bold text-xs text-primary w-[110px] text-right">
+                        Aksi Unduh
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedData.length > 0 ? (
+                      paginatedData.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-surface/60 transition-colors">
+                          <TableCell className="font-semibold text-xs text-primary align-top">
+                            {item.docNumber}
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <div className="text-xs font-semibold text-text-primary">
+                              {item.title}
+                            </div>
+                            <div className="text-[11px] text-text-secondary mt-1 leading-relaxed">
+                              {item.scope}
+                            </div>
+                          </TableCell>
+                          <TableCell className="align-top">
+                            {item.category === "Regulasi Zhou" ? (
+                              <Badge variant="primary" className="text-[10px] font-bold bg-primary text-white border-primary shadow-2xs">
+                                {item.category}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] font-medium">
+                                {item.category}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-text-secondary align-top whitespace-nowrap">
+                            {item.effectiveDate}
+                          </TableCell>
+                          <TableCell className="text-center align-top">
+                            {item.legalStatus === "Berlaku" || (!item.legalStatus && item.status === "Berlaku") ? (
+                              <Badge variant="success" className="text-[10px] font-bold">
+                                Berlaku
+                              </Badge>
+                            ) : item.legalStatus === "Diperbarui" || (!item.legalStatus && (item.status === "Diperbarui" || (item.status as string) === "Pembaruan")) ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="primary" className="text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                  Diperbarui
+                                </Badge>
+                                {item.replacementRef && (
+                                  <span
+                                    className="text-[10px] text-text-muted leading-tight max-w-[140px] text-center"
+                                    title={`Referensi regulasi pengganti: ${item.replacementRef}`}
+                                  >
+                                    Ref: {item.replacementRef}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge variant="error" className="text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                Tidak Berlaku
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right align-top">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleDownload(item)}
+                              className="text-[11px] px-3 py-1 h-7 font-semibold"
+                              title={`Unduh berkas PDF (${item.fileSize})`}
+                            >
+                              Unduh
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-12 text-text-secondary text-xs space-y-3">
+                          <p>{regulations.length === 0 ? "Belum ada dokumen regulasi atau SOP perpajakan yang tersedia saat ini." : "Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter saat ini."}</p>
+                          {regulations.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleResetFilters}
+                              className="text-xs mt-2 font-semibold"
+                            >
+                              Reset Pencarian &amp; Filter
+                            </Button>
                           )}
                         </TableCell>
-                        <TableCell className="text-xs text-text-secondary align-top whitespace-nowrap">
-                          {item.effectiveDate}
-                        </TableCell>
-                        <TableCell className="text-center align-top">
-                          <Badge
-                            variant={item.status === "Pembaruan" ? "secondary" : "success"}
-                            className="text-[10px] font-bold"
-                          >
-                            {item.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right align-top">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload(item.docNumber, item.title)}
-                            className="text-[11px] px-2.5 py-1 h-7 border-primary-light hover:border-primary hover:bg-primary hover:text-white transition-colors"
-                            title={`Unduh berkas PDF (${item.fileSize})`}
-                          >
-                            PDF
-                          </Button>
-                        </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-text-secondary text-xs space-y-3">
-                        <p>{regulations.length === 0 ? "Belum ada dokumen regulasi atau SOP perpajakan yang tersedia saat ini." : "Tidak ada dokumen peraturan yang cocok dengan kata kunci pencarian atau filter saat ini."}</p>
-                        {regulations.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleResetFilters}
-                            className="text-xs mt-2 font-semibold"
-                          >
-                            Reset Pencarian &amp; Filter
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-primary-light text-xs gap-3">
-                <div className="text-text-secondary">
-                  Menampilkan halaman <span className="font-bold text-text-primary">{currentPage}</span> dari{" "}
-                  <span className="font-bold text-text-primary">{totalPages}</span>
-                </div>
-
+            {/* Info Counter & Pagination di Luar Tabel (Kanan Bawah) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-text-secondary pt-1 gap-3">
+              {totalPages > 1 ? (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={(page) => setCurrentPage(page)}
                   className="py-0"
                 />
+              ) : (
+                <div />
+              )}
+              <div className="text-right sm:ml-auto">
+                Menampilkan <span className="font-semibold text-text-primary">{filteredRegulations.length}</span> dari {regulations.length} dokumen hukum perpajakan resmi.
               </div>
-            )}
+            </div>
           </div>
         </section>
 
@@ -456,7 +644,7 @@ export default function PeraturanPage() {
                 Kurs Pajak Mingguan Menteri Keuangan (KMK)
               </h2>
               <p className="text-xs sm:text-sm text-text-secondary max-w-4xl leading-relaxed">
-                Nilai kurs resmi Kementerian Keuangan Republik Indonesia sebagai acuan dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN), dan PPh Pasal 22 Impor yang terupdate berkala.
+                Nilai kurs resmi Kementerian Keuangan Republik Indonesia &amp; Ditjen Pajak (DJP) sebagai acuan dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN), dan PPh Pasal 22 Impor yang terhubung langsung dan terupdate berkala setiap pekan.
               </p>
             </div>
 
@@ -470,11 +658,11 @@ export default function PeraturanPage() {
                         Kurs Menteri Keuangan (KMK)
                       </h3>
                       <Badge variant="secondary" size="sm">
-                        {kmkData.kmkNumber}
+                        {kmkData.kmkNumber || "KMK Terupdate Mingguan"}
                       </Badge>
                     </div>
                     <span className="text-xs text-text-secondary mt-0.5 block">
-                      Periode Aktif: {kmkData.period}
+                      Periode Aktif: {kmkData.period || "Pekan Berjalan"}
                     </span>
                   </div>
 
@@ -483,22 +671,14 @@ export default function PeraturanPage() {
                       href={kmkData.officialDjpUrl || "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary-light bg-white text-primary text-xs font-semibold hover:border-primary hover:bg-surface transition-all shadow-2xs"
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-all shadow-xs"
                       title="Buka portal resmi Kurs Pajak Badan Kebijakan Fiskal / DJP di tab baru"
                     >
-                      <span>Lihat Kurs Resmi DJP</span>
-                      <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span>Buka Portal Resmi Kurs DJP</span>
+                      <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
                     </a>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(kmkData.kmkNumber, "Tabel Kurs Valas Mingguan Lengkap")}
-                      className="text-xs font-semibold hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                    >
-                      Unduh Salinan KMK (PDF)
-                    </Button>
                   </div>
                 </div>
 
@@ -540,22 +720,12 @@ export default function PeraturanPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={4} className="py-8 px-5 text-center text-xs text-text-secondary">
-                          Belum ada data penetapan kurs KMK yang diunggah oleh admin.
+                          Kurs pajak terhubung langsung ke portal resmi DJP. Silakan akses portal DJP melalui tombol di atas.
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] text-text-secondary gap-2">
-                <p>
-                  * Nilai kurs KMK digunakan sebagai dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN) Barang dan Jasa, serta Pajak Penghasilan (PPh) Pasal 22 Impor.
-                </p>
-                <div className="flex items-center gap-1.5 shrink-0 text-text-secondary">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success inline-block"></span>
-                  <span>Terupdate berkala pada website Zhou (Rilis: {kmkData.lastUpdated})</span>
-                </div>
               </div>
             </div>
           </div>

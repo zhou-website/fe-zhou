@@ -4,12 +4,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  DocumentIcon,
   CloseIcon,
   BuildingIcon,
-  EditIcon,
   SearchIcon,
-  UserIcon,
+  BriefcaseIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -20,24 +18,14 @@ interface NavItem {
 
 const ADMIN_MAIN_NAV: NavItem[] = [
   {
-    label: "Dashboard Operasional",
+    label: "Overview",
     href: "/dashboard/admin",
     icon: BuildingIcon,
   },
   {
-    label: "Pusat Manajemen CMS",
-    href: "/dashboard/admin/cms",
-    icon: EditIcon,
-  },
-  {
-    label: "Lamaran Masuk",
-    href: "/dashboard/admin/lamaran",
-    icon: UserIcon,
-  },
-  {
-    label: "Upload Dokumen",
-    href: "/dashboard/admin/upload",
-    icon: DocumentIcon,
+    label: "Lembar Kerja",
+    href: "/dashboard/admin/tugas",
+    icon: BriefcaseIcon,
   },
 ];
 

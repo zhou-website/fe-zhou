@@ -8,7 +8,6 @@ import {
   EnvelopeIcon,
   BellIcon,
   ChevronDownIcon,
-  UserIcon,
   LogoutIcon,
   CheckCircleIcon,
   MenuIcon,
@@ -19,12 +18,10 @@ import {
 
 interface DashboardTopNavProps {
   role: "user" | "admin" | "superadmin";
-  profileUrl?: string;
 }
 
 export function DashboardTopNav({
   role,
-  profileUrl,
 }: DashboardTopNavProps) {
   const { user, logout } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -122,7 +119,7 @@ export function DashboardTopNav({
                   </p>
                   <div className="space-y-2">
                     <Link
-                      href="/dashboard/user/chatbot"
+                      href="/kontak"
                       onClick={() => setHelpOpen(false)}
                       className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 hover:bg-primary-light/40 border border-slate-200/60 transition-colors"
                     >
@@ -130,8 +127,8 @@ export function DashboardTopNav({
                         <ChatbotIcon />
                       </div>
                       <div>
-                        <div className="font-bold text-slate-900">AI Konsultan Pajak</div>
-                        <div className="text-[10px] text-slate-500">Tanya jawab instan regulasi UU HPP &amp; PPh</div>
+                        <div className="font-bold text-slate-900">Asisten Kontak &amp; FAQ</div>
+                        <div className="text-[10px] text-slate-500">Tanya jawab informasi layanan &amp; prosedur</div>
                       </div>
                     </Link>
 
@@ -188,7 +185,7 @@ export function DashboardTopNav({
                   </p>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-[11px] text-slate-700 space-y-1">
                     <div className="font-semibold text-slate-900">Email Resmi Korespondensi:</div>
-                    <div className="font-mono text-primary">client.support@zhouconsulting.co.id</div>
+                    <div className="font-mono text-primary">consultingzhou@gmail.com</div>
                     <div className="text-[10px] text-slate-500">Senin - Jumat (09:00 - 18:00 WIB)</div>
                   </div>
                 </div>

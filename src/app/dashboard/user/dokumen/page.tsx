@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { clientApi, ClientDocumentItem } from "@/lib/api";
+import { isDummyDocument } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +60,8 @@ export default function ClientDocumentVaultPage() {
       try {
         const res = await clientApi.getDocuments();
         if (res.success && Array.isArray(res.data)) {
-          backendDocs = res.data.map((d: ClientDocumentItem) => ({
+          const validBackend = res.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
+          backendDocs = validBackend.map((d: ClientDocumentItem) => ({
             id: `DOC-BE-${d.id}`,
             name: d.file_name,
             category: "Pajak",
@@ -286,7 +288,7 @@ export default function ClientDocumentVaultPage() {
               onClick={handleDownloadAll}
               className="shadow-sm font-semibold text-xs py-2.5 px-4 flex items-center self-start sm:self-auto shrink-0 cursor-pointer"
             >
-              <span>Unduh Semua Berkas</span>
+              Unduh
             </Button>
           </div>
 
@@ -556,7 +558,7 @@ export default function ClientDocumentVaultPage() {
                   }}
                   className="font-semibold"
                 >
-                  <span>Unduh Berkas Ini</span>
+                  Unduh
                 </Button>
               </div>
             </div>

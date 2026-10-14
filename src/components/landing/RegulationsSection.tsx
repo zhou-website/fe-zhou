@@ -13,37 +13,55 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircleIcon, DocumentIcon } from "@/components/icons";
+import { DocumentIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   StoredRegulationItem,
   StoredKmkData,
+  mapToRegulationCategory,
+  getStoredRegulations,
+  getStoredKmkRates,
+  syncKmkRatesFromDjp,
+  REGULATIONS_EVENT,
+  KMK_RATES_EVENT,
 } from "@/data/regulasiStorage";
-import { publicApi, RegulationItem, TaxRateItem } from "@/lib/api";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
+import { publicApi, RegulationItem } from "@/lib/api";
 
 export function RegulationsSection() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [regulations, setRegulations] = useState<StoredRegulationItem[]>([]);
-  const [kmkData, setKmkData] = useState<StoredKmkData>({
-    kmkNumber: "",
-    period: "",
-    effectiveUntil: "",
-    officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
-    lastUpdated: "",
-    rates: [],
-  });
+  const [kmkData, setKmkData] = useState<StoredKmkData>(() => getStoredKmkRates());
   const [isLoadingRegs, setIsLoadingRegs] = useState<boolean>(true);
   const [isLoadingKmk, setIsLoadingKmk] = useState<boolean>(true);
 
   const getAuthHref = (target: string) => {
-    if (isAuthenticated) return target;
-    return `/login?redirect=${encodeURIComponent(target)}`;
+    if (target.startsWith("/dashboard") && !isAuthenticated) {
+      return `/login?redirect=${encodeURIComponent(target)}`;
+    }
+    return target;
   };
 
   useEffect(() => {
     let isMounted = true;
+
+    const getPublishedStoredRegs = () => {
+      return getStoredRegulations().filter((r) => {
+        if (isCmsItemDeleted(r.id, r.title, undefined, r.docNumber)) return false;
+        const pubStatus = getCmsItemStatus(
+          r.id,
+          r.title,
+          r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+          [r.docNumber]
+        );
+        return pubStatus === "Published";
+      });
+    };
+
+    setRegulations(getPublishedStoredRegs());
 
     // Fetch live backend regulations
     publicApi
@@ -51,30 +69,40 @@ export function RegulationsSection() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiRegs: StoredRegulationItem[] = res.data.map((item: RegulationItem) => ({
-            id: `BE-${item.id}`,
-            docNumber: item.title,
-            title: item.title,
-            category: "Peraturan Menteri",
-            effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            scope: item.regulation_type || "Regulasi kepatuhan perpajakan nasional.",
-            fileSize: item.file_size || "1.2 MB",
-            status: "Berlaku",
-            downloadUrl: item.file_path || "#",
-          }));
+          const apiRegs: StoredRegulationItem[] = res.data
+            .filter((item: RegulationItem) => {
+              if (isCmsItemDeleted(item.id, item.title, undefined, item.file_path)) return false;
+              const pubStatus = getCmsItemStatus(`BE-${item.id}`, item.title, "Published", [item.id]);
+              return pubStatus === "Published";
+            })
+            .map((item: RegulationItem) => {
+              const category = mapToRegulationCategory(item.regulation_type, item.title);
+              return {
+                id: `BE-${item.id}`,
+                docNumber: item.title,
+                title: item.title,
+                category,
+                effectiveDate: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
+                scope: item.regulation_type || category,
+                fileSize: item.file_size || "1.2 MB",
+                status: "Published",
+                downloadUrl: item.file_path || "#",
+              };
+            });
 
-          setRegulations(apiRegs);
-        } else {
-          setRegulations([]);
+          setRegulations((prev) => {
+            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
+            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
+            return [...apiRegs, ...localOnly];
+          });
         }
       })
       .catch((err) => {
         console.warn("publicApi.getRegulations in RegulationsSection:", err);
-        setRegulations([]);
       })
       .finally(() => {
         if (isMounted) {
@@ -82,49 +110,24 @@ export function RegulationsSection() {
         }
       });
 
-    // Fetch live backend tax rates
-    publicApi
-      .getLatestTaxRates()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const mappedRates = res.data.map((r: TaxRateItem) => ({
-            currency: r.currency_code,
-            name: r.currency_code === "USD" ? "Dolar Amerika Serikat" : r.currency_code,
-            rate: `Rp ${Number(r.rate_value).toLocaleString("id-ID")},00`,
-            change: "+0,00%",
-            trend: "flat" as const,
-          }));
+    const handleUpdate = () => {
+      setRegulations(getPublishedStoredRegs());
+      setKmkData(getStoredKmkRates());
+    };
 
-          setKmkData({
-            kmkNumber: `KMK No. ${new Date().getFullYear()}`,
-            period: new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
-            effectiveUntil: "-",
-            officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
-            lastUpdated: new Date().toISOString(),
-            rates: mappedRates,
-          });
-        } else {
-          setKmkData({
-            kmkNumber: "",
-            period: "",
-            effectiveUntil: "",
-            officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
-            lastUpdated: "",
-            rates: [],
-          });
-        }
+    window.addEventListener(REGULATIONS_EVENT, handleUpdate);
+    window.addEventListener(KMK_RATES_EVENT, handleUpdate);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+
+    // Sinkronisasi otomatis kurs KMK langsung dari DJP / Kementerian Keuangan
+    syncKmkRatesFromDjp()
+      .then((liveKmk) => {
+        if (!isMounted) return;
+        setKmkData(liveKmk);
       })
       .catch((err) => {
-        console.warn("publicApi.getLatestTaxRates in RegulationsSection:", err);
-        setKmkData({
-          kmkNumber: "",
-          period: "",
-          effectiveUntil: "",
-          officialDjpUrl: "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak",
-          lastUpdated: "",
-          rates: [],
-        });
+        console.warn("syncKmkRatesFromDjp in RegulationsSection:", err);
       })
       .finally(() => {
         if (isMounted) {
@@ -134,6 +137,10 @@ export function RegulationsSection() {
 
     return () => {
       isMounted = false;
+      window.removeEventListener(REGULATIONS_EVENT, handleUpdate);
+      window.removeEventListener(KMK_RATES_EVENT, handleUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
 
@@ -167,7 +174,7 @@ export function RegulationsSection() {
                       Kurs Menteri Keuangan (KMK)
                     </h3>
                     {isLoadingKmk ? (
-                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
                     ) : kmkData.kmkNumber && kmkData.kmkNumber !== "-" ? (
                       <Badge variant="secondary" size="sm">
                         {kmkData.kmkNumber}
@@ -178,12 +185,20 @@ export function RegulationsSection() {
                     {isLoadingKmk ? (
                       <Skeleton className="h-3.5 w-44 mt-1" />
                     ) : kmkData.period && kmkData.period !== "-" ? (
-                      `Periode Aktif: ${kmkData.period}`
+                      `Periode: ${kmkData.period}`
                     ) : (
                       "Pembaruan kurs mingguan resmi Kemenkeu"
                     )}
                   </span>
                 </div>
+                <a
+                  href={kmkData.officialDjpUrl || "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-white transition-colors"
+                >
+                  Buka Portal Resmi DJP
+                </a>
               </div>
 
               <Table>
@@ -248,10 +263,6 @@ export function RegulationsSection() {
                 </TableBody>
               </Table>
             </div>
-
-            <p className="text-[11px] text-text-secondary leading-normal">
-              * Nilai kurs KMK digunakan sebagai dasar pelunasan Bea Masuk, Pajak Pertambahan Nilai (PPN) Barang dan Jasa, serta Pajak Penghasilan (PPh) Pasal 22 Impor.
-            </p>
           </div>
 
           {/* Regulation Quick Links & Downloads (5 cols) */}
@@ -267,26 +278,8 @@ export function RegulationsSection() {
               </p>
             </div>
 
-            {/* Official Portal Quick Link */}
-            <a
-              href="https://djponline.pajak.go.id"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center justify-between p-3.5 rounded-lg bg-white border border-primary-light hover:border-primary hover:shadow-sm transition-all text-xs font-semibold text-primary"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-md bg-primary-light text-primary flex items-center justify-center text-xs">
-                  <CheckCircleIcon className="text-success" />
-                </div>
-                <span>{t.regulations.portalDjp}</span>
-              </div>
-            </a>
-
             {/* Regulation Documents List */}
             <div className="space-y-2.5">
-              <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
-                {t.regulations.docTitle}
-              </span>
               {isLoadingRegs ? (
                 [1, 2, 3].map((i) => (
                   <div
@@ -360,7 +353,7 @@ export function RegulationsSection() {
                   className="inline-flex items-center justify-center gap-2"
                   title="Lihat Tabel & Unduh KMK Kurs Pajak Mingguan"
                 >
-                  <span>Unduh KMK (PDF)</span>
+                  <span>Unduh</span>
                 </Link>
               </Button>
             </div>

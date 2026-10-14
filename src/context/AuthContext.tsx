@@ -101,14 +101,52 @@ export function isDummyValue(val?: string | null): boolean {
   return false;
 }
 
-export function isDummyTicket(c: { project_code?: string; title?: string; id?: string | number }): boolean {
+export function isDummyTicket(c: {
+  project_code?: string;
+  title?: string;
+  id?: string | number;
+  client?: { name?: string; company_name?: string };
+}): boolean {
   const code = (c.project_code || String(c.id || "")).toLowerCase();
   const title = (c.title || "").toLowerCase();
+  const clientName = (c.client?.name || "").toLowerCase();
+  const compName = (c.client?.company_name || "").toLowerCase();
+
   return (
     code.includes("prj-tax-2026-001") ||
+    code === "1" ||
+    code === "tk-1" ||
     title.includes("spt tahunan badan pt maju") ||
+    title.includes("pt maju") ||
+    title.includes("maju makmur") ||
     title.includes("dummy") ||
-    title.includes("mock")
+    title.includes("mock") ||
+    title.includes("test") ||
+    clientName.includes("maju") ||
+    compName.includes("maju") ||
+    isDummyValue(clientName) ||
+    isDummyValue(compName)
+  );
+}
+
+export function isDummyDocument(doc: {
+  id?: string | number;
+  file_name?: string;
+  fileName?: string;
+  project_id?: number | string;
+  ticketId?: string;
+}): boolean {
+  const name = (doc.file_name || doc.fileName || "").toLowerCase();
+  const pid = String(doc.project_id || doc.ticketId || "").toLowerCase();
+
+  return (
+    name.includes("dummy") ||
+    name.includes("mock") ||
+    name.includes("spt_tahunan_badan_2025_final") ||
+    name.includes("test") ||
+    pid === "1" ||
+    pid === "proj-1" ||
+    pid.includes("prj-tax-2026-001")
   );
 }
 
@@ -227,6 +265,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load auth state from localStorage and verify with backend on client mount
   useEffect(() => {
     try {
+      // Pembersihan otomatis data inputan, unggahan berkas, dan data mockup sebelumnya agar bersih 0 data
+      // Catatan: Kurs Pajak (KMK) dan Kontak resmi selalu dipertahankan utuh
+      const CLEANUP_FLAG = "zhou_clean_all_data_20261014_v2";
+      if (typeof window !== "undefined" && !localStorage.getItem(CLEANUP_FLAG)) {
+        localStorage.removeItem("zhou_client_custom_tickets");
+        localStorage.removeItem("zhou_shared_documents");
+        localStorage.removeItem("zhou_stored_job_applications_v1");
+        localStorage.removeItem("zhou_submitted_applications");
+        localStorage.removeItem("zhou_articles_data_v2");
+        localStorage.removeItem("zhou_belajar_pajak_links_v1");
+        localStorage.removeItem("zhou_regulations_data_v2");
+        localStorage.removeItem("zhou_career_settings_data_v2");
+        localStorage.setItem(CLEANUP_FLAG, "true");
+
+        window.dispatchEvent(new Event("zhou_tickets_updated"));
+        window.dispatchEvent(new Event("zhou_documents_updated"));
+        window.dispatchEvent(new Event("zhou_applications_updated"));
+        window.dispatchEvent(new Event("zhou_regulations_updated"));
+        window.dispatchEvent(new Event("zhou_career_settings_updated"));
+        window.dispatchEvent(new CustomEvent("zhou_articles_updated", { detail: [] }));
+      }
+
       const storedToken = getAuthToken();
       const stored = localStorage.getItem(AUTH_STORAGE_KEY);
 
@@ -301,7 +361,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token: jwtToken,
       };
 
-      setAuthToken(jwtToken);
+      setAuthToken(jwtToken, role);
       setTokenState(jwtToken);
       try {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
@@ -408,7 +468,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Gagal menyimpan sesi auth ke localStorage:", err);
     }
 
-    setAuthToken(resolvedToken);
+    setAuthToken(resolvedToken, resolvedRole);
     setTokenState(resolvedToken);
     setUser(authData);
     setIsAuthenticated(true);

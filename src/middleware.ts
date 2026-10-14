@@ -13,6 +13,18 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set("redirect", `${pathname}${search}`);
       return NextResponse.redirect(loginUrl);
     }
+
+    const rawRole = request.cookies.get("zhou_user_role")?.value?.toLowerCase();
+
+    // Client/User attempting to access admin or superadmin area
+    if (rawRole === "user" && (pathname.startsWith("/dashboard/admin") || pathname.startsWith("/dashboard/superadmin"))) {
+      return NextResponse.redirect(new URL("/dashboard/user", request.url));
+    }
+
+    // Admin attempting to access superadmin-only management portal
+    if (rawRole === "admin" && pathname.startsWith("/dashboard/superadmin")) {
+      return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+    }
   }
 
   return NextResponse.next();

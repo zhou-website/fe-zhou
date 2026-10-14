@@ -40,11 +40,42 @@ export function getAuthToken(): string | null {
   }
 }
 
-export function setAuthToken(token: string): void {
+export const USER_ROLE_COOKIE_KEY = "zhou_user_role";
+
+export function getCurrentUserRole(): "user" | "admin" | "superadmin" | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("zhou_auth_user");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.role) {
+        const lower = String(parsed.role).toLowerCase().trim();
+        if (lower.includes("super")) return "superadmin";
+        if (lower.includes("admin")) return "admin";
+        return "user";
+      }
+    }
+    const cookieMatch = document.cookie.match(new RegExp(`(?:^|;\\s*)${USER_ROLE_COOKIE_KEY}=([^;]+)`));
+    if (cookieMatch) {
+      const val = decodeURIComponent(cookieMatch[1]).toLowerCase().trim();
+      if (val.includes("super")) return "superadmin";
+      if (val.includes("admin")) return "admin";
+      return "user";
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
+export function setAuthToken(token: string, role?: string): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
     document.cookie = `${TOKEN_STORAGE_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+    if (role) {
+      document.cookie = `${USER_ROLE_COOKIE_KEY}=${encodeURIComponent(role)}; path=/; max-age=604800; SameSite=Lax`;
+    }
   } catch (err) {
     console.error("Gagal menyimpan token ke localStorage/cookie:", err);
   }
@@ -55,6 +86,7 @@ export function removeAuthToken(): void {
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     document.cookie = `${TOKEN_STORAGE_KEY}=; path=/; max-age=0; SameSite=Lax`;
+    document.cookie = `${USER_ROLE_COOKIE_KEY}=; path=/; max-age=0; SameSite=Lax`;
   } catch (err) {
     console.error("Gagal menghapus token dari localStorage/cookie:", err);
   }
@@ -303,6 +335,23 @@ export const clientApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  uploadConsultationDocument: (
+    consultationId: number | string,
+    formData: FormData
+  ) =>
+    apiFetch<{
+      id: number;
+      project_id: number;
+      file_name: string;
+      file_path: string;
+      file_size?: string;
+      file_type?: string;
+      created_at: string;
+    }>(`/api/v1/client/consultations/${consultationId}/documents`, {
+      method: "POST",
+      body: formData,
+    }),
 };
 
 // ----------------------------------------------------
@@ -374,14 +423,23 @@ export const adminApi = {
       `/api/v1/admin/consultations/${consultationId}/documents`
     ),
 
-  uploadDocument: (consultationId: number | string, formData: FormData) =>
-    apiFetch<ClientDocumentItem>(
+  uploadDocument: (consultationId: number | string, formData: FormData) => {
+    const role = getCurrentUserRole();
+    if (role && role !== "superadmin") {
+      return Promise.resolve<ApiResponse<ClientDocumentItem>>({
+        success: false,
+        error: "FORBIDDEN",
+        message: "Akses ditolak: Pengelolaan upload laporan dan billing hanya dapat dilakukan oleh Superadmin.",
+      });
+    }
+    return apiFetch<ClientDocumentItem>(
       `/api/v1/admin/consultations/${consultationId}/documents`,
       {
         method: "POST",
         body: formData,
       }
-    ),
+    );
+  },
 
   getAllDocuments: () => apiFetch<ClientDocumentItem[]>("/api/v1/admin/documents"),
 };
@@ -427,95 +485,149 @@ export interface CreateCareerPayload {
   is_active?: boolean;
 }
 
+function assertSuperadminCmsPermission<T = unknown>(): ApiResponse<T> | null {
+  const role = getCurrentUserRole();
+  if (role && role !== "superadmin") {
+    return {
+      success: false,
+      error: "FORBIDDEN",
+      message: "Akses ditolak: Operasi CMS dan lamaran masuk hanya diizinkan untuk peran Superadmin.",
+    };
+  }
+  return null;
+}
+
 export const adminCmsApi = {
   updateCompanyProfile: (payload: {
     section_key: string;
     title: string;
     content: string;
-  }) =>
-    apiFetch("/api/v1/admin/cms/company-profiles", {
+  }) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/company-profiles", {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  createService: (payload: CreateServicePayload) =>
-    apiFetch("/api/v1/admin/cms/services", {
+  createService: (payload: CreateServicePayload) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/services", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  updateService: (id: number | string, payload: Partial<CreateServicePayload>) =>
-    apiFetch(`/api/v1/admin/cms/services/${id}`, {
+  updateService: (id: number | string, payload: Partial<CreateServicePayload>) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/services/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteService: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/services/${id}`, {
+  deleteService: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/services/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
   createTaxRate: (payload: {
     currency_code: string;
     rate_value: number;
     effective_start_date: string;
     effective_end_date: string;
-  }) =>
-    apiFetch("/api/v1/admin/cms/tax-rates", {
+  }) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/tax-rates", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  createRegulation: (payload: CreateRegulationPayload) =>
-    apiFetch("/api/v1/admin/cms/regulations", {
+  createRegulation: (payload: CreateRegulationPayload) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/regulations", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  updateRegulation: (id: number | string, payload: Partial<CreateRegulationPayload>) =>
-    apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
+  updateRegulation: (id: number | string, payload: Partial<CreateRegulationPayload>) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteRegulation: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
+  deleteRegulation: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
-  createEducation: (payload: CreateEducationPayload) =>
-    apiFetch("/api/v1/admin/cms/education", {
+  createEducation: (payload: CreateEducationPayload) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/education", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  updateEducation: (id: number | string, payload: Partial<CreateEducationPayload>) =>
-    apiFetch(`/api/v1/admin/cms/education/${id}`, {
+  updateEducation: (id: number | string, payload: Partial<CreateEducationPayload>) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/education/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteEducation: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/education/${id}`, {
+  deleteEducation: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/education/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
-  createCareer: (payload: CreateCareerPayload) =>
-    apiFetch("/api/v1/admin/cms/careers", {
+  createCareer: (payload: CreateCareerPayload) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/careers", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  updateCareer: (id: number | string, payload: Partial<CreateCareerPayload>) =>
-    apiFetch(`/api/v1/admin/cms/careers/${id}`, {
+  updateCareer: (id: number | string, payload: Partial<CreateCareerPayload>) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/careers/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteCareer: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/careers/${id}`, {
+  deleteCareer: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/careers/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
   updateTaxRate: (
     id: number | string,
@@ -525,46 +637,67 @@ export const adminCmsApi = {
       effective_start_date: string;
       effective_end_date?: string;
     }>
-  ) =>
-    apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
+  ) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteTaxRate: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
+  deleteTaxRate: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/tax-rates/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
-  getJobApplications: () =>
-    apiFetch<JobApplicationItem[]>("/api/v1/admin/cms/job-applications"),
+  getJobApplications: () => {
+    const err = assertSuperadminCmsPermission<JobApplicationItem[]>();
+    if (err) return Promise.resolve(err);
+    return apiFetch<JobApplicationItem[]>("/api/v1/admin/cms/job-applications");
+  },
 
-  deleteJobApplication: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/job-applications/${id}`, {
+  deleteJobApplication: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/job-applications/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
   getFaqs: () => apiFetch<ChatbotFaqItem[]>("/api/v1/admin/cms/faqs"),
 
-  createFaq: (payload: { category: string; question: string; answer_template: string }) =>
-    apiFetch("/api/v1/admin/cms/faqs", {
+  createFaq: (payload: { category: string; question: string; answer_template: string }) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/faqs", {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
   updateFaq: (
     id: number | string,
     payload: Partial<{ category: string; question: string; answer_template: string }>
-  ) =>
-    apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
+  ) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
-  deleteFaq: (id: number | string) =>
-    apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
+  deleteFaq: (id: number | string) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch(`/api/v1/admin/cms/faqs/${id}`, {
       method: "DELETE",
-    }),
+    });
+  },
 
   updateContactSettings: (payload: {
     whatsapp?: string;
@@ -572,11 +705,14 @@ export const adminCmsApi = {
     address?: string;
     phone?: string;
     settings?: Array<{ setting_key: string; setting_value: string }>;
-  }) =>
-    apiFetch<PublicSiteSettingItem[]>("/api/v1/admin/cms/settings/contact", {
+  }) => {
+    const err = assertSuperadminCmsPermission<PublicSiteSettingItem[]>();
+    if (err) return Promise.resolve(err);
+    return apiFetch<PublicSiteSettingItem[]>("/api/v1/admin/cms/settings/contact", {
       method: "PUT",
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 };
 
 // ----------------------------------------------------
@@ -649,11 +785,16 @@ export interface JobApplicationItem {
   applicant_name: string;
   applicant_email: string;
   applicant_phone?: string;
+  education?: string;
+  linkedin?: string;
+  cover_letter?: string;
+  registration_code?: string;
   cv_file_path: string;
   applied_at: string;
   job?: {
-    position_code: string;
+    position_code?: string;
     position_title: string;
+    department?: string;
   };
 }
 
@@ -691,6 +832,10 @@ export interface ApplyCareerPayload {
   applicant_name: string;
   applicant_email: string;
   applicant_phone?: string;
+  education?: string;
+  linkedin?: string;
+  cover_letter?: string;
+  registration_code?: string;
   cv_file_path: string;
 }
 
@@ -702,11 +847,13 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
   whatsapp: string;
   [key: string]: string;
 } {
+  const corporateEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "consultingzhou@gmail.com";
+  const corporateAddress = "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340";
   const map: Record<string, string> = {
     companyName: "Zhou Consulting",
-    email: "contact@zhouconsulting.com",
-    phone: "+62 21 555 8899",
-    address: "Sudirman Central Business District (SCBD) Lot 28, Jakarta Selatan",
+    email: corporateEmail,
+    phone: "",
+    address: corporateAddress,
     whatsapp: "+6281298765432",
   };
 
@@ -715,12 +862,28 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
       if (!s?.setting_key) return;
       map[s.setting_key] = s.setting_value;
       if (s.setting_key === "company_name") map.companyName = s.setting_value;
-      if (s.setting_key === "company_email" || s.setting_key === "contact_email") map.email = s.setting_value;
-      if (s.setting_key === "company_phone" || s.setting_key === "contact_phone") map.phone = s.setting_value;
-      if (s.setting_key === "company_address" || s.setting_key === "contact_address") map.address = s.setting_value;
+      if (s.setting_key === "company_email" || s.setting_key === "contact_email") {
+        const val = s.setting_value;
+        map.email = (!val || val === "contact@zhouconsulting.com") ? corporateEmail : val;
+      }
+      if (s.setting_key === "company_phone" || s.setting_key === "contact_phone") {
+        map.phone = "";
+      }
+      if (s.setting_key === "company_address" || s.setting_key === "contact_address") {
+        const val = s.setting_value;
+        map.address = (!val || val.includes("SCBD") || val.includes("Sudirman")) ? corporateAddress : val;
+      }
       if (s.setting_key === "cs_whatsapp" || s.setting_key === "contact_whatsapp") map.whatsapp = s.setting_value;
     });
   }
+
+  if (!map.email || map.email === "contact@zhouconsulting.com") {
+    map.email = corporateEmail;
+  }
+  if (!map.address || map.address.includes("SCBD") || map.address.includes("Sudirman")) {
+    map.address = corporateAddress;
+  }
+  map.phone = "";
 
   return map as {
     companyName: string;
@@ -806,6 +969,11 @@ export const publicApi = {
     apiFetch("/api/v1/public/contact", {
       method: "POST",
       body: JSON.stringify(payload),
+      skipAuth: true,
+    }),
+
+  getChatbotTree: () =>
+    apiFetch<ChatbotTreeItem[]>("/api/v1/client/chatbot/tree", {
       skipAuth: true,
     }),
 };

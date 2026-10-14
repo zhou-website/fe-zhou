@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   DocumentIcon,
-  ChatbotIcon,
   CloseIcon,
   BuildingIcon,
   ClockIcon,
@@ -33,11 +32,6 @@ const USER_MAIN_NAV: NavItem[] = [
     label: "Dokumen Pajak",
     href: "/dashboard/user/dokumen",
     icon: DocumentIcon,
-  },
-  {
-    label: "Chatbot Bantuan",
-    href: "/dashboard/user/chatbot",
-    icon: ChatbotIcon,
   },
 ];
 

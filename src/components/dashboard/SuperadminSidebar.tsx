@@ -8,6 +8,10 @@ import {
   CloseIcon,
   ShieldTaxIcon,
   SearchIcon,
+  EditIcon,
+  BuildingIcon,
+  UploadIcon,
+  BriefcaseIcon,
 } from "@/components/icons";
 
 interface NavItem {
@@ -18,14 +22,34 @@ interface NavItem {
 
 const SUPERADMIN_MAIN_NAV: NavItem[] = [
   {
-    label: "Log Audit & Sistem",
-    href: "/dashboard/superadmin",
-    icon: ShieldTaxIcon,
+    label: "Perikatan & Konsultasi Klien",
+    href: "/dashboard/superadmin/perikatan",
+    icon: BuildingIcon,
+  },
+  {
+    label: "Upload Laporan & Billing",
+    href: "/dashboard/superadmin/upload",
+    icon: UploadIcon,
   },
   {
     label: "Kelola Admin & Staf",
     href: "/dashboard/superadmin/users",
     icon: UserIcon,
+  },
+  {
+    label: "Pusat Manajemen CMS",
+    href: "/dashboard/superadmin/cms",
+    icon: EditIcon,
+  },
+  {
+    label: "Lamaran Masuk",
+    href: "/dashboard/superadmin/lamaran",
+    icon: BriefcaseIcon,
+  },
+  {
+    label: "Log Audit & Sistem",
+    href: "/dashboard/superadmin",
+    icon: ShieldTaxIcon,
   },
 ];
 
@@ -87,7 +111,7 @@ export function SuperadminSidebar({
           {/* Top Brand Logo */}
           <div className="p-5 flex items-center justify-between">
             <Link
-              href="/dashboard/superadmin"
+              href="/dashboard/superadmin/perikatan"
               className="flex items-center gap-3 group"
               onClick={() => {
                 if (isMobileOpen) setMobileOpenState(false);

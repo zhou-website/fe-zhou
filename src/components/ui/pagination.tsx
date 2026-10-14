@@ -17,48 +17,43 @@ export function Pagination({
   totalPages,
   onPageChange,
   className = "",
-  maxVisiblePages = 5,
+  maxVisiblePages = 2,
   hideOnSinglePage = false,
 }: PaginationProps) {
   const safeTotalPages = Math.max(1, totalPages);
   if (hideOnSinglePage && safeTotalPages <= 1) return null;
 
-  // Calculate visible page numbers
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = [];
-    if (safeTotalPages <= maxVisiblePages) {
-      for (let i = 1; i <= safeTotalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      let start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-      let end = start + maxVisiblePages - 1;
+  const groupSize = Math.max(1, maxVisiblePages);
+  const currentGroup = Math.floor((currentPage - 1) / groupSize);
+  const startPage = currentGroup * groupSize + 1;
+  const endPage = Math.min(startPage + groupSize - 1, safeTotalPages);
 
-      if (end > safeTotalPages) {
-        end = safeTotalPages;
-        start = Math.max(1, end - maxVisiblePages + 1);
-      }
+  // Generate visible page numbers for the active pair/group
+  const pages: number[] = [];
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i);
+  }
 
-      if (start > 1) {
-        pages.push(1);
-        if (start > 2) pages.push("...");
-      }
+  const isPrevDisabled = currentGroup === 0 && currentPage <= 1;
+  const isNextDisabled = endPage >= safeTotalPages && currentPage >= safeTotalPages;
 
-      for (let i = start; i <= end; i++) {
-        if (!pages.includes(i)) {
-          pages.push(i);
-        }
-      }
-
-      if (end < safeTotalPages) {
-        if (end < safeTotalPages - 1) pages.push("...");
-        pages.push(safeTotalPages);
-      }
+  const handlePrev = () => {
+    if (currentGroup > 0) {
+      const prevGroupStart = (currentGroup - 1) * groupSize + 1;
+      onPageChange(prevGroupStart);
+    } else if (currentPage > 1) {
+      onPageChange(1);
     }
-    return pages;
   };
 
-  const pages = getPageNumbers();
+  const handleNext = () => {
+    if (endPage < safeTotalPages) {
+      const nextGroupStart = (currentGroup + 1) * groupSize + 1;
+      onPageChange(nextGroupStart);
+    } else if (currentPage < safeTotalPages) {
+      onPageChange(currentPage + 1);
+    }
+  };
 
   return (
     <nav
@@ -68,27 +63,16 @@ export function Pagination({
       {/* Tombol Sebelumnya (◀) */}
       <button
         type="button"
-        disabled={currentPage <= 1}
-        onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
+        disabled={isPrevDisabled}
+        onClick={handlePrev}
         className="w-9 h-9 rounded-lg bg-white border border-primary-light flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface hover:border-silver disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs active:scale-95 cursor-pointer"
         aria-label="Halaman Sebelumnya"
       >
         <ChevronLeftIcon className="text-xs" />
       </button>
 
-      {/* Nomor-nomor Halaman */}
-      {pages.map((page, idx) => {
-        if (typeof page === "string") {
-          return (
-            <span
-              key={`ellipsis-${idx}`}
-              className="w-9 h-9 flex items-center justify-center text-xs font-semibold text-text-secondary"
-            >
-              &hellip;
-            </span>
-          );
-        }
-
+      {/* Nomor-nomor Halaman (Hanya 2 yang terlihat) */}
+      {pages.map((page) => {
         const isActive = page === currentPage;
 
         return (
@@ -111,8 +95,8 @@ export function Pagination({
       {/* Tombol Selanjutnya (▶) */}
       <button
         type="button"
-        disabled={currentPage >= safeTotalPages}
-        onClick={() => onPageChange(Math.min(currentPage + 1, safeTotalPages))}
+        disabled={isNextDisabled}
+        onClick={handleNext}
         className="w-9 h-9 rounded-lg bg-white border border-primary-light flex items-center justify-center text-text-secondary hover:text-primary hover:bg-surface hover:border-silver disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-2xs active:scale-95 cursor-pointer"
         aria-label="Halaman Selanjutnya"
       >

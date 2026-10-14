@@ -16,7 +16,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   LocationIcon,
-  PhoneIcon,
   EnvelopeIcon,
   WhatsappIcon,
   LinkedinIcon,
@@ -62,8 +61,11 @@ export function Footer() {
   }, []);
 
   const getAuthHref = (target: string) => {
-    if (isAuthenticated) return target;
-    return `/login?redirect=${encodeURIComponent(target)}`;
+    // Hanya lindungi rute privat (/dashboard)
+    if (target.startsWith("/dashboard") && !isAuthenticated) {
+      return `/login?redirect=${encodeURIComponent(target)}`;
+    }
+    return target;
   };
 
   const scrollToTop = () => {
@@ -108,10 +110,6 @@ export function Footer() {
                   <Skeleton className="h-3.5 w-60 bg-white/10" />
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <PhoneIcon className="text-silver text-xs shrink-0" />
-                  <Skeleton className="h-3.5 w-36 bg-white/10" />
-                </div>
-                <div className="flex items-center gap-2.5">
                   <EnvelopeIcon className="text-silver text-xs shrink-0" />
                   <Skeleton className="h-3.5 w-44 bg-white/10" />
                 </div>
@@ -121,19 +119,17 @@ export function Footer() {
                 {contact.address && (
                   <div className="flex items-start gap-2.5">
                     <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">{contact.address}</span>
-                  </div>
-                )}
-                {contact.phone && (
-                  <div className="flex items-center gap-2.5">
-                    <PhoneIcon className="text-silver text-xs shrink-0" />
-                    <span>{contact.phone}</span>
+                    <span className="leading-relaxed">
+                      {contact.address.includes("SCBD") || contact.address.includes("Sudirman")
+                        ? "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340"
+                        : contact.address}
+                    </span>
                   </div>
                 )}
                 {contact.email && (
                   <div className="flex items-center gap-2.5">
                     <EnvelopeIcon className="text-silver text-xs shrink-0" />
-                    <span>{contact.email}</span>
+                    <span>{contact.email === "contact@zhouconsulting.com" ? "consultingzhou@gmail.com" : contact.email}</span>
                   </div>
                 )}
               </div>
@@ -196,7 +192,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href={getAuthHref("/karir")} className="hover:text-white transition-colors">
+                <Link href={getAuthHref("/belajar-pajak")} className="hover:text-white transition-colors">
+                  Belajar Pajak Resmi
+                </Link>
+              </li>
+              <li>
+                <Link href="/karir" className="hover:text-white transition-colors">
                   Peluang Karir
                 </Link>
               </li>
@@ -268,11 +269,6 @@ export function Footer() {
                 <li>
                   <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
                     Pelaporan SPT
-                  </Link>
-                </li>
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#integrasi-api")} className="hover:text-white transition-colors">
-                    Integrasi API ERP
                   </Link>
                 </li>
               </ul>

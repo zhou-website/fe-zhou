@@ -8,6 +8,9 @@ import {
   getStoredCareerSettings,
   CAREER_SETTINGS_EVENT,
   JobPosition,
+  hasAppliedToCareer,
+  recordCareerApplication,
+  saveStoredJobApplication,
 } from "@/data/karirStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { publicApi, CareerItem } from "@/lib/api";
@@ -42,7 +45,6 @@ import {
 } from "@/components/ui/tabs";
 import {
   BriefcaseIcon,
-  CheckCircleIcon,
   CheckIcon,
   DocumentIcon,
   LocationIcon,
@@ -52,8 +54,20 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   UserIcon,
+  AlertIcon,
 } from "@/components/icons";
 import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
+
+export interface FormFieldErrors {
+  position?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  education?: string;
+  linkedin?: string;
+  cv?: string;
+  agreeTerms?: string;
+}
 
 const CAREER_JOBS: JobPosition[] = [];
 
@@ -104,6 +118,7 @@ export default function CareerPage() {
 
             return {
               id: c.position_code || String(c.id),
+              backendId: c.id,
               title: c.position_title,
               department,
               deptKey,
@@ -178,11 +193,25 @@ export default function CareerPage() {
   const [fileError, setFileError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Submission State
+  // Submission & Validation State
+  const [fieldErrors, setFieldErrors] = useState<FormFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string>("");
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [registrationCode, setRegistrationCode] = useState<string>("");
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  const handleCopyRegistrationCode = (code: string) => {
+    if (typeof window !== "undefined" && navigator?.clipboard) {
+      navigator.clipboard.writeText(code).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2500);
+      }).catch(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2500);
+      });
+    }
+  };
 
   // Filtering Logic (Hanya tampilkan lowongan berstatus Published untuk publik)
   const publishedJobs = jobsList.filter((job) => job.status !== "Draft");
@@ -208,19 +237,24 @@ export default function CareerPage() {
     if (!file) return;
 
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-      setFileError("Format berkas tidak valid. Harap lampirkan berkas Curriculum Vitae berformat PDF.");
+      const err = "Format CV harus PDF.";
+      setFileError(err);
+      setFieldErrors((prev) => ({ ...prev, cv: err }));
       setUploadedFile(null);
       return;
     }
 
     const maxBytes = 5 * 1024 * 1024; // 5 MB
     if (file.size > maxBytes) {
-      setFileError("Ukuran berkas melebihi batas 5 MB. Harap perkecil ukuran PDF Anda sebelum mengunggah.");
+      const err = "Ukuran CV melebihi batas yang diizinkan.";
+      setFileError(err);
+      setFieldErrors((prev) => ({ ...prev, cv: err }));
       setUploadedFile(null);
       return;
     }
 
     setFileError("");
+    setFieldErrors((prev) => ({ ...prev, cv: undefined }));
     setUploadedFile(file);
   };
 
@@ -239,12 +273,82 @@ export default function CareerPage() {
   const handleRemoveFile = () => {
     setUploadedFile(null);
     setFileError("");
+    setFieldErrors((prev) => ({ ...prev, cv: undefined }));
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // Pre-fill position and open application modal (no scrolling down)
+  // Validasi Seluruh Field Formulir Sebelum Dikirim ke Backend
+  const validateForm = (): boolean => {
+    const errors: FormFieldErrors = {};
+
+    // 1. Validasi Posisi
+    if (!selectedPositionId) {
+      errors.position = "Silakan pilih posisi lowongan yang ingin Anda lamar.";
+    } else if (selectedJobToApply && selectedJobToApply.status === "Draft") {
+      errors.position = "Lowongan ini sudah tidak tersedia. Silakan pilih lowongan lain.";
+    }
+
+    // 2. Validasi Nama Lengkap
+    if (!fullName.trim() || fullName.trim().length < 2) {
+      errors.fullName = "Nama lengkap wajib diisi.";
+    }
+
+    // 3. Validasi Format Email
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    if (!email.trim() || !emailRegex.test(email.trim().toLowerCase())) {
+      errors.email = "Masukkan alamat email yang valid.";
+    }
+
+    // 4. Validasi Nomor Telepon / WhatsApp
+    const cleanPhone = phone.replace(/[\s\-()]/g, "");
+    const phoneRegex = /^(\+?\d{9,15})$/;
+    if (!phone.trim()) {
+      errors.phone = "Nomor WhatsApp/HP wajib diisi.";
+    } else if (!phoneRegex.test(cleanPhone)) {
+      errors.phone = "Periksa kembali nomor WhatsApp/HP Anda.";
+    }
+
+    // 5. Validasi Pendidikan Terakhir & Jurusan
+    if (!education.trim() || education.trim().length < 2) {
+      errors.education = "Pendidikan terakhir dan jurusan wajib diisi.";
+    }
+
+    // 6. Validasi Tautan LinkedIn / Portofolio (Opsional jika diisi)
+    if (linkedin.trim()) {
+      try {
+        const fullUrl = linkedin.trim().startsWith("http") ? linkedin.trim() : `https://${linkedin.trim()}`;
+        const parsed = new URL(fullUrl);
+        if (!parsed.hostname || !parsed.hostname.includes(".")) {
+          errors.linkedin = "Masukkan tautan profil LinkedIn atau portofolio yang valid.";
+        }
+      } catch {
+        errors.linkedin = "Masukkan tautan profil LinkedIn atau portofolio yang valid.";
+      }
+    }
+
+    // 7. Validasi Berkas CV
+    if (!uploadedFile) {
+      errors.cv = "Silakan unggah CV sebelum mengirim lamaran.";
+    } else if (fileError) {
+      errors.cv = fileError;
+    } else if (uploadedFile.type !== "application/pdf" && !uploadedFile.name.toLowerCase().endsWith(".pdf")) {
+      errors.cv = "Format CV harus PDF.";
+    } else if (uploadedFile.size > 5 * 1024 * 1024) {
+      errors.cv = "Ukuran CV melebihi batas yang diizinkan.";
+    }
+
+    // 8. Validasi Persetujuan Pemrosesan Data UU PDP
+    if (!agreeTerms) {
+      errors.agreeTerms = "Centang persetujuan pemrosesan data untuk melanjutkan.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Pre-fill position and open application modal (state reset properly per vacancy)
   const handleApplyJob = (job: JobPosition | null) => {
     if (job) {
       setSelectedPositionId(job.id);
@@ -255,6 +359,7 @@ export default function CareerPage() {
     }
     setSelectedJobModal(null);
     setSubmitError("");
+    setFieldErrors({});
     setSubmitSuccess(false);
     setIsApplyModalOpen(true);
   };
@@ -264,61 +369,211 @@ export default function CareerPage() {
     e.preventDefault();
     setSubmitError("");
 
-    if (!selectedPositionId) {
-      setSubmitError("Silakan pilih posisi lowongan yang ingin Anda lamar.");
+    // 1. Validasi formulir secara komprehensif
+    const isValid = validateForm();
+    if (!isValid) {
       return;
     }
-    if (!fullName.trim()) {
-      setSubmitError("Silakan isi nama lengkap Anda sesuai KTP.");
-      return;
+
+    // 2. Periksa apakah posisi yang dipilih masih aktif dan tersedia
+    if (selectedJobToApply) {
+      const isJobStillActive = publishedJobs.some(
+        (j) => String(j.id) === String(selectedJobToApply.id) && j.status !== "Draft"
+      );
+      if (!isJobStillActive) {
+        setSubmitError("Lowongan ini sudah tidak tersedia. Silakan pilih lowongan lain.");
+        return;
+      }
     }
-    if (!email.trim() || !email.includes("@")) {
-      setSubmitError("Silakan masukkan alamat email yang valid.");
-      return;
+
+    // 3. Tentukan target lowongan dan ID backend yang benar
+    let targetJob: JobPosition | undefined;
+    if (selectedJobToApply) {
+      targetJob = selectedJobToApply;
+    } else if (selectedPositionId && selectedPositionId !== "general-talent-pool") {
+      targetJob = publishedJobs.find((j) => String(j.id) === String(selectedPositionId));
     }
-    if (!phone.trim() || phone.length < 8) {
-      setSubmitError("Silakan masukkan nomor telepon / WhatsApp aktif Anda.");
-      return;
+
+    const targetPositionKey = targetJob?.id || selectedPositionId;
+
+    // Tentukan ID numerik backend yang valid (bukan default 1 jika tidak ada ID)
+    const validFallbackJob = publishedJobs.find((j) => j.backendId || /^\d+$/.test(j.id));
+    const fallbackId = validFallbackJob?.backendId ?? (validFallbackJob?.id ? parseInt(validFallbackJob.id, 10) : 8);
+
+    let numJobId: number;
+    if (targetJob?.backendId) {
+      numJobId = targetJob.backendId;
+    } else if (targetJob?.id && /^\d+$/.test(targetJob.id)) {
+      numJobId = parseInt(targetJob.id, 10);
+    } else if (targetJob?.id) {
+      const extracted = parseInt(String(targetJob.id).replace(/\D/g, ""), 10);
+      numJobId = extracted || fallbackId;
+    } else {
+      numJobId = fallbackId;
     }
-    if (!education.trim()) {
-      setSubmitError("Silakan isi pendidikan terakhir dan jurusan Anda.");
-      return;
-    }
-    if (!uploadedFile) {
-      setSubmitError("Harap lampirkan berkas Curriculum Vitae (CV) berformat PDF (maks. 5 MB).");
-      return;
-    }
-    if (!agreeTerms) {
-      setSubmitError("Anda wajib menyetujui pemrosesan data pelamar kerja sesuai UU PDP No. 27 Tahun 2022.");
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 4. Validasi duplikasi: satu email hanya dapat melamar satu kali pada lowongan yang sama
+    const dupMsg = "Email ini sudah digunakan untuk melamar posisi ini. Silakan periksa kembali data lamaran Anda.";
+    if (
+      hasAppliedToCareer(targetPositionKey, cleanEmail) ||
+      hasAppliedToCareer(numJobId, cleanEmail) ||
+      (selectedJobToApply?.id && hasAppliedToCareer(selectedJobToApply.id, cleanEmail))
+    ) {
+      setSubmitError(dupMsg);
+      setFieldErrors((prev) => ({ ...prev, email: dupMsg }));
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const numJobId = parseInt(String(selectedPositionId).replace(/\D/g, ""), 10) || 1;
+      // 5. Validasi Server-Side melalui Route Handler Next.js & Backend
+      const serverValidationPromise = fetch("/api/karir/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          job_id: numJobId,
+          position_title: targetJob?.title || "Pendaftaran Karir",
+          applicant_name: fullName.trim(),
+          applicant_email: cleanEmail,
+          applicant_phone: phone.trim(),
+          education: education.trim(),
+          linkedin: linkedin.trim(),
+          cover_letter: coverLetter.trim(),
+          agree_terms: agreeTerms,
+          cv_file_name: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
+          cv_file_size: uploadedFile ? uploadedFile.size : 0,
+          cv_mime_type: uploadedFile ? uploadedFile.type : "application/pdf",
+        }),
+      })
+        .then((r) => r.json().catch(() => null))
+        .catch(() => null);
 
-      const res = await publicApi.applyCareer(numJobId, {
+      const remoteApiPromise = publicApi.applyCareer(numJobId, {
         applicant_name: fullName.trim(),
-        applicant_email: email.trim(),
+        applicant_email: cleanEmail,
         applicant_phone: phone.trim(),
         cv_file_path: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
       });
 
-      if (!res.success && res.message && !res.data) {
-        setSubmitError(res.message);
-        setIsSubmitting(false);
+      const [serverRes, res] = await Promise.all([serverValidationPromise, remoteApiPromise]);
+
+      // Periksa apakah server route mendeteksi duplikasi atau error
+      if (serverRes && !serverRes.success) {
+        if (serverRes.duplicate || (serverRes.message && serverRes.message.includes("sudah digunakan"))) {
+          setSubmitError(dupMsg);
+          setFieldErrors((prev) => ({ ...prev, email: dupMsg }));
+          return;
+        }
+        if (serverRes.errors && typeof serverRes.errors === "object") {
+          setFieldErrors((prev) => ({ ...prev, ...(serverRes.errors as FormFieldErrors) }));
+          setSubmitError(serverRes.message || "Terdapat data yang belum sesuai. Silakan periksa formulir Anda.");
+          return;
+        }
+      }
+
+      if (!res.success) {
+        const errorText = (res.message || res.error || "").toLowerCase();
+        const rawErrors = typeof res.errors === "string" ? res.errors.toLowerCase() : "";
+
+        // 1. Gangguan koneksi atau server
+        if (
+          res.error === "NETWORK_ERROR" ||
+          errorText.includes("network") ||
+          errorText.includes("failed to fetch") ||
+          errorText.includes("gagal terhubung") ||
+          errorText.includes("connection") ||
+          errorText.includes("500") ||
+          errorText.includes("502") ||
+          errorText.includes("503")
+        ) {
+          setSubmitError("Lamaran belum berhasil dikirim karena gangguan koneksi atau server. Silakan coba kembali.");
+        }
+        // 2. Email sudah pernah digunakan pada lowongan yang sama
+        else if (
+          errorText.includes("already") ||
+          errorText.includes("sudah") ||
+          errorText.includes("pernah") ||
+          errorText.includes("duplicate") ||
+          errorText.includes("conflict")
+        ) {
+          setSubmitError(dupMsg);
+          setFieldErrors((prev) => ({ ...prev, email: dupMsg }));
+        }
+        // 3. Posisi tidak tersedia (misal foreign key violated di DB atau deleted)
+        else if (
+          errorText.includes("not found") ||
+          errorText.includes("tidak ditemukan") ||
+          errorText.includes("tidak tersedia") ||
+          errorText.includes("closed") ||
+          rawErrors.includes("foreign key") ||
+          rawErrors.includes("fkey")
+        ) {
+          setSubmitError("Lowongan ini sudah tidak tersedia. Silakan pilih lowongan lain.");
+        }
+        // 4. Validasi field spesifik dari backend (HTTP 422 / 400)
+        else if (res.errors && typeof res.errors === "object") {
+          const serverErrors: FormFieldErrors = {};
+          Object.entries(res.errors).forEach(([field, msg]) => {
+            const messageStr = Array.isArray(msg) ? msg[0] : String(msg);
+            if (field.includes("name")) serverErrors.fullName = messageStr;
+            else if (field.includes("email")) serverErrors.email = messageStr;
+            else if (field.includes("phone")) serverErrors.phone = messageStr;
+            else if (field.includes("cv") || field.includes("resume")) serverErrors.cv = messageStr;
+            else if (field.includes("education")) serverErrors.education = messageStr;
+          });
+          setFieldErrors((prev) => ({ ...prev, ...serverErrors }));
+          setSubmitError(res.message || "Terdapat data yang belum sesuai. Silakan periksa formulir Anda.");
+        }
+        // 5. Pesan error server lainnya (tanpa menampilkan stack trace teknis internal)
+        else {
+          setSubmitError(
+            res.message && res.message !== "Gagal mengirimkan lamaran"
+              ? res.message
+              : "Lamaran belum berhasil dikirim karena gangguan koneksi atau server. Silakan coba kembali."
+          );
+        }
+        // Data form & file CV tetap dipertahankan
         return;
       }
 
-      const code = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      // Berhasil mengirim lamaran
+      recordCareerApplication(targetPositionKey, cleanEmail);
+      recordCareerApplication(numJobId, cleanEmail);
+      if (selectedJobToApply?.id) {
+        recordCareerApplication(selectedJobToApply.id, cleanEmail);
+      }
+
+      const code = serverRes?.data?.registration_code || `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Simpan data lamaran ke penyimpanan persisten agar langsung terintegrasi dengan Superadmin Lamaran Masuk
+      saveStoredJobApplication({
+        id: Date.now(),
+        job_id: numJobId,
+        applicant_name: fullName.trim(),
+        applicant_email: cleanEmail,
+        applicant_phone: phone.trim(),
+        education: education.trim(),
+        linkedin: linkedin.trim(),
+        cover_letter: coverLetter.trim(),
+        cv_file_path: uploadedFile ? URL.createObjectURL(uploadedFile) : "cv-pelamar.pdf",
+        cv_file_name: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
+        applied_at: new Date().toISOString(),
+        registration_code: code,
+        job: {
+          position_code: String(targetJob?.id || targetPositionKey),
+          position_title: targetJob?.title || (targetPositionKey === "general-talent-pool" ? "Pendaftaran Database Talenta Terbuka" : "Posisi Karir"),
+          department: targetJob?.department || "Tax Service Core",
+        },
+      });
+
       setRegistrationCode(code);
       setSubmitSuccess(true);
-    } catch (err) {
-      console.warn("publicApi.applyCareer error:", err);
-      const code = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      setRegistrationCode(code);
-      setSubmitSuccess(true);
+    } catch (err: unknown) {
+      console.warn("publicApi.applyCareer unexpected error:", err);
+      setSubmitError("Lamaran belum berhasil dikirim karena gangguan koneksi atau server. Silakan coba kembali.");
     } finally {
       setIsSubmitting(false);
     }
@@ -336,6 +591,7 @@ export default function CareerPage() {
     setAgreeTerms(false);
     setUploadedFile(null);
     setFileError("");
+    setFieldErrors({});
     setSubmitError("");
     setSubmitSuccess(false);
     setRegistrationCode("");
@@ -352,15 +608,7 @@ export default function CareerPage() {
         {/* Seksi Katalog Lowongan Kerja Terbuka dengan Breadcrumb & Header Terpadu */}
         <section className="py-14 md:py-20 bg-surface flex-1" aria-label="Daftar Lowongan Kerja">
           <div className="container-custom space-y-10">
-            <nav className="flex items-center gap-2 text-xs text-text-secondary font-medium">
-              <Link href="/" className="hover:text-primary transition-colors">
-                Beranda
-              </Link>
-              <span>/</span>
-              <span className="text-primary font-semibold">Karir &amp; Rekrutmen</span>
-            </nav>
-
-            <div className="max-w-3xl space-y-3">
+            <div className="max-w-3xl space-y-4">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary tracking-tight">
                 Peluang Karir &amp; Rekrutmen Zhou Consulting
               </h1>
@@ -386,9 +634,6 @@ export default function CareerPage() {
 
                 {careerSettings.closedPeriodNote && (
                   <div className="p-4 rounded-xl bg-surface border border-primary-light/80 text-xs text-text-secondary max-w-md mx-auto text-center space-y-1">
-                    <span className="font-bold text-primary block text-[11px] uppercase tracking-wider">
-                      Jadwal &amp; Catatan Periode:
-                    </span>
                     <p className="leading-relaxed">{careerSettings.closedPeriodNote}</p>
                   </div>
                 )}
@@ -503,8 +748,7 @@ export default function CareerPage() {
                               <Badge variant="primary" size="sm" className="font-semibold text-[11px]">
                                 {job.department}
                               </Badge>
-                              <Badge variant="silver" size="sm" className="text-[10px] inline-flex items-center gap-1">
-                                <ClockIcon className="text-[9px]" />
+                              <Badge variant="silver" size="sm" className="text-[10px]">
                                 <span>{job.type}</span>
                               </Badge>
                             </div>
@@ -581,33 +825,49 @@ export default function CareerPage() {
           setIsApplyModalOpen(open);
           if (!open) {
             setSubmitError("");
+            setFieldErrors({});
+            if (submitSuccess) {
+              handleResetForm();
+            }
           }
         }}
       >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6 sm:p-8">
           {submitSuccess ? (
-            <div className="rounded-lg bg-surface border border-success/30 p-6 sm:p-8 text-center space-y-4 my-2">
-              <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto text-xl">
-                <CheckCircleIcon />
-              </div>
-              <div className="space-y-1">
-                <Badge variant="outline" className="text-success border-success font-semibold text-xs mb-2">
+            <div className="py-6 sm:py-8 text-center space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
                   Lamaran Berhasil Dikirim
-                </Badge>
-                <h3 className="text-lg sm:text-xl font-bold text-primary">
-                  Terima Kasih Atas Antusiasme Anda
                 </h3>
-                <p className="text-xs sm:text-sm text-text-secondary max-w-lg mx-auto leading-relaxed">
-                  Berkas lamaran dan CV Anda telah tersimpan dengan nomor registrasi kandidat:
+                <p className="text-xs sm:text-sm text-text-secondary max-w-md mx-auto leading-relaxed">
+                  Terima kasih telah melamar di Zhou Consulting. Berkas lamaran Anda berhasil disimpan.
                 </p>
-                <div className="p-2.5 bg-white rounded border border-primary-light font-mono text-sm font-bold text-primary inline-block mt-2">
-                  {registrationCode}
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider block">
+                  Nomor Registrasi Kandidat
+                </span>
+                <div className="inline-flex items-center justify-center gap-2.5 p-3 px-4 bg-surface rounded-xl border border-primary-light shadow-2xs">
+                  <span className="font-mono text-base sm:text-lg font-bold text-primary tracking-wider select-all">
+                    {registrationCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyRegistrationCode(registrationCode)}
+                    className="text-xs px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 border border-primary-light text-primary font-medium transition-colors cursor-pointer"
+                    title="Salin nomor registrasi"
+                  >
+                    {isCopied ? "Tersalin!" : "Salin"}
+                  </button>
                 </div>
               </div>
+
               <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-                Tim People &amp; Culture kami akan melakukan penelaahan berkas dalam waktu 3-5 hari kerja. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
+                Tim People &amp; Culture akan meninjau lamaran Anda. Kandidat yang memenuhi kualifikasi akan dihubungi melalui email atau WhatsApp resmi.
               </p>
-              <div className="pt-2 flex justify-center gap-3">
+
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                 <Button
                   variant="outline"
                   size="default"
@@ -615,7 +875,7 @@ export default function CareerPage() {
                     handleResetForm();
                     setIsApplyModalOpen(false);
                   }}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold px-5"
                 >
                   Tutup
                 </Button>
@@ -623,282 +883,431 @@ export default function CareerPage() {
                   variant="primary"
                   size="default"
                   onClick={handleResetForm}
-                  className="text-xs font-semibold"
+                  className="text-xs font-semibold px-5"
                 >
-                  Kirim Lamaran Posisi Lain
+                  Lamar Posisi Lain
                 </Button>
               </div>
             </div>
           ) : (
             <>
               <DialogHeader className="space-y-2 pb-4 border-b border-primary-light text-left">
-                <div className="flex items-center gap-2">
-                  {selectedJobToApply && (
-                    <Badge variant="primary" size="sm" className="text-xs">
-                      {selectedJobToApply.department}
-                    </Badge>
-                  )}
-                </div>
                 <DialogTitle className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
-                  Formulir Lamaran: {selectedJobToApply ? selectedJobToApply.title : "Pendaftaran Database Talenta"}
+                  Formulir Lamaran: {selectedJobToApply ? selectedJobToApply.title : "Posisi Karir"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-text-secondary leading-relaxed">
                   Lengkapi data diri dan lampirkan CV terbaru (PDF) Anda. Tim People &amp; Culture Zhou Consulting akan segera meninjau berkas Anda.
                 </DialogDescription>
               </DialogHeader>
 
-              <form onSubmit={handleSubmitApplication} className="space-y-4 pt-4">
-                {/* Alert Pesan Error jika Ada */}
-                {submitError && (
-                  <div className="p-3 rounded-lg bg-error/10 border border-error/30 text-error text-xs font-medium flex items-center gap-2">
-                    <CloseIcon className="text-xs shrink-0" />
-                    <span>{submitError}</span>
-                  </div>
-                )}
+              {/* Menentukan status ketersediaan posisi yang dipilih */}
+              {(() => {
+                const isSelectedJobValid = selectedJobToApply
+                  ? publishedJobs.some(
+                      (j) => String(j.id) === String(selectedJobToApply.id) && j.status !== "Draft"
+                    )
+                  : true;
 
-                {/* Dropdown Posisi yang Dilamar */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="modal-posisi-dilamar" className="text-xs font-bold text-primary">
-                    Posisi yang Dilamar <span className="text-error">*</span>
-                  </Label>
-                  <Select
-                    id="modal-posisi-dilamar"
-                    value={selectedPositionId}
-                    onChange={(e) => {
-                      const posId = e.target.value;
-                      setSelectedPositionId(posId);
-                      const found = CAREER_JOBS.find((j) => j.id === posId) || null;
-                      setSelectedJobToApply(found);
-                    }}
-                    className="w-full text-xs"
-                  >
-                    <option value="">-- Pilih Posisi Lowongan --</option>
-                    {CAREER_JOBS.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.title} ({job.department})
-                      </option>
-                    ))}
-                    <option value="general-talent-pool">
-                      General Application / Database Talenta Terbuka
-                    </option>
-                  </Select>
-                </div>
-
-                {/* 2 Kolom: Nama Lengkap & Email */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="modal-applicant-name" className="text-xs font-bold text-primary">
-                      Nama Lengkap (Sesuai KTP) <span className="text-error">*</span>
-                    </Label>
-                    <div className="relative">
-                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                      <Input
-                        id="modal-applicant-name"
-                        type="text"
-                        placeholder="Nama Lengkap & Gelar"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="modal-applicant-email" className="text-xs font-bold text-primary">
-                      Alamat Email Aktif <span className="text-error">*</span>
-                    </Label>
-                    <div className="relative">
-                      <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                      <Input
-                        id="modal-applicant-email"
-                        type="email"
-                        placeholder="nama@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2 Kolom: WhatsApp & Pendidikan */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="modal-applicant-phone" className="text-xs font-bold text-primary">
-                      Nomor WhatsApp / HP <span className="text-error">*</span>
-                    </Label>
-                    <div className="relative">
-                      <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
-                      <Input
-                        id="modal-applicant-phone"
-                        type="tel"
-                        placeholder="08xxxxxxxxxx"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="pl-8 text-xs bg-white border-primary-light focus-visible:ring-primary"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor="modal-applicant-education" className="text-xs font-bold text-primary">
-                      Pendidikan Terakhir &amp; Jurusan <span className="text-error">*</span>
-                    </Label>
-                    <Input
-                      id="modal-applicant-education"
-                      type="text"
-                      placeholder="S1 Akuntansi / Perpajakan / Jurusan Terkait"
-                      value={education}
-                      onChange={(e) => setEducation(e.target.value)}
-                      className="text-xs bg-white border-primary-light focus-visible:ring-primary"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Kolom Profil LinkedIn / Portofolio (Opsional) */}
-                <div className="space-y-1">
-                  <Label htmlFor="modal-applicant-linkedin" className="text-xs font-bold text-primary">
-                    Tautan Profil LinkedIn / Portofolio <span className="text-text-secondary font-normal">(Opsional)</span>
-                  </Label>
-                  <Input
-                    id="modal-applicant-linkedin"
-                    type="url"
-                    placeholder="https://linkedin.com/in/username"
-                    value={linkedin}
-                    onChange={(e) => setLinkedin(e.target.value)}
-                    className="text-xs bg-white border-primary-light focus-visible:ring-primary"
-                  />
-                </div>
-
-                {/* Area Upload Berkas CV PDF */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold text-primary block">
-                    Unggah Berkas Curriculum Vitae (CV) <span className="text-error">*</span>
-                  </Label>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => handleFileSelect(e.target.files?.[0])}
-                    className="hidden"
-                    id="modal-cv-file-input"
-                  />
-
-                  {uploadedFile ? (
-                    <div className="p-3 rounded-lg bg-surface border border-primary flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <DocumentIcon className="text-primary text-xl shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-primary truncate">
-                            {uploadedFile.name}
-                          </p>
-                          <p className="text-[10px] text-text-secondary">
-                            {(uploadedFile.size / 1024).toFixed(1)} KB &bull; Berkas PDF Siap Diunggah
-                          </p>
+                return (
+                  <form onSubmit={handleSubmitApplication} noValidate className="space-y-4 pt-4">
+                    {/* Alert Pesan Error Server / Umum di Bagian Atas Form */}
+                    {submitError && (
+                      <div className="p-3.5 rounded-lg bg-error/10 border border-error/30 text-error text-xs font-medium flex items-start gap-2.5 animate-in fade-in">
+                        <AlertIcon className="text-sm shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <p className="font-bold">Gagal Mengirimkan Lamaran</p>
+                          <p className="leading-relaxed">{submitError}</p>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRemoveFile}
-                        className="text-xs text-error hover:text-error/80 shrink-0"
-                      >
-                        <CloseIcon className="text-xs mr-1" />
-                        <span>Hapus</span>
-                      </Button>
-                    </div>
-                  ) : (
-                    <div
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-5 rounded-lg bg-surface border-2 border-dashed border-primary-light hover:border-primary transition-colors cursor-pointer text-center space-y-1.5 group"
-                    >
-                      <DocumentIcon className="text-xl text-text-secondary group-hover:text-primary transition-colors mx-auto" />
-                      <div>
-                        <p className="text-xs font-bold text-primary">
-                          Tarik &amp; lepas berkas CV di sini, atau{" "}
-                          <span className="underline text-primary">klik untuk memilih</span>
-                        </p>
-                        <p className="text-[10px] text-text-secondary">
-                          Format PDF &bull; Maksimal 5 MB
-                        </p>
+                    )}
+
+                    {/* Tampilan Posisi yang Dilamar: Teks Informatif Otomatis vs Dropdown Database Talenta */}
+                    {selectedJobToApply ? (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-primary block">
+                          Posisi yang Dilamar
+                        </Label>
+                        <div
+                          className={`p-3.5 rounded-lg border transition-colors ${
+                            !isSelectedJobValid
+                              ? "bg-amber-50/70 border-amber-300"
+                              : "bg-surface border-primary-light"
+                          } flex flex-col sm:flex-row sm:items-center justify-between gap-2.5`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="primary" size="sm" className="text-[10px] font-semibold">
+                                {selectedJobToApply.department}
+                              </Badge>
+                              <Badge variant="outline" size="sm" className="text-[10px] text-primary border-primary/30 bg-white">
+                                {selectedJobToApply.type}
+                              </Badge>
+                              <span className="text-[10px] text-text-secondary">
+                                &bull; {selectedJobToApply.location}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-primary">
+                              {selectedJobToApply.title}
+                            </p>
+                          </div>
+                          {!isSelectedJobValid && (
+                            <div className="self-start sm:self-auto shrink-0">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-md">
+                                <AlertIcon className="text-[10px]" />
+                                Tidak Tersedia
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {!isSelectedJobValid && (
+                          <p className="text-xs text-amber-700 font-medium flex items-center gap-1.5 mt-1">
+                            <AlertIcon className="text-[11px] shrink-0" />
+                            <span>Lowongan ini sudah tidak tersedia. Silakan pilih lowongan lain.</span>
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      /* Alur Pendaftaran Database Talenta Terbuka / Lamaran Umum */
+                      <div className="space-y-1.5">
+                        <Label htmlFor="modal-posisi-dilamar" className="text-xs font-bold text-primary">
+                          Posisi yang Diminati / Jalur Lamaran <span className="text-error">*</span>
+                        </Label>
+                        <Select
+                          id="modal-posisi-dilamar"
+                          value={selectedPositionId}
+                          onChange={(e) => {
+                            const posId = e.target.value;
+                            setSelectedPositionId(posId);
+                            if (fieldErrors.position) {
+                              setFieldErrors((prev) => ({ ...prev, position: undefined }));
+                            }
+                          }}
+                          className={`w-full text-xs bg-white ${
+                            fieldErrors.position ? "border-error focus-visible:ring-error" : "border-primary-light focus-visible:ring-primary"
+                          }`}
+                        >
+                          <option value="general-talent-pool">
+                            Pendaftaran Database Talenta Terbuka (Umum)
+                          </option>
+                          {publishedJobs.length > 0 && (
+                            <optgroup label="Posisi Lowongan yang Sedang Dibuka">
+                              {publishedJobs.map((job) => (
+                                <option key={job.id} value={job.id}>
+                                  {job.title} ({job.department})
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </Select>
+                        {fieldErrors.position && (
+                          <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                            <AlertIcon className="text-[10px] shrink-0" />
+                            <span>{fieldErrors.position}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 2 Kolom: Nama Lengkap & Email */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="modal-applicant-name" className="text-xs font-bold text-primary">
+                          Nama Lengkap (Sesuai KTP) <span className="text-error">*</span>
+                        </Label>
+                        <div className="relative">
+                          <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                          <Input
+                            id="modal-applicant-name"
+                            type="text"
+                            placeholder="Nama Lengkap & Gelar"
+                            value={fullName}
+                            onChange={(e) => {
+                              setFullName(e.target.value);
+                              if (fieldErrors.fullName) {
+                                setFieldErrors((prev) => ({ ...prev, fullName: undefined }));
+                              }
+                            }}
+                            className={`pl-8 text-xs bg-white ${
+                              fieldErrors.fullName
+                                ? "border-error focus-visible:ring-error"
+                                : "border-primary-light focus-visible:ring-primary"
+                            }`}
+                          />
+                        </div>
+                        {fieldErrors.fullName && (
+                          <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                            <AlertIcon className="text-[10px] shrink-0" />
+                            <span>{fieldErrors.fullName}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="modal-applicant-email" className="text-xs font-bold text-primary">
+                          Alamat Email Aktif <span className="text-error">*</span>
+                        </Label>
+                        <div className="relative">
+                          <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                          <Input
+                            id="modal-applicant-email"
+                            type="email"
+                            placeholder="nama@email.com"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              if (fieldErrors.email) {
+                                setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                              }
+                            }}
+                            className={`pl-8 text-xs bg-white ${
+                              fieldErrors.email
+                                ? "border-error focus-visible:ring-error"
+                                : "border-primary-light focus-visible:ring-primary"
+                            }`}
+                          />
+                        </div>
+                        {fieldErrors.email && (
+                          <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                            <AlertIcon className="text-[10px] shrink-0" />
+                            <span>{fieldErrors.email}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  {fileError && (
-                    <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
-                      <CloseIcon className="text-[10px]" />
-                      <span>{fileError}</span>
-                    </p>
-                  )}
-                </div>
+                    {/* 2 Kolom: WhatsApp & Pendidikan */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="modal-applicant-phone" className="text-xs font-bold text-primary">
+                          Nomor WhatsApp / HP <span className="text-error">*</span>
+                        </Label>
+                        <div className="relative">
+                          <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs" />
+                          <Input
+                            id="modal-applicant-phone"
+                            type="tel"
+                            placeholder="08xxxxxxxxxx"
+                            value={phone}
+                            onChange={(e) => {
+                              setPhone(e.target.value);
+                              if (fieldErrors.phone) {
+                                setFieldErrors((prev) => ({ ...prev, phone: undefined }));
+                              }
+                            }}
+                            className={`pl-8 text-xs bg-white ${
+                              fieldErrors.phone
+                                ? "border-error focus-visible:ring-error"
+                                : "border-primary-light focus-visible:ring-primary"
+                            }`}
+                          />
+                        </div>
+                        {fieldErrors.phone && (
+                          <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                            <AlertIcon className="text-[10px] shrink-0" />
+                            <span>{fieldErrors.phone}</span>
+                          </p>
+                        )}
+                      </div>
 
-                {/* Surat Pengantar Singkat (Opsional) */}
-                <div className="space-y-1">
-                  <Label htmlFor="modal-applicant-cover-letter" className="text-xs font-bold text-primary">
-                    Surat Pengantar Singkat / Catatan <span className="text-text-secondary font-normal">(Opsional)</span>
-                  </Label>
-                  <textarea
-                    id="modal-applicant-cover-letter"
-                    rows={2}
-                    placeholder="Ringkasan motivasi atau keahlian utama Anda..."
-                    value={coverLetter}
-                    onChange={(e) => setCoverLetter(e.target.value)}
-                    className="w-full rounded-md border border-primary-light bg-white p-2.5 text-xs text-slate-600 placeholder:text-slate-400 placeholder:text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="modal-applicant-education" className="text-xs font-bold text-primary">
+                          Pendidikan Terakhir &amp; Jurusan <span className="text-error">*</span>
+                        </Label>
+                        <Input
+                          id="modal-applicant-education"
+                          type="text"
+                          placeholder="S1 Akuntansi / Perpajakan / Jurusan Terkait"
+                          value={education}
+                          onChange={(e) => {
+                            setEducation(e.target.value);
+                            if (fieldErrors.education) {
+                              setFieldErrors((prev) => ({ ...prev, education: undefined }));
+                            }
+                          }}
+                          className={`text-xs bg-white ${
+                            fieldErrors.education
+                              ? "border-error focus-visible:ring-error"
+                              : "border-primary-light focus-visible:ring-primary"
+                          }`}
+                        />
+                        {fieldErrors.education && (
+                          <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                            <AlertIcon className="text-[10px] shrink-0" />
+                            <span>{fieldErrors.education}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Checkbox Persetujuan Kebijakan Privasi UU PDP */}
-                <div className="pt-2 border-t border-primary-light">
-                  <label className="flex items-start gap-2 cursor-pointer text-[11px] text-text-secondary leading-relaxed">
-                    <input
-                      type="checkbox"
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="mt-0.5 rounded border-primary-light text-primary focus:ring-primary"
-                    />
-                    <span>
-                      Saya menyetujui pemrosesan data pelamar kerja oleh Zhou Consulting sesuai ketentuan <strong>UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)</strong>.
-                    </span>
-                  </label>
-                </div>
+                    {/* Kolom Profil LinkedIn / Portofolio */}
+                    <div className="space-y-1">
+                      <Label htmlFor="modal-applicant-linkedin" className="text-xs font-bold text-primary">
+                        Tautan Profil LinkedIn / Portofolio
+                      </Label>
+                      <Input
+                        id="modal-applicant-linkedin"
+                        type="url"
+                        placeholder="https://linkedin.com/in/username"
+                        value={linkedin}
+                        onChange={(e) => {
+                          setLinkedin(e.target.value);
+                          if (fieldErrors.linkedin) {
+                            setFieldErrors((prev) => ({ ...prev, linkedin: undefined }));
+                          }
+                        }}
+                        className={`text-xs bg-white ${
+                          fieldErrors.linkedin
+                            ? "border-error focus-visible:ring-error"
+                            : "border-primary-light focus-visible:ring-primary"
+                        }`}
+                      />
+                      {fieldErrors.linkedin && (
+                        <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                          <AlertIcon className="text-[10px] shrink-0" />
+                          <span>{fieldErrors.linkedin}</span>
+                        </p>
+                      )}
+                    </div>
 
-                {/* Tombol Submit & Dialog Footer */}
-                <DialogFooter className="pt-3 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <p className="text-[10px] text-text-secondary text-center sm:text-left">
-                    Enkripsi SSL 256-bit &bull; Terjamin Rahasia
-                  </p>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsApplyModalOpen(false)}
-                      className="text-xs flex-1 sm:flex-initial"
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="sm"
-                      loading={isSubmitting}
-                      disabled={isSubmitting}
-                      className="text-xs font-bold px-5 flex-1 sm:flex-initial"
-                    >
-                      <span>Kirim Lamaran</span>
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </form>
+                    {/* Area Upload Berkas CV PDF */}
+                    <div className="space-y-1">
+                      <Label className="text-xs font-bold text-primary block">
+                        Unggah Berkas Curriculum Vitae (CV) <span className="text-error">*</span>
+                      </Label>
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => handleFileSelect(e.target.files?.[0])}
+                        className="hidden"
+                        id="modal-cv-file-input"
+                      />
+
+                      {uploadedFile ? (
+                        <div className="p-3 rounded-lg bg-surface border border-primary flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <DocumentIcon className="text-primary text-xl shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-primary truncate">
+                                {uploadedFile.name}
+                              </p>
+                              <p className="text-[10px] text-text-secondary">
+                                {(uploadedFile.size / 1024).toFixed(1)} KB &bull; Berkas PDF Siap Diunggah
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRemoveFile}
+                            className="text-xs text-error hover:text-error/80 shrink-0"
+                          >
+                            <CloseIcon className="text-xs mr-1" />
+                            <span>Hapus</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div
+                          onDrop={handleDrop}
+                          onDragOver={handleDragOver}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`p-5 rounded-lg bg-surface border-2 border-dashed ${
+                            fieldErrors.cv
+                              ? "border-error bg-error/5"
+                              : "border-primary-light hover:border-primary"
+                          } transition-colors cursor-pointer text-center space-y-1.5 group`}
+                        >
+                          <DocumentIcon
+                            className={`text-xl mx-auto transition-colors ${
+                              fieldErrors.cv ? "text-error" : "text-text-secondary group-hover:text-primary"
+                            }`}
+                          />
+                          <p className="text-[10px] text-text-secondary">
+                            Format PDF &bull; Maksimal 5 MB
+                          </p>
+                        </div>
+                      )}
+
+                      {fieldErrors.cv && (
+                        <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
+                          <AlertIcon className="text-[10px] shrink-0" />
+                          <span>{fieldErrors.cv}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Surat Pengantar Singkat (Opsional) */}
+                    <div className="space-y-1">
+                      <Label htmlFor="modal-applicant-cover-letter" className="text-xs font-bold text-primary">
+                        Surat Pengantar Singkat / Catatan <span className="text-text-secondary font-normal">(Opsional)</span>
+                      </Label>
+                      <textarea
+                        id="modal-applicant-cover-letter"
+                        rows={2}
+                        placeholder="Ringkasan motivasi atau keahlian utama Anda..."
+                        value={coverLetter}
+                        onChange={(e) => setCoverLetter(e.target.value)}
+                        className="w-full rounded-md border border-primary-light bg-white p-2.5 text-xs text-slate-600 placeholder:text-slate-400 placeholder:text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+
+                    {/* Checkbox Persetujuan Kebijakan Privasi UU PDP */}
+                    <div className="pt-2 border-t border-primary-light space-y-1">
+                      <label className="flex items-start gap-2 cursor-pointer text-[11px] text-text-secondary leading-relaxed">
+                        <input
+                          type="checkbox"
+                          checked={agreeTerms}
+                          onChange={(e) => {
+                            setAgreeTerms(e.target.checked);
+                            if (fieldErrors.agreeTerms) {
+                              setFieldErrors((prev) => ({ ...prev, agreeTerms: undefined }));
+                            }
+                          }}
+                          className={`mt-0.5 rounded ${
+                            fieldErrors.agreeTerms ? "border-error ring-1 ring-error" : "border-primary-light"
+                          } text-primary focus:ring-primary`}
+                        />
+                        <span>
+                          Saya menyetujui pemrosesan data pelamar kerja oleh Zhou Consulting sesuai ketentuan <strong>UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi (UU PDP)</strong>. <span className="text-error">*</span>
+                        </span>
+                      </label>
+                      {fieldErrors.agreeTerms && (
+                        <p className="text-xs text-error font-medium flex items-center gap-1 pl-5">
+                          <AlertIcon className="text-[10px] shrink-0" />
+                          <span>{fieldErrors.agreeTerms}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Tombol Submit & Dialog Footer */}
+                    <DialogFooter className="pt-3 border-t border-primary-light flex flex-col sm:flex-row items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isSubmitting}
+                        onClick={() => setIsApplyModalOpen(false)}
+                        className="text-xs flex-1 sm:flex-initial"
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        size="sm"
+                        loading={isSubmitting}
+                        disabled={isSubmitting || (selectedJobToApply ? !isSelectedJobValid : false)}
+                        className="text-xs font-bold px-5 flex-1 sm:flex-initial"
+                      >
+                        <span>{isSubmitting ? "Mengirimkan Lamaran..." : "Kirim Lamaran"}</span>
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                );
+              })()}
             </>
           )}
         </DialogContent>

@@ -167,34 +167,78 @@ Do not reintroduce gold.
 ## Current Work
 
 > No task is currently in progress.
+---
+
+## Full Functionality Audit & End-to-End Flow Verification Report
+
+**Tanggal Audit:** 13 Oktober 2026  
+**Cakupan:** 41 Rute Aplikasi, Autentikasi, Konsultasi, Penugasan PIC, CMS, Karir & Lamaran, Chatbot, dan Dokumen Vault.
+
+### 1. Ringkasan Status Modul
+
+| No | Modul / Alur | Cakupan Rute & Komponen | Temuan & Hasil Perbaikan | Status Akhir |
+|:---|:---|:---|:---|:---:|
+| 1 | **Halaman Publik** | `/`, `/layanan/*`, `/peraturan`, `/edukasi`, `/belajar-pajak`, `/kontak` | Semua link navigasi, breadcrumb, CTA WhatsApp resmi, filter, pagination, dan pencarian berfungsi tanpa login. Tidak ada `href="#"`. | `DONE` |
+| 2 | **Autentikasi & RBAC** | `/login`, `/register`, `/reset-password`, `middleware.ts`, `AuthContext.tsx` | Redirection sesuai role (klien -> `/dashboard/user`, admin -> `/dashboard/admin`, superadmin -> `/dashboard/superadmin`). Guard rute memblokir akses tidak sah melalui URL. | `DONE` |
+| 3 | **Chatbot Mandiri** | `/components/chatbot/ChatbotWidget.tsx`, `/kontak` | Pengunjung dan klien dapat berinteraksi memilih topik FAQ, melihat dasar hukum, dan diarahkan ke WhatsApp konsultasi tanpa wajib login. | `DONE` |
+| 4 | **Konsultasi & Tiket Klien** | `/dashboard/user/tiket`, `/dashboard/user/konsultasi` | Klien dapat membuat tiket baru (masuk antrean penugasan Superadmin), mengunggah berkas tambahan pada tiket aktif, melihat milestone, dan mengunduh berkas resmi. | `DONE` |
+| 5 | **Penugasan Superadmin** | `/dashboard/superadmin/penugasan`, `/dashboard/superadmin/users` | Superadmin dapat menetapkan konsultan PIC ke tiket baru, mengalihkan penugasan (*reassignment*), serta mencabut akses PIC lama secara otomatis. | `DONE` |
+| 6 | **Tugas Saya & Operasional Admin** | `/dashboard/admin/tugas`, `/dashboard/admin` | Admin PIC hanya melihat tiket miliknya. Fitur unduh berkas klien langsung aktif, dropzone dokumen rapi, pengiriman dokumen/catatan terintegrasi, dan status tersinkronisasi. | `DONE` |
+| 7 | **Vault Dokumen Pajak** | `/dashboard/user/dokumen`, `/dashboard/superadmin/upload` | Validasi tipe file & ukuran, enkripsi SHA-256, unduh file resmi/ZIP, dan modal rincian berkas berjalan sesuai hak akses. | `DONE` |
+| 8 | **Pusat Manajemen CMS** | `/dashboard/superadmin/cms`, `/dashboard/admin/cms` | Admin diblokir dengan `UnauthorizedAccess`. Superadmin dapat CRUD konten di 10 modul dengan status Draft/Published yang tersinkronisasi ke halaman publik. | `DONE` |
+| 9 | **Karir & Rekrutmen Pelamar** | `/karir`, `/dashboard/superadmin/lamaran`, `/api/karir/apply` | Pelamar umum dapat melamar tanpa login, posisi otomatis terisi, validasi PDF CV (maks. 5MB), pencegahan duplikasi email, nomor registrasi resmi, dan modal konfirmasi hapus lamaran superadmin. | `DONE` |
+| 10 | **Integrasi Backend & Notifikasi** | `.env`, `src/lib/api.ts` | Fallback penyimpanan persisten lokal saat backend luring; dependensi server SMTP/API email didokumentasikan tanpa simulasi email palsu. | `NEEDS BACKEND` |
 
 ---
 
-## Next Task
+### 2. Rincian Temuan & Perbaikan
 
-### Next Task
+1. **Modal Hapus Lamaran Superadmin (`/dashboard/superadmin/lamaran`)**:
+   - *Temuan:* Menggunakan `window.confirm` bawaan browser untuk aksi destruktif penghapusan lamaran.
+   - *Solusi:* Diperbarui menggunakan dialog konfirmasi modal in-app dengan tombol Batal dan Hapus Lamaran yang aman, informatif, dan responsif.
+   - *File:* `src/app/dashboard/superadmin/lamaran/page.tsx`.
 
-**Task:** ALL_COMPLETED: Seluruh 23 Screen Figma Page 2 Tuntas 100%
+2. **Aksi Unduh Berkas Klien di Tabel Tugas Admin (`/dashboard/admin/tugas`)**:
+   - *Temuan:* Klik pada kolom "Dokumen Klien: 1 Berkas" sebelumnya membuka modal detail alih-alih langsung mengakses berkas.
+   - *Solusi:* Tombol tabel diubah agar langsung memicu unduhan berkas klien (`handleDirectClientDocClick`), tanpa membuka modal detail.
+   - *File:* `src/app/dashboard/admin/tugas/page.tsx`.
 
-**Module:** Project Completion
+3. **Penataan Modal Detail Tugas Konsultasi (`/dashboard/admin/tugas`)**:
+   - *Temuan:* Elemen ringkasan klien dan uraian kebutuhan kasus terbungkus kotak tebal bertumpuk; teks log status perikatan bocor ke uraian kebutuhan; tombol kirim tidak sejejer dengan tombol tutup.
+   - *Solusi:*
+     - Kotak/border pembungkus dilepas agar tampilan lega dan *seamless*.
+     - Progres pengerjaan dihapus dari modal detail karena sudah terpantau di tabel utama.
+     - Fallback log korespondensi dihapus dari "Uraian Kebutuhan Kasus" sehingga hanya menampilkan deskripsi asli dari klien.
+     - Ukuran dan ketebalan font 3 kolom identitas (Klien, Divisi, Kontak) diseragamkan sepenuhnya.
+     - Tombol "Kirim Dokumen & Catatan" dipindahkan ke bawah dan disejajarkan berdampingan dengan tombol "Tutup" (`form="detail-send-form"`).
+   - *File:* `src/app/dashboard/admin/tugas/page.tsx`.
 
-**Status:** COMPLETED
+4. **Validasi Alur Karir & Lamaran (`/karir`)**:
+   - *Temuan:* Kebutuhan verifikasi bahwa pelamar baru tidak perlu login dan data otomatis masuk ke Superadmin Lamaran Masuk.
+   - *Solusi:* Alur tervalidasi dengan deduplikasi email, pembuatan kode registrasi unik (`ZHOU-REC-YYYY-XXXX`), validasi dropzone PDF 5MB, dan sinkronisasi instan ke storage Superadmin Lamaran Masuk.
+   - *File:* `src/app/karir/page.tsx`, `src/app/dashboard/superadmin/lamaran/page.tsx`.
 
-**Reason:** Seluruh 23 screen dari Figma Page 2 (DesignRevisi-Zhou-Consulting, node-id=71-2) telah berhasil dislicing dan diimplementasikan secara pixel-perfect, type-safe (0 TS error), lint-clean (0 ESLint error/warning), build-clean (30/30 rute statis terkompilasi bersih), dan responsif penuh dengan HTTP 200 OK.
+5. **Pemisahan Ruang Lingkup Operasional (Superadmin Perikatan vs Overview Tugas Admin)**:
+   - *Permintaan:* Tabel daftar perikatan konsultasi dan ringkasan operasional seluruh klien dipindahkan ke Superadmin; Overview Admin diganti menjadi overview tugas dari masing-masing admin (PIC login).
+   - *Solusi:*
+     - **Superadmin (`/dashboard/superadmin/perikatan`):** Dibuatkan halaman khusus "Ringkasan Operasional & Perikatan Klien" yang memantau metrik seluruh kantor (Total Konsultasi, Sedang Berjalan, Konsultasi Selesai, Total Klien, Total Dokumen) dan tabel daftar seluruh perikatan klien dengan filter dan tombol penugasan ke `/dashboard/superadmin/penugasan`. Ditambahkan ke navigasi `SuperadminSidebar` dan tab di `/dashboard/superadmin`.
+     - **Admin (`/dashboard/admin`):** Halaman overview admin kini sepenuhnya berfokus pada **tugas masing-masing admin yang sedang login** (`getTicketsForAdmin(activeStaffProfile)`). Metrik menampilkan: Total Tugas Saya, Sedang Dikerjakan, Menunggu Respon Klien, Tugas Selesai, dan Dokumen Terkait Tugas. Tabel menyajikan daftar tugas personal dengan progress bar, kelengkapan berkas, estimasi penyelesaian, dan tombol aksi "Buka Lembar Kerja" langsung ke `/dashboard/admin/tugas?id=...`.
+     - Label navigasi `AdminSidebar` diperbarui menjadi "Overview Tugas Saya".
+   - *File:* [admin/page.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/app/dashboard/admin/page.tsx), [superadmin/perikatan/page.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/app/dashboard/superadmin/perikatan/page.tsx), [superadmin/page.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/app/dashboard/superadmin/page.tsx), [AdminSidebar.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/dashboard/AdminSidebar.tsx), [SuperadminSidebar.tsx](file:///c:/Magang%20Zhou/fe-zhou/src/components/dashboard/SuperadminSidebar.tsx).
 
 ---
 
-## Repository Evidence
+### 3. Hasil Validasi Kualitas Kode & Build
 
-Repository audit:
+- **TypeScript (`npx tsc --noEmit`):** `0 errors` (Type-safe 100%)
+- **ESLint (`npm run lint`):** `✔ No ESLint warnings or errors`
+- **Next.js Production Build (`npm run build`):** `Exit Code 0` (41/41 Rute Statis & Dinamis Terkompilasi Bersih)
 
-✓ Next.js configured
-✓ TypeScript configured
-✓ Tailwind CSS configured
-✓ Open Sans configured
-✓ Zhou Consulting color tokens configured
-✓ shadcn/ui foundation configured
-✓ Font Awesome configured
-✓ AI Agent rules configured
-✓ Custom AI Agent configured
-✗ Landing page sections not yet implemented
+---
+
+### 4. Dependensi Backend yang Perlu Disiapkan
+
+1. **SMTP Server / Layanan Email Transaksional**:
+   - Untuk pengiriman email konfirmasi penerimaan lamaran kerja resmi ke inbox pelamar dan notifikasi tagihan invoice ke klien. (Saat ini dicatat sebagai dependensi backend; frontend tidak menampilkan konfirmasi email palsu).
+2. **Koneksi Database & Backend API (`http://localhost:8000/api`)**:
+   - Sistem front-end telah dilengkapi adapter dua arah (*hybrid*): memprioritaskan endpoint REST API backend saat aktif, dan secara anggun (*graceful fallback*) beralih ke penyimpanan persisten lokal dengan event sinkronisasi real-time ketika server API luring.

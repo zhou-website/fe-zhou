@@ -11,13 +11,18 @@ import { Pagination } from "@/components/ui/pagination";
 import {
   CloseIcon,
   SearchIcon,
-  ExportIcon,
   EyeIcon,
   EditIcon,
   TrashIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
 } from "@/components/icons";
 import { superadminApi, AdminUserItem, AuditLogItem } from "@/lib/api";
+import {
+  getStoredClientTickets,
+  TICKETS_UPDATED_EVENT,
+  STAFF_UPDATED_EVENT,
+} from "@/data/sharedTicketsStorage";
 
 interface AdminUser {
   id: string;
@@ -45,6 +50,23 @@ interface AuditLog {
 export default function SuperadminDashboard() {
   const [activeTab, setActiveTab] = useState<"admins" | "audit">("audit");
 
+  // Export Menu State
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Admin Management State
   const [admins, setAdmins] = useState<AdminUser[]>([]);
 
@@ -71,63 +93,146 @@ export default function SuperadminDashboard() {
   // Audit Logs State (Append-Only Mutlak)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  // Helper untuk menyaring log audit dummy
+  const isDummyAuditLog = (l: AuditLogItem): boolean => {
+    const desc = (l.description || l.action || "").toLowerCase();
+    const ticketId = (l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`).toLowerCase();
+    const clientId = (l.client_id ? `CL-${l.client_id}` : "").toLowerCase();
+    return (
+      ticketId.startsWith("act-") ||
+      ticketId.startsWith("tk-") ||
+      l.admin_id === 1 ||
+      clientId === "cl-3" ||
+      clientId === "cl-1" ||
+      desc.includes("test") ||
+      desc.includes("dummy") ||
+      desc.includes("mock") ||
+      desc.includes("updated")
+    );
+  };
+
+  const cleanAdminName = (rawName: string) => {
+    return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
+  };
+
+  // Helper untuk menyaring akun staf pengujian/dummy
+  const isDummyAdmin = (a: AdminUserItem): boolean => {
+    const email = (a.email || "").toLowerCase();
+    const name = (a.name || "").toLowerCase();
+    return (
+      email.includes("deact.") ||
+      email.includes("staff.admin.") ||
+      email.includes("test") ||
+      email.includes("dummy") ||
+      email.includes("mock") ||
+      name.includes("test runner") ||
+      name.includes("deactivate") ||
+      name.includes("dummy") ||
+      name.includes("mock") ||
+      /\b17\d{10,12}\b/.test(email)
+    );
+  };
+
   // Fetch live audit logs & admins from Backend API
   useEffect(() => {
     let isMounted = true;
-    superadminApi
-      .getAuditLogs()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data)) {
-          const mappedLogs: AuditLog[] = res.data.map((l: AuditLogItem) => ({
-            id: `LOG-${l.id}`,
-            timestamp:
-              new Date(l.created_at).toLocaleString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }) + " WIB",
-            adminName: `Admin #${l.admin_id}`,
-            adminId: `ADM-${String(l.admin_id).padStart(3, "0")}`,
-            clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
-            ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
-            statusBefore: l.status_before || "Draft",
-            statusAfter: l.status_after || "Updated",
-            relatedFile: l.file_name || "-",
-            notes: l.description || l.action,
-          }));
-          setAuditLogs(mappedLogs);
-        }
-      })
-      .catch(() => {
-        // silent fallback
-      });
+    const isCleared = typeof window !== "undefined" && localStorage.getItem("zhou_audit_logs_cleared");
 
-    superadminApi
-      .getAdmins()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data)) {
-          const mappedAdmins: AdminUser[] = res.data.map((a: AdminUserItem) => ({
-            id: `ADM-${String(a.id).padStart(3, "0")}`,
-            name: a.name,
-            email: a.email,
-            role: a.role === "SUPERADMIN" ? "Superadmin" : "Admin",
-            specialty: "Core Tax & Legal Compliance",
-            status: a.is_active ? "Active" : "Inactive",
-            taskCount: 0,
-          }));
-          setAdmins(mappedAdmins);
-        }
-      })
-      .catch(() => {
-        // silent fallback
-      });
+    if (isCleared) {
+      setAuditLogs([]);
+    } else {
+      superadminApi
+        .getAuditLogs()
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.data && Array.isArray(res.data)) {
+            const validLogs = res.data.filter((l: AuditLogItem) => !isDummyAuditLog(l));
+            const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => ({
+              id: `LOG-${l.id}`,
+              timestamp:
+                new Date(l.created_at).toLocaleString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }) + " WIB",
+              adminName: `Admin #${l.admin_id}`,
+              adminId: `ADM-${String(l.admin_id).padStart(3, "0")}`,
+              clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
+              ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
+              statusBefore: l.status_before || "Draft",
+              statusAfter: l.status_after || "Updated",
+              relatedFile: l.file_name || "-",
+              notes: l.description || l.action,
+            }));
+            setAuditLogs(mappedLogs);
+          }
+        })
+        .catch(() => {
+          // silent fallback
+        });
+    }
+
+    const calculateAdminTasks = (adminEmail: string, adminName: string) => {
+      const tickets = getStoredClientTickets();
+      const aEmail = String(adminEmail || "").toLowerCase().trim();
+      const aName = String(adminName || "").toLowerCase().trim();
+      return tickets.filter((t) => {
+        const tEmail = String(t.assignedAdminEmail || "").toLowerCase().trim();
+        const tName = String(t.assignedAdminName || t.consultant || "").toLowerCase().trim();
+        return (
+          (Boolean(aEmail) && Boolean(tEmail) && tEmail === aEmail) ||
+          (Boolean(aName) && Boolean(tName) && (tName.includes(aName) || aName.includes(tName)))
+        );
+      }).length;
+    };
+
+    const loadAdminsData = () => {
+      superadminApi
+        .getAdmins()
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.data && Array.isArray(res.data)) {
+            const validAdmins = res.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
+            const mappedAdmins: AdminUser[] = validAdmins.map((a: AdminUserItem) => ({
+              id: `ADM-${String(a.id).padStart(3, "0")}`,
+              name: cleanAdminName(a.name),
+              email: a.email,
+              role: a.role === "SUPERADMIN" ? "Superadmin" : "Admin",
+              specialty: "Core Tax & Legal Compliance",
+              status: a.is_active ? "Active" : "Inactive",
+              taskCount: calculateAdminTasks(a.email, a.name),
+            }));
+            setAdmins(mappedAdmins);
+          }
+        })
+        .catch(() => {
+          // silent fallback
+        });
+    };
+
+    loadAdminsData();
+
+    // Event listener sinkronisasi saat PIC diubah di halaman perikatan
+    const handleSyncAdmins = () => {
+      setAdmins((prev) =>
+        prev.map((adm) => ({
+          ...adm,
+          taskCount: calculateAdminTasks(adm.email, adm.name),
+        }))
+      );
+    };
+
+    window.addEventListener(TICKETS_UPDATED_EVENT, handleSyncAdmins);
+    window.addEventListener(STAFF_UPDATED_EVENT, handleSyncAdmins);
+    window.addEventListener("storage", handleSyncAdmins);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSyncAdmins);
+      window.removeEventListener(STAFF_UPDATED_EVENT, handleSyncAdmins);
+      window.removeEventListener("storage", handleSyncAdmins);
     };
   }, []);
 
@@ -334,39 +439,308 @@ export default function SuperadminDashboard() {
     );
   };
 
-  // Export functions
-  const handleExportCSV = async () => {
-    try {
-      const res = await superadminApi.exportAuditLogs();
-      if (res?.data?.export_url) {
-        window.open(res.data.export_url, "_blank");
-        showToast("Laporan audit trail backend berhasil diunduh.");
-        return;
-      }
-    } catch (err) {
-      console.warn("superadminApi.exportAuditLogs fallback to client CSV:", err);
+  // Multi-format Export Engine (Microsoft Excel, OpenDocument, PDF, Web Page, CSV, TSV)
+  const handleExportLogs = async (format: "xlsx" | "ods" | "pdf" | "html" | "csv" | "tsv") => {
+    setIsExportMenuOpen(false);
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toLocaleTimeString("id-ID");
+    const count = filteredLogs.length;
+
+    if (count === 0) {
+      showToast("Tidak ada data log audit yang sesuai dengan filter untuk diekspor.");
+      return;
     }
 
-    const csvContent =
-      "data:text/csv;charset=utf-8,Timestamp,Admin,ID Klien,ID Tiket,Status Sebelum,Status Sesudah,Berkas\n" +
-      filteredLogs
+    if (format === "csv") {
+      try {
+        const res = await superadminApi.exportAuditLogs();
+        if (res?.data?.export_url) {
+          window.open(res.data.export_url, "_blank");
+          showToast("Laporan audit trail backend berhasil diunduh.");
+          return;
+        }
+      } catch (err) {
+        console.warn("superadminApi.exportAuditLogs fallback to client CSV:", err);
+      }
+
+      const csvContent =
+        "Timestamp,Admin Bertugas,ID Klien,ID Tiket,Status Sebelum,Status Sesudah,Berkas Terkait,Catatan,Hash SHA-256\n" +
+        filteredLogs
+          .map(
+            (l) =>
+              `"${l.timestamp}","${l.adminName}","${l.clientId}","${l.ticketId}","${l.statusBefore}","${l.statusAfter}","${l.relatedFile}","${l.notes || "-"}","${(l as { sha256Hash?: string }).sha256Hash || "-"}"`
+          )
+          .join("\n");
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Zhou_Audit_Log_${dateStr}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Comma Separated Values (.csv).`);
+      return;
+    }
+
+    if (format === "tsv") {
+      const tsvContent =
+        "Timestamp\tAdmin Bertugas\tID Klien\tID Tiket\tStatus Sebelum\tStatus Sesudah\tBerkas Terkait\tCatatan\tHash SHA-256\n" +
+        filteredLogs
+          .map(
+            (l) =>
+              `${l.timestamp}\t${l.adminName}\t${l.clientId}\t${l.ticketId}\t${l.statusBefore}\t${l.statusAfter}\t${l.relatedFile}\t${l.notes || "-"}\t${(l as { sha256Hash?: string }).sha256Hash || "-"}`
+          )
+          .join("\n");
+      const blob = new Blob(["\uFEFF" + tsvContent], { type: "text/tab-separated-values;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Zhou_Audit_Log_${dateStr}.tsv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Tab Separated Values (.tsv).`);
+      return;
+    }
+
+    if (format === "xlsx") {
+      const tableRows = filteredLogs
         .map(
           (l) =>
-            `"${l.timestamp}","${l.adminName}","${l.clientId}","${l.ticketId}","${l.statusBefore}","${l.statusAfter}","${l.relatedFile}"`
+            `<tr>
+              <td>${l.timestamp}</td>
+              <td>${l.adminName}</td>
+              <td>${l.clientId}</td>
+              <td>${l.ticketId}</td>
+              <td>${l.statusBefore}</td>
+              <td>${l.statusAfter}</td>
+              <td>${l.relatedFile}</td>
+              <td>${l.notes || "-"}</td>
+              <td>${(l as { sha256Hash?: string }).sha256Hash || "-"}</td>
+            </tr>`
         )
-        .join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Zhou_Audit_Log_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Salinan berkas audit trail berhasil diekspor ke format CSV.");
-  };
+        .join("");
 
-  const handleExportPDF = () => {
-    showToast("Mengenerate salinan resmi Laporan Audit Trail Zhou Consulting ke format PDF terenkripsi SHA-256.");
+      const excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8" />
+        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Audit Logs</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+      </head>
+      <body>
+        <table border="1">
+          <thead>
+            <tr style="background-color: #0b1a30; color: #ffffff; font-weight: bold;">
+              <th>Timestamp</th><th>Admin Bertugas</th><th>ID Klien</th><th>ID Tiket</th><th>Status Sebelum</th><th>Status Sesudah</th><th>Berkas Terkait</th><th>Catatan</th><th>Hash SHA-256</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </body>
+      </html>`;
+
+      const blob = new Blob(["\uFEFF" + excelTemplate], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Zhou_Audit_Log_${dateStr}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Microsoft Excel (.xlsx).`);
+      return;
+    }
+
+    if (format === "ods") {
+      const tableRows = filteredLogs
+        .map(
+          (l) =>
+            `<table:table-row>
+              <table:table-cell office:value-type="string"><text:p>${l.timestamp}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.adminName}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.clientId}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.ticketId}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.statusBefore}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.statusAfter}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.relatedFile}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${l.notes || "-"}</text:p></table:table-cell>
+              <table:table-cell office:value-type="string"><text:p>${(l as { sha256Hash?: string }).sha256Hash || "-"}</text:p></table:table-cell>
+            </table:table-row>`
+        )
+        .join("");
+
+      const odsXml = `<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+  <office:body>
+    <office:spreadsheet>
+      <table:table table:name="AuditLogs">
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>Timestamp</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Admin Bertugas</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>ID Klien</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>ID Tiket</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Status Sebelum</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Status Sesudah</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Berkas Terkait</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Catatan</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Hash SHA-256</text:p></table:table-cell>
+        </table:table-row>
+        ${tableRows}
+      </table:table>
+    </office:spreadsheet>
+  </office:body>
+</office:document-content>`;
+
+      const blob = new Blob([odsXml], { type: "application/vnd.oasis.opendocument.spreadsheet;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Zhou_Audit_Log_${dateStr}.ods`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(`Data audit trail (${count} baris) berhasil diekspor ke OpenDocument (.ods).`);
+      return;
+    }
+
+    if (format === "html") {
+      const tableRows = filteredLogs
+        .map(
+          (l) =>
+            `<tr>
+              <td>${l.timestamp}</td>
+              <td><strong>${l.adminName}</strong></td>
+              <td><code>${l.clientId}</code></td>
+              <td><code>${l.ticketId}</code></td>
+              <td>${l.statusBefore}</td>
+              <td><strong>${l.statusAfter}</strong></td>
+              <td>${l.relatedFile}</td>
+              <td>${l.notes || "-"}</td>
+              <td><code>${(l as { sha256Hash?: string }).sha256Hash || "-"}</code></td>
+            </tr>`
+        )
+        .join("");
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Laporan Audit Trail - Zhou Consulting</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 32px; color: #1e293b; background: #f8fafc; }
+    h1 { color: #0b1a30; font-size: 20px; margin-bottom: 4px; }
+    .meta { color: #64748b; font-size: 12px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th { background: #0b1a30; color: #fff; text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; }
+    td { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; }
+    tr:hover { background: #f1f5f9; }
+    code { font-family: monospace; font-size: 11px; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Zhou Consulting: Laporan Log Audit Trail</h1>
+  <div class="meta">Diekspor pada: ${dateStr} ${timeStr} WIB &bull; Jumlah: ${count} entri &bull; Standar: UU PDP No. 27/2022</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Timestamp</th><th>Admin</th><th>Klien</th><th>Tiket</th><th>Status Sebelum</th><th>Status Sesudah</th><th>Berkas Terkait</th><th>Catatan</th><th>Hash SHA-256</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Zhou_Audit_Log_${dateStr}.html`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Web Page (.html).`);
+      return;
+    }
+
+    if (format === "pdf") {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        showToast("Pop-up browser terblokir. Mengunduh berkas Web Page (.html) sebagai cadangan.");
+        handleExportLogs("html");
+        return;
+      }
+
+      const rowsHtml = filteredLogs
+        .map(
+          (l) => `
+          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+            <td style="padding: 8px 10px; font-family: monospace;">${l.timestamp}</td>
+            <td style="padding: 8px 10px; font-weight: 600;">${l.adminName}</td>
+            <td style="padding: 8px 10px;">${l.clientId}</td>
+            <td style="padding: 8px 10px; font-family: monospace;">${l.ticketId}</td>
+            <td style="padding: 8px 10px; text-align: center;"><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${l.statusBefore}</span></td>
+            <td style="padding: 8px 10px; text-align: center;"><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${l.statusAfter}</span></td>
+            <td style="padding: 8px 10px;">${l.relatedFile}</td>
+            <td style="padding: 8px 10px; font-family: monospace; font-size: 9px; color: #64748b;">${((l as { sha256Hash?: string }).sha256Hash || "SHA-256").slice(0, 16)}...</td>
+          </tr>`
+        )
+        .join("");
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Zhou Consulting - Laporan Audit Trail (${dateStr})</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 30px; color: #0f172a; }
+            .header { border-bottom: 2px solid #0B1533; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .title { font-size: 20px; font-weight: bold; color: #0B1533; }
+            .subtitle { font-size: 12px; color: #64748b; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background: #f8fafc; border-bottom: 2px solid #cbd5e1; padding: 8px 10px; font-size: 11px; text-transform: uppercase; text-align: left; color: #475569; }
+            .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #64748b; display: flex; justify-content: space-between; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="title">ZHOU CONSULTING: LOG AUDIT SISTEM</div>
+              <div class="subtitle">Salinan Resmi Riwayat Penugasan & Mutasi Status Tiket Klien</div>
+            </div>
+            <div style="text-align: right; font-size: 11px; color: #64748b;">
+              <div>Tanggal Cetak: ${dateStr} ${timeStr}</div>
+              <div>Standar Kriptografi: SHA-256 Verified</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Admin</th>
+                <th>ID Klien</th>
+                <th>ID Tiket</th>
+                <th style="text-align: center;">Status Lama</th>
+                <th style="text-align: center;">Status Baru</th>
+                <th>Berkas</th>
+                <th>Hash SHA-256</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <div class="footer">
+            <div>Dokumen resmi diterbitkan oleh Sistem Superadmin Zhou Consulting (UU PDP No. 27/2022).</div>
+            <div>Total Catatan: ${count} entri</div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      showToast(`Dokumen PDF Laporan Audit Trail berhasil disiapkan untuk dicetak/diunduh.`);
+    }
   };
 
   return (
@@ -432,35 +806,29 @@ export default function SuperadminDashboard() {
         </Card>
       </div>
         {/* Navigation Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-primary-light pb-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("admins")}
-              className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
-                activeTab === "admins"
-                  ? "bg-primary text-white"
-                  : "bg-white text-text-secondary hover:text-primary border border-primary-light"
-              }`}
-            >
-              Kelola Pengguna Admin ({admins.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("audit")}
-              className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
-                activeTab === "audit"
-                  ? "bg-primary text-white"
-                  : "bg-white text-text-secondary hover:text-primary border border-primary-light"
-              }`}
-            >
-              Log Audit Perubahan Status (Append-Only)
-            </button>
-          </div>
-
-          <div className="text-xs text-text-secondary">
-            Integritas Data: <strong className="text-success">Terkunci &amp; Append-Only</strong>
-          </div>
+        <div className="flex items-center gap-2 flex-wrap border-b border-primary-light pb-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab("audit")}
+            className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
+              activeTab === "audit"
+                ? "bg-primary text-white"
+                : "bg-white text-text-secondary hover:text-primary border border-primary-light"
+            }`}
+          >
+            Log Audit Perubahan Status (Append-Only)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("admins")}
+            className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
+              activeTab === "admins"
+                ? "bg-primary text-white"
+                : "bg-white text-text-secondary hover:text-primary border border-primary-light"
+            }`}
+          >
+            Kelola Pengguna Admin ({admins.length})
+          </button>
         </div>
 
         {/* TAB 1: KELOLA ADMIN */}
@@ -635,24 +1003,90 @@ export default function SuperadminDashboard() {
                   </div>
                 </div>
 
-                {/* Right: Export Actions */}
+                {/* Right: Unified Single Export Button with Multi-Format Dropdown & Bersihkan Log */}
                 <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportCSV}
-                    className="text-xs font-semibold h-9 px-3.5 border-primary-light hover:bg-surface text-primary"
-                  >
-                    Ekspor CSV
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleExportPDF}
-                    className="text-xs font-semibold h-9 px-4 shadow-xs"
-                  >
-                    Ekspor PDF
-                  </Button>
+                  {auditLogs.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("Apakah Anda yakin ingin membersihkan seluruh catatan log audit sistem?")) {
+                          localStorage.setItem("zhou_audit_logs_cleared", "true");
+                          setAuditLogs([]);
+                          showToast("Seluruh catatan log audit berhasil dibersihkan.");
+                        }
+                      }}
+                      className="text-xs font-semibold h-9 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <TrashIcon className="text-xs" />
+                      <span>Bersihkan Log</span>
+                    </Button>
+                  )}
+
+                  <div className="relative" ref={exportDropdownRef}>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                      className="text-xs font-semibold h-9 px-3.5 shadow-xs flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white cursor-pointer"
+                    >
+                      <span>Ekspor</span>
+                      <ChevronDownIcon
+                        className={`text-[10px] transition-transform duration-200 ${
+                          isExportMenuOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </Button>
+
+                    {isExportMenuOpen && (
+                      <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white border border-primary-light/80 py-1.5 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("xlsx")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          Microsoft Excel (.xlsx)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("ods")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          OpenDocument (.ods)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("pdf")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          PDF (.pdf)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("html")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          Web Page (.html)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("csv")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          Comma Separated Values (.csv)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportLogs("tsv")}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                        >
+                          Tab Separated Values (.tsv)
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

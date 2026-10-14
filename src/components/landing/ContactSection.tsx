@@ -3,11 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
 
 export function ContactSection() {
-  const { isAuthenticated } = useAuth();
-
   return (
     <section
       id="kontak"
@@ -31,13 +28,7 @@ export function ContactSection() {
               asChild
               className="w-full sm:w-auto font-semibold text-sm px-8 shadow-sm transition-all"
             >
-              <Link
-                href={
-                  isAuthenticated
-                    ? "/kontak"
-                    : `/login?redirect=${encodeURIComponent("/kontak")}`
-                }
-              >
+              <Link href="/kontak">
                 <span>Kontak Lengkap</span>
               </Link>
             </Button>

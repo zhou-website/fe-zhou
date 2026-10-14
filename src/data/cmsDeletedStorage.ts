@@ -99,7 +99,113 @@ export function recordDeletedCmsItem(item: {
 }
 
 /**
- * Memeriksa apakah suatu item pernah dihapus oleh admin
+ * Memeriksa apakah suatu konten merupakan data dummy/mockup/pengujian sebelumnya
+ * (seperti bibit data pengujian dengan timestamp, PER-0707, lowongan dummy, dll)
+ * Pengecualian: Kurs Pajak (KMK) dan Kontak resmi tidak pernah dianggap dummy.
+ */
+export function isDummyCmsItem(item?: {
+  id?: string | number | null;
+  numericId?: string | number | null;
+  rawId?: string | number | null;
+  title?: string | null;
+  code?: string | null;
+  file_path?: string | null;
+  category?: string | null;
+  description?: string | null;
+} | null): boolean {
+  if (!item) return false;
+  const title = (item.title || "").toLowerCase().trim();
+  const code = (item.code || "").toLowerCase().trim();
+  const file = (item.file_path || "").toLowerCase().trim();
+  const strId = String(item.id || "").toLowerCase().trim();
+
+  // Kurs Pajak dan Kontak resmi Zhou Consulting tidak boleh dianggap dummy
+  if (
+    strId === "tax-kmk-djp" ||
+    title.includes("kurs pajak") ||
+    title.includes("menteri keuangan (kmk)") ||
+    title.includes("portal & kontak resmi") ||
+    title.includes("profil & kontak") ||
+    title.includes("solusi terintegrasi perpajakan") ||
+    title.includes("zhou consulting")
+  ) {
+    return false;
+  }
+
+  // Kata kunci dummy dan suite pengujian
+  if (
+    title.includes("dummy") ||
+    title.includes("mock") ||
+    title.includes("test suite") ||
+    title.includes("pengujian") ||
+    title.includes("updated srv") ||
+    title.includes("updated title") ||
+    title.includes("peraturan pengujian") ||
+    title === "dd" ||
+    title === "wefc" ||
+    title === "cvfds" ||
+    title === "no1.e" ||
+    code.includes("srv-test") ||
+    code.includes("job-tst") ||
+    code === "tax" ||
+    code === "tyuiokm" ||
+    code === "axksjfo" ||
+    code === "srv-7140" ||
+    code === "srv-4845" ||
+    file.includes("test-doc") ||
+    file.includes("test-edu") ||
+    file.includes("typography zhou") ||
+    title.includes("pajak1") ||
+    title.includes("kepatuhan pajak1") ||
+    code.includes("1872") ||
+    strId.includes("1872")
+  ) {
+    return true;
+  }
+
+  // Pola timestamp pengujian (misal: 1791...) pada judul artikel atau berkas
+  if (/\b17\d{10,12}\b/.test(title) || /\b17\d{10,12}\b/.test(file)) {
+    return true;
+  }
+
+  // Regulasi dummy dari seed backend
+  if (
+    title.includes("per-0707") ||
+    title.includes("per-6211") ||
+    title.includes("per-1907") ||
+    title.includes("per-4681") ||
+    title.includes("pmk no. 120/pmk.03/2026") ||
+    title.includes("panduan praktis pengisian formulir spt 1771")
+  ) {
+    return true;
+  }
+
+  // Lowongan karir dummy dari seed backend
+  if (
+    title.includes("junior accounting staff") ||
+    title.includes("senior tax consultant") ||
+    title.includes("junior tax auditor") ||
+    code === "job-acc-jr-01" ||
+    code === "job-tax-sr-01"
+  ) {
+    return true;
+  }
+
+  // Perikatan / Tiket dummy
+  if (
+    title.includes("spt tahunan badan pt maju") ||
+    title.includes("pt maju makmur") ||
+    code.includes("prj-tax-2026-001") ||
+    strId === "1"
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Memeriksa apakah suatu item pernah dihapus oleh admin atau merupakan data dummy
  */
 export function isCmsItemDeleted(
   id?: string | number | null,
@@ -107,6 +213,11 @@ export function isCmsItemDeleted(
   rawId?: string | number | null,
   code?: string | null
 ): boolean {
+  // Saring otomatis semua data mockup/dummy yang terdeteksi
+  if (isDummyCmsItem({ id, title, rawId, code })) {
+    return true;
+  }
+
   if (typeof window === "undefined") return false;
 
   const deletedList = getDeletedCmsIdentifiers();

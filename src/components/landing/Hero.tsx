@@ -178,6 +178,32 @@ export function Hero() {
 
   useEffect(() => {
     let isMounted = true;
+
+    // Baca terlebih dahulu dari localStorage jika sudah diperbarui oleh Superadmin
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("zhou_company_hero_v1");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.headline || parsed.subheadline) {
+            setHeroData({ title: parsed.headline, content: parsed.subheadline });
+            setIsLoading(false);
+          }
+        }
+      } catch {}
+    }
+
+    const handleHeroUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ headline?: string; subheadline?: string }>;
+      if (customEvent.detail) {
+        setHeroData({
+          title: customEvent.detail.headline,
+          content: customEvent.detail.subheadline,
+        });
+      }
+    };
+    window.addEventListener("zhou_hero_updated", handleHeroUpdate);
+
     publicApi
       .getCompanyProfiles()
       .then((res) => {
@@ -187,7 +213,11 @@ export function Hero() {
             (p) => p.section_key === "hero" || p.section_key === "hero_tentang_kami"
           );
           if (found && (found.title || found.content)) {
-            setHeroData({ title: found.title, content: found.content });
+            setHeroData((prev) => {
+              // Jika sudah ada data dari localStorage admin, utamakan yang dari localStorage
+              if (prev?.title) return prev;
+              return { title: found.title, content: found.content };
+            });
           }
         }
       })
@@ -200,6 +230,7 @@ export function Hero() {
 
     return () => {
       isMounted = false;
+      window.removeEventListener("zhou_hero_updated", handleHeroUpdate);
     };
   }, []);
 
@@ -398,7 +429,7 @@ export function Hero() {
                 asChild
                 className="h-12 px-6 sm:px-7 rounded-[8px] bg-[#FFFFFF] text-[#0B1533] hover:bg-slate-100 hover:text-[#0B1533] border-none font-semibold text-sm sm:text-base shadow-sm transition-colors duration-150 cursor-pointer w-full sm:w-auto active:scale-[0.98]"
               >
-                <Link href="/konsultasi">{t.hero.ctaConsult}</Link>
+                <Link href="/kontak">{t.hero.ctaConsult}</Link>
               </Button>
 
               <Button

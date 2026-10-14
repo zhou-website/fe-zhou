@@ -359,3 +359,24 @@ export function deleteStoredBelajarPajakLink(id: string): BelajarPajakLink[] {
   saveStoredBelajarPajakLinks(updated);
   return updated;
 }
+
+export function clearAllStoredZhouArticles(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(ZHOU_ARTICLES_STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent(ZHOU_ARTICLES_EVENT, { detail: [] }));
+  } catch (err) {
+    console.error("Gagal membersihkan data artikel edukasi:", err);
+  }
+}
+
+export function clearAllStoredBelajarPajakLinks(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(GOV_LINKS_STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent(GOV_LINKS_EVENT, { detail: [] }));
+  } catch (err) {
+    console.error("Gagal membersihkan data tautan belajar pajak:", err);
+  }
+}
+

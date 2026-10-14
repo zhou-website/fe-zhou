@@ -71,12 +71,13 @@ function LoginFormContent() {
 
         if (res.success && res.data?.token) {
           // Simpan token JWT dari response backend
+          const role = res.data.user
+            ? normalizeRole(res.data.user.role, res.data.user.email)
+            : "user";
           localStorage.setItem("token", res.data.token);
-          setAuthToken(res.data.token);
+          setAuthToken(res.data.token, role);
 
           if (res.data.user) {
-            const role = normalizeRole(res.data.user.role, res.data.user.email);
-
             login(res.data.user.email, role, redirectParam || "/dashboard", {
               name: res.data.user.name,
               company: res.data.user.company_name,

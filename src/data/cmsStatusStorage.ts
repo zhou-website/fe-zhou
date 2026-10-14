@@ -3,7 +3,7 @@
 export const CMS_STATUS_OVERRIDE_KEY = "zhou_cms_status_overrides_v1";
 export const CMS_STATUS_UPDATED_EVENT = "zhou_cms_status_updated";
 
-export type CMSPublicationStatus = "Published" | "Draft";
+export type CMSPublicationStatus = "Published" | "Draft" | "Archived";
 
 /**
  * Normalisasi string untuk pencocokan toleran

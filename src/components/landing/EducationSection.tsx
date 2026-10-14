@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,8 +28,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CheckCircleIcon,
-  ClockIcon,
-  CalendarIcon,
   BookIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
@@ -42,9 +39,9 @@ import {
   extractEducationImageAndBody,
 } from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 
 export function EducationSection() {
-  const router = useRouter();
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [articles, setArticles] = useState<ZhouArticle[]>([]);
@@ -54,15 +51,13 @@ export function EducationSection() {
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
 
   const getAuthHref = (target: string) => {
-    if (isAuthenticated) return target;
-    return `/login?redirect=${encodeURIComponent(target)}`;
+    if (target.startsWith("/dashboard") && !isAuthenticated) {
+      return `/login?redirect=${encodeURIComponent(target)}`;
+    }
+    return target;
   };
 
   const handleReadArticle = (article: ZhouArticle) => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent("/edukasi")}`);
-      return;
-    }
     setSelectedArticle(article);
   };
 
@@ -82,7 +77,9 @@ export function EducationSection() {
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+          const apiArticles: ZhouArticle[] = res.data
+            .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
+            .map((item: EducationItem) => {
             const { image, cleanBody } = extractEducationImageAndBody(
               item.body,
               item.file_path,
@@ -275,8 +272,7 @@ export function EducationSection() {
                 )}
                 <CardHeader className="space-y-3 pb-3">
                   <div className="flex items-center justify-end text-xs text-text-secondary gap-2">
-                    <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary whitespace-nowrap">
-                      <CalendarIcon className="text-[10px]" />
+                    <span className="text-[11px] text-text-secondary whitespace-nowrap">
                       {article.date}
                     </span>
                   </div>
@@ -294,8 +290,7 @@ export function EducationSection() {
                 </CardHeader>
 
                 <CardFooter className="pt-3 border-t border-primary-light flex items-center justify-between mt-2">
-                  <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
-                    <ClockIcon className="text-[11px]" />
+                  <div className="text-xs text-text-secondary font-medium">
                     <span>{article.readTime}</span>
                   </div>
                   <button
@@ -349,12 +344,10 @@ export function EducationSection() {
                   <Badge variant="secondary" size="sm">
                     {selectedArticle.category}
                   </Badge>
-                  <span className="text-xs text-text-secondary flex items-center gap-1">
-                    <CalendarIcon className="text-[11px]" />
+                  <span className="text-xs text-text-secondary">
                     {selectedArticle.date}
                   </span>
-                  <span className="text-xs text-text-secondary flex items-center gap-1">
-                    <ClockIcon className="text-[11px]" />
+                  <span className="text-xs text-text-secondary">
                     {selectedArticle.readTime}
                   </span>
                 </div>
@@ -414,9 +407,9 @@ export function EducationSection() {
                   variant="outline"
                   size="sm"
                   onClick={handleDownload}
-                  className="text-xs gap-1.5"
+                  className="text-xs"
                 >
-                  Unduh Salinan PDF
+                  Unduh
                 </Button>
                 <DialogClose asChild>
                   <Button variant="primary" size="sm" className="text-xs">

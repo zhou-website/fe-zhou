@@ -46,6 +46,15 @@
     font-weight: 700;
     font-family: var(--font-open-sans), "Open Sans", sans-serif;
   }
+
+  /* Garis vertikal pemisah kolom untuk seluruh tabel */
+  table {
+    border-collapse: collapse;
+  }
+  table th:not(:last-child),
+  table td:not(:last-child) {
+    border-right: 1px solid #E9EDF5;
+  }
 }
 
 @layer utilities {

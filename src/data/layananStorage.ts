@@ -33,45 +33,23 @@ export interface StoredServiceItem {
 
 export const DEFAULT_SERVICES: StoredServiceItem[] = [
   {
-    id: "SRV-TAX-CORE",
-    code: "TAX_CORE",
-    categoryKey: "tax-service",
-    name: "Tax Service Core & Kepatuhan Pajak",
-    subtitle: "Layanan pemenuhan kewajiban perpajakan rutin, SPT Masa, dan SPT Tahunan Badan terstandar Coretax DJP.",
-    badge: "TAX COMPLIANCE",
-    route: "/layanan/tax-service",
-    leadConsultant: "Tim Konsultan Pajak BKP Zhou Consulting",
-    pillars: [
-      { title: "SPT Tahunan & Masa", description: "Penyusunan dan pelaporan SPT Masa PPh, PPN, dan SPT Tahunan Badan akurat." },
-      { title: "Kesiapan Coretax 2026", description: "Asistensi adaptasi akun deposit pajak, e-Faktur Coretax, dan rekonsiliasi data fiskal." },
-      { title: "Mitigasi SP2DK", description: "Penyusunan tanggapan formal dan klarifikasi pengawasan fiskal sebelum audit." },
-    ],
-    workflow: ["Pengumpulan Bukti Potong & Dokumen", "Rekonsiliasi Fiskal & Ekualisasi", "Validasi Draft & Konfirmasi PIC", "Submit Pelaporan Coretax DJP"],
-    deliverables: ["Buku Laporan Kepatuhan Pajak", "Bukti Penerimaan Elektronik (BPE)", "Kertas Kerja Ekualisasi PPh & PPN"],
-    faqs: [
-      { q: "Apakah layanan ini mencakup transisi Coretax DJP 2026?", a: "Ya, seluruh proses perpajakan disesuaikan dengan protokol akun deposit pajak dan sistem baru DJP." },
-    ],
-    status: "Published",
-    lastUpdated: "Oktober 2026",
-  },
-  {
     id: "SRV-ACC-SERV",
     code: "ACC_SERV",
     categoryKey: "akuntansi",
-    name: "Accounting & Financial Reporting SAK",
-    subtitle: "Penyusunan laporan keuangan PSAK komprehensif, neraca, laba rugi, dan rekonsiliasi bank berkala.",
-    badge: "FINANCIAL REPORTING",
+    name: "Accounting Services",
+    subtitle: "Layanan akuntansi profesional berstandar SAK untuk laporan keuangan yang akuntabel, transparan, dan siap audit.",
+    badge: "ACCOUNTING SERVICES",
     route: "/layanan/akuntansi",
     leadConsultant: "Praktisi Akuntan Berlisensi CA (Chartered Accountant)",
     pillars: [
-      { title: "Pembukuan & Jurnal Rutin", description: "Pencatatan transaksi harian, buku besar, dan rekonsiliasi kas bank berstandar SAK." },
-      { title: "Laporan Keuangan Komprehensif", description: "Neraca, Laporan Laba Rugi, Perubahan Modal, dan Arus Kas bulanan/tahunan." },
-      { title: "Standardisasi PSAK / SAK EP", description: "Penataan bagan akun (COA) dan implementasi kebijakan akuntansi entitas." },
+      { title: "Penyusunan Laporan Keuangan SAK EP / PSAK", description: "Penyusunan neraca, laba rugi, perubahan ekuitas, arus kas, dan CALK standar audit perbankan." },
+      { title: "Perancangan & Restrukturisasi Bagan Akun (COA)", description: "Standardisasi hierarki kode akun akuntansi yang selaras dengan pusat biaya dan ekualisasi fiskal." },
+      { title: "Rekonsiliasi Fiskal & Penyesuaian Akuntansi Pajak", description: "Penyelarasan laba rugi komersial dengan ketentuan perpajakan serta perhitungan beda tetap dan waktu." },
     ],
     workflow: ["Verifikasi Dokumen Transaksi", "Penjurnalan & Posting Buku Besar", "Penyusunan Trial Balance & Koreksi", "Penerbitan Laporan Keuangan Final"],
-    deliverables: ["Laporan Neraca & Laba Rugi", "Laporan Arus Kas", "Rekonsiliasi Bank & Ledger Lengkap"],
+    deliverables: ["Bundel Laporan Keuangan Lengkap", "Master Chart of Accounts (COA)", "Kertas Kerja Rekonsiliasi Fiskal"],
     faqs: [
-      { q: "Apakah laporan keuangan dapat digunakan untuk pengajuan kredit bank / audit eksternal?", a: "Tentu, laporan disusun mengacu pada SAK Entitas Privat/PSAK resmi yang siap diaudit." },
+      { q: "Apakah laporan keuangan dapat digunakan untuk audit eksternal atau bank?", a: "Ya, laporan disusun mengacu pada SAK Entitas Privat/PSAK resmi yang siap diaudit." },
     ],
     status: "Published",
     lastUpdated: "Oktober 2026",
@@ -80,15 +58,15 @@ export const DEFAULT_SERVICES: StoredServiceItem[] = [
     id: "SRV-FIN-CONS",
     code: "FIN_CONS",
     categoryKey: "bisnis",
-    name: "Business Financial Consulting & Advisory",
-    subtitle: "Konsultasi restrukturisasi bisnis, perencanaan keuangan strategis, dan manajemen arus kas perusahaan.",
-    badge: "BUSINESS ADVISORY",
+    name: "Business & Financial Services",
+    subtitle: "Konsultasi perencanaan keuangan korporat, pemodelan arus kas, efisiensi modal kerja, dan restrukturisasi finansial.",
+    badge: "BUSINESS & FINANCIAL",
     route: "/layanan/bisnis",
     leadConsultant: "Konsultan Keuangan & Advisory Bisnis Zhou Consulting",
     pillars: [
-      { title: "Perencanaan Pajak Strategis", description: "Efisiensi struktur beban pajak tanpa melanggar ketentuan hukum (Tax Planning)." },
-      { title: "Analisis Arus Kas & Anggaran", description: "Pemodelan proyeksi finansial dan pengelolaan likuiditas korporasi." },
-      { title: "Kelayakan Bisnis & Restrukturisasi", description: "Evaluasi finansial merger, akuisisi, atau ekspansi lini usaha baru." },
+      { title: "Diagnostic & Financial Health Check", description: "Audit mendalam atas efisiensi rasio likuiditas, solvabilitas, dan profitabilitas korporasi." },
+      { title: "Proyeksi Arus Kas & Penganggaran Finansial", description: "Pemodelan skenario proyeksi likuiditas 1-3 tahun dan optimalisasi modal kerja operasional." },
+      { title: "Perencanaan Pajak Strategis (Tax Planning)", description: "Efisiensi struktur transaksi dan beban pajak legal tanpa melanggar ketentuan perundang-undangan." },
     ],
     workflow: ["Diagnostik Finansial & Operasional", "Pemodelan Strategis & Skenario", "Rekomendasi Kebijakan Bisnis", "Pendampingan Implementasi"],
     deliverables: ["Dokumen Rekomendasi Advisory Finansial", "Model Proyeksi Cashflow 3 Tahun", "Executive Summary Dewan Direksi"],
@@ -99,23 +77,45 @@ export const DEFAULT_SERVICES: StoredServiceItem[] = [
     lastUpdated: "Oktober 2026",
   },
   {
+    id: "SRV-TAX-CORE",
+    code: "TAX_CORE",
+    categoryKey: "tax-service",
+    name: "Tax Services",
+    subtitle: "Layanan kepatuhan perpajakan korporat, asistensi pelaporan SPT Masa & Tahunan, transisi Coretax DJP, serta mitigasi risiko SP2DK.",
+    badge: "TAX SERVICES",
+    route: "/layanan/tax-service",
+    leadConsultant: "Tim Konsultan Pajak BKP Zhou Consulting",
+    pillars: [
+      { title: "Kepatuhan SPT Masa & Tahunan Badan", description: "Penyusunan dan pelaporan SPT Masa PPh, PPN, dan SPT Tahunan Badan akurat dan tepat waktu." },
+      { title: "Pendampingan Integrasi Coretax DJP 2026", description: "Asistensi adaptasi akun deposit pajak, e-Faktur Coretax, dan rekonsiliasi data fiskal sistem baru." },
+      { title: "Mitigasi SP2DK & Telaah Pajak (Tax Review)", description: "Penyusunan tanggapan formal, klarifikasi pengawasan fiskal, dan review kepatuhan sebelum audit." },
+    ],
+    workflow: ["Pengumpulan Bukti Potong & Dokumen", "Rekonsiliasi Fiskal & Ekualisasi", "Validasi Draft & Konfirmasi PIC", "Submit Pelaporan Coretax DJP"],
+    deliverables: ["Buku Laporan Kepatuhan Pajak", "Bukti Penerimaan Elektronik (BPE)", "Kertas Kerja Ekualisasi PPh & PPN"],
+    faqs: [
+      { q: "Apakah layanan ini mencakup transisi Coretax DJP 2026?", a: "Ya, seluruh proses perpajakan disesuaikan dengan protokol akun deposit pajak dan sistem baru DJP." },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+  },
+  {
     id: "SRV-LEGAL-TAX",
     code: "LEGAL_TAX",
     categoryKey: "hukum",
-    name: "Tax Audit & Legal Dispute Advisory",
-    subtitle: "Pendampingan pemeriksaan pajak, klarifikasi SP2DK, keberatan, banding, serta mitigasi risiko regulasi.",
-    badge: "LEGAL & DISPUTE",
+    name: "Law Services",
+    subtitle: "Pendampingan hukum bisnis, mitigasi sengketa perpajakan, penelaahan kontrak komersial, dan advisori kepatuhan regulasi.",
+    badge: "LAW SERVICES",
     route: "/layanan/hukum",
     leadConsultant: "Tim Kuasa Hukum Pajak & Advokat PERADI Zhou Consulting",
     pillars: [
-      { title: "Pendampingan Pemeriksaan Pajak", description: "Asistensi tatap muka dengan fungsional pemeriksa dan penyusunan berkas tanggapan SPHP." },
-      { title: "Keberatan & Banding Pengadilan Pajak", description: "Penyusunan surat keberatan formal dan pendampingan di Pengadilan Pajak." },
-      { title: "Kepatuhan Hukum & Kontrak Komersial", description: "Review kontrak bisnis dari aspek hukum perdata, ketenagakerjaan, dan implikasi pajak." },
+      { title: "Pendampingan Pemeriksaan & Sengketa Pajak", description: "Asistensi tatap muka dengan fungsional pemeriksa dan penyusunan berkas tanggapan SPHP." },
+      { title: "Keberatan & Banding di Pengadilan Pajak", description: "Penyusunan surat keberatan formal, memori banding, dan pendampingan di Pengadilan Pajak." },
+      { title: "Kepatuhan Hukum & Review Kontrak Komersial", description: "Penelaahan kontrak bisnis dari aspek hukum perdata, ketenagakerjaan, dan implikasi perpajakan." },
     ],
     workflow: ["Analisis Surat Klarifikasi / Pemeriksaan", "Penyusunan Bukti & Argumen Hukum", "Asistensi Pembahasan Akhir (Closing)", "Evaluasi Tindak Lanjut"],
     deliverables: ["Risalah Tanggapan Hukum & SPHP", "Surat Keberatan / Memori Banding", "Legal Opinion Kepatuhan Regulasi"],
     faqs: [
-      { q: "Kapan perusahaan harus meminta pendampingan sengketa?", a: "Sebaiknya segera setelah menerima surat klarifikasi (SP2DK) atau Surat Pemberitahuan Pemeriksaan Lapangan (SP2)." },
+      { q: "Kapan perusahaan harus meminta pendampingan sengketa hukum?", a: "Sebaiknya segera setelah menerima surat klarifikasi (SP2DK) atau Surat Pemberitahuan Pemeriksaan Lapangan (SP2)." },
     ],
     status: "Published",
     lastUpdated: "Oktober 2026",
@@ -136,13 +136,27 @@ export function getStoredServices(): StoredServiceItem[] {
   try {
     const raw = localStorage.getItem(SERVICES_STORAGE_KEY);
     const source: StoredServiceItem[] = raw ? JSON.parse(raw) : DEFAULT_SERVICES;
+    const coreKeys = ["akuntansi", "bisnis", "tax-service", "hukum"];
+
     if (Array.isArray(source)) {
-      return source.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
+      const filtered = source.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
+      // Jika sudah memiliki minimal 4 layanan valid, periksa kelengkapan 4 kategori utama
+      const hasAllCore = coreKeys.every((k) =>
+        filtered.some((s) => s.categoryKey?.toLowerCase() === k)
+      );
+      if (hasAllCore) return filtered;
+
+      // Lengkapi kategori yang belum ada dari DEFAULT_SERVICES
+      const merged = coreKeys.map((k) => {
+        const found = filtered.find((s) => s.categoryKey?.toLowerCase() === k);
+        return found || DEFAULT_SERVICES.find((d) => d.categoryKey === k)!;
+      });
+      return merged;
     }
-    return DEFAULT_SERVICES.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
+    return DEFAULT_SERVICES;
   } catch (error) {
     console.error("Gagal membaca zhou_services_data dari localStorage:", error);
-    return DEFAULT_SERVICES.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
+    return DEFAULT_SERVICES;
   }
 }
 

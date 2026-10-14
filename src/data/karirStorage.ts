@@ -21,6 +21,7 @@ export interface JobPosition {
   qualifications?: string[];
   benefits?: string[];
   status?: ContentStatus;
+  backendId?: number;
 }
 
 export interface CareerSettings {
@@ -207,3 +208,160 @@ export function deleteStoredCareerPosition(idOrTitle: string): JobPosition[] {
   });
   return updatedPositions;
 }
+
+/**
+ * Pelacak Pengiriman Lamaran Pelamar Kerja & Penyimpanan Lamaran Masuk
+ * Memastikan satu email hanya dapat melamar satu kali pada lowongan yang sama.
+ */
+export interface SubmittedApplicationRecord {
+  jobId: string | number;
+  email: string;
+  appliedAt: string;
+}
+
+export interface StoredJobApplication {
+  id: number | string;
+  job_id: number | string;
+  career_id?: number | string;
+  applicant_name: string;
+  applicant_email: string;
+  applicant_phone?: string;
+  education?: string;
+  linkedin?: string;
+  cover_letter?: string;
+  cv_file_path: string;
+  cv_file_name?: string;
+  applied_at: string;
+  registration_code?: string;
+  status?: string;
+  job?: {
+    position_code: string;
+    position_title: string;
+    department?: string;
+  };
+}
+
+export const APPLICATIONS_TRACKER_STORAGE_KEY = "zhou_submitted_applications";
+export const STORED_APPLICATIONS_STORAGE_KEY = "zhou_stored_job_applications_v1";
+export const APPLICATIONS_UPDATED_EVENT = "zhou_applications_updated";
+
+export function getSubmittedApplications(): SubmittedApplicationRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(APPLICATIONS_TRACKER_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getStoredJobApplications(): StoredJobApplication[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORED_APPLICATIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function hasAppliedToCareer(jobId: string | number, email: string): boolean {
+  if (!email || !jobId) return false;
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanJobId = String(jobId).trim().toLowerCase();
+
+  // 1. Periksa tracker log
+  const list = getSubmittedApplications();
+  const isMatchInTracker = list.some(
+    (item) =>
+      item.email.trim().toLowerCase() === cleanEmail &&
+      String(item.jobId).trim().toLowerCase() === cleanJobId
+  );
+  if (isMatchInTracker) return true;
+
+  // 2. Periksa daftar lamaran tersimpan
+  const apps = getStoredJobApplications();
+  return apps.some((app) => {
+    const appEmail = (app.applicant_email || "").trim().toLowerCase();
+    if (appEmail !== cleanEmail) return false;
+
+    const appId = String(app.job_id || app.career_id || "").trim().toLowerCase();
+    const appCode = String(app.job?.position_code || "").trim().toLowerCase();
+    const appTitle = String(app.job?.position_title || "").trim().toLowerCase();
+
+    return (
+      appId === cleanJobId ||
+      appCode === cleanJobId ||
+      appTitle === cleanJobId
+    );
+  });
+}
+
+export function recordCareerApplication(jobId: string | number, email: string): void {
+  if (typeof window === "undefined" || !email || !jobId) return;
+  try {
+    const list = getSubmittedApplications();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanJobId = String(jobId).trim().toLowerCase();
+    if (!list.some((item) => item.email === cleanEmail && String(item.jobId) === cleanJobId)) {
+      list.push({
+        jobId: cleanJobId,
+        email: cleanEmail,
+        appliedAt: new Date().toISOString(),
+      });
+      localStorage.setItem(APPLICATIONS_TRACKER_STORAGE_KEY, JSON.stringify(list));
+    }
+  } catch (err) {
+    console.error("Gagal menyimpan rekam lamaran:", err);
+  }
+}
+
+export function saveStoredJobApplication(app: StoredJobApplication): void {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredJobApplications();
+    // Cegah duplikasi ID
+    const filtered = list.filter((item) => String(item.id) !== String(app.id));
+    const updated = [app, ...filtered];
+    localStorage.setItem(STORED_APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
+
+    // Catat juga ke tracker
+    recordCareerApplication(app.job_id, app.applicant_email);
+    if (app.job?.position_code) {
+      recordCareerApplication(app.job.position_code, app.applicant_email);
+    }
+
+    window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
+  } catch (err) {
+    console.error("Gagal menyimpan data lamaran masuk:", err);
+  }
+}
+
+export function deleteStoredJobApplication(id: number | string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getStoredJobApplications();
+    const updated = list.filter((item) => String(item.id) !== String(id));
+    localStorage.setItem(STORED_APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
+  } catch (err) {
+    console.error("Gagal menghapus data lamaran masuk:", err);
+  }
+}
+
+export function clearAllStoredJobApplications(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORED_APPLICATIONS_STORAGE_KEY);
+    localStorage.removeItem(APPLICATIONS_TRACKER_STORAGE_KEY);
+    window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
+  } catch (err) {
+    console.error("Gagal membersihkan data lamaran masuk:", err);
+  }
+}
+
+

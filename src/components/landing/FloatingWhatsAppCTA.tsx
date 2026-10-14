@@ -50,16 +50,20 @@ export function FloatingWhatsAppCTA() {
 
   const quickMessages = [
     {
-      label: "Konsultasi Pajak & Coretax 2026",
-      text: "Halo Zhou Consulting, saya ingin konsultasi mengenai implementasi Coretax dan kepatuhan perpajakan.",
+      label: "Accounting Services",
+      text: "Halo Zhou Consulting, saya ingin konsultasi mengenai Accounting Services & Laporan Keuangan SAK.",
     },
     {
-      label: "Pembukuan & Laporan Keuangan SAK",
-      text: "Halo Zhou Consulting, saya ingin menanyakan layanan pembukuan dan penyusunan laporan keuangan SAK.",
+      label: "Business & Financial Services",
+      text: "Halo Zhou Consulting, saya ingin konsultasi mengenai Business & Financial Services.",
     },
     {
-      label: "Pendampingan SP2DK & Pemeriksaan",
-      text: "Halo Zhou Consulting, saya membutuhkan pendampingan terkait surat tanggapan SP2DK dari kantor pajak.",
+      label: "Tax Services",
+      text: "Halo Zhou Consulting, saya ingin konsultasi mengenai Tax Services dan Coretax DJP.",
+    },
+    {
+      label: "Law Services",
+      text: "Halo Zhou Consulting, saya ingin konsultasi mengenai Law Services dan kepatuhan hukum bisnis.",
     },
   ];
 
@@ -119,7 +123,7 @@ export function FloatingWhatsAppCTA() {
 
           {/* Footer note */}
           <div className="bg-white px-4 py-2.5 border-t border-primary-light text-[10px] text-text-secondary text-center">
-            Jam operasional CS: 08.30 &ndash; 17.30 WIB
+            Jam operasional CS: 08.00 &ndash; 17.00 WIB
           </div>
         </div>
       )}

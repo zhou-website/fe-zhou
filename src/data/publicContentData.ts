@@ -188,68 +188,7 @@ export interface RegulationContentItem {
   lastUpdated: string;
 }
 
-export const INITIAL_REGULATIONS: RegulationContentItem[] = [
-  {
-    id: "REG-01",
-    docNumber: "UU No. 7 Tahun 2021",
-    title: "Harmonisasi Peraturan Perpajakan (UU HPP)",
-    category: "Undang-Undang",
-    effectiveDate: "29 Oktober 2021",
-    scope: "Reformasi PPh Badan 22%, tarif PPN 11-12%, integrasi NIK 16 digit menjadi NPWP, dan program pengungkapan sukarela.",
-    fileSize: "2.4 MB",
-    downloadUrl: "#",
-    status: "Published",
-    lastUpdated: "12 Sep 2026",
-  },
-  {
-    id: "REG-02",
-    docNumber: "PMK No. 168/PMK.03/2023",
-    title: "Petunjuk Teknis Pemotongan Pajak atas Penghasilan Sehubungan dengan Pekerjaan (PPh 21 TER)",
-    category: "Peraturan Menteri",
-    effectiveDate: "1 Januari 2024",
-    scope: "Penerapan skema Tarif Efektif Rata-Rata (TER) PPh 21 bulanan kategori A, B, C dan TER harian pegawai.",
-    fileSize: "1.8 MB",
-    downloadUrl: "#",
-    status: "Published",
-    lastUpdated: "14 Sep 2026",
-  },
-  {
-    id: "REG-03",
-    docNumber: "PMK No. 81 Tahun 2024",
-    title: "Ketentuan Perpajakan dalam Rangka Pelaksanaan Sistem Inti Administrasi Perpajakan (Coretax)",
-    category: "Peraturan Menteri",
-    effectiveDate: "1 Januari 2025",
-    scope: "Standardisasi akun wajib pajak (TAM), deposit pajak terpadu, e-Bupot unifikasi, dan pemadanan NIK 16 digit.",
-    fileSize: "3.7 MB",
-    downloadUrl: "#",
-    status: "Published",
-    lastUpdated: "15 Sep 2026",
-  },
-  {
-    id: "REG-04",
-    docNumber: "PP No. 55 Tahun 2022",
-    title: "Penyesuaian Pengaturan di Bidang Pajak Penghasilan",
-    category: "Peraturan Pemerintah",
-    effectiveDate: "20 Desember 2022",
-    scope: "Perlakuan natura dan kenikmatan, batasan omzet peredaran bruto tidak kena pajak UMKM Rp500 juta.",
-    fileSize: "2.1 MB",
-    downloadUrl: "#",
-    status: "Published",
-    lastUpdated: "10 Sep 2026",
-  },
-  {
-    id: "REG-05",
-    docNumber: "PER-04/PJ/2024",
-    title: "Petunjuk Teknis Penerbitan Bukti Pemotongan/Pemungutan Unifikasi Elektronik",
-    category: "Peraturan DJP",
-    effectiveDate: "1 April 2024",
-    scope: "Standardisasi format dokumen e-Bupot unifikasi, tanda tangan digital, dan bridging sistem akuntansi internal ke DJP.",
-    fileSize: "1.5 MB",
-    downloadUrl: "#",
-    status: "Published",
-    lastUpdated: "08 Sep 2026",
-  },
-];
+export const INITIAL_REGULATIONS: RegulationContentItem[] = [];
 
 // 5. Tax Rates / Kurs Pajak KMK Content
 export interface KmkRateItem {
@@ -299,124 +238,6 @@ export interface CareerJobItem {
 }
 
 export const INITIAL_CAREERS: CareerJobItem[] = [];
-const _unusedCareers: CareerJobItem[] = [
-  {
-    id: "career-tax-senior",
-    title: "Senior Tax Consultant (Coretax & SP2DK Specialist)",
-    department: "Tax Service Core",
-    deptKey: "tax",
-    type: "Full-Time (Hybrid)",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 3-5 tahun di KKP/KAP",
-    compensation: "Kompensasi Kompetitif + Bonus Kinerja & BPJS",
-    summary: "Memimpin audit kepatuhan SPT Masa & Tahunan badan, memandu migrasi data klien ke ekosistem Coretax DJP 2026, dan mendampingi klarifikasi SP2DK hingga pemeriksaan DJP.",
-    responsibilities: [
-      "Mengelola portofolio kepatuhan perpajakan berkala (PPh 21/26, 23, 4(2), dan PPN) untuk klien multi-sektor.",
-      "Memimpin simulasi dan asistensi migrasi data perpajakan korporat ke sistem Coretax DJP 2026.",
-      "Menyusun tanggapan resmi dan strategi klarifikasi Surat Klarifikasi SP2DK KPP.",
-      "Melakukan review ekualisasi omzet vs DPP PPN dan biaya gaji vs objek PPh 21.",
-    ],
-    qualifications: [
-      "Pendidikan minimal S1 Akuntansi atau Perpajakan dari universitas terakreditasi.",
-      "Memiliki sertifikasi Brevet Pajak AB & C, diutamakan sertifikat BKP (Konsultan Pajak).",
-      "Pengalaman kerja minimal 3-5 tahun di Kantor Konsultan Pajak (KKP).",
-      "Menguasai regulasi UU HPP, PMK 81/2024, dan alur administrasi Coretax DJP.",
-    ],
-    benefits: [
-      "Fasilitas pembiayaan berkelanjutan untuk sertifikasi USKP & PPL berlisensi IKPI.",
-      "Skema kerja hybrid fleksibel (3 hari kantor / 2 hari remote).",
-      "Asuransi kesehatan swasta dan BPJS Ketenagakerjaan.",
-    ],
-    skills: ["Coretax DJP 2026", "Mitigasi SP2DK", "Brevet AB / BKP", "Tax Planning", "Ekualisasi SPT"],
-    status: "Published",
-    lastUpdated: "11 Sep 2026",
-  },
-  {
-    id: "career-audit-junior",
-    title: "Junior Auditor SAK & Kompilasi Laporan Keuangan",
-    department: "Accounting Service",
-    deptKey: "accounting",
-    type: "Full-Time",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "1-2 tahun pengalaman (Fresh graduate berprestasi dipersilakan)",
-    compensation: "Gaji Pokok + Uang Saku Lapangan + BPJS",
-    summary: "Mendampingi kompilasi laporan keuangan berbasis SAK EP, melakukan posting jurnal penyesuaian, dan rekonsiliasi akun kas/bank komersial.",
-    responsibilities: [
-      "Melakukan vouching dan verifikasi bukti fisik transaksi kas, bank, dan faktur.",
-      "Membantu penataan kertas kerja laporan posisi keuangan dan laba rugi komersial.",
-      "Menyusun rekonsiliasi mutasi rekening koran bank dan buku besar umum.",
-    ],
-    qualifications: [
-      "S1 Akuntansi dengan IPK minimal 3.25.",
-      "Memahami standar akuntansi keuangan entitas privat (SAK EP) dan PSAK umum.",
-      "Mahir mengoperasikan Microsoft Excel tingkat lanjut (Pivot, VLOOKUP, SUMIFS).",
-    ],
-    benefits: [
-      "Bimbingan langsung dari Akuntan Beregister CA dan auditor berpengalaman.",
-      "Jenjang karir berjenjang ke posisi Senior Accounting Associate.",
-    ],
-    skills: ["SAK EP / IFRS", "Rekonsiliasi Bank", "Jurnal Penyesuaian", "Advanced Excel"],
-    status: "Published",
-    lastUpdated: "05 Sep 2026",
-  },
-  {
-    id: "career-legal-specialist",
-    title: "Corporate Legal Specialist",
-    department: "Legal & Corporate Secretary",
-    deptKey: "legal",
-    type: "Full-Time",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 2-3 tahun di Law Firm / Corporate Legal",
-    compensation: "Kompensasi Kompetitif + Asuransi Kesehatan",
-    summary: "Menelaah perjanjian bisnis komersial, perizinan OSS RBA, dan memastikan kepatuhan hukum korporasi sesuai ketentuan UU Perseroan Terbatas.",
-    responsibilities: [
-      "Melakukan drafting dan review perjanjian kerja sama bisnis, NDA, dan sewa menyewa.",
-      "Mengurus proses perizinan berusaha berbasis risiko (OSS RBA) dan pengesahan AHU Kemenkumham.",
-      "Memberikan analisis awal kepatuhan hukum atas rencana transaksi bisnis klien.",
-    ],
-    qualifications: [
-      "S1 Ilmu Hukum, diutamakan telah lulus Ujian Profesi Advokat (UPA) PERADI.",
-      "Pengalaman minimal 2 tahun di bidang legal korporat atau firma hukum.",
-      "Memiliki kemampuan legal drafting dan analisis kontrak komersial yang tajam.",
-    ],
-    benefits: [
-      "Dukungan pengembangan lisensi advokat PERADI.",
-      "Lingkungan kerja profesional di kawasan segitiga emas Sudirman.",
-    ],
-    skills: ["Legal Drafting", "OSS RBA", "Kontrak Bisnis", "Corporate Compliance"],
-    status: "Published",
-    lastUpdated: "09 Sep 2026",
-  },
-  {
-    id: "career-tax-associate",
-    title: "Tax Compliance Associate (e-Faktur & e-Bupot)",
-    department: "Tax Service Core",
-    deptKey: "tax",
-    type: "Full-Time",
-    location: "Menara Sudirman, Jakarta Selatan",
-    experience: "Min. 1-2 tahun pengalaman",
-    compensation: "Gaji Pokok + Tunjangan Makan & Transport + BPJS",
-    summary: "Mengelola administrasi faktur pajak elektronik, bukti potong unifikasi, dan pelaporan SPT Masa bulanan klien tepat waktu.",
-    responsibilities: [
-      "Membuat dan melakukan approval faktur pajak keluaran melalui aplikasi e-Faktur.",
-      "Mengadministrasikan bukti potong unifikasi PPh 21, 23, dan 4 ayat (2).",
-      "Melakukan ekualisasi berkala antara buku penjualan dengan faktur pajak.",
-    ],
-    qualifications: [
-      "D3 / S1 Perpajakan atau Akuntansi.",
-      "Memiliki sertifikat Brevet Pajak A & B.",
-      "Terbiasa menggunakan aplikasi DJP Online (e-Faktur, e-Bupot, e-Billing).",
-    ],
-    benefits: [
-      "Pelatihan intensif modul Coretax DJP 2026.",
-      "Fasilitas laptop kerja dan tunjangan komunikasi.",
-    ],
-    skills: ["e-Faktur", "e-Bupot Unifikasi", "e-Billing", "Brevet AB"],
-    status: "Published",
-    lastUpdated: "12 Sep 2026",
-  },
-];
-void _unusedCareers;
 
 // 7. Contact & Consultation Content
 export interface ContactConsultationContent {
@@ -567,7 +388,7 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
       id: `PUB-GOV-${gov.id.toUpperCase()}`,
       section: "education-gov",
       sectionLabel: `Belajar Pajak (${gov.institution})`,
-      publicRoute: "/edukasi?tab=belajar-pajak#belajar-pajak",
+      publicRoute: "/belajar-pajak",
       title: gov.title,
       category: gov.institution === "DJP" ? "Direktorat Jenderal Pajak" : "Kementerian Keuangan RI",
       summary: gov.description,

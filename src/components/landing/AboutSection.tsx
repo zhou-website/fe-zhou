@@ -60,7 +60,6 @@ export function AboutSection() {
             {/* Sisi Kanan Skeleton */}
             <div className="lg:col-span-6">
               <div className="p-6 sm:p-8 md:p-9 rounded-2xl bg-surface border border-primary-light shadow-xs space-y-4">
-                <Skeleton className="h-4 w-28" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-5/6" />
@@ -82,11 +81,6 @@ export function AboutSection() {
             {/* Sisi Kanan: Kartu Narasi Mengapa Zhou Consulting */}
             <div className="lg:col-span-6" id="mengapa-zhou">
               <div className="p-6 sm:p-8 md:p-9 rounded-2xl bg-surface border border-primary-light shadow-xs relative overflow-hidden space-y-4">
-                <div className="inline-flex items-center">
-                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-primary select-none">
-                    {t.about.whyBadge}
-                  </span>
-                </div>
                 <p className="text-[14px] sm:text-[15px] leading-relaxed text-text-secondary">
                   {aboutProfile?.content || t.about.whyText}
                 </p>

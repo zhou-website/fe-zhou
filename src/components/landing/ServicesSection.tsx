@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardHeader,
@@ -11,36 +10,62 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircleIcon } from "@/components/icons";
+import { CheckCircleIcon, WhatsappIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { StoredServiceItem } from "@/data/layananStorage";
+import {
+  StoredServiceItem,
+  DEFAULT_SERVICES,
+  getStoredServices,
+  SERVICES_EVENT,
+} from "@/data/layananStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 
 export function ServicesSection() {
-  const [activeTab, setActiveTab] = useState<"all" | "konsultasi" | "tax">("all");
-  const [services, setServices] = useState<StoredServiceItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [services, setServices] = useState<StoredServiceItem[]>(DEFAULT_SERVICES);
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
 
+  const rawPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6281298765432";
+  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6281298765432";
+
   const getAuthHref = (target: string) => {
-    if (isAuthenticated) return target;
-    return `/login?redirect=${encodeURIComponent(target)}`;
+    if (target.startsWith("/dashboard") && !isAuthenticated) {
+      return `/login?redirect=${encodeURIComponent(target)}`;
+    }
+    return target;
   };
 
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch live backend services only (no mock data fallback)
+    // Load initial services from local storage or default official services
+    const localServices = getStoredServices();
+    if (localServices.length > 0) {
+      setServices(localServices);
+    }
+
+    const handleStorageUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<StoredServiceItem[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setServices(customEvent.detail);
+      } else {
+        setServices(getStoredServices());
+      }
+    };
+
+    window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
+
+    // Sync from live backend API if available
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiServices: StoredServiceItem[] = res.data.map((item: PublicServiceItem) => {
+          const apiServices: StoredServiceItem[] = res.data
+            .filter((item: PublicServiceItem) => !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code))
+            .map((item: PublicServiceItem) => {
             const catLower = (item.category || "").toLowerCase();
             const codeUpper = (item.service_code || "").toUpperCase();
             const catKey =
@@ -90,192 +115,100 @@ export function ServicesSection() {
             };
           });
 
-          setServices(apiServices);
-        } else {
-          setServices([]);
+          // Merge backend items with updated 4 core services
+          if (apiServices.length >= 4) {
+            setServices(apiServices);
+          }
         }
       })
       .catch((err) => {
         console.warn("publicApi.getServices in ServicesSection:", err);
-        setServices([]);
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
       });
 
     return () => {
       isMounted = false;
+      window.removeEventListener(SERVICES_EVENT, handleStorageUpdate);
     };
   }, []);
 
-  const publishedServices = services.filter((s) => s.status === "Published");
-
-  const filteredServices = publishedServices.filter((s) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "konsultasi") return s.categoryKey !== "tax-service";
-    if (activeTab === "tax") return s.categoryKey === "tax-service";
-    return true;
+  // Pastikan 4 layanan utama Zhou Consulting selalu lengkap
+  const coreCategoryKeys = ["akuntansi", "bisnis", "tax-service", "hukum"];
+  const displayServices = coreCategoryKeys.map((key) => {
+    const found = services.find(
+      (s) => s.categoryKey?.toLowerCase() === key && s.status === "Published"
+    );
+    return found || DEFAULT_SERVICES.find((d) => d.categoryKey === key)!;
   });
 
   return (
     <section
       id="layanan"
-      aria-label="Katalog Layanan"
-      className="py-16 md:py-20 lg:py-24 bg-surface border-b border-primary-light scroll-mt-20"
+      aria-label="Layanan Konsultasi Zhou Consulting"
+      className="py-16 md:py-20 lg:py-24 bg-surface border-b border-primary-light scroll-mt-20 font-sans"
     >
       <div className="container-custom space-y-10 md:space-y-12">
         {/* Section Header */}
         <div className="max-w-3xl space-y-3">
           <h2 className="text-[22px] leading-[30px] sm:text-[26px] sm:leading-[34px] lg:text-[32px] lg:leading-[40px] font-bold text-primary tracking-tight text-balance">
-            {t.services.headline}
+            {t.services.headline || "Layanan Konsultasi Profesional Terpadu"}
           </h2>
-          <p className="text-[15px] leading-[24px] sm:text-body-large text-text-secondary leading-relaxed">
-            {t.services.subheading}
+          <p className="text-[14px] leading-[22px] sm:text-[15px] sm:leading-[24px] text-text-secondary leading-relaxed">
+            {t.services.subheading ||
+              "Solusi terintegrasi perpajakan korporat, akuntansi berstandar SAK, pengelolaan keuangan strategis, dan kepatuhan hukum bisnis terpercaya."}
           </p>
         </div>
 
-        {/* Category Filter Tabs or Skeleton */}
-        {isLoading ? (
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-24 rounded-md" />
-            <Skeleton className="h-8 w-28 rounded-md" />
-            <Skeleton className="h-8 w-24 rounded-md" />
-          </div>
-        ) : publishedServices.length > 0 ? (
-          <Tabs
-            value={activeTab}
-            onValueChange={(val) => setActiveTab(val as "all" | "konsultasi" | "tax")}
-            className="w-full"
-          >
-            <TabsList className="bg-white border-primary-light h-auto p-1.5 flex flex-wrap justify-start gap-1">
-              <TabsTrigger value="all" className="text-xs">
-                {t.services.tabAll}
-              </TabsTrigger>
-              <TabsTrigger value="konsultasi" className="text-xs">
-                {t.services.tabConsult}
-              </TabsTrigger>
-              <TabsTrigger value="tax" className="text-xs">
-                {t.services.tabTax}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        ) : null}
-
-        {/* Services List / Skeleton / Empty State */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card
-                key={i}
-                className="flex flex-col justify-between w-full rounded-xl bg-white border-primary-light p-6 space-y-4"
-              >
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-3.5 w-full" />
-                    <Skeleton className="h-3.5 w-5/6" />
-                  </div>
-                </div>
-                <div className="space-y-2 pt-2 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
-                    <Skeleton className="h-3.5 w-4/5" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-3.5 w-3.5 rounded-full shrink-0" />
-                    <Skeleton className="h-3.5 w-3/5" />
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-primary-light">
-                  <Skeleton className="h-9 w-full rounded-md" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : publishedServices.length === 0 ? (
-          <div className="py-14 px-6 rounded-2xl bg-white border border-dashed border-primary-light text-center space-y-4 max-w-2xl mx-auto shadow-xs">
-            <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-primary">Katalog Layanan Sedang Dipersiapkan</h3>
-              <p className="text-xs text-text-secondary leading-relaxed max-w-lg mx-auto">
-                Daftar divisi dan rincian cakupan layanan profesional Zhou Consulting akan segera diperbarui oleh tim administrator.
-              </p>
-            </div>
-            <div className="pt-2 flex items-center justify-center gap-3">
-              <Button variant="primary" size="sm" asChild className="text-xs">
-                <Link href={getAuthHref("/konsultasi")}>Konsultasi Langsung</Link>
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredServices.map((service) => (
-              <Card
-                key={service.id}
-                className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-xl bg-white border-primary-light"
-              >
-                <CardHeader className="space-y-1.5 pb-3">
-                  <CardTitle className="text-card-heading font-bold text-primary">
-                    {service.name}
-                  </CardTitle>
-                  <CardDescription className="text-xs text-text-secondary mt-1 line-clamp-2">
+        {/* 4 Core Services Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayServices.slice(0, 4).map((service) => (
+            <Card
+              key={service.id || service.route}
+              className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-2xl bg-white border-primary-light p-5 space-y-5"
+            >
+              <div className="space-y-3">
+                <CardHeader className="p-0 space-y-2">
+                  <Link
+                    href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}
+                    className="hover:underline"
+                  >
+                    <CardTitle className="text-base font-bold text-primary leading-snug">
+                      {service.name}
+                    </CardTitle>
+                  </Link>
+                  <CardDescription className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
                     {service.subtitle}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2 text-xs text-text flex-1 pt-0">
+
+                <CardContent className="p-0 pt-2 space-y-2 text-xs text-text-primary">
                   {service.pillars?.slice(0, 3).map((pillar, idx) => (
                     <div key={idx} className="flex items-start gap-2">
-                      <CheckCircleIcon className="text-success text-xs flex-shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">{pillar.title}</span>
+                      <CheckCircleIcon className="text-emerald-600 text-xs shrink-0 mt-0.5" />
+                      <span className="line-clamp-1 text-[11px] font-medium text-text-secondary">
+                        {pillar.title}
+                      </span>
                     </div>
                   ))}
                 </CardContent>
-                <CardFooter className="pt-3 border-t border-primary-light">
-                  <Button
-                    variant="outline"
-                    asChild
-                    className="w-full justify-center text-xs font-bold border-primary text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Link href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}>
-                      <span>Lihat Layanan</span>
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+              </div>
 
-        {/* Unified Bottom Callout */}
-        <div className="p-6 md:p-8 rounded-2xl bg-primary text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="space-y-2 max-w-2xl text-center md:text-left">
-            <h3 className="text-lg sm:text-xl font-bold text-white">
-              Membutuhkan Analisis Awal Perpajakan &amp; Keuangan Entitas Bisnis Anda?
-            </h3>
-            <p className="text-xs sm:text-sm text-silver leading-relaxed">
-              Tim ahli Zhou Consulting siap memberikan review awal dan mitigasi risiko fiskal secara profesional dengan perlindungan kerahasiaan NDA.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Button
-              variant="outline"
-              size="lg"
-              asChild
-              className="border-white/30 text-white hover:bg-white/10 font-bold text-xs sm:text-sm px-5"
-            >
-              <Link href={getAuthHref("/layanan/tax-service")}>Katalog Layanan</Link>
-            </Button>
-            <Button
-              variant="silver"
-              size="lg"
-              asChild
-              className="font-bold text-xs sm:text-sm px-6 shadow-md"
-            >
-              <Link href={getAuthHref("/konsultasi")}>Reservasi Konsultasi</Link>
-            </Button>
-          </div>
+              <CardFooter className="p-0 pt-4 border-t border-primary-light/80">
+                <a
+                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                    `Halo Zhou Consulting, saya ingin konsultasi mengenai ${service.name}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-[#060D22] hover:bg-[#111e42] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                >
+                  <WhatsappIcon className="text-xs text-emerald-400" />
+                  <span>Konsultasi</span>
+                </a>
+              </CardFooter>
+            </Card>
+          ))}
         </div>
+
       </div>
     </section>
   );

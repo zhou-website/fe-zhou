@@ -2,6 +2,8 @@ export interface ZhouArticleAttachment {
   name: string;
   size: string;
   type: string;
+  url?: string;
+  dataUrl?: string;
 }
 
 export interface ZhouArticle {

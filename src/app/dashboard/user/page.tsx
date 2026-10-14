@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth, isDummyTicket, normalizeRole } from "@/context/AuthContext";
+import { useAuth, isDummyTicket, isDummyDocument, normalizeRole } from "@/context/AuthContext";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardHeader,
@@ -17,10 +16,7 @@ import {
 } from "@/components/ui/card";
 import {
   CheckCircleIcon,
-  CheckIcon,
-  DocumentIcon,
   CloseIcon,
-  DownloadIcon,
 } from "@/components/icons";
 import {
   getStoredClientTickets,
@@ -58,7 +54,6 @@ export default function UserDashboardPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [documents, setDocuments] = useState<ClientDocument[]>([]);
   const [filterStatus, setFilterStatus] = useState<"ALL" | "In Progress" | "Completed">("ALL");
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   // Auto redirect superadmin and admin to their respective portals
   useEffect(() => {
@@ -82,7 +77,7 @@ export default function UserDashboardPage() {
         title: t.title,
         category: t.category || "Tax Service Core",
         consultant: t.consultant || "Konsultan Zhou",
-        status: t.status.toLowerCase().includes("selesai") || t.status === "Completed" ? "Completed" : "In Progress",
+        status: t.status === "Selesai" || (t.status as string) === "Completed" ? "Completed" : "In Progress",
         progress: t.progress || 25,
         updatedAt: t.createdAt || "Baru saja",
         checklists: (t.milestones && t.milestones.length > 0)
@@ -141,7 +136,8 @@ export default function UserDashboardPage() {
       try {
         const docRes = await clientApi.getDocuments();
         if (docRes.success && Array.isArray(docRes.data)) {
-          backendDocs = docRes.data.map((d: ClientDocumentItem) => ({
+          const validBackendDocs = docRes.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
+          backendDocs = validBackendDocs.map((d: ClientDocumentItem) => ({
             id: String(d.id),
             name: d.file_name,
             category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
@@ -358,14 +354,13 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                   <th scope="col" className="py-3 px-4">Judul Pekerjaan &amp; Layanan</th>
                   <th scope="col" className="py-3 px-4 hidden md:table-cell">Konsultan Lead</th>
                   <th scope="col" className="py-3 px-4">Progres</th>
-                  <th scope="col" className="py-3 px-4">Status</th>
-                  <th scope="col" className="py-3 px-4 sm:px-6 text-right">Aksi</th>
+                  <th scope="col" className="py-3 px-4 sm:px-6 text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-light">
                 {filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-text-muted">
+                    <td colSpan={5} className="py-12 text-center text-text-muted">
                       <div className="space-y-1">
                         <p className="font-semibold text-primary">Belum Ada Tiket Konsultasi Aktif</p>
                         <p className="text-[11px] text-text-secondary">
@@ -410,7 +405,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
                       <Badge
                         variant="outline"
                         className={`text-[10px] px-2 py-0.5 font-semibold ${
@@ -422,17 +417,6 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                         {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
                       </Badge>
                     </td>
-
-                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedTicket(ticket)}
-                        className="text-xs py-1 px-2.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
-                      >
-                        Detail Konsultasi
-                      </Button>
-                    </td>
                   </tr>
                 ))
               )}
@@ -443,9 +427,10 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
           <div className="p-4 border-t border-navy-light text-center bg-surface/30">
             <Link
               href="/dashboard/user/tiket"
-              className="text-xs text-primary hover:underline font-semibold"
+              className="text-xs text-primary hover:underline font-semibold inline-flex items-center gap-1.5"
             >
-              <span>Monitoring Konsultasi</span>
+              <span>Buka Menu Konsultasi &amp; Kertas Kerja Lengkap</span>
+              <span aria-hidden="true">&rarr;</span>
             </Link>
           </div>
         </CardContent>
@@ -536,135 +521,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
         </CardContent>
       </Card>
 
-      {/* MODAL 1: Detail Tiket & Lembar Kerja Inspeksi */}
-      {selectedTicket && (
-        <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto"
-          onClick={() => setSelectedTicket(null)}
-        >
-          <div
-            className="bg-white rounded-xl max-w-xl w-full border border-navy-light shadow-xl p-6 space-y-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between pb-3 border-b border-navy-light">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className="font-mono text-xs bg-surface text-primary border-navy-light">
-                    {selectedTicket.id}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] px-2 py-0.5 ${
-                      selectedTicket.status === "Completed"
-                        ? "bg-success/15 text-success border-success/30"
-                        : "bg-primary/10 text-primary border-primary/20"
-                    }`}
-                  >
-                    {selectedTicket.status === "Completed" ? "Selesai" : "Dalam Proses"}
-                  </Badge>
-                </div>
-                <h3 className="text-base font-bold text-primary">
-                  {selectedTicket.title}
-                </h3>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  Divisi: {selectedTicket.category} &bull; Lead: <strong>{selectedTicket.consultant}</strong>
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedTicket(null)}
-                className="p-1 text-text-secondary hover:text-error transition-colors"
-              >
-                <CloseIcon className="text-xs" />
-              </button>
-            </div>
-
-            {/* Progress Section */}
-            <div className="space-y-1.5 bg-surface p-3.5 rounded-lg border border-navy-light">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span>Progres Penyelesaian Kertas Kerja</span>
-                <span className="text-primary font-bold">{selectedTicket.progress}%</span>
-              </div>
-              <div className="w-full bg-white rounded-full h-2 overflow-hidden border border-navy-light">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${
-                    selectedTicket.status === "Completed" ? "bg-success" : "bg-primary"
-                  }`}
-                  style={{ width: `${selectedTicket.progress}%` }}
-                />
-              </div>
-              <div className="text-[10px] text-text-secondary flex items-center justify-between pt-1">
-                <span>Pembaruan terakhir: {selectedTicket.updatedAt}</span>
-                <span>Standar Kepatuhan SAK</span>
-              </div>
-            </div>
-
-            {/* Checklist Tahapan Kerja */}
-            <div>
-              <Label className="text-xs font-bold text-primary uppercase tracking-wider block mb-2.5">
-                Milestone &amp; Lembar Kerja Konsultan
-              </Label>
-              <div className="space-y-2">
-                {selectedTicket.checklists.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs ${
-                      item.done
-                        ? "bg-success/5 border-success/30 text-text-primary"
-                        : "bg-surface border-navy-light text-text-secondary"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                        item.done ? "bg-success text-white" : "border border-silver bg-white"
-                      }`}
-                    >
-                      {item.done && <CheckIcon className="text-[9px]" />}
-                    </div>
-                    <span className={item.done ? "font-medium" : ""}>{item.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Deliverable Download Area */}
-            {selectedTicket.deliverableFile && (
-              <div className="p-3.5 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <DocumentIcon className="text-primary text-base shrink-0" />
-                  <div className="truncate">
-                    <div className="font-bold text-primary truncate">{selectedTicket.deliverableFile}</div>
-                    <div className="text-[10px] text-text-secondary">{selectedTicket.deliverableSize || "PDF Resmi"} &bull; Laporan Telah Disetujui</div>
-                  </div>
-                </div>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleDownloadSimulation(selectedTicket.deliverableFile!)}
-                  className="shrink-0 text-xs inline-flex items-center gap-1.5"
-                >
-                  <DownloadIcon className="text-xs" />
-                  <span>Unduh</span>
-                </Button>
-              </div>
-            )}
-
-            <div className="pt-2 flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedTicket(null)}
-                className="border-navy-light text-xs"
-              >
-                Tutup Detail
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Detail Konsultasi & Pengelolaan Dokumen kini berpusat di Menu Konsultasi (/dashboard/user/tiket) */}
     </div>
   );
 }

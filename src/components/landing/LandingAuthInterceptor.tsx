@@ -33,68 +33,22 @@ export function LandingAuthInterceptor({ children }: LandingAuthInterceptorProps
       const href = target.getAttribute("href");
       if (!href) return;
 
-      // Pengecualian: link internal scroll anchor (# atau /#), external http/https/tel/mailto, dan halaman login/register
-      if (
-        href.startsWith("#") ||
-        href.startsWith("/#") ||
-        href.startsWith("http://") ||
-        href.startsWith("https://") ||
-        href.startsWith("mailto:") ||
-        href.startsWith("tel:") ||
-        href.startsWith("/login") ||
-        href.startsWith("/register")
-      ) {
+      // HANYA route internal privat (/dashboard/...) yang diarahkan ke login
+      if (href.startsWith("/dashboard")) {
+        e.preventDefault();
+        e.stopPropagation();
+        router.push(`/login?redirect=${encodeURIComponent(href)}`);
         return;
       }
 
-      // Ini adalah link menuju halaman internal (/konsultasi, /layanan/*, /peraturan, /edukasi, /karir, dll.)
-      e.preventDefault();
-      e.stopPropagation();
-      router.push(`/login?redirect=${encodeURIComponent(href)}`);
+      // Seluruh route publik (/, /layanan/*, /peraturan, /edukasi, /karir, /kontak, /konsultasi, external links, dll.)
+      // dapat diakses secara bebas tanpa login.
       return;
     }
 
     // 2. Intersepsi elemen Tombol (<button>)
-    if (target.tagName.toLowerCase() === "button") {
-      // Abaikan kontrol UI internal yang tidak berpindah halaman:
-      // - Switch tab kategori
-      // - Tombol ganti bahasa (ID | EN)
-      // - Tombol toggle menu mobile (hamburger / close)
-      // - Tombol close modal dialog
-      const isTab =
-        target.getAttribute("role") === "tab" ||
-        Boolean(target.closest('[role="tablist"]'));
-      const isLangSwitch =
-        target.textContent?.trim() === "ID" ||
-        target.textContent?.trim() === "EN";
-      const isCloseBtn =
-        target.getAttribute("aria-label")?.toLowerCase().includes("tutup") ||
-        target.getAttribute("aria-label")?.toLowerCase().includes("close");
-      const isMobileMenu =
-        target.getAttribute("aria-label")?.toLowerCase().includes("menu");
-
-      if (isTab || isLangSwitch || isCloseBtn || isMobileMenu) {
-        return;
-      }
-
-      // Tombol aksi seperti "Lihat Kualifikasi" / "Lamar Posisi" di Karir atau "Selengkapnya" di Edukasi
-      const btnText = target.textContent?.trim() || "";
-      if (
-        btnText.includes("Lamar Posisi") ||
-        btnText.includes("Lamar Pekerjaan") ||
-        btnText.includes("Lihat Kualifikasi") ||
-        btnText.includes("Selengkapnya")
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        const targetPath =
-          btnText.includes("Lamar") || btnText.includes("Kualifikasi")
-            ? "/karir"
-            : "/edukasi";
-        router.push(`/login?redirect=${encodeURIComponent(targetPath)}`);
-        return;
-      }
-    }
+    // Semua tombol publik (modal lamaran, tabs, CTA WhatsApp, baca artikel) dapat diakses bebas tanpa login
+    return;
   };
 
   return (
