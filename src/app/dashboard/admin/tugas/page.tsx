@@ -74,7 +74,6 @@ function AdminTugasSayaContent() {
   const [detailSendFile, setDetailSendFile] = useState<File | null>(null);
   const [detailDocCategory, setDetailDocCategory] = useState<string>("Kertas Kerja & Laporan Akhir");
   const [detailDocNotes, setDetailDocNotes] = useState<string>("");
-  const [detailSyncStatus, setDetailSyncStatus] = useState<string>("");
   const [isSendingDetailDoc, setIsSendingDetailDoc] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -228,7 +227,7 @@ function AdminTugasSayaContent() {
   }, [tickets]);
 
 
-  // Kirim Seluruh Dokumen & Catatan dari dalam Lembar Kerja (Fleksibel: Status bisa diubah tanpa wajib kirim berkas atau catatan!)
+  // Kirim Seluruh Dokumen & Catatan dari dalam Lembar Kerja
   const handleSendDocFromDetail = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicket) return;
@@ -238,8 +237,8 @@ function AdminTugasSayaContent() {
       return;
     }
 
-    if (!detailSendFile && !detailDocNotes.trim() && !detailSyncStatus) {
-      showToast("Silakan tentukan status konsultasi, catatan, atau pilih berkas dokumen.");
+    if (!detailSendFile && !detailDocNotes.trim()) {
+      showToast("Silakan tulis catatan atau pilih berkas dokumen deliverable yang ingin dikirimkan.");
       return;
     }
 
@@ -306,110 +305,22 @@ function AdminTugasSayaContent() {
         combinedMessage = `[Pengiriman Dokumen: ${detailDocCategory}] Konsultan telah mengunggah berkas: "${fileName}" (${fileSize}). Berkas dapat diunduh oleh Klien di dashboard.`;
       } else if (detailDocNotes.trim()) {
         combinedMessage = detailDocNotes.trim();
-      } else if (detailSyncStatus) {
-        combinedMessage = `Konsultan PIC memperbarui status konsultasi menjadi "${detailSyncStatus}".`;
-      }
-
-      // 3. Tentukan sinkronisasi status & progres jika admin memilih perubahan status
-      const nextStatus = (detailSyncStatus as ConsultationStatus) || currentTicket.status;
-      let nextProgress = currentTicket.progress;
-      if (nextStatus === "Selesai") {
-        nextProgress = 100;
-      } else if (detailSyncStatus && detailSyncStatus !== currentTicket.status) {
-        if (nextStatus === "Menunggu Klien") {
-          nextProgress = currentTicket.progress >= 100 ? 50 : currentTicket.progress;
-        } else if (nextStatus === "Dalam Proses") {
-          nextProgress = currentTicket.progress >= 100 ? 75 : Math.max(currentTicket.progress, 50);
-        }
-      }
-
-      // Sinkronkan tahapan pengerjaan kertas kerja jika status diubah
-      let updatedMilestones: Milestone[] =
-        currentTicket.milestones && currentTicket.milestones.length > 0
-          ? currentTicket.milestones.map((m) => ({ ...m }))
-          : [
-              {
-                step: "1",
-                title: "Permohonan Diterima",
-                status: "completed",
-                date: formatConsultationDate(currentTicket.createdAt),
-                description: "Permohonan konsultasi diterima dan sedang menunggu penetapan PIC oleh Superadmin.",
-              },
-              {
-                step: "2",
-                title: `PIC Ditetapkan: ${currentTicket.assignedAdminName || activeStaffProfile.name}`,
-                status: "completed",
-                date: formatConsultationDate(currentTicket.createdAt),
-                description: "Superadmin menetapkan konsultan penanggung jawab kertas kerja.",
-              },
-              {
-                step: "3",
-                title: "Pengerjaan Kertas Kerja & Pembahasan",
-                status: "in_progress",
-                date: formatConsultationDate(currentTicket.createdAt),
-                description: "Konsultan PIC sedang menyusun kertas kerja, rekonsiliasi, serta analisis kepatuhan.",
-              },
-              {
-                step: "4",
-                title: "Konsultasi Selesai & Laporan Final",
-                status: "pending",
-                date: "-",
-                description: "Penyampaian deliverable akhir dan penutupan perikatan konsultasi.",
-              },
-            ];
-
-      if (detailSyncStatus) {
-        const stepsToComplete = Math.round((nextProgress / 100) * updatedMilestones.length);
-        updatedMilestones.forEach((m, idx) => {
-          if (idx < stepsToComplete) {
-            m.status = "completed";
-            if (!m.date || m.date === "-") {
-              m.date = formatConsultationDate(new Date().toISOString());
-            }
-          } else if (idx === stepsToComplete && nextProgress < 100) {
-            m.status = "in_progress";
-          } else {
-            m.status = "pending";
-          }
-        });
       }
 
       const updateRes = updateTicketByStaff(currentTicket.id, activeStaffProfile, {
-        status: nextStatus,
-        progress: nextProgress,
-        milestones: updatedMilestones,
         notes: combinedMessage,
       });
 
       if (updateRes.success && updateRes.ticket) {
-        // Sinkronkan ke sharedTicketsStorage
-        const allTickets = getStoredClientTickets();
-        const tIdx = allTickets.findIndex((t) => t.id.toLowerCase() === currentTicket.id.toLowerCase());
-        if (tIdx !== -1) {
-          allTickets[tIdx].milestones = updatedMilestones;
-          allTickets[tIdx].progress = nextProgress;
-          allTickets[tIdx].status = nextStatus;
-          saveStoredClientTickets(allTickets);
-        }
-
-        setSelectedTicket({
-          ...updateRes.ticket,
-          milestones: updatedMilestones,
-          progress: nextProgress,
-          status: nextStatus,
-        });
-
+        setSelectedTicket(updateRes.ticket);
         showToast(
           detailSendFile
-            ? `Dokumen "${fileName}" dan status berhasil diperbarui.`
-            : detailDocNotes.trim()
-            ? `Catatan konsultan berhasil disimpan dan dikirimkan ke Klien.`
-            : `Status konsultasi berhasil diperbarui menjadi "${nextStatus}".`
+            ? `Dokumen "${fileName}" berhasil dikirimkan ke Klien.`
+            : `Catatan konsultan berhasil disimpan dan dikirimkan ke Klien.`
         );
         // Reset input form
         setDetailSendFile(null);
         setDetailDocNotes("");
-        setDetailSyncStatus("");
         loadData();
       } else {
         showToast(updateRes.message || "Gagal memperbarui tiket.");
@@ -475,12 +386,10 @@ function AdminTugasSayaContent() {
     const completedCount = currentMilestones.filter((m) => m.status === "completed").length;
     const nextProgress = Math.round((completedCount / currentMilestones.length) * 100);
 
-    let nextStatus: ConsultationStatus = selectedTicket.status;
+    let nextStatus: ConsultationStatus = "Dalam Proses";
     if (nextProgress === 100) {
       nextStatus = "Selesai";
-    } else if (selectedTicket.status === "Selesai" && nextProgress < 100) {
-      nextStatus = "Dalam Proses";
-    } else if (nextProgress >= 50 && (selectedTicket.status === "Menunggu Penugasan" || selectedTicket.status === "Ditugaskan")) {
+    } else {
       nextStatus = "Dalam Proses";
     }
 
@@ -510,109 +419,9 @@ function AdminTugasSayaContent() {
         status: nextStatus,
       });
       loadData();
-      showToast(`Tahapan "${target.title}" berhasil diperbarui. Progres: ${nextProgress}%`);
+      showToast(`Tahapan "${target.title}" berhasil diperbarui. Progres: ${nextProgress}% (${nextStatus})`);
     } else {
       showToast(res.message || "Gagal memperbarui tahapan.");
-    }
-  };
-
-  // Pembaruan Cepat Progres Konsultasi oleh PIC (1-Klik langsung sinkron tanpa perlu upload berkas / kirim catatan)
-  const handleQuickProgressUpdate = (progressVal: number) => {
-    if (!selectedTicket) return;
-    if (!canAdminAccessTicket(selectedTicket, activeStaffProfile)) {
-      showToast("Akses ditolak: Anda tidak memiliki wewenang untuk tiket ini.");
-      return;
-    }
-
-    const currentMilestones: Milestone[] =
-      selectedTicket.milestones && selectedTicket.milestones.length > 0
-        ? selectedTicket.milestones.map((m) => ({ ...m }))
-        : [
-            {
-              step: "1",
-              title: "Permohonan Diterima",
-              status: "completed",
-              date: formatConsultationDate(selectedTicket.createdAt),
-              description: "Permohonan konsultasi diterima dan sedang menunggu penetapan PIC oleh Superadmin.",
-            },
-            {
-              step: "2",
-              title: `PIC Ditetapkan: ${selectedTicket.assignedAdminName || activeStaffProfile.name}`,
-              status: "completed",
-              date: formatConsultationDate(selectedTicket.createdAt),
-              description: "Superadmin menetapkan konsultan penanggung jawab kertas kerja.",
-            },
-            {
-              step: "3",
-              title: "Pengerjaan Kertas Kerja & Pembahasan",
-              status: "in_progress",
-              date: formatConsultationDate(selectedTicket.createdAt),
-              description: "Konsultan PIC sedang menyusun kertas kerja, rekonsiliasi, serta analisis kepatuhan.",
-            },
-            {
-              step: "4",
-              title: "Konsultasi Selesai & Laporan Final",
-              status: "pending",
-              date: "-",
-              description: "Penyampaian deliverable akhir dan penutupan perikatan konsultasi.",
-            },
-          ];
-
-    // Sinkronkan tahapan berdasarkan progressVal
-    const totalSteps = currentMilestones.length;
-    const stepsToComplete = Math.round((progressVal / 100) * totalSteps);
-
-    currentMilestones.forEach((m, idx) => {
-      if (idx < stepsToComplete) {
-        m.status = "completed";
-        if (!m.date || m.date === "-") {
-          m.date = formatConsultationDate(new Date().toISOString());
-        }
-      } else if (idx === stepsToComplete && progressVal < 100) {
-        m.status = "in_progress";
-      } else {
-        m.status = "pending";
-      }
-    });
-
-    let nextStatus: ConsultationStatus = selectedTicket.status;
-    if (progressVal === 100) {
-      nextStatus = "Selesai";
-    } else if (selectedTicket.status === "Selesai" && progressVal < 100) {
-      nextStatus = "Dalam Proses";
-    } else if (progressVal >= 50 && (selectedTicket.status === "Menunggu Penugasan" || selectedTicket.status === "Ditugaskan")) {
-      nextStatus = "Dalam Proses";
-    }
-
-    const noteMsg = `Konsultan PIC memperbarui progres konsultasi menjadi ${progressVal}% (${nextStatus}).`;
-
-    const res = updateTicketByStaff(selectedTicket.id, activeStaffProfile, {
-      status: nextStatus,
-      progress: progressVal,
-      milestones: currentMilestones,
-      notes: noteMsg,
-    });
-
-    if (res.success && res.ticket) {
-      const allTickets = getStoredClientTickets();
-      const tIdx = allTickets.findIndex((t) => t.id.toLowerCase() === selectedTicket.id.toLowerCase());
-      if (tIdx !== -1) {
-        allTickets[tIdx].milestones = currentMilestones;
-        allTickets[tIdx].progress = progressVal;
-        allTickets[tIdx].status = nextStatus;
-        saveStoredClientTickets(allTickets);
-      }
-
-      setSelectedTicket({
-        ...res.ticket,
-        milestones: currentMilestones,
-        progress: progressVal,
-        status: nextStatus,
-      });
-      loadData();
-      showToast(`Progres konsultasi berhasil diperbarui menjadi ${progressVal}% (${nextStatus}).`);
-    } else {
-      showToast(res.message || "Gagal memperbarui progres.");
     }
   };
 
@@ -837,7 +646,7 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                 </div>
               </div>
 
-              {/* Indikator Penyelesaian Dinamis & Quick 1-Click Update */}
+              {/* Indikator Penyelesaian Dinamis */}
               <div className="flex flex-col sm:items-end gap-2.5 shrink-0">
                 <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-primary-light shadow-2xs">
                   <div className="text-right">
@@ -852,26 +661,6 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                       style={{ width: `${calculatedProgress}%` }}
                     />
                   </div>
-                </div>
-
-                {/* Tombol 1-Klik Cepat Update Progres (Tanpa Perlu Kirim Catatan / Berkas) */}
-                <div className="flex items-center gap-1 bg-surface/90 p-1 rounded-xl border border-primary-light shadow-2xs">
-                  <span className="text-[10px] font-bold text-text-secondary px-1.5 hidden sm:inline">Set Progres:</span>
-                  {[25, 50, 75, 100].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handleQuickProgressUpdate(val)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                        calculatedProgress === val
-                          ? "bg-primary text-white shadow-2xs scale-105"
-                          : "bg-white text-text-secondary hover:text-primary hover:bg-surface border border-primary-light"
-                      }`}
-                      title={`Klik untuk langsung mengubah progres konsultasi menjadi ${val}%`}
-                    >
-                      {val === 100 ? "100% Selesai ✓" : `${val}%`}
-                    </button>
-                  ))}
                 </div>
               </div>
             </div>
@@ -1076,58 +865,39 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                   )}
                 </div>
 
-                {/* 3. Form Kirim Dokumen & Perbarui Status (Fleksibel: Status bisa diubah langsung tanpa file!) */}
+                {/* 3. Form Kirim Dokumen & Catatan Konsultan PIC */}
                 <div className="p-4 sm:p-5 bg-surface/40 rounded-xl border border-primary-light space-y-4">
                   <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                        Kirim Dokumen &amp; Perbarui Status
+                        Kirim Dokumen &amp; Catatan Tim
                       </h4>
                       <p className="text-[11px] text-text-muted mt-0.5">
-                        Pilih status baru, kirim catatan, atau lampirkan berkas deliverable
+                        Kirim berkas deliverable atau catatan/pesan resmi untuk klien
                       </p>
                     </div>
                   </div>
 
                   <form onSubmit={handleSendDocFromDetail} className="space-y-3.5 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="detail-doc-category" className="text-[11px] font-semibold text-text-secondary block">
-                          Kategori Dokumen
-                        </Label>
-                        <Select
-                          id="detail-doc-category"
-                          value={detailDocCategory}
-                          onChange={(e) => setDetailDocCategory(e.target.value)}
-                          className="w-full text-xs h-9 bg-white"
-                        >
-                          <option value="Kertas Kerja & Laporan Akhir">Kertas Kerja &amp; Laporan Akhir</option>
-                          <option value="Draft Dokumen / Laporan Sementara">Draft Dokumen / Laporan Sementara</option>
-                          <option value="Kertas Kerja Rekonsiliasi & Perhitungan">Kertas Kerja Rekonsiliasi &amp; Perhitungan</option>
-                          <option value="Draft Tanggapan SP2DK DJP">Draft Tanggapan SP2DK DJP</option>
-                          <option value="Dokumen Klarifikasi & Permintaan Data">Dokumen Klarifikasi &amp; Permintaan Data</option>
-                          <option value="Bukti Setor / Bukti Lapor Pajak (BPE/NTPN)">Bukti Setor / Lapor Pajak (BPE/NTPN)</option>
-                          <option value="Surat Kuasa & Dokumen Legalitas">Surat Kuasa &amp; Dokumen Legalitas</option>
-                          <option value="Dokumen Pendukung Lainnya">Dokumen Pendukung Lainnya</option>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label htmlFor="detail-sync-status" className="text-[11px] font-semibold text-text-secondary block">
-                          Status Konsultasi
-                        </Label>
-                        <Select
-                          id="detail-sync-status"
-                          value={detailSyncStatus}
-                          onChange={(e) => setDetailSyncStatus(e.target.value)}
-                          className="w-full text-xs h-9 bg-white"
-                        >
-                          <option value="">Tetap ({selectedTicket.status})</option>
-                          <option value="Dalam Proses">Dalam Proses</option>
-                          <option value="Menunggu Klien">Menunggu Klien</option>
-                          <option value="Selesai">Selesai</option>
-                        </Select>
-                      </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="detail-doc-category" className="text-[11px] font-semibold text-text-secondary block">
+                        Kategori Dokumen Deliverable
+                      </Label>
+                      <Select
+                        id="detail-doc-category"
+                        value={detailDocCategory}
+                        onChange={(e) => setDetailDocCategory(e.target.value)}
+                        className="w-full text-xs h-9 bg-white"
+                      >
+                        <option value="Kertas Kerja & Laporan Akhir">Kertas Kerja &amp; Laporan Akhir</option>
+                        <option value="Draft Dokumen / Laporan Sementara">Draft Dokumen / Laporan Sementara</option>
+                        <option value="Kertas Kerja Rekonsiliasi & Perhitungan">Kertas Kerja Rekonsiliasi &amp; Perhitungan</option>
+                        <option value="Draft Tanggapan SP2DK DJP">Draft Tanggapan SP2DK DJP</option>
+                        <option value="Dokumen Klarifikasi & Permintaan Data">Dokumen Klarifikasi &amp; Permintaan Data</option>
+                        <option value="Bukti Setor / Bukti Lapor Pajak (BPE/NTPN)">Bukti Setor / Lapor Pajak (BPE/NTPN)</option>
+                        <option value="Surat Kuasa & Dokumen Legalitas">Surat Kuasa &amp; Dokumen Legalitas</option>
+                        <option value="Dokumen Pendukung Lainnya">Dokumen Pendukung Lainnya</option>
+                      </Select>
                     </div>
 
                     {/* Dropzone File Dokumen */}
@@ -1218,19 +988,15 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                         type="submit"
                         variant="primary"
                         size="sm"
-                        disabled={isSendingDetailDoc || (!detailSendFile && !detailDocNotes.trim() && !detailSyncStatus)}
+                        disabled={isSendingDetailDoc || (!detailSendFile && !detailDocNotes.trim())}
                         className="text-xs font-semibold px-4 h-9 shadow-xs cursor-pointer"
                       >
                         <SendIcon className="mr-1.5 text-xs" />
                         {isSendingDetailDoc
-                          ? "Menyimpan..."
+                          ? "Mengirimkan..."
                           : detailSendFile
-                          ? "Kirim Dokumen & Perbarui Status"
-                          : detailSyncStatus && !detailDocNotes.trim()
-                          ? "Perbarui Status Konsultasi"
-                          : detailSyncStatus && detailDocNotes.trim()
-                          ? "Kirim Catatan & Perbarui Status"
-                          : "Kirim Catatan Konsultan"}
+                          ? "Kirim Dokumen Deliverable"
+                          : "Kirim Catatan Tim"}
                       </Button>
                     </div>
                   </form>
@@ -1370,7 +1136,6 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                 >
                   <option value="ALL">Semua Status</option>
                   <option value="Dalam Proses">Dalam Proses</option>
-                  <option value="Menunggu Klien">Menunggu Klien</option>
                   <option value="Selesai">Selesai</option>
                 </Select>
               </div>
@@ -1430,8 +1195,6 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                                 className={`h-full rounded-full ${
                                   ticket.status === "Selesai"
                                     ? "bg-emerald-500"
-                                    : ticket.status === "Menunggu Klien"
-                                    ? "bg-blue-500"
                                     : "bg-primary"
                                 }`}
                                 style={{ width: `${ticket.progress || 0}%` }}

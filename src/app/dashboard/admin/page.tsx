@@ -264,7 +264,6 @@ function AdminDashboardContent() {
             >
               <option value="ALL">Semua Status</option>
               <option value="Dalam Proses">Dalam Proses</option>
-              <option value="Menunggu Klien">Menunggu Klien</option>
               <option value="Selesai">Selesai</option>
             </Select>
           </div>
@@ -335,8 +334,6 @@ function AdminDashboardContent() {
                             className={`h-full rounded-full ${
                               t.status === "Selesai"
                                 ? "bg-emerald-500"
-                                : t.status === "Menunggu Klien"
-                                ? "bg-blue-500"
                                 : "bg-primary"
                             }`}
                             style={{ width: `${t.progress || 0}%` }}

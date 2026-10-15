@@ -376,9 +376,9 @@ export function getStoredClientTickets(): ClientTicket[] {
       let finalStatus = normalizedStatus;
       if (safeProgress === 100) {
         finalStatus = "Selesai";
-      } else if (finalStatus === "Selesai" && safeProgress < 100) {
+      } else if (safeProgress > 0) {
         finalStatus = "Dalam Proses";
-      } else if (safeProgress > 0 && finalStatus === "Menunggu Penugasan") {
+      } else if (finalStatus === "Selesai" && safeProgress < 100) {
         finalStatus = "Dalam Proses";
       }
 
@@ -391,7 +391,7 @@ export function getStoredClientTickets(): ClientTicket[] {
         ...t,
         category: safeCategory,
         createdAt: formatConsultationDate(t.createdAt),
-        status: normalizedStatus,
+        status: finalStatus,
         progress: safeProgress,
         milestones: safeMilestones,
         consultant:
