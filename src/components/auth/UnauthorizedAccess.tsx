@@ -24,7 +24,7 @@ export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: Unauthor
 
   const ownDashboardPath =
     currentRole === "superadmin"
-      ? "/dashboard/superadmin"
+      ? "/dashboard/superadmin/perikatan"
       : currentRole === "admin"
       ? "/dashboard/admin"
       : "/dashboard/user";

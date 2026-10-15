@@ -7,7 +7,7 @@ export default function SuperadminProfilePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/dashboard/superadmin");
+    router.replace("/dashboard/superadmin/perikatan");
   }, [router]);
 
   return null;

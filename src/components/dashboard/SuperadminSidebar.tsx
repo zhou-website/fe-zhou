@@ -48,7 +48,7 @@ const SUPERADMIN_MAIN_NAV: NavItem[] = [
   },
   {
     label: "Log Audit & Sistem",
-    href: "/dashboard/superadmin",
+    href: "/dashboard/superadmin/audit",
     icon: ShieldTaxIcon,
   },
 ];

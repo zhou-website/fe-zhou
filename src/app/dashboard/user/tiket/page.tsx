@@ -20,14 +20,21 @@ import { isDummyTicket, useAuth } from "@/context/AuthContext";
 import {
   getTicketsForClient,
   addStoredClientTicket,
-  getStoredDocuments,
+  getDocumentsForClient,
   addSupportingDocumentsToTicket,
+  formatConsultationDate,
+  getFormattedToday,
+  deleteStoredClientTicket,
+  toggleArchiveClientTicket,
+  isTicketArchived,
+  getDisplayPicName,
   TICKETS_UPDATED_EVENT,
   DOCUMENTS_UPDATED_EVENT,
   ClientTicket,
   ClientUploadedFile,
   ConsultationStatus,
 } from "@/data/sharedTicketsStorage";
+import { getStoredServices } from "@/data/layananStorage";
 import {
   CheckCircleIcon,
   DocumentIcon,
@@ -38,6 +45,10 @@ import {
   ChevronRightIcon,
   CheckIcon,
   UploadIcon,
+  MoreVerticalIcon,
+  ArchiveIcon,
+  UnarchiveIcon,
+  TrashIcon,
 } from "@/components/icons";
 
 interface Milestone {
@@ -84,6 +95,8 @@ interface Ticket {
   milestones: Milestone[];
   deliverables: Deliverable[];
   correspondences: Correspondence[];
+  isArchived?: boolean;
+  archivedAt?: string;
 }
 
 function ClientTicketMonitoringContent() {
@@ -125,11 +138,11 @@ function ClientTicketMonitoringContent() {
   // Sync consultations & deliverables, filtering out any backend dummy seed projects
   useEffect(() => {
     async function loadAllTickets() {
-      // 1. Ambil dokumen yang diunggah Admin dari shared storage
-      const storedDocs = getStoredDocuments();
+      // 1. Ambil dokumen yang diunggah Admin khusus untuk akun klien ini
+      const storedDocs = getDocumentsForClient(user?.email, user?.name);
 
       // 2. Cek tiket milik klien yang sedang login dari storage bersama
-      const stored = getTicketsForClient(user?.email).filter((t) => !isDummyTicket(t));
+      const stored = getTicketsForClient(user?.email, user?.name).filter((t) => !isDummyTicket(t));
       const mappedStored: Ticket[] = stored.map((t) => {
         // Berkas deliverable yang dikirim admin khusus untuk tiket ini
         const docDeliverables: Deliverable[] = storedDocs
@@ -177,7 +190,7 @@ function ClientTicketMonitoringContent() {
           clientDocuments: t.clientDocuments || [],
           status: t.status,
           progress: t.progress || (combinedDeliverables.length > 0 ? 75 : 25),
-          createdAt: t.createdAt || "Hari ini",
+          createdAt: formatConsultationDate(t.createdAt),
           estimatedCompletion: t.estimatedCompletion || "Sesuai Jadwal SLA",
           milestones:
             t.milestones && t.milestones.length > 0
@@ -215,15 +228,35 @@ function ClientTicketMonitoringContent() {
                 ],
           deliverables: combinedDeliverables,
           correspondences: t.correspondences || [],
+          isArchived: Boolean(t.isArchived || isTicketArchived(t.id)),
+          archivedAt: t.archivedAt,
         };
       });
 
-      // 3. Muat tiket backend dan filter keluar tiket dummy (PRJ-TAX-2026-001 / Maju Sukses)
+      // 3. Muat tiket backend khusus untuk klien yang sedang login
       let backendTickets: Ticket[] = [];
       try {
         const res = await clientApi.getConsultations();
         if (res.success && Array.isArray(res.data)) {
-          const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          const userEmail = (user?.email || "").toLowerCase().trim();
+          const userName = (user?.name || "").toLowerCase().trim();
+          const userId = user?.id;
+
+          const validConsultations = res.data
+            .filter((c: ConsultationItem) => !isDummyTicket(c))
+            .filter((c: ConsultationItem) => {
+              // Hanya muat tiket konsultasi yang terdaftar milik akun klien ini
+              const cEmail = (c.client?.email || "").toLowerCase().trim();
+              const cName = (c.client?.name || "").toLowerCase().trim();
+              const cId = c.client_id || c.client?.id;
+
+              if (userEmail && cEmail && cEmail === userEmail) return true;
+              if (userId && cId && String(cId) === String(userId)) return true;
+              if (userName && cName && (cName === userName || cName.includes(userName))) return true;
+
+              return false;
+            });
+
           if (validConsultations.length > 0) {
             backendTickets = validConsultations.map((c: ConsultationItem) => {
               const ticketCode = c.project_code || `TK-${c.id}`;
@@ -245,7 +278,7 @@ function ClientTicketMonitoringContent() {
                 category: "Tax Service Core",
                 priority: "Normal",
                 description: c.description,
-                consultant: "Tim Konsultan Zhou",
+                consultant: "Menunggu PIC",
                 status: isCompleted ? "Completed" : "In Progress",
                 progress: c.progress_percent || (isCompleted ? 100 : matchingDocs.length > 0 ? 75 : 40),
                 createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
@@ -300,6 +333,7 @@ function ClientTicketMonitoringContent() {
                       c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
                   },
                 ],
+                isArchived: isTicketArchived(ticketCode),
               };
             });
           }
@@ -335,23 +369,84 @@ function ClientTicketMonitoringContent() {
       window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadAllTickets);
       window.removeEventListener("storage", loadAllTickets);
     };
-  }, [user?.email, urlTicketId]);
+  }, [user?.email, user?.name, user?.id, urlTicketId]);
 
   // Modal State for New Ticket
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState<Ticket["category"]>("Tax Service Core");
-  const [newUrgency, setNewUrgency] = useState("Normal");
+  const [newCategory, setNewCategory] = useState<string>("");
   const [newDescription, setNewDescription] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Action Menu Titik Tiga (Arsip / Hapus)
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  // Tutup dropdown menu saat klik di luar
+  useEffect(() => {
+    const handleCloseMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("[data-action-menu]")) return;
+      setOpenActionMenuId(null);
+    };
+    document.addEventListener("click", handleCloseMenu);
+    return () => document.removeEventListener("click", handleCloseMenu);
+  }, []);
+
+  const handleToggleArchiveTicket = (ticket: Ticket) => {
+    const isNowArchived = toggleArchiveClientTicket(ticket.id);
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.id.toLowerCase() === ticket.id.toLowerCase()
+          ? {
+              ...t,
+              isArchived: isNowArchived,
+              archivedAt: isNowArchived ? new Date().toISOString() : undefined,
+            }
+          : t
+      )
+    );
+    showToast(
+      isNowArchived
+        ? `Konsultasi ${ticket.id} berhasil diarsipkan.`
+        : `Konsultasi ${ticket.id} berhasil dipulihkan dari arsip.`
+    );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!ticketToDelete) return;
+    deleteStoredClientTicket(ticketToDelete.id);
+    setTickets((prev) => prev.filter((t) => t.id.toLowerCase() !== ticketToDelete.id.toLowerCase()));
+    if (selectedTicketId && selectedTicketId.toLowerCase() === ticketToDelete.id.toLowerCase()) {
+      setSelectedTicketId(null);
+      setViewMode("list");
+      router.push(pathname);
+    }
+    showToast(`Konsultasi ${ticketToDelete.id} berhasil dihapus.`);
+    setIsDeleteModalOpen(false);
+    setTicketToDelete(null);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const storedDocs = typeof window !== "undefined" ? getStoredDocuments() : [];
+  const dynamicServices = typeof window !== "undefined" ? getStoredServices() : [];
+  const serviceOptions = Array.from(
+    new Set([
+      "Tax Service Core",
+      "Accounting Service",
+      "Business Consulting",
+      "Legal Compliance",
+      ...dynamicServices.map((s) => s.name).filter(Boolean),
+    ])
+  );
+
+  const storedDocs = typeof window !== "undefined" ? getDocumentsForClient(user?.email, user?.name) : [];
   const activeCount = tickets.filter(
     (t) => t.status !== "Selesai" && t.status !== "Completed" && t.status !== "Dibatalkan"
   ).length;
@@ -367,6 +462,14 @@ function ClientTicketMonitoringContent() {
 
   // Filtering Logic
   const filteredTickets = tickets.filter((ticket) => {
+    // Filter status arsip
+    if (statusFilter === "ARCHIVED") {
+      if (!ticket.isArchived) return false;
+    } else if (statusFilter !== "ALL_WITH_ARCHIVED") {
+      // Sembunyikan tiket arsip secara default dari daftar aktif
+      if (ticket.isArchived) return false;
+    }
+
     // Category Filter
     if (categoryFilter !== "all" && ticket.category !== categoryFilter) return false;
 
@@ -544,20 +647,15 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
   };
 
   // Handle New Ticket Submit
-  const handleCreateTicket = async (e: React.FormEvent) => {
+  const handleCreateTicket = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newCategory || !newCategory.trim()) {
+      showToast("Gagal: Anda wajib memilih divisi layanan yang ingin dikonsultasikan terlebih dahulu.");
+      return;
+    }
     if (!newTitle.trim() || !newDescription.trim()) {
       showToast("Mohon lengkapi judul dan deskripsi permohonan konsultasi.");
       return;
-    }
-
-    try {
-      await clientApi.escalateChatbot({
-        message: `[${newCategory}] [Urgensi: ${newUrgency}] ${newTitle}: ${newDescription}`,
-        category: newCategory,
-      });
-    } catch (err) {
-      console.warn("Backend ticket creation notice:", err);
     }
 
     const newId = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
@@ -571,7 +669,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
               attachedFile.name.toLowerCase().endsWith(".xls")
                 ? "XLSX"
                 : "PDF",
-            date: "Hari ini",
+            date: getFormattedToday(),
             uploadedBy: user?.name || "Klien",
           },
         ]
@@ -579,14 +677,13 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
 
     const newTicketItem: ClientTicket = {
       id: newId,
-      title: newTitle,
+      title: newTitle.trim(),
       category: newCategory,
-      consultant: "Menunggu Penugasan PIC oleh Superadmin",
+      consultant: "Menunggu PIC",
       status: "Menunggu Penugasan",
-      priority: (newUrgency as "Normal" | "Tinggi" | "Mendesak") || "Normal",
-      description: newDescription,
+      description: newDescription.trim(),
       progress: 15,
-      createdAt: "Hari ini",
+      createdAt: getFormattedToday(),
       estimatedCompletion: "Menunggu Penetapan PIC",
       clientName: user?.name || "Klien Terdaftar",
       clientEmail: user?.email || "klien@perusahaan.com",
@@ -597,7 +694,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
           step: "01",
           title: "Permohonan Diterima",
           status: "completed",
-          date: "Hari ini",
+          date: getFormattedToday(),
           description: "Permohonan konsultasi diterima dan sedang menunggu penetapan Admin/PIC oleh Superadmin.",
         },
         {
@@ -629,19 +726,35 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
           sender: "Superadmin (Sistem Zhou)",
           role: "Superadmin",
           date: "Hari ini • Baru saja",
-          message: `Permohonan konsultasi telah diterima: "${newDescription}". Masuk ke antrian penugasan Superadmin untuk dialokasikan ke PIC divisi terkait.`,
+          message: `Permohonan konsultasi telah diterima: "${newDescription.trim()}". Masuk ke antrian penugasan Superadmin untuk dialokasikan ke PIC divisi terkait.`,
         },
       ],
     };
 
-    // Tambah ke storage bersama sehingga Superadmin langsung dapat melihat tiket ini di antrian penugasan
+    // 1. Tambah ke storage bersama secara instan tanpa jeda
     addStoredClientTicket(newTicketItem);
+
+    // 2. Langsung perbarui state tiket lokal di halaman
+    const mappedNewTicket: Ticket = {
+      ...newTicketItem,
+      deliverables: [],
+    };
+    setTickets((prev) => [mappedNewTicket, ...prev.filter((t) => t.id.toLowerCase() !== newId.toLowerCase())]);
     setSelectedTicketId(newId);
     setIsNewTicketModalOpen(false);
     setNewTitle("");
+    setNewCategory("");
     setNewDescription("");
     setAttachedFile(null);
     showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}.`);
+
+    // 3. Sinkronkan ke backend secara asinkron tanpa menunggu/menunda UI
+    clientApi.escalateChatbot({
+      message: `[${newCategory}] ${newTitle.trim()}: ${newDescription.trim()}`,
+      category: newCategory,
+    }).catch((err) => {
+      console.warn("Backend ticket creation notice:", err);
+    });
   };  const renderDetailView = () => {
     if (!selectedTicket) return null;
 
@@ -673,7 +786,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
             className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-primary-dark transition-colors bg-white px-3.5 py-2 rounded-xl border border-primary-light shadow-2xs hover:bg-surface cursor-pointer w-fit"
           >
             <ChevronLeftIcon className="text-xs" />
-            <span>Kembali ke Daftar Seluruh Konsultasi</span>
+            <span>Kembali ke Daftar Konsultasi Saya</span>
           </button>
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <span>Menu Konsultasi</span>
@@ -688,14 +801,14 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
           <CardHeader className="p-5 sm:p-6 border-b border-primary-light bg-surface/30">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-2 flex-1 min-w-0">
-                {/* Baris Badge: ID, Status, Prioritas, Divisi */}
+                {/* Baris Badge: ID, Status, Divisi */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs font-bold text-primary bg-white border border-primary-light px-2.5 py-0.5 rounded-md shadow-2xs">
                     {selectedTicket.id}
                   </span>
                   {selectedTicket.status === "Menunggu Penugasan" ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                      Menunggu Penugasan
+                      Menunggu PIC
                     </span>
                   ) : selectedTicket.status === "Ditugaskan" ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
@@ -714,19 +827,6 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                       Dalam Proses
                     </span>
                   )}
-                  {selectedTicket.priority && (
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
-                        selectedTicket.priority === "Mendesak"
-                          ? "bg-rose-50 text-rose-800 border-rose-200"
-                          : selectedTicket.priority === "Tinggi"
-                          ? "bg-orange-50 text-orange-800 border-orange-200"
-                          : "bg-slate-50 text-slate-700 border-slate-200"
-                      }`}
-                    >
-                      Prioritas: {selectedTicket.priority}
-                    </span>
-                  )}
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-white text-text-secondary border border-primary-light">
                     Divisi: {selectedTicket.category}
                   </span>
@@ -741,21 +841,30 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-text-secondary">
                   <div className="flex items-center gap-1.5">
                     <span className="text-text-muted">PIC Bertugas:</span>
-                    {selectedTicket.assignedAdminName ? (
-                      <span className="font-semibold text-primary">
-                        {selectedTicket.assignedAdminName}
-                        {selectedTicket.assignedAdminDivision ? ` (${selectedTicket.assignedAdminDivision})` : ""}
-                      </span>
-                    ) : (
-                      <span className="text-amber-800 font-medium bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
-                        Belum ditugaskan (Menunggu penugasan Superadmin)
-                      </span>
-                    )}
+                    {(() => {
+                      const picName = getDisplayPicName(selectedTicket);
+                      const isWaiting = picName === "Menunggu PIC";
+                      if (isWaiting) {
+                        return (
+                          <span className="text-amber-800 font-semibold italic bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-[11px]">
+                            Menunggu PIC
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="font-semibold text-primary">
+                          {picName}
+                          {selectedTicket.assignedAdminDivision ? ` (${selectedTicket.assignedAdminDivision})` : ""}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <span className="text-text-muted select-none">•</span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-text-muted">Tanggal Pengajuan:</span>
-                    <span className="font-medium text-text-primary">{selectedTicket.createdAt}</span>
+                    <span className="font-medium text-text-primary">
+                      {formatConsultationDate(selectedTicket.createdAt)}
+                    </span>
                   </div>
                   {selectedTicket.clientCompany && (
                     <>
@@ -932,54 +1041,16 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                     <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
                       Dokumen Pendukung dari Klien
                     </h4>
-
-                    {selectedTicket.status === "Selesai" || selectedTicket.status === "Dibatalkan" ? (
-                      <span className="text-[10px] font-medium text-text-muted bg-surface px-2 py-0.5 rounded border border-primary-light shrink-0">
-                        Pengunggahan Ditutup ({selectedTicket.status})
-                      </span>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setAdditionalFiles([]);
-                          setAdditionalDocNote("");
-                          setAdditionalUploadError(null);
-                          setIsAdditionalDocModalOpen(true);
-                        }}
-                        className="text-xs h-7 px-2.5 font-semibold text-primary border-primary-light hover:bg-primary/5 flex items-center gap-1 shrink-0"
-                      >
-                        <UploadIcon className="text-[10px]" />
-                        <span>Unggah Dokumen</span>
-                      </Button>
-                    )}
                   </div>
 
                   {(!selectedTicket.clientDocuments || selectedTicket.clientDocuments.length === 0) ? (
                     <div className="p-4 rounded-xl border border-dashed border-primary-light bg-surface/30 text-center space-y-1.5">
                       <p className="text-xs font-semibold text-primary">
-                        Belum ada dokumen pada konsultasi ini. Anda dapat mengunggah dokumen pendukung jika diperlukan.
+                        Belum ada dokumen pendukung yang dilampirkan pada konsultasi ini.
                       </p>
                       <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
-                        Unggah dokumen pendukung seperti SPT, bukti potong, laporan keuangan, atau berkas terkait untuk dianalisis oleh PIC konsultan.
+                        Dokumen yang dilampirkan saat pengajuan konsultasi awal akan ditampilkan di sini.
                       </p>
-                      {selectedTicket.status !== "Selesai" && selectedTicket.status !== "Dibatalkan" && (
-                        <Button
-                          type="button"
-                          variant="primary"
-                          size="sm"
-                          onClick={() => {
-                            setAdditionalFiles([]);
-                            setAdditionalDocNote("");
-                            setAdditionalUploadError(null);
-                            setIsAdditionalDocModalOpen(true);
-                          }}
-                          className="text-xs h-7 px-3 mt-1 font-semibold"
-                        >
-                          Unggah Dokumen
-                        </Button>
-                      )}
                     </div>
                   ) : (
                     <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -1183,10 +1254,10 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
         <CardHeader className="p-5 sm:p-6 border-b border-primary-light space-y-4">
           <div className="space-y-1">
             <CardTitle className="text-base sm:text-lg font-bold text-primary">
-              Daftar Seluruh Konsultasi
+              Daftar Konsultasi Saya
             </CardTitle>
             <CardDescription className="text-xs text-text-secondary">
-              Pilih dan klik baris atau tombol Detail Konsultasi untuk membuka lembar kerja dan mengelola dokumen perikatan.
+              Pantau seluruh permohonan konsultasi perpajakan yang Anda daftarkan di Zhou Consulting beserta progres lembar kerja dan dokumen perikatan.
             </CardDescription>
           </div>
 
@@ -1203,7 +1274,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                   className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
                 />
               </div>
-              <div className="w-full sm:w-60 shrink-0">
+              <div className="w-full sm:w-56 shrink-0">
                 <Select
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
@@ -1216,12 +1287,29 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                   <option value="Legal">Legal Compliance</option>
                 </Select>
               </div>
+              <div className="w-full sm:w-44 shrink-0">
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="text-xs h-9 bg-surface border-primary-light w-full"
+                >
+                  <option value="ALL">Semua Konsultasi Aktif</option>
+                  <option value="ARCHIVED">Diarsipkan</option>
+                  <option value="ALL_WITH_ARCHIVED">Semua (Termasuk Arsip)</option>
+                </Select>
+              </div>
             </div>
 
             <Button
               variant="primary"
-              onClick={() => setIsNewTicketModalOpen(true)}
-              className="font-semibold text-xs py-2 px-4 shadow-sm shrink-0 whitespace-nowrap self-stretch sm:self-auto"
+              onClick={() => {
+                setNewCategory("");
+                setNewTitle("");
+                setNewDescription("");
+                setAttachedFile(null);
+                setIsNewTicketModalOpen(true);
+              }}
+              className="font-semibold text-xs py-2 px-4 shadow-sm shrink-0 whitespace-nowrap self-stretch sm:self-auto cursor-pointer"
             >
               <span>Buat Konsultasi Baru</span>
             </Button>
@@ -1229,17 +1317,17 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
         </CardHeader>
 
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[380px] pb-24">
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
-                  <th className="py-3.5 px-4">ID Konsultasi</th>
-                  <th className="py-3.5 px-4">Subjek / Kebutuhan</th>
-                  <th className="py-3.5 px-4">Divisi</th>
-                  <th className="py-3.5 px-4">Konsultan Lead</th>
-                  <th className="py-3.5 px-4">Progres</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 sm:px-6 text-right">Aksi</th>
+                  <th className="py-3.5 px-4 text-center">ID Konsultasi</th>
+                  <th className="py-3.5 px-4 text-center">Subjek / Kebutuhan</th>
+                  <th className="py-3.5 px-4 text-center">Divisi</th>
+                  <th className="py-3.5 px-4 text-center">Konsultan Lead</th>
+                  <th className="py-3.5 px-4 text-center">Progres</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 sm:px-6 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-light">
@@ -1260,13 +1348,17 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                     return (
                       <tr
                         key={ticket.id}
-                        onClick={() => {
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement | null;
+                          if (target?.closest?.("[data-action-menu]")) return;
                           router.push(`${pathname}?id=${encodeURIComponent(ticket.id)}`);
                           setSelectedTicketId(ticket.id);
                           setViewMode("detail");
                           window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                        className={`cursor-pointer transition-colors ${
+                        className={`cursor-pointer transition-colors relative ${
+                          openActionMenuId === ticket.id ? "z-40" : "z-auto"
+                        } ${
                           isSelected
                             ? "bg-primary/5 border-l-4 border-l-primary font-medium"
                             : "hover:bg-surface/50"
@@ -1274,28 +1366,49 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                         title="Klik untuk membuka detail konsultasi, lembar kerja & berkas pendukung"
                       >
                         <td className="py-3.5 px-4 font-mono font-bold text-primary">
-                          {ticket.id}
+                          <div className="flex items-center gap-1.5">
+                            <span>{ticket.id}</span>
+                            {ticket.isArchived && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                Arsip
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3.5 px-4 max-w-xs">
                           <div className="text-primary line-clamp-1 font-bold">
                             {ticket.title}
                           </div>
                           <div className="text-[11px] text-text-muted mt-0.5">
-                            Dibuat: {ticket.createdAt}
+                            Dibuat: {formatConsultationDate(ticket.createdAt)}
                           </div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="text-[11px] text-text-secondary">
-                            {ticket.category}
+                          <span className="text-[11px] text-text-secondary font-medium">
+                            {ticket.category || "Tax Service Core"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1.5 text-text-primary">
-                            <UserIcon className="text-[10px] text-text-muted" />
-                            <span className="font-medium">
-                              {ticket.assignedAdminName || ticket.consultant}
-                            </span>
-                          </div>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {(() => {
+                            const picName = getDisplayPicName(ticket);
+                            const isWaiting = picName === "Menunggu PIC";
+                            return (
+                              <div
+                                className={`flex items-center gap-1.5 ${
+                                  isWaiting ? "text-amber-700" : "text-text-primary"
+                                }`}
+                              >
+                                <UserIcon
+                                  className={`text-[10px] ${
+                                    isWaiting ? "text-amber-500" : "text-text-muted"
+                                  }`}
+                                />
+                                <span className={isWaiting ? "font-semibold italic text-amber-700 text-xs" : "font-medium text-xs"}>
+                                  {picName}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-2">
@@ -1315,7 +1428,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           {ticket.status === "Menunggu Penugasan" ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                              Menunggu Penugasan
+                              Menunggu PIC
                             </span>
                           ) : ticket.status === "Ditugaskan" ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
@@ -1335,22 +1448,100 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`${pathname}?id=${encodeURIComponent(ticket.id)}`);
-                              setSelectedTicketId(ticket.id);
-                              setViewMode("detail");
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }}
-                            className="text-xs py-1.5 px-3.5 h-auto font-semibold shadow-xs"
-                          >
-                            Detail Konsultasi
-                          </Button>
+                        <td className={`py-3.5 px-4 sm:px-6 text-right whitespace-nowrap ${
+                          openActionMenuId === ticket.id ? "relative z-50" : "relative"
+                        }`}>
+                          <div className="inline-flex items-center gap-1.5 justify-end">
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`${pathname}?id=${encodeURIComponent(ticket.id)}`);
+                                setSelectedTicketId(ticket.id);
+                                setViewMode("detail");
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="text-xs py-1.5 px-3.5 h-auto font-semibold shadow-xs"
+                            >
+                              Detail Konsultasi
+                            </Button>
+
+                            {/* Menu Titik Tiga (More Actions: Arsip, Pulihkan, Hapus) */}
+                            <div className="relative inline-block text-left" data-action-menu>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId((prev) => (prev === ticket.id ? null : ticket.id));
+                                }}
+                                className={`p-1.5 inline-flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                                  openActionMenuId === ticket.id
+                                    ? "text-primary bg-surface"
+                                    : "text-text-muted hover:text-primary hover:bg-surface"
+                                }`}
+                                title="Pilihan Aksi"
+                                aria-label="Pilihan aksi lainnya"
+                              >
+                                <MoreVerticalIcon className="text-sm pointer-events-none" />
+                              </button>
+
+                              {openActionMenuId === ticket.id && (
+                                <>
+                                  {/* Backdrop transparan untuk menutup menu ketika klik di luar */}
+                                  <div
+                                    className="fixed inset-0 z-40 bg-transparent"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuId(null);
+                                    }}
+                                  />
+
+                                  <div
+                                    className="absolute right-0 top-full mt-1.5 w-44 rounded-xl bg-white border border-primary-light shadow-xl z-50 py-1 text-left ring-1 ring-black/5 animate-in fade-in duration-100"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        handleToggleArchiveTicket(ticket);
+                                      }}
+                                      className="w-full px-3 py-2 text-xs flex items-center gap-2.5 text-text-primary hover:bg-surface font-medium transition-colors cursor-pointer"
+                                    >
+                                      {ticket.isArchived ? (
+                                        <>
+                                          <UnarchiveIcon className="text-xs text-primary shrink-0" />
+                                          <span>Pulihkan dari Arsip</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ArchiveIcon className="text-xs text-amber-600 shrink-0" />
+                                          <span>Arsip</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <div className="my-1 border-t border-primary-light/60" />
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenuId(null);
+                                        setTicketToDelete(ticket);
+                                        setIsDeleteModalOpen(true);
+                                      }}
+                                      className="w-full px-3 py-2 text-xs flex items-center gap-2.5 text-red-600 hover:bg-red-50 font-medium transition-colors cursor-pointer"
+                                    >
+                                      <TrashIcon className="text-xs shrink-0" />
+                                      <span>Hapus</span>
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1437,39 +1628,34 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="category" className="font-bold text-primary">
-                    Divisi Layanan
-                  </Label>
-                  <Select
-                    id="category"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as Ticket["category"])}
-                    className="text-xs h-9"
-                  >
-                    <option value="Tax Service Core">Tax Service Core</option>
-                    <option value="Accounting Service">Accounting Service</option>
-                    <option value="Business Consulting">Business Consulting</option>
-                    <option value="Legal">Legal Compliance</option>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="urgency" className="font-bold text-primary">
-                    Prioritas Penanganan
-                  </Label>
-                  <Select
-                    id="urgency"
-                    value={newUrgency}
-                    onChange={(e) => setNewUrgency(e.target.value)}
-                    className="text-xs h-9"
-                  >
-                    <option value="Normal">Normal (SLA 1x24 Jam)</option>
-                    <option value="Tinggi">Tinggi / Urgent (SP2DK Deadline)</option>
-                    <option value="Mendesak">Mendesak (Penanganan Segera)</option>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="category" className="font-bold text-primary flex items-center justify-between">
+                  <span>Divisi Layanan</span>
+                  <span className="text-[10px] text-error font-medium">* Wajib Dipilih</span>
+                </Label>
+                <Select
+                  id="category"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className={`text-xs h-9 transition-colors ${
+                    !newCategory
+                      ? "border-amber-400 bg-amber-50/20 text-text-muted"
+                      : "border-primary-light bg-white text-primary font-medium"
+                  }`}
+                  required
+                >
+                  <option value="" disabled>-- Wajib Pilih Divisi Layanan yang Ingin Dikonsultasikan --</option>
+                  {serviceOptions.map((srvName) => (
+                    <option key={srvName} value={srvName}>
+                      {srvName}
+                    </option>
+                  ))}
+                </Select>
+                {!newCategory && (
+                  <p className="text-[10px] text-amber-600 font-medium">
+                    * Harap pilih divisi layanan terlebih dahulu agar formulir dapat dikirim.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -1572,7 +1758,13 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                 >
                   Batal
                 </Button>
-                <Button type="submit" variant="primary" size="sm">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={!newCategory.trim() || !newTitle.trim() || !newDescription.trim()}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
                   Kirim Permohonan Konsultasi
                 </Button>
               </div>
@@ -1773,6 +1965,51 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Konfirmasi Hapus Konsultasi */}
+      {isDeleteModalOpen && ticketToDelete && (
+        <div className="fixed inset-0 z-50 bg-primary/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-primary-light shadow-xl overflow-hidden p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <TrashIcon className="text-lg" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-primary">
+                  Hapus Konsultasi?
+                </h3>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Apakah Anda yakin ingin menghapus tiket konsultasi{" "}
+                  <span className="font-semibold text-primary">{ticketToDelete.id}</span> - &quot;{ticketToDelete.title}&quot;? Tindakan ini akan menghapus tiket dari daftar pemantauan Anda.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t border-primary-light">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setTicketToDelete(null);
+                }}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmDelete}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-1.5"
+              >
+                <TrashIcon className="text-xs" />
+                <span>Ya, Hapus</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}

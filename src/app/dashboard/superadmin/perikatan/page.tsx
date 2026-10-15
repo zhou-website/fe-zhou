@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   adminApi,
+  superadminApi,
+  AdminUserItem,
   ConsultationItem,
 } from "@/lib/api";
 import { isDummyTicket } from "@/context/AuthContext";
@@ -17,21 +19,50 @@ import {
   CheckCircleIcon,
   UserIcon,
   TrashIcon,
+  EyeIcon,
+  MoreVerticalIcon,
+  ArchiveIcon,
+  UnarchiveIcon,
 } from "@/components/icons";
 
 import {
   getStoredClientTickets,
   deleteStoredClientTicket,
   clearAllStoredClientTickets,
+  isTicketDeleted,
+  toggleArchiveClientTicket,
+  isTicketArchived,
   getStoredStaffAdmins,
   saveStoredStaffAdmins,
   assignTicketPic,
+  formatConsultationDate,
   TICKETS_UPDATED_EVENT,
   DOCUMENTS_UPDATED_EVENT,
   STAFF_UPDATED_EVENT,
   ClientTicket,
   StaffAdminProfile,
 } from "@/data/sharedTicketsStorage";
+
+const cleanAdminName = (rawName: string) => {
+  return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
+};
+
+const isDummyAdmin = (a: { email?: string; name?: string }): boolean => {
+  const email = (a.email || "").toLowerCase();
+  const name = (a.name || "").toLowerCase();
+  return (
+    email.includes("deact.") ||
+    email.includes("staff.admin.") ||
+    email.includes("test") ||
+    email.includes("dummy") ||
+    email.includes("mock") ||
+    name.includes("test runner") ||
+    name.includes("deactivate") ||
+    name.includes("dummy") ||
+    name.includes("mock") ||
+    /\b17\d{10,12}\b/.test(email)
+  );
+};
 
 function SuperadminPerikatanContent() {
   const [tickets, setTickets] = useState<ClientTicket[]>([]);
@@ -47,14 +78,26 @@ function SuperadminPerikatanContent() {
   const [typedStaffName, setTypedStaffName] = useState<string>("");
   const [assignmentNotes, setAssignmentNotes] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
+  // Hanya tampilkan staf dengan role Admin (Superadmin tidak boleh ditugaskan sebagai PIC)
+  const assignableAdmins = useMemo(() => {
+    return staffAdmins.filter(
+      (adm) => adm.role !== "superadmin" && !String(adm.role || "").toLowerCase().includes("super")
+    );
+  }, [staffAdmins]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const loadData = React.useCallback(async () => {
-    setIsLoading(true);
+  const loadData = React.useCallback(async (isInitial = false) => {
+    // Hanya tampilkan loading spinner pada render awal jika belum ada tiket di layar
+    if (isInitial) {
+      setIsLoading(true);
+    }
+
     let backendList: ConsultationItem[] = [];
     try {
       const consultRes = await adminApi.getConsultations();
@@ -65,72 +108,202 @@ function SuperadminPerikatanContent() {
       console.warn("Gagal memuat data konsultasi backend:", err);
     }
 
-    const storedTickets = getStoredClientTickets();
-    const storedStaff = getStoredStaffAdmins();
-    setStaffAdmins(storedStaff);
+    try {
+      const staffRes = await superadminApi.getAdmins();
+      if (staffRes?.data && Array.isArray(staffRes.data)) {
+        const validAdmins = staffRes.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
+        const mappedStaff: StaffAdminProfile[] = validAdmins.map((adm: AdminUserItem, idx: number) => ({
+          id: `ADM-${String(adm.id).padStart(3, "0")}`,
+          name: cleanAdminName(adm.name),
+          email: adm.email,
+          nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
+          phone: adm.phone || "+62 812-9876-" + (1200 + idx),
+          role: adm.role === "SUPERADMIN" ? "superadmin" : "admin",
+          divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
+          isActive: adm.is_active,
+        }));
 
-    // Pastikan jika ada tiket dari backend yang belum terdaftar di storedTickets, tetap bisa diakses
-    const combined: ClientTicket[] = [...storedTickets];
-    for (const b of backendList) {
-      const exists = combined.some(
-        (t) =>
-          t.id.toLowerCase() === String(b.id).toLowerCase() ||
-          (b.project_code && t.id.toLowerCase() === b.project_code.toLowerCase())
-      );
-      if (!exists) {
-        combined.push({
-          id: b.project_code || `TK-${b.id}`,
-          title: b.title || "Konsultasi Perpajakan Klien",
-          category: (b.service?.service_name as "Tax Service Core") || "Tax Service Core",
-          status: b.status === "COMPLETED" ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
-          progress: b.status === "COMPLETED" ? 100 : b.status === "IN_PROGRESS" ? 60 : 15,
-          createdAt: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
-          estimatedCompletion: "14 Hari Kerja",
-          clientName: b.client?.name || "Klien Terdaftar",
-          clientEmail: b.client?.email || "-",
-          clientCompany: b.client?.company_name || "-",
-          consultant: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() || "Menunggu Penugasan" : "Menunggu Penugasan",
-          assignedAdminName: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() : undefined,
-          milestones: [],
-          deliverables: [],
-          correspondences: [],
-          clientDocuments: [],
-        });
+        setStaffAdmins(mappedStaff);
+        // Cegah perulangan event (STAFF_UPDATED_EVENT loop) jika data staf tidak berubah
+        const currentStaff = getStoredStaffAdmins();
+        if (JSON.stringify(currentStaff) !== JSON.stringify(mappedStaff)) {
+          saveStoredStaffAdmins(mappedStaff);
+        }
+      } else {
+        setStaffAdmins(getStoredStaffAdmins());
       }
+    } catch {
+      setStaffAdmins(getStoredStaffAdmins());
     }
 
-    setTickets(combined);
+    const storedTickets = getStoredClientTickets();
+
+    // Smart non-destructive merge:
+    // Selalu pertahankan tiket lama ("data lama"), jangan pernah menghapus tiket yang sudah tampil
+    // dan mutakhirkan secara halus dengan tiket baru yang masuk dari storage / backend
+    setTickets((prev) => {
+      const map = new Map<string, ClientTicket>();
+
+      // 1. Masukkan tiket lama yang saat ini sudah ada di state
+      for (const t of prev) {
+        if (t && t.id && !isTicketDeleted(t.id)) {
+          map.set(t.id.toLowerCase(), t);
+        }
+      }
+
+      // 2. Gabungkan data dari localStorage (storedTickets)
+      for (const st of storedTickets) {
+        if (!st || !st.id || isTicketDeleted(st.id)) continue;
+        const key = st.id.toLowerCase();
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, st);
+        } else {
+          // Perbarui data dengan tetap mempertahankan properti paling lengkap & status mutakhir
+          map.set(key, {
+            ...existing,
+            ...st,
+            status: st.status || existing.status,
+            progress: typeof st.progress === "number" ? st.progress : existing.progress,
+            assignedAdminName: st.assignedAdminName || existing.assignedAdminName,
+            assignedAdminEmail: st.assignedAdminEmail || existing.assignedAdminEmail,
+            assignedAdminDivision: st.assignedAdminDivision || existing.assignedAdminDivision,
+            consultant: st.consultant || existing.consultant,
+            milestones: (st.milestones && st.milestones.length > 0) ? st.milestones : existing.milestones,
+            deliverables: (st.deliverables && st.deliverables.length > 0) ? st.deliverables : existing.deliverables,
+            correspondences: (st.correspondences && st.correspondences.length > 0) ? st.correspondences : existing.correspondences,
+            clientDocuments: (st.clientDocuments && st.clientDocuments.length > 0) ? st.clientDocuments : existing.clientDocuments,
+          });
+        }
+      }
+
+      // 3. Gabungkan tiket yang masuk dari backend API
+      for (const b of backendList) {
+        const bCode = (b.project_code || `TK-${b.id}`).toLowerCase();
+        const bId = String(b.id).toLowerCase();
+
+        if (isTicketDeleted(bCode) || isTicketDeleted(bId) || isTicketDeleted(`tk-${bId}`)) {
+          continue;
+        }
+
+        const existingKey = map.has(bCode) ? bCode : map.has(bId) ? bId : map.has(`tk-${bId}`) ? `tk-${bId}` : null;
+
+        if (existingKey) {
+          const existing = map.get(existingKey)!;
+          const backendStatus =
+            b.status === "COMPLETED" ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : existing.status;
+          map.set(existingKey, {
+            ...existing,
+            status: existing.status !== "Menunggu Penugasan" ? existing.status : backendStatus,
+            title: existing.title || b.title,
+            clientName: existing.clientName || b.client?.name || "Klien Terdaftar",
+            clientCompany: existing.clientCompany || b.client?.company_name || "-",
+            clientEmail: existing.clientEmail || b.client?.email || "-",
+          });
+        } else {
+          // Tiket baru masuk dari backend
+          const newBackendTicket: ClientTicket = {
+            id: b.project_code || `TK-${b.id}`,
+            title: b.title || "Konsultasi Perpajakan Klien",
+            category: (b.service?.service_name as "Tax Service Core") || "Tax Service Core",
+            status: b.status === "COMPLETED" ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
+            progress: b.status === "COMPLETED" ? 100 : b.status === "IN_PROGRESS" ? 60 : 15,
+            createdAt: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
+            estimatedCompletion: "14 Hari Kerja",
+            clientName: b.client?.name || "Klien Terdaftar",
+            clientEmail: b.client?.email || "-",
+            clientCompany: b.client?.company_name || "-",
+            consultant: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() || "Menunggu Penugasan" : "Menunggu Penugasan",
+            assignedAdminName: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() : undefined,
+            milestones: [],
+            deliverables: [],
+            correspondences: [],
+            clientDocuments: [],
+          };
+          map.set(bCode, newBackendTicket);
+        }
+      }
+
+      return Array.from(map.values());
+    });
+
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    loadData();
+    // 1. Initial data fetch
+    loadData(true);
 
+    // 2. Background polling: lakukan secara senyap tanpa loading skeleton
+    // agar data tidak kedip/hilang dan data lama tetap utuh
     const intervalId = setInterval(() => {
-      loadData();
+      loadData(false);
     }, 4000);
 
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadData);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-    window.addEventListener(STAFF_UPDATED_EVENT, loadData);
-    window.addEventListener("storage", loadData);
+    const handleSilentSync = () => {
+      loadData(false);
+    };
+
+    window.addEventListener(TICKETS_UPDATED_EVENT, handleSilentSync);
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, handleSilentSync);
+    window.addEventListener("storage", handleSilentSync);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        loadData();
+        loadData(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       clearInterval(intervalId);
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadData);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-      window.removeEventListener(STAFF_UPDATED_EVENT, loadData);
-      window.removeEventListener("storage", loadData);
+      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSilentSync);
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, handleSilentSync);
+      window.removeEventListener("storage", handleSilentSync);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [loadData]);
+
+  // Tutup dropdown menu titik tiga ketika klik di luar
+  useEffect(() => {
+    const handleCloseMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("[data-action-menu]")) return;
+      setOpenActionMenuId(null);
+    };
+    document.addEventListener("click", handleCloseMenu);
+    return () => document.removeEventListener("click", handleCloseMenu);
+  }, []);
+
+  // Handler Arsipkan / Pulihkan dari Arsip
+  const handleToggleArchiveTicket = (item: ClientTicket) => {
+    const isNowArchived = toggleArchiveClientTicket(item.id, item);
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.id.toLowerCase() === item.id.toLowerCase()
+          ? {
+              ...t,
+              isArchived: isNowArchived,
+              archivedAt: isNowArchived ? new Date().toISOString() : undefined,
+            }
+          : t
+      )
+    );
+    showToast(
+      isNowArchived
+        ? `Perikatan ${item.id} berhasil diarsipkan.`
+        : `Perikatan ${item.id} berhasil dipulihkan dari arsip.`
+    );
+  };
+
+  // Handler Hapus Perikatan
+  const handleDeleteTicket = (item: ClientTicket) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus perikatan "${item.title}" (${item.id})?`)) {
+      deleteStoredClientTicket(item.id);
+      setTickets((prev) => prev.filter((t) => t.id.toLowerCase() !== item.id.toLowerCase()));
+      showToast(`Perikatan ${item.id} berhasil dihapus.`);
+    }
+  };
 
   // Buka modal detail konsultasi & berkas
   const handleOpenDetailModal = (item: ClientTicket) => {
@@ -140,8 +313,16 @@ function SuperadminPerikatanContent() {
   // Buka modal khusus kelola admin & PIC
   const handleOpenPicModal = (item: ClientTicket) => {
     setManagingPicTicket(item);
-    setTypedStaffName("");
-    setSelectedStaffId("");
+    const activeAssignableStaff = assignableAdmins.filter((s) => s.isActive !== false);
+    const matched = activeAssignableStaff.find(
+      (s) =>
+        s.id === item.assignedAdminId ||
+        s.email.toLowerCase() === (item.assignedAdminEmail || "").toLowerCase() ||
+        s.name.toLowerCase() === (item.assignedAdminName || "").toLowerCase()
+    );
+    const defaultStaff = matched || activeAssignableStaff[0];
+    setSelectedStaffId(defaultStaff ? defaultStaff.id : "");
+    setTypedStaffName(defaultStaff ? defaultStaff.name : "");
     setAssignmentNotes(item.assignmentNotes || "");
   };
 
@@ -149,33 +330,18 @@ function SuperadminPerikatanContent() {
   const handleSavePicAssignment = () => {
     if (!managingPicTicket) return;
 
-    const chosenName = typedStaffName.trim() || managingPicTicket.assignedAdminName || "";
-    if (!chosenName) {
-      showToast("Mohon isi nama lengkap Admin / PIC bertugas.");
-      return;
-    }
-
-    let targetAdmin = staffAdmins.find((s) => s.id === selectedStaffId);
-    if (!targetAdmin) {
-      targetAdmin = staffAdmins.find(
+    let targetAdmin = assignableAdmins.find((s) => s.id === selectedStaffId);
+    if (!targetAdmin && typedStaffName.trim()) {
+      targetAdmin = assignableAdmins.find(
         (s) =>
-          s.name.toLowerCase() === chosenName.toLowerCase() ||
-          s.name.toLowerCase().includes(chosenName.toLowerCase())
+          s.name.toLowerCase() === typedStaffName.trim().toLowerCase() ||
+          s.name.toLowerCase().includes(typedStaffName.trim().toLowerCase())
       );
     }
 
     if (!targetAdmin) {
-      const newAdminId = `ADM-${String(staffAdmins.length + 1).padStart(3, "0")}`;
-      targetAdmin = {
-        id: newAdminId,
-        name: chosenName,
-        email: `${chosenName.toLowerCase().replace(/[^a-z0-9]/g, ".")}@zhou.id`,
-        role: "admin",
-        divisions: [managingPicTicket.category || "Tax Service Core"],
-        isActive: true,
-      };
-      saveStoredStaffAdmins([...staffAdmins, targetAdmin]);
-      setStaffAdmins((prev) => [...prev, targetAdmin!]);
+      showToast("Mohon pilih Admin / Staf Konsultan yang bertugas dari daftar.");
+      return;
     }
 
     if (!targetAdmin.isActive) {
@@ -191,7 +357,7 @@ function SuperadminPerikatanContent() {
         managingPicTicket.assignedAdminName.toLowerCase() !== targetAdmin.name.toLowerCase())
     );
 
-    const updated = assignTicketPic(managingPicTicket.id, targetAdmin, assignmentNotes);
+    const updated = assignTicketPic(managingPicTicket.id, targetAdmin, assignmentNotes, managingPicTicket);
 
     if (updated) {
       if (isReassign) {
@@ -207,6 +373,10 @@ function SuperadminPerikatanContent() {
       if (selectedDetailTicket && selectedDetailTicket.id === updated.id) {
         setSelectedDetailTicket(updated);
       }
+      // Langsung perbarui state tiket secara instan tanpa jeda
+      setTickets((prev) =>
+        prev.map((t) => (t.id.toLowerCase() === updated.id.toLowerCase() ? updated : t))
+      );
       loadData();
     } else {
       showToast("Gagal menetapkan PIC. Silakan coba kembali.");
@@ -315,51 +485,71 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
 
   // Helper Badge Status untuk Modal Detail & Tabel
   const renderStatusBadge = (status: string) => {
-    switch (status) {
-      case "Menunggu Penugasan":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-            Menunggu Penugasan
-          </span>
-        );
-      case "Ditugaskan":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
-            Ditugaskan
-          </span>
-        );
-      case "Dalam Proses":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
-            Dalam Proses
-          </span>
-        );
-      case "Menunggu Klien":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
-            Menunggu Klien
-          </span>
-        );
-      case "Selesai":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-            Selesai
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
-            {status}
-          </span>
-        );
+    const s = (status || "").trim();
+    const lower = s.toLowerCase();
+
+    if (
+      s === "Menunggu Penugasan" ||
+      lower.includes("menunggu penugasan") ||
+      (lower.includes("menunggu") && !lower.includes("klien")) ||
+      s === "PENDING"
+    ) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap shadow-2xs">
+          Menunggu PIC
+        </span>
+      );
     }
+    if (s === "Ditugaskan" || lower === "ditugaskan") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300 whitespace-nowrap shadow-2xs">
+          Ditugaskan
+        </span>
+      );
+    }
+    if (s === "Dalam Proses" || lower === "dalam proses" || s === "IN_PROGRESS") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 whitespace-nowrap shadow-2xs">
+          Dalam Proses
+        </span>
+      );
+    }
+    if (s === "Menunggu Klien" || lower.includes("menunggu klien")) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 whitespace-nowrap shadow-2xs">
+          Menunggu Klien
+        </span>
+      );
+    }
+    if (s === "Selesai" || lower === "selesai" || s === "COMPLETED") {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap shadow-2xs">
+          Selesai
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap shadow-2xs">
+        {status || "-"}
+      </span>
+    );
   };
+
 
   // Filter perikatan
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
+      // Filter khusus Arsip
+      if (statusFilter === "ARCHIVED") {
+        if (!t.isArchived) return false;
+      } else {
+        // Jangan tampilkan tiket yang sudah diarsipkan pada filter biasa
+        if (t.isArchived) return false;
+      }
+
       const matchStatus =
         statusFilter === "ALL" ||
+        statusFilter === "ARCHIVED" ||
         (statusFilter === "IN_PROGRESS" && (t.status === "Dalam Proses" || t.status === "Ditugaskan")) ||
         (statusFilter === "COMPLETED" && t.status === "Selesai") ||
         (statusFilter === "PENDING" && (t.status === "Menunggu Penugasan" || t.status === "Menunggu Klien"));
@@ -525,6 +715,7 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                 <option value="IN_PROGRESS">Sedang Berjalan</option>
                 <option value="COMPLETED">Selesai</option>
                 <option value="PENDING">Menunggu</option>
+                <option value="ARCHIVED">Diarsipkan</option>
               </Select>
             </div>
             <Button
@@ -557,134 +748,194 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
         </div>
 
         {/* Table View */}
-        <div className="overflow-x-auto rounded-xl border border-primary-light">
+        <div className="overflow-x-auto rounded-xl border border-primary-light min-h-[320px]">
           <table className="w-full text-left text-xs">
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
-                <th className="py-3 px-4">Kode &amp; Judul Proyek</th>
-                <th className="py-3 px-4">Klien &amp; Entitas</th>
-                <th className="py-3 px-4">Kategori Layanan</th>
-                <th className="py-3 px-4">PIC Bertugas</th>
-                <th className="py-3 px-4">Status &amp; Dokumen</th>
-                <th className="py-3 px-4">Tanggal Masuk</th>
-                <th className="py-3 px-4 text-center">Aksi</th>
+                <th className="py-3 px-4 text-center w-44 md:w-52 shrink-0">Kode &amp; Judul Proyek</th>
+                <th className="py-3 px-4 text-center min-w-[240px] w-72">Klien &amp; Entitas</th>
+                <th className="py-3 px-4 text-center min-w-[130px]">Kategori Layanan</th>
+                <th className="py-3 px-4 min-w-[150px] whitespace-nowrap text-center">PIC Bertugas</th>
+                <th className="py-3 px-4 whitespace-nowrap text-center">Status</th>
+                <th className="py-3 px-4 whitespace-nowrap text-center">Tanggal Masuk</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary-light">
-              {filteredTickets.map((item) => {
+              {filteredTickets.map((item, index) => {
                 const hasPic = Boolean(item.assignedAdminName && !item.assignedAdminName.includes("Menunggu"));
                 const totalDoc = (item.clientDocuments?.length || 0) + (item.deliverables?.length || 0);
 
                 return (
-                  <tr key={item.id} className="hover:bg-surface/60 transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-primary">
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-surface/60 transition-colors ${
+                      openActionMenuId === item.id ? "relative z-30" : "relative z-0"
+                    }`}
+                  >
+                    <td className="py-3.5 px-4 font-medium text-primary w-44 md:w-52">
                       <span className="font-mono text-[10px] text-text-muted block">
                         {item.id}
                       </span>
-                      <span className="font-semibold text-xs text-primary block max-w-xs truncate">
+                      <span className="font-semibold text-xs text-primary block truncate" title={item.title}>
                         {item.title}
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <span className="font-semibold text-primary block">
+                    <td className="py-3.5 px-4 min-w-[240px] w-72">
+                      <span className="font-semibold text-primary block text-xs">
                         {item.clientName || "Klien Terdaftar"}
                       </span>
-                      <span className="text-[11px] text-text-secondary block">
+                      <span className="text-[11px] text-text-secondary block mt-0.5">
                         {item.clientCompany || item.clientEmail || "-"}
                       </span>
                     </td>
 
-                    <td className="py-3.5 px-4 text-text-secondary">
+                    <td className="py-3.5 px-4 text-text-secondary min-w-[130px]">
                       <span className="block font-medium text-primary">
-                        {item.category}
+                        {item.category || "Tax Service Core"}
                       </span>
-                      {item.priority && (
-                        <span className="text-[10px] text-text-muted block mt-0.5">
-                          Prioritas: {item.priority}
-                        </span>
-                      )}
                     </td>
 
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 min-w-[150px] whitespace-nowrap">
                       {hasPic ? (
                         <div>
-                          <span className="font-semibold text-primary text-xs flex items-center gap-1.5">
-                            <UserIcon className="text-primary text-xs" />
+                          <span className="font-semibold text-primary text-xs flex items-center gap-1.5 whitespace-nowrap">
+                            <UserIcon className="text-primary text-xs shrink-0" />
                             <span>{item.assignedAdminName}</span>
                           </span>
-                          <span className="text-[10px] text-text-secondary block mt-0.5">
+                          <span className="text-[10px] text-text-secondary block mt-0.5 whitespace-nowrap">
                             {item.assignedAdminDivision || "Divisi Konsultasi"}
                           </span>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">
                           Belum Ada PIC
                         </span>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.status === "Selesai"
-                               ? "bg-emerald-100 text-emerald-800"
-                              : item.status === "Dalam Proses" || item.status === "Ditugaskan"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <div className="flex flex-col gap-1 items-center justify-center">
+                        {renderStatusBadge(item.status)}
                         {totalDoc > 0 && (
-                          <span className="text-[10px] text-text-muted">
+                          <span className="text-[10px] text-text-muted font-medium whitespace-nowrap">
                             {totalDoc} berkas
                           </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-text-secondary text-[11px]">
+                    <td className="py-3.5 px-4 text-text-secondary text-[11px] text-center whitespace-nowrap">
                       {item.createdAt || "-"}
                     </td>
 
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5 justify-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenDetailModal(item)}
-                          className="text-[11px] h-7 px-2.5 font-semibold border-primary-light text-primary hover:bg-surface rounded-lg shadow-2xs"
-                        >
-                          Detail
-                        </Button>
+                    <td className={`py-3.5 px-4 text-center whitespace-nowrap ${
+                      openActionMenuId === item.id ? "relative z-40" : "relative"
+                    }`}>
+                      <div className="inline-flex items-center gap-2 justify-center">
                         <Button
                           type="button"
                           variant="primary"
                           size="sm"
                           onClick={() => handleOpenPicModal(item)}
-                          className="text-[11px] h-7 px-3 font-semibold bg-[#0B1533] hover:bg-[#0B1533]/90 text-white rounded-lg shadow-2xs"
+                          className="text-[11px] h-7 px-3 font-semibold bg-[#0B1533] hover:bg-[#0B1533]/90 text-white rounded-lg shadow-2xs cursor-pointer"
                         >
                           Kelola PIC
                         </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm(`Apakah Anda yakin ingin menghapus perikatan "${item.title}" (${item.id})?`)) {
-                              deleteStoredClientTicket(item.id);
-                              setTickets((prev) => prev.filter((t) => t.id !== item.id));
-                              showToast(`Perikatan ${item.id} berhasil dihapus.`);
-                            }
-                          }}
-                          className="text-[11px] h-7 px-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg cursor-pointer"
-                          title="Hapus Perikatan"
-                        >
-                          <TrashIcon className="text-xs" />
-                        </Button>
+
+                        {/* Menu Titik Tiga (More Actions: Detail, Arsip, Hapus) */}
+                        <div className="relative inline-block text-left" data-action-menu>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenActionMenuId((prev) => (prev === item.id ? null : item.id));
+                            }}
+                            className={`p-1.5 inline-flex items-center justify-center rounded-full transition-colors cursor-pointer ${
+                              openActionMenuId === item.id
+                                ? "text-primary bg-surface"
+                                : "text-text-muted hover:text-primary hover:bg-surface"
+                            }`}
+                            title="Pilihan Aksi"
+                            aria-label="Pilihan aksi lainnya"
+                          >
+                            <MoreVerticalIcon className="text-sm pointer-events-none" />
+                          </button>
+
+                          {openActionMenuId === item.id && (
+                            <>
+                              {/* Backdrop transparan untuk menutup menu ketika klik di luar */}
+                              <div
+                                className="fixed inset-0 z-40 bg-transparent"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId(null);
+                                }}
+                              />
+
+                              {/* Dropdown Menu */}
+                              <div
+                                className={`absolute right-0 ${
+                                  index >= Math.max(1, filteredTickets.length - 2)
+                                    ? "bottom-full mb-1.5"
+                                    : "top-full mt-1.5"
+                                } w-44 rounded-xl bg-white border border-primary-light shadow-xl z-50 py-1 text-left ring-1 ring-black/5 animate-in fade-in duration-100`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(null);
+                                    handleOpenDetailModal(item);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs flex items-center gap-2.5 text-text-primary hover:bg-surface font-medium transition-colors cursor-pointer"
+                                >
+                                  <EyeIcon className="text-xs text-primary shrink-0" />
+                                  <span>Detail</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(null);
+                                    handleToggleArchiveTicket(item);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs flex items-center gap-2.5 text-text-primary hover:bg-surface font-medium transition-colors cursor-pointer"
+                                >
+                                  {item.isArchived ? (
+                                    <>
+                                      <UnarchiveIcon className="text-xs text-primary shrink-0" />
+                                      <span>Pulihkan dari Arsip</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ArchiveIcon className="text-xs text-amber-600 shrink-0" />
+                                      <span>Arsip</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <div className="my-1 border-t border-primary-light/60" />
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(null);
+                                    handleDeleteTicket(item);
+                                  }}
+                                  className="w-full px-3 py-2 text-xs flex items-center gap-2.5 text-red-600 hover:bg-red-50 font-medium transition-colors cursor-pointer"
+                                >
+                                  <TrashIcon className="text-xs shrink-0" />
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -764,15 +1015,9 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                   </span>
                 </div>
                 <div>
-                  <span className="text-text-secondary block">Prioritas Penanganan:</span>
-                  <span className="font-semibold text-primary">
-                    {selectedDetailTicket.priority || "Normal"}
-                  </span>
-                </div>
-                <div>
                   <span className="text-text-secondary block">Waktu Pengajuan:</span>
                   <span className="text-text-primary">
-                    {selectedDetailTicket.createdAt || "Hari ini"}
+                    {formatConsultationDate(selectedDetailTicket.createdAt)}
                   </span>
                 </div>
               </div>
@@ -784,7 +1029,7 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                 ADMIN / PIC YANG MENANGANI:
               </span>
               <span className="text-sm font-bold text-primary mt-0.5 block">
-                {selectedDetailTicket.assignedAdminName || "Belum Ditetapkan (Menunggu Penugasan Superadmin)"}
+                {selectedDetailTicket.assignedAdminName || "Belum Ditetapkan (Menunggu PIC)"}
               </span>
               <span className="text-[11px] text-text-secondary block">
                 Divisi Tanggung Jawab: {selectedDetailTicket.assignedAdminDivision || selectedDetailTicket.category}
@@ -989,36 +1234,45 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t border-primary-light/60">
-                  <Label htmlFor="manage-pic-name" className="font-bold text-primary block text-xs">
-                    Nama Lengkap <span className="text-danger">*</span>
+                  <Label htmlFor="manage-pic-select" className="font-bold text-primary block text-xs">
+                    Pilih Staf Konsultan / Admin Bertugas <span className="text-danger">*</span>
                   </Label>
-                  <div>
-                    <Input
-                      id="manage-pic-name"
-                      type="text"
-                      placeholder="Nama Lengkap"
-                      value={typedStaffName}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setTypedStaffName(val);
-                        const matched = staffAdmins.find(
-                          (s) =>
-                            s.name.toLowerCase() === val.trim().toLowerCase() ||
-                            s.name.toLowerCase().includes(val.trim().toLowerCase())
-                        );
-                        if (matched) {
-                          setSelectedStaffId(matched.id);
-                        } else {
-                          setSelectedStaffId("");
-                        }
-                      }}
-                      className="w-full text-xs h-9 bg-white border-primary-light"
-                      autoComplete="off"
-                    />
-                  </div>
+                  <Select
+                    id="manage-pic-select"
+                    value={selectedStaffId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedStaffId(id);
+                      const found = assignableAdmins.find((s) => s.id === id);
+                      if (found) {
+                        setTypedStaffName(found.name);
+                      }
+                    }}
+                    className="w-full text-xs h-9 bg-white border-primary-light font-medium"
+                  >
+                    <option value="">-- Pilih Staf Konsultan / Admin PIC --</option>
+                    {assignableAdmins.map((adm) => (
+                      <option key={adm.id} value={adm.id}>
+                        {adm.name} ({adm.email}) - Admin
+                      </option>
+                    ))}
+                  </Select>
+                  {(() => {
+                    const selectedAdmin = assignableAdmins.find((s) => s.id === selectedStaffId);
+                    if (!selectedAdmin) return null;
+                    return (
+                      <p className="text-[11px] text-text-secondary mt-1.5 flex items-center gap-2">
+                        <span className="font-semibold text-primary">{selectedAdmin.name}</span>
+                        <span>&bull;</span>
+                        <span>{selectedAdmin.email}</span>
+                        <span>&bull;</span>
+                        <span className="font-mono">{selectedAdmin.nip || selectedAdmin.id}</span>
+                      </p>
+                    );
+                  })()}
                 </div>
 
-                <div className="pt-1">
+                <div className="pt-2 border-t border-primary-light/60">
                   <Label htmlFor="manage-pic-notes" className="text-[11px] font-semibold text-text-secondary block mb-1">
                     Catatan Instruksi Penugasan (Opsional):
                   </Label>

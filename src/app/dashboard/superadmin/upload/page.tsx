@@ -33,6 +33,7 @@ interface ReportItem {
   id: string;
   ticketId: string;
   clientName: string;
+  clientEmail?: string;
   clientNpwp: string;
   fileName: string;
   fileSize: string;
@@ -196,10 +197,14 @@ export default function AdminUploadBillingPage() {
       ? `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`
       : "2.4 MB";
 
+    const allStoredTickets = getStoredClientTickets();
+    const targetTicket = allStoredTickets.find((t) => t.id.toLowerCase() === uploadForm.ticketId.toLowerCase());
+
     const newReport: ReportItem = {
       id: "REP-0" + (reports.length + 1),
       ticketId: uploadForm.ticketId,
       clientName: uploadForm.clientName,
+      clientEmail: targetTicket?.clientEmail,
       clientNpwp: uploadForm.clientNpwp,
       fileName: currentFileName,
       fileSize: calculatedSize,
@@ -450,19 +455,7 @@ export default function AdminUploadBillingPage() {
             </div>
 
             <div className="shrink-0 flex items-center gap-2">
-              {reports.length > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearAllDocuments}
-                  className="w-full sm:w-auto text-xs font-semibold h-9 px-3.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 cursor-pointer"
-                  title="Hapus seluruh berkas tersimpan"
-                >
-                  <TrashIcon className="text-xs mr-1" />
-                  <span>Bersihkan Semua</span>
-                </Button>
-              )}
+
               <Button
                 type="button"
                 variant="primary"

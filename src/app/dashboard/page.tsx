@@ -19,7 +19,7 @@ export default function DashboardIndexPage() {
     const role = normalizeRole(user.role, user.email);
 
     if (role === "superadmin") {
-      router.replace("/dashboard/superadmin");
+      router.replace("/dashboard/superadmin/perikatan");
     } else if (role === "admin") {
       router.replace("/dashboard/admin");
     } else {

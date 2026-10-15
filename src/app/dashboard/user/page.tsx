@@ -17,10 +17,13 @@ import {
 import {
   CheckCircleIcon,
   CloseIcon,
+  UserIcon,
 } from "@/components/icons";
 import {
-  getStoredClientTickets,
-  getStoredDocuments,
+  getTicketsForClient,
+  getDocumentsForClient,
+  formatConsultationDate,
+  getDisplayPicName,
   TICKETS_UPDATED_EVENT,
   DOCUMENTS_UPDATED_EVENT,
 } from "@/data/sharedTicketsStorage";
@@ -30,7 +33,7 @@ interface Ticket {
   title: string;
   category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting" | string;
   consultant: string;
-  status: "In Progress" | "Completed";
+  status: string;
   progress: number;
   updatedAt: string;
   createdAt?: string;
@@ -60,7 +63,7 @@ export default function UserDashboardPage() {
     if (!user) return;
     const role = normalizeRole(user.role, user.email);
     if (role === "superadmin") {
-      router.replace("/dashboard/superadmin");
+      router.replace("/dashboard/superadmin/perikatan");
     } else if (role === "admin") {
       router.replace("/dashboard/admin");
     }
@@ -69,17 +72,17 @@ export default function UserDashboardPage() {
   // Sync consultations & documents with backend, shared tickets, and uploaded documents
   useEffect(() => {
     async function loadClientData() {
-      // 1. Tiket yang dibuat secara lokal / booking
-      const storedClientTickets = getStoredClientTickets();
+      // 1. Tiket yang dibuat secara lokal / booking khusus milik klien ini
+      const storedClientTickets = getTicketsForClient(user?.email, user?.name);
       const filteredCustom = storedClientTickets.filter((t) => !isDummyTicket(t));
       const customTickets: Ticket[] = filteredCustom.map((t) => ({
         id: t.id,
         title: t.title,
         category: t.category || "Tax Service Core",
-        consultant: t.consultant || "Konsultan Zhou",
-        status: t.status === "Selesai" || (t.status as string) === "Completed" ? "Completed" : "In Progress",
+        consultant: getDisplayPicName(t),
+        status: t.status || "Dalam Proses",
         progress: t.progress || 25,
-        updatedAt: t.createdAt || "Baru saja",
+        updatedAt: formatConsultationDate(t.createdAt),
         checklists: (t.milestones && t.milestones.length > 0)
           ? t.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
           : [
@@ -96,13 +99,30 @@ export default function UserDashboardPage() {
       try {
         const res = await clientApi.getConsultations();
         if (res.success && Array.isArray(res.data)) {
-          const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+          const userEmail = (user?.email || "").toLowerCase().trim();
+          const userName = (user?.name || "").toLowerCase().trim();
+          const userId = user?.id;
+
+          const validConsultations = res.data
+            .filter((c: ConsultationItem) => !isDummyTicket(c))
+            .filter((c: ConsultationItem) => {
+              const cEmail = (c.client?.email || "").toLowerCase().trim();
+              const cName = (c.client?.name || "").toLowerCase().trim();
+              const cId = c.client_id || c.client?.id;
+
+              if (userEmail && cEmail && cEmail === userEmail) return true;
+              if (userId && cId && String(cId) === String(userId)) return true;
+              if (userName && cName && (cName === userName || cName.includes(userName))) return true;
+
+              return false;
+            });
+
           backendTickets = validConsultations.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-${c.id}`,
             title: c.title,
             category: "Tax Service Core",
-            consultant: "Konsultan Zhou",
-            status: c.status === "COMPLETED" ? "Completed" : "In Progress",
+            consultant: "Menunggu PIC",
+            status: c.status === "COMPLETED" ? "Selesai" : "Dalam Proses",
             progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
             updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {
               day: "numeric",
@@ -154,8 +174,8 @@ export default function UserDashboardPage() {
         // silent fallback
       }
 
-      // 4. Dokumen yang diunggah Admin dari storage bersama
-      const localDocs = getStoredDocuments();
+      // 4. Dokumen yang diunggah Admin khusus untuk akun klien ini
+      const localDocs = getDocumentsForClient(user?.email, user?.name);
       const mappedLocalDocs: ClientDocument[] = localDocs.map((d) => ({
         id: d.id,
         name: d.fileName,
@@ -183,16 +203,22 @@ export default function UserDashboardPage() {
       window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadClientData);
       window.removeEventListener("storage", loadClientData);
     };
-  }, []);
+  }, [user?.email, user?.name, user?.id]);
 
   // Filtered tickets
   const filteredTickets = tickets.filter((t) => {
     if (filterStatus === "ALL") return true;
-    return t.status === filterStatus;
+    if (filterStatus === "In Progress") {
+      return t.status !== "Selesai" && t.status !== "Completed";
+    }
+    if (filterStatus === "Completed") {
+      return t.status === "Selesai" || t.status === "Completed";
+    }
+    return true;
   });
 
-  const activeCount = tickets.filter((t) => t.status === "In Progress").length;
-  const completedCount = tickets.filter((t) => t.status === "Completed").length;
+  const activeCount = tickets.filter((t) => t.status !== "Selesai" && t.status !== "Completed").length;
+  const completedCount = tickets.filter((t) => t.status === "Selesai" || t.status === "Completed").length;
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -350,11 +376,11 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
             <table className="w-full text-left text-xs text-text-primary">
               <thead className="bg-surface/80 border-b border-navy-light text-[10px] uppercase font-bold text-text-secondary tracking-wider">
                 <tr>
-                  <th scope="col" className="py-3 px-4 sm:px-6">ID Konsultasi</th>
-                  <th scope="col" className="py-3 px-4">Judul Pekerjaan &amp; Layanan</th>
-                  <th scope="col" className="py-3 px-4 hidden md:table-cell">Konsultan Lead</th>
-                  <th scope="col" className="py-3 px-4">Progres</th>
-                  <th scope="col" className="py-3 px-4 sm:px-6 text-right">Status</th>
+                  <th scope="col" className="py-3 px-4 sm:px-6 text-center">ID Konsultasi</th>
+                  <th scope="col" className="py-3 px-4 text-center">Judul Pekerjaan &amp; Layanan</th>
+                  <th scope="col" className="py-3 px-4 hidden md:table-cell text-center">Konsultan Lead</th>
+                  <th scope="col" className="py-3 px-4 text-center">Progres</th>
+                  <th scope="col" className="py-3 px-4 sm:px-6 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-light">
@@ -385,8 +411,27 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                     </td>
 
                     <td className="py-3.5 px-4 hidden md:table-cell whitespace-nowrap">
-                      <div className="font-medium text-text-primary">{ticket.consultant}</div>
-                      <div className="text-[10px] text-text-secondary">{ticket.updatedAt}</div>
+                      {(() => {
+                        const picName = getDisplayPicName(ticket);
+                        const isWaiting = picName === "Menunggu PIC";
+                        return (
+                          <div>
+                            <div
+                              className={`flex items-center gap-1.5 ${
+                                isWaiting ? "text-amber-700 font-semibold italic text-xs" : "font-medium text-text-primary text-xs"
+                              }`}
+                            >
+                              <UserIcon
+                                className={`text-[10px] ${
+                                  isWaiting ? "text-amber-500" : "text-text-muted"
+                                }`}
+                              />
+                              <span>{picName}</span>
+                            </div>
+                            <div className="text-[10px] text-text-secondary mt-0.5">{ticket.updatedAt}</div>
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     <td className="py-3.5 px-4 whitespace-nowrap">
@@ -406,16 +451,27 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                     </td>
 
                     <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] px-2 py-0.5 font-semibold ${
-                          ticket.status === "Completed"
-                            ? "bg-success/15 text-success border-success/30"
-                            : "bg-primary/10 text-primary border-primary/20"
-                        }`}
-                      >
-                        {ticket.status === "Completed" ? "Selesai" : "Dalam Proses"}
-                      </Badge>
+                      {ticket.status === "Menunggu Penugasan" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                          Menunggu PIC
+                        </span>
+                      ) : ticket.status === "Ditugaskan" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300">
+                          Ditugaskan
+                        </span>
+                      ) : ticket.status === "Selesai" || ticket.status === "Completed" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Selesai
+                        </span>
+                      ) : ticket.status === "Menunggu Klien" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                          Menunggu Klien
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                          Dalam Proses
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))

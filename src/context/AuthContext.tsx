@@ -109,23 +109,13 @@ export function isDummyTicket(c: {
 }): boolean {
   const code = (c.project_code || String(c.id || "")).toLowerCase();
   const title = (c.title || "").toLowerCase();
-  const clientName = (c.client?.name || "").toLowerCase();
-  const compName = (c.client?.company_name || "").toLowerCase();
 
   return (
-    code.includes("prj-tax-2026-001") ||
+    code === "prj-tax-2026-001" ||
     code === "1" ||
     code === "tk-1" ||
     title.includes("spt tahunan badan pt maju") ||
-    title.includes("pt maju") ||
-    title.includes("maju makmur") ||
-    title.includes("dummy") ||
-    title.includes("mock") ||
-    title.includes("test") ||
-    clientName.includes("maju") ||
-    compName.includes("maju") ||
-    isDummyValue(clientName) ||
-    isDummyValue(compName)
+    title.includes("pt maju makmur")
   );
 }
 
@@ -182,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const role = normalizeRole(rawRole, email);
       let destination =
         role === "superadmin"
-          ? "/dashboard/superadmin"
+          ? "/dashboard/superadmin/perikatan"
           : role === "admin"
           ? "/dashboard/admin"
           : "/dashboard/user";
@@ -195,8 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectUrl !== "/dashboard"
       ) {
         if (role === "superadmin") {
-          // Superadmin default adalah /dashboard/superadmin. Cegah terlempar ke /dashboard/user
-          destination = redirectUrl.startsWith("/dashboard/user") ? "/dashboard/superadmin" : redirectUrl;
+          // Superadmin default adalah /dashboard/superadmin/perikatan. Cegah terlempar ke /dashboard/user
+          destination = redirectUrl.startsWith("/dashboard/user") ? "/dashboard/superadmin/perikatan" : redirectUrl;
         } else if (role === "admin") {
           // Admin default adalah /dashboard/admin. Cegah terlempar ke /dashboard/superadmin atau /dashboard/user
           destination =

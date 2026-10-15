@@ -85,11 +85,15 @@ export interface ClientTicket {
   previousAdminEmail?: string;
   previousAdminDivision?: string;
   reassignedAt?: string;
-  consultant: string; // Teks penanggung jawab / konsultan (misal: "Linda David, S.Ak., BKP" atau "Menunggu Penugasan PIC oleh Superadmin")
+  consultant: string; // Teks penanggung jawab / konsultan (misal: "Linda David, S.Ak., BKP" atau "Menunggu PIC")
 
   milestones: Milestone[];
   deliverables: Deliverable[];
   correspondences: Correspondence[];
+
+  // Arsip Status
+  isArchived?: boolean;
+  archivedAt?: string;
 }
 
 export interface AdminUploadedDocument {
@@ -97,6 +101,8 @@ export interface AdminUploadedDocument {
   ticketId: string;
   clientName: string;
   clientNpwp: string;
+  clientEmail?: string;
+  clientId?: string;
   fileName: string;
   fileSize: string;
   fileType: "PDF" | "XLSX" | "DOC" | "ZIP" | string;
@@ -214,14 +220,11 @@ function isDummyTicketRecord(t: { id?: string | number; title?: string }): boole
   const code = String(t.id || "").toLowerCase();
   const title = String(t.title || "").toLowerCase();
   return (
-    code.includes("prj-tax-2026-001") ||
+    code === "prj-tax-2026-001" ||
     code === "1" ||
     code === "tk-1" ||
-    title.includes("pt maju") ||
-    title.includes("maju makmur") ||
-    title.includes("dummy") ||
-    title.includes("mock") ||
-    title.includes("test")
+    title.includes("spt tahunan badan pt maju") ||
+    title.includes("pt maju makmur")
   );
 }
 
@@ -240,6 +243,90 @@ function isDummyDocumentRecord(d: { fileName?: string; ticketId?: string }): boo
 }
 
 /**
+ * Format tanggal pengajuan konsultasi menjadi format standar DD/MM/YYYY (contoh: 15/10/2026)
+ */
+export function formatConsultationDate(rawDate?: string): string {
+  if (!rawDate || rawDate.trim() === "" || rawDate.toLowerCase() === "hari ini") {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, "0");
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const y = now.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+
+  // Jika sudah berformat DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawDate.trim())) {
+    return rawDate.trim();
+  }
+
+  // Jika berupa tanggal ISO atau format lainnya (misal: "2026-10-15")
+  const parsed = new Date(rawDate);
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, "0");
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const y = parsed.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+
+  return rawDate;
+}
+
+export function getFormattedToday(): string {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, "0");
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const y = now.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * Mengembalikan nama PIC resmi yang bertugas atau "Menunggu PIC" jika belum ada PIC yang ditugaskan.
+ * Menghilangkan teks placeholder sistem seperti "Menunggu Penugasan PIC oleh Superadmin", "Tim Konsultan Zhou", dsb.
+ */
+export function getDisplayPicName(ticket?: {
+  assignedAdminName?: string;
+  consultant?: string;
+  status?: string;
+} | null): string {
+  if (!ticket) return "Menunggu PIC";
+
+  // 1. Jika tiket masih berstatus "Menunggu Penugasan", otomatis belum ada PIC yang ditugaskan
+  if (ticket.status === "Menunggu Penugasan") {
+    return "Menunggu PIC";
+  }
+
+  // 2. Cek assignedAdminName
+  const assigned = (ticket.assignedAdminName || "").trim();
+  const lowerAssigned = assigned.toLowerCase();
+  if (
+    assigned &&
+    !lowerAssigned.includes("menunggu") &&
+    !lowerAssigned.includes("belum") &&
+    lowerAssigned !== "tim konsultan zhou" &&
+    lowerAssigned !== "konsultan zhou"
+  ) {
+    return assigned;
+  }
+
+  // 3. Cek consultant (hanya jika berupa nama personil asli, bukan placeholder umum)
+  const consultant = (ticket.consultant || "").trim();
+  const lowerConsultant = consultant.toLowerCase();
+  if (
+    consultant &&
+    !lowerConsultant.includes("menunggu") &&
+    !lowerConsultant.includes("belum") &&
+    !lowerConsultant.includes("superadmin") &&
+    lowerConsultant !== "tim konsultan zhou" &&
+    lowerConsultant !== "konsultan zhou" &&
+    lowerConsultant !== "tim konsultan zhou (sistem penugasan)"
+  ) {
+    return consultant;
+  }
+
+  return "Menunggu PIC";
+}
+
+/**
  * Membaca tiket kustom / booking yang dibuat pengguna
  */
 export function getStoredClientTickets(): ClientTicket[] {
@@ -255,36 +342,47 @@ export function getStoredClientTickets(): ClientTicket[] {
       .filter((t) => !isDummyTicketRecord(t))
       .map((t) => {
       const normalizedStatus = normalizeConsultationStatus(t.status, t.assignedAdminName || (t.consultant && !t.consultant.includes("Menunggu") ? t.consultant : undefined));
+      
+      // Hitung progres dari milestones secara dinamis dan presisi
+      let safeMilestones: Milestone[] | undefined = t.milestones;
       let safeProgress = typeof t.progress === "number" ? t.progress : 35;
-      if (normalizedStatus === "Selesai") {
-        safeProgress = 100;
-      } else if (safeProgress >= 100) {
-        // Otomatis koreksi data historis jika status bukan selesai tetapi progres tercatat 100%
-        safeProgress = normalizedStatus === "Menunggu Klien" ? 50 : 60;
+
+      if (Array.isArray(safeMilestones) && safeMilestones.length > 0) {
+        const completedCount = safeMilestones.filter((m: Milestone) => m.status === "completed").length;
+        safeProgress = Math.round((completedCount / safeMilestones.length) * 100);
       }
 
-      // Pastikan milestone selaras dengan status
-      let safeMilestones = t.milestones;
-      if (Array.isArray(safeMilestones) && safeMilestones.length >= 4) {
-        if (normalizedStatus === "Selesai") {
-          safeMilestones = safeMilestones.map((m: Milestone) => ({ ...m, status: "completed" as const }));
-        } else if (safeMilestones[3]?.status === "completed") {
-          safeMilestones = safeMilestones.map((m: Milestone, idx: number) => {
-            if (idx === 3) return { ...m, status: "pending" as const };
-            if (idx === 2) return { ...m, status: "in_progress" as const };
-            return m;
-          });
-        }
+      let finalStatus = normalizedStatus;
+      if (safeProgress === 100) {
+        finalStatus = "Selesai";
+      } else if (finalStatus === "Selesai" && safeProgress < 100) {
+        finalStatus = "Dalam Proses";
+      } else if (safeProgress > 0 && finalStatus === "Menunggu Penugasan") {
+        finalStatus = "Dalam Proses";
       }
+
+      const safeCategory =
+        t.category && String(t.category).trim() !== ""
+          ? String(t.category).trim()
+          : "Tax Service Core";
 
       return {
         ...t,
+        category: safeCategory,
+        createdAt: formatConsultationDate(t.createdAt),
         status: normalizedStatus,
         progress: safeProgress,
         milestones: safeMilestones,
-        consultant: t.consultant || (t.assignedAdminName ? t.assignedAdminName : "Menunggu Penugasan PIC oleh Superadmin"),
+        consultant:
+          t.assignedAdminName && getDisplayPicName({ assignedAdminName: t.assignedAdminName }) !== "Menunggu PIC"
+            ? t.assignedAdminName
+            : t.consultant && getDisplayPicName({ consultant: t.consultant, status: t.status }) !== "Menunggu PIC"
+            ? t.consultant
+            : "Menunggu PIC",
         clientDocuments: t.clientDocuments || [],
         priority: t.priority || "Normal",
+        isArchived: Boolean(t.isArchived || isTicketArchived(t.id)),
+        archivedAt: t.archivedAt,
       };
     });
   } catch (err) {
@@ -313,10 +411,21 @@ export function saveStoredClientTickets(tickets: ClientTicket[]): void {
 export function addStoredClientTicket(ticket: ClientTicket): void {
   const current = getStoredClientTickets();
   const filtered = current.filter((t) => t.id.toLowerCase() !== ticket.id.toLowerCase());
+  const safeCategory =
+    ticket.category && String(ticket.category).trim() !== ""
+      ? String(ticket.category).trim()
+      : "Tax Service Core";
   const newTicket: ClientTicket = {
     ...ticket,
+    category: safeCategory,
+    createdAt: formatConsultationDate(ticket.createdAt),
     status: ticket.status || "Menunggu Penugasan",
-    consultant: ticket.consultant || "Menunggu Penugasan PIC oleh Superadmin",
+    consultant:
+      ticket.assignedAdminName && getDisplayPicName({ assignedAdminName: ticket.assignedAdminName }) !== "Menunggu PIC"
+        ? ticket.assignedAdminName
+        : ticket.consultant && getDisplayPicName({ consultant: ticket.consultant, status: ticket.status }) !== "Menunggu PIC"
+        ? ticket.consultant
+        : "Menunggu PIC",
     priority: ticket.priority || "Normal",
     progress: ticket.progress !== undefined ? ticket.progress : 15,
   };
@@ -331,7 +440,8 @@ export function addStoredClientTicket(ticket: ClientTicket): void {
 export function assignTicketPic(
   ticketId: string,
   admin: StaffAdminProfile | { id: string; name: string; email: string; division?: string; divisions?: string[]; isActive?: boolean },
-  notes?: string
+  notes?: string,
+  fallbackTicket?: ClientTicket
 ): ClientTicket | null {
   // Validasi PIC harus berstatus aktif
   if ("isActive" in admin && admin.isActive === false) {
@@ -340,8 +450,15 @@ export function assignTicketPic(
   }
 
   const tickets = getStoredClientTickets();
-  const index = tickets.findIndex((t) => t.id.toLowerCase() === ticketId.toLowerCase());
-  if (index === -1) return null;
+  let index = tickets.findIndex((t) => t.id.toLowerCase() === ticketId.toLowerCase());
+  if (index === -1) {
+    if (fallbackTicket) {
+      tickets.unshift(fallbackTicket);
+      index = 0;
+    } else {
+      return null;
+    }
+  }
 
   const target = tickets[index];
   const divisionStr =
@@ -538,15 +655,31 @@ export function getTicketsForAdmin(
 }
 
 /**
- * Membaca tiket milik akun Klien yang sedang login
+ * Membaca tiket milik akun Klien yang sedang login (hanya permohonan konsultasi milik klien bersangkutan)
  */
-export function getTicketsForClient(clientEmail?: string | null): ClientTicket[] {
+export function getTicketsForClient(clientEmail?: string | null, clientName?: string | null): ClientTicket[] {
   const allTickets = getStoredClientTickets();
-  if (!clientEmail || clientEmail.trim() === "") return allTickets;
+  if (!clientEmail || clientEmail.trim() === "") {
+    if (clientName && clientName.trim() !== "") {
+      const cleanName = clientName.toLowerCase().trim();
+      return allTickets.filter((t) => {
+        const cName = String(t.clientName || "").toLowerCase().trim();
+        return Boolean(cName && (cName === cleanName || cName.includes(cleanName)));
+      });
+    }
+    return [];
+  }
+
   const cleanEmail = clientEmail.toLowerCase().trim();
+  const cleanName = clientName ? clientName.toLowerCase().trim() : "";
+
   return allTickets.filter((t) => {
     const cEmail = String(t.clientEmail || "").toLowerCase().trim();
-    return !cEmail || cEmail === cleanEmail;
+    const cName = String(t.clientName || "").toLowerCase().trim();
+
+    if (cEmail && cEmail === cleanEmail) return true;
+    if (cleanName && cName && (cName === cleanName || cName.includes(cleanName))) return true;
+    return false;
   });
 }
 
@@ -560,6 +693,7 @@ export function updateTicketByStaff(
     status?: ConsultationStatus;
     progress?: number;
     notes?: string;
+    milestones?: Milestone[];
   }
 ): { success: boolean; message: string; ticket?: ClientTicket } {
   const tickets = getStoredClientTickets();
@@ -578,64 +712,33 @@ export function updateTicketByStaff(
     };
   }
 
-  const newStatus = updates.status || target.status;
-  let newProgress: number;
+  let updatedMilestones: Milestone[] =
+    updates.milestones && updates.milestones.length > 0
+      ? [...updates.milestones]
+      : target.milestones && target.milestones.length > 0
+      ? [...target.milestones]
+      : [];
 
-  if (newStatus === "Selesai") {
-    newProgress = 100;
+  let newProgress: number;
+  if (updatedMilestones.length > 0) {
+    const completedCount = updatedMilestones.filter((m) => m.status === "completed").length;
+    newProgress = Math.round((completedCount / updatedMilestones.length) * 100);
   } else if (updates.progress !== undefined) {
-    if (updates.progress >= 100) {
-      // Jika status bukan selesai tetapi progres dikirim >= 100 (misal sisa dari status Selesai sebelumnya),
-      // otomatis turunkan dan sesuaikan dengan status aktualnya.
-      newProgress = newStatus === "Menunggu Klien" ? 50 : 60;
-    } else {
-      newProgress = Math.min(Math.max(updates.progress, 5), 95);
-    }
+    newProgress = updates.progress;
   } else {
-    // updates.progress tidak ditentukan
-    if (target.progress && target.progress < 100) {
-      newProgress = target.progress;
-    } else {
-      newProgress = newStatus === "Menunggu Klien" ? 50 : 60;
-    }
+    newProgress = target.progress || 0;
   }
 
-  // Sinkronkan milestones agar sesuai dengan status baru
-  let updatedMilestones: Milestone[] = (target.milestones && target.milestones.length > 0)
-    ? [...target.milestones]
-    : [];
-
-  if (updatedMilestones.length >= 4) {
-    if (newStatus === "Selesai") {
-      updatedMilestones = updatedMilestones.map((m) => ({
-        ...m,
-        status: "completed" as const,
-      }));
-    } else {
-      // Revert tahapan finalisasi jika tiket dikembalikan ke aktif / menunggu
-      updatedMilestones = updatedMilestones.map((m, idx) => {
-        if (idx === 0 || idx === 1) return { ...m, status: "completed" as const };
-        if (idx === 2) {
-          return {
-            ...m,
-            status: "in_progress" as const,
-            title: newStatus === "Menunggu Klien" ? "Pengerjaan & Konfirmasi Klien" : "Pengerjaan & Konsultasi",
-            description: newStatus === "Menunggu Klien"
-              ? "Menunggu kelengkapan data atau konfirmasi dari klien."
-              : "Konsultan PIC sedang menyusun kertas kerja dan analisis.",
-          };
-        }
-        if (idx === 3) {
-          return {
-            ...m,
-            status: "pending" as const,
-            title: "Finalisasi & Penyampaian Hasil",
-            description: "Penyampaian dokumen laporan deliverable resmi.",
-          };
-        }
-        return m;
-      });
+  let newStatus = updates.status || target.status;
+  if (newProgress === 100) {
+    newStatus = "Selesai";
+    if (updatedMilestones.length > 0) {
+      updatedMilestones = updatedMilestones.map((m) => ({ ...m, status: "completed" as const }));
     }
+  } else if (newStatus === "Selesai" && newProgress < 100) {
+    newStatus = "Dalam Proses";
+  } else if (newProgress > 0 && (newStatus === "Menunggu Penugasan" || newStatus === "Ditugaskan")) {
+    newStatus = "Dalam Proses";
   }
 
   const nowFormatted = new Date().toLocaleDateString("id-ID", {
@@ -668,7 +771,7 @@ export function updateTicketByStaff(
 
   tickets[index] = updatedTicket;
   saveStoredClientTickets(tickets);
-  return { success: true, message: "Status konsultasi berhasil diperbarui.", ticket: updatedTicket };
+  return { success: true, message: "Status & progres konsultasi berhasil diperbarui.", ticket: updatedTicket };
 }
 
 /**
@@ -901,9 +1004,24 @@ export function saveStoredDocuments(docs: AdminUploadedDocument[]): void {
  * Menambahkan dokumen baru dari Admin ke Vault klien dan memperbarui deliverable tiket terkait
  */
 export function addStoredDocument(doc: AdminUploadedDocument): void {
+  // Otomatis lengkapi clientEmail dan clientName dari data tiket jika belum terisi
+  let enrichedDoc: AdminUploadedDocument = { ...doc };
+  if ((!enrichedDoc.clientEmail || !enrichedDoc.clientName) && enrichedDoc.ticketId) {
+    const tickets = getStoredClientTickets();
+    const t = tickets.find((tk) => tk.id.toLowerCase() === enrichedDoc.ticketId.toLowerCase());
+    if (t) {
+      if (!enrichedDoc.clientEmail && t.clientEmail) {
+        enrichedDoc.clientEmail = t.clientEmail;
+      }
+      if (!enrichedDoc.clientName && t.clientName) {
+        enrichedDoc.clientName = t.clientName;
+      }
+    }
+  }
+
   const current = getStoredDocuments();
-  const filtered = current.filter((d) => d.id.toLowerCase() !== doc.id.toLowerCase());
-  const updated = [doc, ...filtered];
+  const filtered = current.filter((d) => d.id.toLowerCase() !== enrichedDoc.id.toLowerCase());
+  const updated = [enrichedDoc, ...filtered];
   saveStoredDocuments(updated);
 
   // Jika dokumen dihubungkan ke ID tiket tertentu, tambahkan juga ke deliverables tiket tersebut
@@ -932,6 +1050,70 @@ export function addStoredDocument(doc: AdminUploadedDocument): void {
       }
     }
   }
+}
+
+/**
+ * Membaca dokumen yang diunggah Admin khusus untuk akun Klien yang sedang login.
+ * Memastikan dokumen milik Klien A tidak dapat dilihat oleh Klien B.
+ */
+export function getDocumentsForClient(
+  clientEmail?: string | null,
+  clientName?: string | null
+): AdminUploadedDocument[] {
+  const allDocs = getStoredDocuments();
+  if (!clientEmail && !clientName) return [];
+
+  const cleanEmail = clientEmail ? clientEmail.toLowerCase().trim() : "";
+  const cleanName = clientName ? clientName.toLowerCase().trim() : "";
+
+  // Ambil semua tiket untuk memetakan kepemilikan dokumen berdasarkan ticketId
+  const allTickets = getStoredClientTickets();
+  const ticketMap = new Map<string, ClientTicket>();
+  allTickets.forEach((t) => {
+    if (t.id) {
+      ticketMap.set(t.id.toLowerCase().trim(), t);
+    }
+  });
+
+  return allDocs.filter((doc) => {
+    const docEmail = String(doc.clientEmail || "").toLowerCase().trim();
+    const docName = String(doc.clientName || "").toLowerCase().trim();
+
+    // 1. Cek relasi kepemilikan melalui ticketId
+    if (doc.ticketId) {
+      const ticket = ticketMap.get(doc.ticketId.toLowerCase().trim());
+      if (ticket) {
+        const tEmail = String(ticket.clientEmail || "").toLowerCase().trim();
+        const tName = String(ticket.clientName || "").toLowerCase().trim();
+
+        // Jika email tiket cocok
+        if (cleanEmail && tEmail) {
+          return tEmail === cleanEmail;
+        }
+
+        // Jika nama tiket cocok
+        if (cleanName && tName) {
+          return tName === cleanName || tName.includes(cleanName) || cleanName.includes(tName);
+        }
+
+        // Tiket ditemukan tetapi milik klien lain -> JANGAN izinkan
+        return false;
+      }
+    }
+
+    // 2. Jika dokumen memiliki clientEmail langsung
+    if (cleanEmail && docEmail) {
+      return docEmail === cleanEmail;
+    }
+
+    // 3. Jika dokumen memiliki clientName langsung
+    if (cleanName && docName) {
+      return docName === cleanName || docName.includes(cleanName) || cleanName.includes(docName);
+    }
+
+    // Dokumen tidak terikat dengan akun klien saat ini
+    return false;
+  });
 }
 
 /**
@@ -986,13 +1168,36 @@ export function clearAllStoredDocuments(): void {
   saveStoredClientTickets(updatedTickets);
 }
 
+export const DELETED_TICKETS_KEY = "zhou_deleted_client_tickets";
+
+export function getDeletedTicketIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_TICKETS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function isTicketDeleted(ticketId: string): boolean {
+  const ids = getDeletedTicketIds();
+  return ids.includes(ticketId.toLowerCase().trim());
+}
+
 /**
  * Menghapus satu tiket konsultasi berdasarkan ID
  */
 export function deleteStoredClientTicket(ticketId: string): void {
   if (typeof window === "undefined") return;
-  const current = getStoredClientTickets();
   const searchKey = ticketId.toLowerCase().trim();
+  try {
+    const deleted = getDeletedTicketIds();
+    if (!deleted.includes(searchKey)) {
+      localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify([...deleted, searchKey]));
+    }
+  } catch {}
+  const current = getStoredClientTickets();
   const filtered = current.filter((t) => t.id.toLowerCase() !== searchKey);
   saveStoredClientTickets(filtered);
 }
@@ -1002,6 +1207,73 @@ export function deleteStoredClientTicket(ticketId: string): void {
  */
 export function clearAllStoredClientTickets(): void {
   if (typeof window === "undefined") return;
+  try {
+    const current = getStoredClientTickets();
+    const ids = current.map((t) => t.id.toLowerCase().trim());
+    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(ids));
+  } catch {}
   saveStoredClientTickets([]);
 }
+
+export const ARCHIVED_TICKETS_KEY = "zhou_archived_client_tickets";
+
+export function getArchivedTicketIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ARCHIVED_TICKETS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function isTicketArchived(ticketId: string): boolean {
+  if (!ticketId) return false;
+  const ids = getArchivedTicketIds();
+  return ids.includes(String(ticketId).toLowerCase().trim());
+}
+
+/**
+ * Mengubah status arsip (Arsip / Pulihkan dari Arsip)
+ */
+export function toggleArchiveClientTicket(ticketId: string, fallbackTicket?: ClientTicket): boolean {
+  if (typeof window === "undefined") return false;
+  const searchKey = ticketId.toLowerCase().trim();
+  const archivedIds = getArchivedTicketIds();
+  const isCurrentlyArchived = archivedIds.includes(searchKey);
+  const nextArchivedState = !isCurrentlyArchived;
+
+  let updatedArchivedIds: string[];
+  if (nextArchivedState) {
+    updatedArchivedIds = [...archivedIds.filter((id) => id !== searchKey), searchKey];
+  } else {
+    updatedArchivedIds = archivedIds.filter((id) => id !== searchKey);
+  }
+  try {
+    localStorage.setItem(ARCHIVED_TICKETS_KEY, JSON.stringify(updatedArchivedIds));
+  } catch {}
+
+  const tickets = getStoredClientTickets();
+  const idx = tickets.findIndex((t) => t.id.toLowerCase() === searchKey);
+  if (idx !== -1) {
+    tickets[idx] = {
+      ...tickets[idx],
+      isArchived: nextArchivedState,
+      archivedAt: nextArchivedState ? new Date().toISOString() : undefined,
+    };
+    saveStoredClientTickets(tickets);
+  } else if (fallbackTicket) {
+    const newEntry: ClientTicket = {
+      ...fallbackTicket,
+      isArchived: nextArchivedState,
+      archivedAt: nextArchivedState ? new Date().toISOString() : undefined,
+    };
+    tickets.unshift(newEntry);
+    saveStoredClientTickets(tickets);
+  }
+
+  return nextArchivedState;
+}
+
+
 

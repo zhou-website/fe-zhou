@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { clientApi, ClientDocumentItem } from "@/lib/api";
-import { isDummyDocument } from "@/context/AuthContext";
+import { useAuth, isDummyDocument } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,9 @@ import {
 } from "@/components/icons";
 
 import {
-  getStoredDocuments,
+  getDocumentsForClient,
   DOCUMENTS_UPDATED_EVENT,
+  TICKETS_UPDATED_EVENT,
 } from "@/data/sharedTicketsStorage";
 
 interface VaultDocument {
@@ -45,6 +46,7 @@ interface VaultDocument {
 }
 
 export default function ClientDocumentVaultPage() {
+  const { user } = useAuth();
   const [documents, setDocuments] = useState<VaultDocument[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -87,8 +89,8 @@ export default function ClientDocumentVaultPage() {
         // quiet fallback
       }
 
-      // Berkas yang diunggah oleh admin untuk klien
-      const localDocs = getStoredDocuments();
+      // Berkas yang diunggah oleh admin khusus untuk akun klien ini
+      const localDocs = getDocumentsForClient(user?.email, user?.name);
       const mappedLocal: VaultDocument[] = localDocs.map((d) => ({
         id: d.id,
         name: d.fileName,
@@ -118,12 +120,14 @@ export default function ClientDocumentVaultPage() {
 
     loadBackendDocuments();
     window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+    window.addEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
     window.addEventListener("storage", loadBackendDocuments);
     return () => {
       window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
+      window.removeEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
       window.removeEventListener("storage", loadBackendDocuments);
     };
-  }, []);
+  }, [user?.email, user?.name, user?.id]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -276,7 +280,7 @@ export default function ClientDocumentVaultPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-base sm:text-lg font-bold text-primary">
-                Daftar Seluruh Berkas Vault Klien
+                Daftar Berkas Vault Saya
               </CardTitle>
               <CardDescription className="text-xs text-text-secondary mt-0.5">
                 Setiap dokumen dilengkapi hash integritas SHA-256 dan terproteksi perjanjian kerahasiaan NDA.
@@ -353,11 +357,11 @@ export default function ClientDocumentVaultPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
-                  <th className="py-3.5 px-4">Nama Dokumen &amp; Format</th>
-                  <th className="py-3.5 px-4">Divisi &amp; Referensi Layanan</th>
-                  <th className="py-3.5 px-4">Tanggal &amp; Ukuran</th>
-                  <th className="py-3.5 px-4">Status Keabsahan</th>
-                  <th className="py-3.5 px-4 text-right">Aksi</th>
+                  <th className="py-3.5 px-4 text-center">Nama Dokumen &amp; Format</th>
+                  <th className="py-3.5 px-4 text-center">Divisi &amp; Referensi Layanan</th>
+                  <th className="py-3.5 px-4 text-center">Tanggal &amp; Ukuran</th>
+                  <th className="py-3.5 px-4 text-center">Status Keabsahan</th>
+                  <th className="py-3.5 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-light">
@@ -440,7 +444,9 @@ export default function ClientDocumentVaultPage() {
                 {filteredDocuments.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-text-muted">
-                      Tidak ditemukan berkas dokumen dengan filter pencarian tersebut.
+                      {documents.length === 0
+                        ? "Belum ada berkas dokumen yang diterbitkan di Vault akun Anda."
+                        : "Tidak ditemukan berkas dokumen dengan filter pencarian tersebut."}
                     </td>
                   </tr>
                 )}

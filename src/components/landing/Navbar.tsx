@@ -324,7 +324,7 @@ export function Navbar() {
                     asChild
                     className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
                   >
-                    <Link href="/dashboard/superadmin">Superadmin Portal</Link>
+                    <Link href="/dashboard/superadmin/perikatan">Superadmin Portal</Link>
                   </Button>
                 ) : userRole === "admin" ? (
                   <Button
@@ -399,7 +399,7 @@ export function Navbar() {
               <Link
                 href={
                   userRole === "superadmin"
-                    ? "/dashboard/superadmin"
+                    ? "/dashboard/superadmin/perikatan"
                     : userRole === "admin"
                     ? "/dashboard/admin"
                     : "/dashboard/user"
@@ -634,7 +634,7 @@ export function Navbar() {
                   <Link
                     href={
                       userRole === "superadmin"
-                        ? "/dashboard/superadmin"
+                        ? "/dashboard/superadmin/perikatan"
                         : userRole === "admin"
                         ? "/dashboard/admin"
                         : "/dashboard/user"

@@ -229,11 +229,11 @@ function AdminDashboardContent() {
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
                 <th className="py-3 px-3.5 text-center w-12">No</th>
-                <th className="py-3 px-4">Kode Perikatan</th>
-                <th className="py-3 px-4">Judul Tugas</th>
-                <th className="py-3 px-4">Klien &amp; Entitas</th>
-                <th className="py-3 px-4">Kategori Layanan</th>
-                <th className="py-3 px-4">Status &amp; Progres</th>
+                <th className="py-3 px-4 text-center">Kode Perikatan</th>
+                <th className="py-3 px-4 text-center">Judul Tugas</th>
+                <th className="py-3 px-4 text-center">Klien &amp; Entitas</th>
+                <th className="py-3 px-4 text-center">Kategori Layanan</th>
+                <th className="py-3 px-4 text-center">Status &amp; Progres</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary-light">
@@ -261,36 +261,27 @@ function AdminDashboardContent() {
                     </td>
                     <td className="py-3.5 px-4 text-text-secondary">
                       <span className="block font-medium text-primary">
-                        {t.category}
+                        {t.category || "Tax Service Core"}
                       </span>
-                      {t.priority && (
-                        <span
-                          className={`inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                            t.priority === "Mendesak"
-                              ? "bg-red-100 text-red-800"
-                              : t.priority === "Tinggi"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          Prioritas {t.priority}
-                        </span>
-                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="flex flex-col gap-1 items-start">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             t.status === "Selesai"
-                              ? "bg-emerald-100 text-emerald-800"
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                               : t.status === "Dalam Proses"
-                              ? "bg-amber-100 text-amber-800"
+                              ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                              : t.status === "Ditugaskan"
+                              ? "bg-blue-100 text-blue-800 border-blue-300"
+                              : t.status === "Menunggu Penugasan"
+                              ? "bg-amber-100 text-amber-800 border-amber-300"
                               : t.status === "Menunggu Klien"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-slate-100 text-slate-700"
+                              ? "bg-purple-100 text-purple-800 border-purple-300"
+                              : "bg-slate-100 text-slate-700 border-slate-300"
                           }`}
                         >
-                          {t.status}
+                          {t.status === "Menunggu Penugasan" ? "Menunggu PIC" : t.status}
                         </span>
                         <div className="w-24 bg-surface rounded-full h-1.5 overflow-hidden border border-primary-light">
                           <div
