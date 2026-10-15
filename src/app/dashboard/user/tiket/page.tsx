@@ -242,11 +242,12 @@ function ClientTicketMonitoringContent() {
               return {
                 id: ticketCode,
                 title: c.title,
-                category: "Tax Service Core",
+                category: (c.service?.service_name as any) || "Tax Service Core",
                 priority: "Normal",
                 description: c.description,
-                consultant: "Tim Konsultan Zhou",
-                status: isCompleted ? "Completed" : "In Progress",
+                consultant: (c as any).assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
+                assignedAdminName: (c as any).assigned_admin?.name,
+                status: isCompleted ? "Selesai" : (c as any).assigned_admin ? "Dalam Proses" : "Menunggu Penugasan",
                 progress: c.progress_percent || (isCompleted ? 100 : matchingDocs.length > 0 ? 75 : 40),
                 createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
                   day: "numeric",
@@ -551,16 +552,43 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
       return;
     }
 
+    let backendProject: ConsultationItem | null = null;
     try {
-      await clientApi.escalateChatbot({
-        message: `[${newCategory}] [Urgensi: ${newUrgency}] ${newTitle}: ${newDescription}`,
+      const res = await clientApi.createConsultation({
+        title: newTitle.trim(),
+        description: newDescription.trim(),
         category: newCategory,
+        priority: newUrgency,
       });
+      if (res?.success && res.data) {
+        backendProject = res.data;
+      } else {
+        const escRes = await clientApi.escalateChatbot({
+          message: `[${newCategory}] [Urgensi: ${newUrgency}] ${newTitle.trim()}: ${newDescription.trim()}`,
+          category: newCategory,
+        });
+        if (escRes?.success && escRes.data) {
+          backendProject = escRes.data as ConsultationItem;
+        }
+      }
     } catch (err) {
       console.warn("Backend ticket creation notice:", err);
     }
 
-    const newId = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const fallbackCode = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const newId = backendProject?.project_code || (backendProject?.id ? `TK-${backendProject.id}` : fallbackCode);
+
+    // Unggah dokumen pendukung awal ke backend jika ada
+    if (attachedFile && backendProject?.id) {
+      try {
+        const fd = new FormData();
+        fd.append("file", attachedFile);
+        await clientApi.uploadConsultationDocument(backendProject.id, fd);
+      } catch (uploadErr) {
+        console.warn("Upload initial doc error:", uploadErr);
+      }
+    }
+
     const initialClientDocs: ClientUploadedFile[] = attachedFile
       ? [
           {

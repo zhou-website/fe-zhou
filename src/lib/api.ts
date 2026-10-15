@@ -326,6 +326,18 @@ export const clientApi = {
 
   getChatbotTree: () => apiFetch("/api/v1/client/chatbot/tree"),
 
+  createConsultation: (payload: {
+    title: string;
+    description: string;
+    category?: string;
+    priority?: string;
+    service_id?: number;
+  }) =>
+    apiFetch<ConsultationItem>("/api/v1/client/consultations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
   escalateChatbot: (payload: {
     message: string;
     contact_phone?: string;

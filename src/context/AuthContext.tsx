@@ -73,20 +73,16 @@ export function normalizeRole(backendRole?: string | null, email?: string | null
 }
 
 export function isDummyValue(val?: string | null): boolean {
-  if (!val) return true;
+  if (!val) return false;
   const s = val.trim().toLowerCase();
-  if (s === "-" || s === "") return true;
+  if (s === "-" || s === "") return false;
   if (
     s.includes("mitra klien") ||
     s.includes("perusahaan klien") ||
     s.includes("zhou consulting klien") ||
     s.includes("maju makmur") ||
     s === "klien terdaftar" ||
-    s === "nama klien" ||
-    s === "pmk" ||
-    s === "pk" ||
-    s === "mms" ||
-    s === "kl"
+    s === "nama klien"
   ) {
     return true;
   }
@@ -109,23 +105,11 @@ export function isDummyTicket(c: {
 }): boolean {
   const code = (c.project_code || String(c.id || "")).toLowerCase();
   const title = (c.title || "").toLowerCase();
-  const clientName = (c.client?.name || "").toLowerCase();
-  const compName = (c.client?.company_name || "").toLowerCase();
 
   return (
-    code.includes("prj-tax-2026-001") ||
-    code === "1" ||
-    code === "tk-1" ||
-    title.includes("spt tahunan badan pt maju") ||
-    title.includes("pt maju") ||
-    title.includes("maju makmur") ||
-    title.includes("dummy") ||
-    title.includes("mock") ||
-    title.includes("test") ||
-    clientName.includes("maju") ||
-    compName.includes("maju") ||
-    isDummyValue(clientName) ||
-    isDummyValue(compName)
+    code === "prj-tax-2026-001" ||
+    (code === "1" && title.includes("spt tahunan badan pt maju")) ||
+    (code === "tk-1" && title.includes("spt tahunan badan pt maju"))
   );
 }
 
