@@ -4,8 +4,8 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   adminApi,
   superadminApi,
-  AdminUserItem,
   ConsultationItem,
+  AdminUserItem,
 } from "@/lib/api";
 import { isDummyTicket } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -114,6 +114,7 @@ function SuperadminPerikatanContent() {
         const validAdmins = staffRes.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
         const mappedStaff: StaffAdminProfile[] = validAdmins.map((adm: AdminUserItem, idx: number) => ({
           id: `ADM-${String(adm.id).padStart(3, "0")}`,
+          numericId: adm.id,
           name: cleanAdminName(adm.name),
           email: adm.email,
           nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
@@ -122,7 +123,6 @@ function SuperadminPerikatanContent() {
           divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
           isActive: adm.is_active,
         }));
-
         setStaffAdmins(mappedStaff);
         // Cegah perulangan event (STAFF_UPDATED_EVENT loop) jika data staf tidak berubah
         const currentStaff = getStoredStaffAdmins();
@@ -327,7 +327,7 @@ function SuperadminPerikatanContent() {
   };
 
   // Simpan/Tetapkan PIC dari modal kelola PIC
-  const handleSavePicAssignment = () => {
+  const handleSavePicAssignment = async () => {
     if (!managingPicTicket) return;
 
     let targetAdmin = assignableAdmins.find((s) => s.id === selectedStaffId);
@@ -356,6 +356,35 @@ function SuperadminPerikatanContent() {
         managingPicTicket.assignedAdminId !== targetAdmin.id ||
         managingPicTicket.assignedAdminName.toLowerCase() !== targetAdmin.name.toLowerCase())
     );
+
+    // Sinkronisasi penugasan ke backend database API
+    try {
+      const numAdminId =
+        targetAdmin.numericId ||
+        parseInt(targetAdmin.id.replace(/\D/g, ""), 10) ||
+        (targetAdmin.name.toLowerCase().includes("konsultan") ? 2 : undefined) ||
+        (targetAdmin.name.toLowerCase().includes("ana") ? 23 : undefined);
+
+      const rawTicketId = managingPicTicket.id;
+      let targetProjectId: number | undefined;
+      if (rawTicketId.startsWith("TK-")) {
+        const parsed = parseInt(rawTicketId.replace("TK-", ""), 10);
+        if (!isNaN(parsed)) targetProjectId = parsed;
+      } else {
+        const foundB = (tickets as any[]).find(
+          (b) => (b.id && b.id.toLowerCase() === rawTicketId.toLowerCase())
+        );
+        if (foundB && foundB.id && foundB.id.startsWith("TK-")) {
+          targetProjectId = parseInt(foundB.id.replace("TK-", ""), 10);
+        }
+      }
+
+      if (targetProjectId && numAdminId) {
+        await adminApi.assignConsultation(targetProjectId, numAdminId);
+      }
+    } catch (apiErr) {
+      console.warn("Gagal sinkronisasi PIC ke backend API:", apiErr);
+    }
 
     const updated = assignTicketPic(managingPicTicket.id, targetAdmin, assignmentNotes, managingPicTicket);
 

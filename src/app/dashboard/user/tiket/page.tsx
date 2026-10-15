@@ -275,11 +275,12 @@ function ClientTicketMonitoringContent() {
               return {
                 id: ticketCode,
                 title: c.title,
-                category: "Tax Service Core",
+                category: (c.service?.service_name as any) || "Tax Service Core",
                 priority: "Normal",
                 description: c.description,
-                consultant: "Menunggu PIC",
-                status: isCompleted ? "Completed" : "In Progress",
+                consultant: (c as any).assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
+                assignedAdminName: (c as any).assigned_admin?.name,
+                status: isCompleted ? "Selesai" : (c as any).assigned_admin ? "Dalam Proses" : "Menunggu Penugasan",
                 progress: c.progress_percent || (isCompleted ? 100 : matchingDocs.length > 0 ? 75 : 40),
                 createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
                   day: "numeric",
@@ -647,7 +648,7 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
   };
 
   // Handle New Ticket Submit
-  const handleCreateTicket = (e: React.FormEvent) => {
+  const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategory || !newCategory.trim()) {
       showToast("Gagal: Anda wajib memilih divisi layanan yang ingin dikonsultasikan terlebih dahulu.");
@@ -658,7 +659,42 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
       return;
     }
 
-    const newId = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
+    let backendProject: ConsultationItem | null = null;
+    try {
+      const res = await clientApi.createConsultation({
+        title: newTitle.trim(),
+        description: newDescription.trim(),
+        category: newCategory,
+        priority: "Normal",
+      });
+      if (res?.success && res.data) {
+        backendProject = res.data;
+      } else {
+        const escRes = await clientApi.escalateChatbot({
+          message: `[${newCategory}] [Urgensi: Normal] ${newTitle.trim()}: ${newDescription.trim()}`,
+          category: newCategory,
+        });
+        if (escRes?.success && escRes.data) {
+          backendProject = escRes.data as ConsultationItem;
+        }
+      }
+    } catch (err) {
+      console.warn("Backend ticket creation notice:", err);
+    }
+
+    const fallbackCode = `TK-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const newId = backendProject?.project_code || (backendProject?.id ? `TK-${backendProject.id}` : fallbackCode);
+
+    // Unggah dokumen pendukung awal ke backend jika ada
+    if (attachedFile && backendProject?.id) {
+      try {
+        const fd = new FormData();
+        fd.append("file", attachedFile);
+        await clientApi.uploadConsultationDocument(backendProject.id, fd);
+      } catch (uploadErr) {
+        console.warn("Upload initial doc error:", uploadErr);
+      }
+    }
     const initialClientDocs: ClientUploadedFile[] = attachedFile
       ? [
           {
@@ -741,21 +777,16 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
     };
     setTickets((prev) => [mappedNewTicket, ...prev.filter((t) => t.id.toLowerCase() !== newId.toLowerCase())]);
     setSelectedTicketId(newId);
+    setViewMode("list");
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewCategory("");
     setNewDescription("");
     setAttachedFile(null);
     showToast(`Permohonan konsultasi berhasil dibuat dengan nomor referensi ${newId}.`);
+  };
 
-    // 3. Sinkronkan ke backend secara asinkron tanpa menunggu/menunda UI
-    clientApi.escalateChatbot({
-      message: `[${newCategory}] ${newTitle.trim()}: ${newDescription.trim()}`,
-      category: newCategory,
-    }).catch((err) => {
-      console.warn("Backend ticket creation notice:", err);
-    });
-  };  const renderDetailView = () => {
+  const renderDetailView = () => {
     if (!selectedTicket) return null;
 
     // Hitung progress penyelesaian aktual berdasarkan rasio tahapan yang selesai

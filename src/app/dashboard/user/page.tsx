@@ -120,8 +120,8 @@ export default function UserDashboardPage() {
           backendTickets = validConsultations.map((c: ConsultationItem) => ({
             id: c.project_code || `TK-${c.id}`,
             title: c.title,
-            category: "Tax Service Core",
-            consultant: "Menunggu PIC",
+            category: c.service?.service_name || "Tax Service Core",
+            consultant: (c as any).assigned_admin?.name || "Menunggu PIC",
             status: c.status === "COMPLETED" ? "Selesai" : "Dalam Proses",
             progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
             updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {

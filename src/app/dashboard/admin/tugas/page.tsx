@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth, isDummyTicket, normalizeRole } from "@/context/AuthContext";
+import { adminApi, ConsultationItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -84,7 +85,7 @@ function AdminTugasSayaContent() {
   };
 
   // Muat data staf admin & tiket
-  const loadData = React.useCallback(() => {
+  const loadData = React.useCallback(async () => {
     setIsLoading(true);
     const staff = getStoredStaffAdmins();
     setStaffList(staff);
@@ -95,13 +96,59 @@ function AdminTugasSayaContent() {
     );
     const staffContext = currentStaffProfile || {
       email: activeAdminEmail,
-      name: user?.name || "Linda David, S.Ak., BKP",
+      name: user?.name || "Konsultan Senior Zhou",
       role: normalizedUserRole,
-      id: "ADM-001",
+      id: user?.id ? String(user.id) : "ADM-002",
     };
 
-    const adminTickets = getTicketsForAdmin(staffContext).filter((t) => !isDummyTicket(t));
-    setTickets(adminTickets);
+    const storedTickets = getTicketsForAdmin(staffContext).filter((t) => !isDummyTicket(t));
+
+    // Sinkronisasi dengan perikatan dari backend (GET /api/v1/admin/consultations)
+    let backendTickets: ClientTicket[] = [];
+    try {
+      const res = await adminApi.getConsultations();
+      if (res?.data && Array.isArray(res.data)) {
+        backendTickets = res.data
+          .filter((c: ConsultationItem) => !isDummyTicket(c))
+          .map((c: ConsultationItem) => ({
+            id: c.project_code || `TK-${c.id}`,
+            title: c.title || "Konsultasi Perpajakan",
+            category: (c.service?.service_name as any) || "Tax Service Core",
+            status: c.status === "COMPLETED" ? "Selesai" : c.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
+            priority: "Normal",
+            description: c.description || "",
+            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 35),
+            createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
+            estimatedCompletion: "14 Hari Kerja",
+            clientName: c.client?.name || "Klien Terdaftar",
+            clientEmail: c.client?.email || "-",
+            clientCompany: c.client?.company_name || "-",
+            consultant: c.assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
+            assignedAdminName: c.assigned_admin?.name,
+            milestones: (c.tasks || []).map((task, idx) => ({
+              step: `0${idx + 1}`,
+              title: task.task_name,
+              status: task.is_completed ? ("completed" as const) : idx === 0 ? ("in_progress" as const) : ("pending" as const),
+              date: "Proses",
+              description: task.task_name,
+            })),
+            deliverables: [],
+            correspondences: [],
+            clientDocuments: [],
+          }));
+      }
+    } catch (err) {
+      console.warn("Gagal memuat konsultasi backend admin tugas:", err);
+    }
+
+    const combined: ClientTicket[] = [...storedTickets];
+    for (const b of backendTickets) {
+      if (!combined.some((t) => t.id.toLowerCase() === b.id.toLowerCase())) {
+        combined.push(b);
+      }
+    }
+
+    setTickets(combined);
     setIsLoading(false);
   }, [activeAdminEmail, user?.name, normalizedUserRole]);
 

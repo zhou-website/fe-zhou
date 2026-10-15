@@ -49,6 +49,7 @@ export interface ClientUploadedFile {
 
 export interface StaffAdminProfile {
   id: string;
+  numericId?: number;
   name: string;
   email: string;
   nip?: string;
@@ -140,29 +141,49 @@ export const DEFAULT_STAFF_ADMINS: StaffAdminProfile[] = [
   },
   {
     id: "ADM-002",
+    name: "Konsultan Senior Zhou",
+    email: "admin@zhouconsulting.com",
+    nip: "ADM-002",
+    phone: "+62 812-3456-7891",
+    role: "admin",
+    divisions: ["Tax Service Core", "Accounting Service", "Business Advisory", "Legal Compliance"],
+    isActive: true,
+  },
+  {
+    id: "ADM-023",
+    name: "Ana, S.E",
+    email: "ana@zhouconsulting",
+    nip: "ADM-023",
+    phone: "+62 812-9876-0023",
+    role: "admin",
+    divisions: ["Tax Service Core", "Accounting Service"],
+    isActive: true,
+  },
+  {
+    id: "ADM-003",
     name: "Bambang Prakoso, S.H., LL.M.",
     email: "bambang.legal@zhou.id",
-    nip: "ADM-002",
+    nip: "ADM-003",
     phone: "+62 812-9876-1202",
     role: "admin",
     divisions: ["Legal Compliance", "Business Advisory"],
     isActive: true,
   },
   {
-    id: "ADM-003",
+    id: "ADM-004",
     name: "Dewi Lestari, S.E., Ak., CA",
     email: "dewi.akuntansi@zhou.id",
-    nip: "ADM-003",
+    nip: "ADM-004",
     phone: "+62 812-9876-1203",
     role: "admin",
     divisions: ["Accounting Service", "Tax Service Core"],
     isActive: true,
   },
   {
-    id: "ADM-004",
+    id: "ADM-005",
     name: "Hendro Wicaksono, M.B.A.",
     email: "hendro.bisnis@zhou.id",
-    nip: "ADM-004",
+    nip: "ADM-005",
     phone: "+62 812-9876-1204",
     role: "admin",
     divisions: ["Business Advisory", "Tax Service Core"],
@@ -220,9 +241,9 @@ function isDummyTicketRecord(t: { id?: string | number; title?: string }): boole
   const code = String(t.id || "").toLowerCase();
   const title = String(t.title || "").toLowerCase();
   return (
-    code === "prj-tax-2026-001" ||
-    code === "1" ||
-    code === "tk-1" ||
+    code.includes("prj-tax-2026-001") ||
+    (code === "1" && title.includes("spt tahunan badan pt maju")) ||
+    (code === "tk-1" && title.includes("spt tahunan badan pt maju")) ||
     title.includes("spt tahunan badan pt maju") ||
     title.includes("pt maju makmur")
   );
@@ -597,25 +618,39 @@ export function canAdminAccessTicket(
   if (adminUser.role === "superadmin") return true;
 
   const email = String(adminUser.email || "").toLowerCase().trim();
-  const name = String(adminUser.name || "").toLowerCase().trim();
+  const name = String(adminUser.name || "").toLowerCase().replace(/\s*\(updated\)/gi, "").trim();
   const id = String(adminUser.id || "").toLowerCase().trim();
 
   const assignedEmail = String(ticket.assignedAdminEmail || "").toLowerCase().trim();
-  const assignedName = String(ticket.assignedAdminName || "").toLowerCase().trim();
+  const assignedName = String(ticket.assignedAdminName || "").toLowerCase().replace(/\s*\(updated\)/gi, "").trim();
   const assignedId = String(ticket.assignedAdminId || "").toLowerCase().trim();
-  const consultant = String(ticket.consultant || "").toLowerCase().trim();
+  const consultant = String(ticket.consultant || "").toLowerCase().replace(/\s*\(updated\)/gi, "").trim();
 
   // Jika tiket belum ditugaskan ke siapa-siapa, Admin biasa tidak boleh mengakses
-  if (!assignedEmail && !assignedId && !assignedName && consultant.includes("Menunggu")) {
+  if (!assignedEmail && !assignedId && !assignedName && consultant.includes("menunggu")) {
     return false;
   }
 
-  return (
-    (Boolean(assignedEmail) && assignedEmail === email) ||
-    (Boolean(assignedId) && assignedId === id) ||
-    (Boolean(assignedName) && assignedName === name) ||
-    (Boolean(consultant) && consultant === name)
-  );
+  const matchEmail =
+    Boolean(assignedEmail) &&
+    (assignedEmail === email ||
+      (email.includes("admin@zhouconsulting") && (assignedEmail.includes("konsultan") || assignedEmail.includes("admin@zhou"))) ||
+      (email.includes("konsultan") && assignedEmail.includes("admin@zhou")) ||
+      (email.includes("ana") && assignedEmail.includes("ana")));
+
+  const matchName =
+    (Boolean(assignedName) && (assignedName === name || assignedName.includes(name) || name.includes(assignedName))) ||
+    (Boolean(consultant) && (consultant === name || consultant.includes(name) || name.includes(consultant)));
+
+  const matchId =
+    Boolean(assignedId) &&
+    (assignedId === id ||
+      assignedId.endsWith(id) ||
+      id.endsWith(assignedId) ||
+      (id === "2" && assignedId.includes("002")) ||
+      (id === "23" && assignedId.includes("023")));
+
+  return Boolean(matchEmail || matchName || matchId);
 }
 
 /**

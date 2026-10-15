@@ -293,6 +293,11 @@ export interface ConsultationItem {
     service_name: string;
     category: string;
   };
+  assigned_admin?: {
+    id: number;
+    name: string;
+    email?: string;
+  } | null;
   tasks?: AdminTaskItem[];
   documents?: ClientDocumentItem[];
 }
@@ -325,6 +330,18 @@ export const clientApi = {
     apiFetch<{ download_url: string }>(`/api/v1/client/documents/${docId}/download`),
 
   getChatbotTree: () => apiFetch("/api/v1/client/chatbot/tree"),
+
+  createConsultation: (payload: {
+    title: string;
+    description: string;
+    category?: string;
+    priority?: string;
+    service_id?: number;
+  }) =>
+    apiFetch<ConsultationItem>("/api/v1/client/consultations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   escalateChatbot: (payload: {
     message: string;
@@ -394,6 +411,12 @@ export const adminApi = {
     apiFetch(`/api/v1/admin/consultations/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    }),
+
+  assignConsultation: (id: number | string, assigned_admin_id: number | string) =>
+    apiFetch(`/api/v1/admin/consultations/${id}/assign`, {
+      method: "PATCH",
+      body: JSON.stringify({ assigned_admin_id: Number(assigned_admin_id) }),
     }),
 
   getTasks: (consultationId: number | string) =>
