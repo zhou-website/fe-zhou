@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   adminApi,
+  superadminApi,
   ConsultationItem,
+  AdminUserItem,
 } from "@/lib/api";
 import { isDummyTicket } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -67,7 +69,42 @@ function SuperadminPerikatanContent() {
 
     const storedTickets = getStoredClientTickets();
     const storedStaff = getStoredStaffAdmins();
-    setStaffAdmins(storedStaff);
+
+    // Muat data staf admin aktif dari backend API agar tersinkronisasi sempurna
+    let backendAdmins: AdminUserItem[] = [];
+    try {
+      const adminRes = await superadminApi.getAdmins();
+      if (adminRes?.data && Array.isArray(adminRes.data)) {
+        backendAdmins = adminRes.data;
+      }
+    } catch (err) {
+      console.warn("Gagal memuat daftar admin backend:", err);
+    }
+
+    const mergedStaff: StaffAdminProfile[] = [...storedStaff];
+    for (const b of backendAdmins) {
+      const cleanBName = (b.name || "").replace(/\s*\(Updated\)/gi, "").trim();
+      const existing = mergedStaff.find(
+        (s) => s.email.toLowerCase() === b.email.toLowerCase() || s.name.toLowerCase() === cleanBName.toLowerCase()
+      );
+      if (existing) {
+        existing.numericId = b.id;
+        existing.email = b.email;
+        existing.name = cleanBName;
+        existing.isActive = b.is_active;
+      } else {
+        mergedStaff.push({
+          id: `ADM-${String(b.id).padStart(3, "0")}`,
+          numericId: b.id,
+          name: cleanBName,
+          email: b.email,
+          role: b.role === "SUPERADMIN" ? "superadmin" : "admin",
+          divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance", "Business Advisory"],
+          isActive: b.is_active,
+        });
+      }
+    }
+    setStaffAdmins(mergedStaff);
 
     // Pastikan jika ada tiket dari backend yang belum terdaftar di storedTickets, tetap bisa diakses
     const combined: ClientTicket[] = [...storedTickets];
@@ -190,6 +227,35 @@ function SuperadminPerikatanContent() {
         managingPicTicket.assignedAdminId !== targetAdmin.id ||
         managingPicTicket.assignedAdminName.toLowerCase() !== targetAdmin.name.toLowerCase())
     );
+
+    // Sinkronisasi penugasan ke backend database API
+    try {
+      const numAdminId =
+        targetAdmin.numericId ||
+        parseInt(targetAdmin.id.replace(/\D/g, ""), 10) ||
+        (targetAdmin.name.toLowerCase().includes("konsultan") ? 2 : undefined) ||
+        (targetAdmin.name.toLowerCase().includes("ana") ? 23 : undefined);
+
+      const rawTicketId = managingPicTicket.id;
+      let targetProjectId: number | undefined;
+      if (rawTicketId.startsWith("TK-")) {
+        const parsed = parseInt(rawTicketId.replace("TK-", ""), 10);
+        if (!isNaN(parsed)) targetProjectId = parsed;
+      } else {
+        const foundB = (tickets as any[]).find(
+          (b) => (b.id && b.id.toLowerCase() === rawTicketId.toLowerCase())
+        );
+        if (foundB && foundB.id && foundB.id.startsWith("TK-")) {
+          targetProjectId = parseInt(foundB.id.replace("TK-", ""), 10);
+        }
+      }
+
+      if (targetProjectId && numAdminId) {
+        await adminApi.assignConsultation(targetProjectId, numAdminId);
+      }
+    } catch (apiErr) {
+      console.warn("Gagal sinkronisasi PIC ke backend API:", apiErr);
+    }
 
     const updated = assignTicketPic(managingPicTicket.id, targetAdmin, assignmentNotes);
 

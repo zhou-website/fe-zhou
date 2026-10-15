@@ -93,22 +93,10 @@ export default function SuperadminDashboard() {
   // Audit Logs State (Append-Only Mutlak)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  // Helper untuk menyaring log audit dummy
+  // Helper untuk menyaring log audit yang murni pengujian trigger
   const isDummyAuditLog = (l: AuditLogItem): boolean => {
     const desc = (l.description || l.action || "").toLowerCase();
-    const ticketId = (l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`).toLowerCase();
-    const clientId = (l.client_id ? `CL-${l.client_id}` : "").toLowerCase();
-    return (
-      ticketId.startsWith("act-") ||
-      ticketId.startsWith("tk-") ||
-      l.admin_id === 1 ||
-      clientId === "cl-3" ||
-      clientId === "cl-1" ||
-      desc.includes("test") ||
-      desc.includes("dummy") ||
-      desc.includes("mock") ||
-      desc.includes("updated")
-    );
+    return desc.includes("testing trigger protection");
   };
 
   const cleanAdminName = (rawName: string) => {
@@ -122,13 +110,8 @@ export default function SuperadminDashboard() {
     return (
       email.includes("deact.") ||
       email.includes("staff.admin.") ||
-      email.includes("test") ||
-      email.includes("dummy") ||
-      email.includes("mock") ||
       name.includes("test runner") ||
       name.includes("deactivate") ||
-      name.includes("dummy") ||
-      name.includes("mock") ||
       /\b17\d{10,12}\b/.test(email)
     );
   };
@@ -136,18 +119,19 @@ export default function SuperadminDashboard() {
   // Fetch live audit logs & admins from Backend API
   useEffect(() => {
     let isMounted = true;
-    const isCleared = typeof window !== "undefined" && localStorage.getItem("zhou_audit_logs_cleared");
 
-    if (isCleared) {
-      setAuditLogs([]);
-    } else {
-      superadminApi
-        .getAuditLogs()
-        .then((res) => {
-          if (!isMounted) return;
-          if (res?.data && Array.isArray(res.data)) {
-            const validLogs = res.data.filter((l: AuditLogItem) => !isDummyAuditLog(l));
-            const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => ({
+    superadminApi
+      .getAuditLogs()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data)) {
+          const validLogs = res.data.filter((l: AuditLogItem) => !isDummyAuditLog(l));
+          const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => {
+            const adminObj = (l as any).admin;
+            const clientObj = (l as any).client;
+            const projectObj = (l as any).project;
+
+            return {
               id: `LOG-${l.id}`,
               timestamp:
                 new Date(l.created_at).toLocaleString("id-ID", {
@@ -157,22 +141,22 @@ export default function SuperadminDashboard() {
                   hour: "2-digit",
                   minute: "2-digit",
                 }) + " WIB",
-              adminName: `Admin #${l.admin_id}`,
+              adminName: adminObj?.name ? cleanAdminName(adminObj.name) : `Admin #${l.admin_id}`,
               adminId: `ADM-${String(l.admin_id).padStart(3, "0")}`,
-              clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
-              ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
+              clientId: clientObj?.name || (l.client_id ? `CL-${l.client_id}` : "Umum"),
+              ticketId: projectObj?.project_code || (l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`),
               statusBefore: l.status_before || "Draft",
               statusAfter: l.status_after || "Updated",
               relatedFile: l.file_name || "-",
               notes: l.description || l.action,
-            }));
-            setAuditLogs(mappedLogs);
-          }
-        })
-        .catch(() => {
-          // silent fallback
-        });
-    }
+            };
+          });
+          setAuditLogs(mappedLogs);
+        }
+      })
+      .catch(() => {
+        // silent fallback
+      });
 
     const calculateAdminTasks = (adminEmail: string, adminName: string) => {
       const tickets = getStoredClientTickets();

@@ -664,7 +664,11 @@ Kerahasiaan    : Dokumen ini terenkripsi dan terikat perjanjian kerahasiaan (NDA
 
     // Tambah ke storage bersama sehingga Superadmin langsung dapat melihat tiket ini di antrian penugasan
     addStoredClientTicket(newTicketItem);
+
+    // Langsung perbarui state tiket lokal di komponen agar segera tampil di bagian "Daftar Seluruh Konsultasi"
+    setTickets((prev) => [newTicketItem, ...prev.filter((t) => t.id.toLowerCase() !== newId.toLowerCase())]);
     setSelectedTicketId(newId);
+    setViewMode("list");
     setIsNewTicketModalOpen(false);
     setNewTitle("");
     setNewDescription("");

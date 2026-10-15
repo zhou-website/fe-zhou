@@ -46,9 +46,9 @@ function AdminDashboardContent() {
     );
     const staffContext = currentStaffProfile || {
       email: activeAdminEmail,
-      name: user?.name || "Linda David, S.Ak., BKP",
+      name: user?.name || "Konsultan Senior Zhou",
       role: normalizedUserRole,
-      id: "ADM-001",
+      id: user?.id ? String(user.id) : "ADM-002",
     };
 
     // Muat dari shared storage lokal

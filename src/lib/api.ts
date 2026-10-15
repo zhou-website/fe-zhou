@@ -408,6 +408,12 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     }),
 
+  assignConsultation: (id: number | string, assigned_admin_id: number | string) =>
+    apiFetch(`/api/v1/admin/consultations/${id}/assign`, {
+      method: "PATCH",
+      body: JSON.stringify({ assigned_admin_id: Number(assigned_admin_id) }),
+    }),
+
   getTasks: (consultationId: number | string) =>
     apiFetch<AdminTaskItem[]>(`/api/v1/admin/consultations/${consultationId}/tasks`),
 
