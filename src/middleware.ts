@@ -25,6 +25,11 @@ export function middleware(request: NextRequest) {
     if (rawRole === "admin" && pathname.startsWith("/dashboard/superadmin")) {
       return NextResponse.redirect(new URL("/dashboard/admin", request.url));
     }
+
+    // Superadmin accessing regular admin or client dashboard
+    if (rawRole === "superadmin" && (pathname === "/dashboard/admin" || pathname.startsWith("/dashboard/user"))) {
+      return NextResponse.redirect(new URL("/dashboard/superadmin/perikatan", request.url));
+    }
   }
 
   return NextResponse.next();

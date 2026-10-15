@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth, isDummyTicket, normalizeRole } from "@/context/AuthContext";
 import { adminApi, ConsultationItem } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -20,8 +21,16 @@ import {
 } from "@/data/sharedTicketsStorage";
 
 function AdminDashboardContent() {
+  const router = useRouter();
   const { user } = useAuth();
   const normalizedUserRole = normalizeRole(user?.role, user?.email);
+
+  // Auto redirect superadmin ke portal superadmin
+  useEffect(() => {
+    if (normalizedUserRole === "superadmin") {
+      router.replace("/dashboard/superadmin/perikatan");
+    }
+  }, [normalizedUserRole, router]);
 
   const [activeAdminEmail, setActiveAdminEmail] = useState<string>(user?.email || "admin@zhou.id");
   const [tickets, setTickets] = useState<ClientTicket[]>([]);

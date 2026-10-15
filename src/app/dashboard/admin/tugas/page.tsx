@@ -52,6 +52,13 @@ function AdminTugasSayaContent() {
   // Profil Admin aktif (default: user login; atau admin terpilih jika superadmin sedang menguji)
   const [activeAdminEmail, setActiveAdminEmail] = useState<string>(user?.email || "admin@zhou.id");
 
+  // Auto redirect superadmin ke portal superadmin
+  useEffect(() => {
+    if (normalizedUserRole === "superadmin") {
+      router.replace("/dashboard/superadmin/perikatan");
+    }
+  }, [normalizedUserRole, router]);
+
   // Jika bukan Superadmin, selalu kunci activeAdminEmail ke identitas login asli
   useEffect(() => {
     if (normalizedUserRole !== "superadmin" && user?.email) {

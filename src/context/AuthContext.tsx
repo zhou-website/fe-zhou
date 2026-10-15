@@ -61,14 +61,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_STORAGE_KEY = "zhou_auth_user";
 
 export function normalizeRole(backendRole?: string | null, email?: string | null): "user" | "admin" | "superadmin" {
+  if (backendRole) {
+    const lower = String(backendRole).toLowerCase().trim();
+    if (lower.includes("super")) return "superadmin";
+    if (lower.includes("admin")) return "admin";
+    if (lower.includes("user") || lower.includes("client")) return "user";
+  }
+
   const emailLower = String(email || "").toLowerCase().trim();
   if (emailLower.includes("superadmin")) return "superadmin";
   if (emailLower.startsWith("admin@") || emailLower.includes("admin@") || emailLower.includes("konsultan@")) return "admin";
 
-  if (!backendRole) return "user";
-  const lower = String(backendRole).toLowerCase().trim();
-  if (lower.includes("super")) return "superadmin";
-  if (lower.includes("admin")) return "admin";
   return "user";
 }
 
@@ -181,8 +184,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         redirectUrl !== "/dashboard"
       ) {
         if (role === "superadmin") {
-          // Superadmin default adalah /dashboard/superadmin/perikatan. Cegah terlempar ke /dashboard/user
-          destination = redirectUrl.startsWith("/dashboard/user") ? "/dashboard/superadmin/perikatan" : redirectUrl;
+          // Superadmin hanya boleh dialihkan ke rute superadmin.
+          // Jika redirectUrl berasal dari admin biasa (/dashboard/admin) atau user (/dashboard/user),
+          // selalu arahkan ke portal utama superadmin (/dashboard/superadmin/perikatan).
+          destination = redirectUrl.startsWith("/dashboard/superadmin")
+            ? redirectUrl
+            : "/dashboard/superadmin/perikatan";
         } else if (role === "admin") {
           // Admin default adalah /dashboard/admin. Cegah terlempar ke /dashboard/superadmin atau /dashboard/user
           destination =
@@ -480,7 +487,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setTokenState(null);
       setIsAuthenticated(false);
-      router.push("/");
+      window.location.replace("/");
     }
   };
 
