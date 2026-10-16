@@ -1121,6 +1121,38 @@ export const superadminApi = {
       method: "POST",
     }),
 
+  updateAdmin: (
+    id: number | string,
+    payload: {
+      name?: string;
+      email?: string;
+      password?: string;
+      phone?: string;
+      role?: "ADMIN" | "SUPERADMIN" | string;
+    }
+  ) => {
+    const formattedPayload = {
+      ...payload,
+      ...(payload.role
+        ? {
+            role:
+              payload.role.toUpperCase() === "SUPERADMIN"
+                ? "SUPERADMIN"
+                : "ADMIN",
+          }
+        : {}),
+    };
+    return apiFetch<AdminUserItem>(`/api/v1/superadmin/admins/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(formattedPayload),
+    }).catch(() =>
+      apiFetch<AdminUserItem>(`/api/v1/superadmin/admins/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(formattedPayload),
+      })
+    );
+  },
+
   deleteAdmin: (id: number | string) =>
     apiFetch(`/api/v1/superadmin/admins/${id}`, {
       method: "DELETE",

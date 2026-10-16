@@ -34,6 +34,7 @@ import {
   faBuilding,
   faFileArrowDown,
   faEye,
+  faEyeSlash,
   faCheck,
   faCircleQuestion,
   faCalendarDays,
@@ -108,6 +109,7 @@ export const LogoutIcon = createIcon(faRightFromBracket);
 export const BuildingIcon = createIcon(faBuilding);
 export const ExportIcon = createIcon(faFileArrowDown);
 export const EyeIcon = createIcon(faEye);
+export const EyeSlashIcon = createIcon(faEyeSlash);
 export const QuestionCircleIcon = createIcon(faCircleQuestion);
 export const CalendarIcon = createIcon(faCalendarDays);
 export const SettingsIcon = createIcon(faGears);

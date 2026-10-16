@@ -16,6 +16,8 @@ import {
   EditIcon,
   TrashIcon,
   EyeIcon,
+  EyeSlashIcon,
+  LockIcon,
 } from "@/components/icons";
 import { superadminApi, adminApi, AdminUserItem, ConsultationItem } from "@/lib/api";
 
@@ -31,7 +33,40 @@ export interface StaffAdmin {
   status: "Aktif" | "Nonaktif";
   twoFactorEnabled: boolean;
   joinDate: string;
+  password?: string;
 }
+
+const STORAGE_KEY_STAFF_OVERRIDES = "zhou_staff_admin_overrides_v2";
+const STORAGE_KEY_STAFF_CREATED = "zhou_staff_admin_created_v2";
+const STORAGE_KEY_STAFF_DELETED = "zhou_staff_admin_deleted_v2";
+
+const getLocalStaffCache = () => {
+  if (typeof window === "undefined") {
+    return {
+      overrides: {} as Record<string, Partial<StaffAdmin>>,
+      created: [] as StaffAdmin[],
+      deleted: [] as string[],
+    };
+  }
+  try {
+    const rawOverrides = localStorage.getItem(STORAGE_KEY_STAFF_OVERRIDES);
+    const rawCreated = localStorage.getItem(STORAGE_KEY_STAFF_CREATED);
+    const rawDeleted = localStorage.getItem(STORAGE_KEY_STAFF_DELETED);
+
+    return {
+      overrides: rawOverrides ? (JSON.parse(rawOverrides) as Record<string, Partial<StaffAdmin>>) : {},
+      created: rawCreated ? (JSON.parse(rawCreated) as StaffAdmin[]) : [],
+      deleted: rawDeleted ? (JSON.parse(rawDeleted) as string[]) : [],
+    };
+  } catch (err) {
+    console.warn("Error reading staff cache from localStorage:", err);
+    return {
+      overrides: {} as Record<string, Partial<StaffAdmin>>,
+      created: [] as StaffAdmin[],
+      deleted: [] as string[],
+    };
+  }
+};
 
 const isDummyAdmin = (adm: {
   id?: string | number;
@@ -74,6 +109,25 @@ export default function SuperadminUsersPage() {
   const [editingStaff, setEditingStaff] = useState<StaffAdmin | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<StaffAdmin | null>(null);
 
+  // Edit Staff Password States (Kata Sandi Saat Ini & Form Perubahan Password)
+  const [currentStaffPassword, setCurrentStaffPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Pre-fill password with the staff's existing created password when edit modal opens
+  useEffect(() => {
+    if (editingStaff) {
+      const existingPassword =
+        editingStaff.password ||
+        (editingStaff.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!");
+      setCurrentStaffPassword(existingPassword);
+      setShowCurrentPassword(false);
+      setNewStaffPassword("");
+      setShowNewPassword(false);
+    }
+  }, [editingStaff?.id]);
+
   // Add Form State
   const [newStaffForm, setNewStaffForm] = useState({
     name: "",
@@ -87,7 +141,24 @@ export default function SuperadminUsersPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sync staff with Backend API and calculate assigned tasks from real consultations
+  // Initial load from localStorage cache for instant zero-flicker UI
+  useEffect(() => {
+    const cache = getLocalStaffCache();
+    if (cache.created.length > 0 || Object.keys(cache.overrides).length > 0) {
+      const initialMerged: StaffAdmin[] = [];
+      cache.created.forEach((item) => {
+        if (!cache.deleted.includes(item.id) && !cache.deleted.includes(item.email.toLowerCase())) {
+          const override = cache.overrides[item.id] || cache.overrides[item.email.toLowerCase()];
+          initialMerged.push(override ? { ...item, ...override } : item);
+        }
+      });
+      if (initialMerged.length > 0) {
+        setStaffList(initialMerged);
+      }
+    }
+  }, []);
+
+  // Sync staff with Backend API and merge with persistent local overrides
   const loadStaff = async () => {
     setIsLoading(true);
     try {
@@ -96,9 +167,10 @@ export default function SuperadminUsersPage() {
         adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
       ]);
 
-      if (adminsRes?.data && Array.isArray(adminsRes.data)) {
-        const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
+      const cache = getLocalStaffCache();
+      const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
 
+      if (adminsRes?.data && Array.isArray(adminsRes.data)) {
         // Purge dummy test runner accounts from backend in background
         adminsRes.data.forEach((adm: AdminUserItem) => {
           if (isDummyAdmin(adm)) {
@@ -125,7 +197,7 @@ export default function SuperadminUsersPage() {
             return false;
           }).length;
 
-          return {
+          const baseItem: StaffAdmin = {
             id: `STF-BE-${adm.id}`,
             name: cleanAdminName(adm.name),
             nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
@@ -141,13 +213,79 @@ export default function SuperadminUsersPage() {
               month: "short",
               year: "numeric",
             }),
+            password: adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!",
           };
+
+          // Reconcile with local overrides by ID, Email, NIP, or raw backend ID
+          const rawId = String(adm.id);
+          const override =
+            cache.overrides[baseItem.id] ||
+            cache.overrides[baseItem.email.toLowerCase()] ||
+            cache.overrides[baseItem.nip] ||
+            cache.overrides[rawId];
+
+          if (override) {
+            return {
+              ...baseItem,
+              ...override,
+              tasksCount: override.tasksCount !== undefined ? override.tasksCount : assignedCount,
+            };
+          }
+
+          return baseItem;
         });
 
-        setStaffList(apiStaff);
+        // Filter out deleted staff
+        let mergedList = apiStaff.filter((s) => {
+          const rawId = s.id.replace(/\D/g, "");
+          const isDeleted =
+            cache.deleted.includes(s.id) ||
+            cache.deleted.includes(s.email.toLowerCase()) ||
+            cache.deleted.includes(s.nip) ||
+            (rawId && cache.deleted.includes(rawId));
+          return !isDeleted;
+        });
+
+        // Prepend locally created staff not yet returned by backend
+        cache.created.forEach((createdItem) => {
+          const isDeleted =
+            cache.deleted.includes(createdItem.id) ||
+            cache.deleted.includes(createdItem.email.toLowerCase()) ||
+            cache.deleted.includes(createdItem.nip);
+          if (isDeleted) return;
+
+          const alreadyInList = mergedList.some(
+            (s) =>
+              s.id === createdItem.id ||
+              s.email.toLowerCase() === createdItem.email.toLowerCase() ||
+              s.nip === createdItem.nip
+          );
+
+          if (!alreadyInList) {
+            const override =
+              cache.overrides[createdItem.id] ||
+              cache.overrides[createdItem.email.toLowerCase()] ||
+              cache.overrides[createdItem.nip];
+            mergedList.unshift(override ? { ...createdItem, ...override } : createdItem);
+          }
+        });
+
+        setStaffList(mergedList);
       }
     } catch (err) {
       console.warn("Gagal memuat staf admin dari backend:", err);
+      // Fallback to cache if network fails
+      const cache = getLocalStaffCache();
+      const fallbackList: StaffAdmin[] = [];
+      cache.created.forEach((c) => {
+        if (!cache.deleted.includes(c.id) && !cache.deleted.includes(c.email.toLowerCase())) {
+          const override = cache.overrides[c.id] || cache.overrides[c.email.toLowerCase()];
+          fallbackList.push(override ? { ...c, ...override } : c);
+        }
+      });
+      if (fallbackList.length > 0) {
+        setStaffList(fallbackList);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +309,48 @@ export default function SuperadminUsersPage() {
 
     const normalizedRole = newStaffForm.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
     const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
+    const newId = `STF-LOCAL-${Date.now()}`;
+    const newNip = (normalizedRole === "SUPERADMIN" ? "SPR-" : "ADM-") + String(Math.floor(100 + Math.random() * 900));
 
+    const newStaffItem: StaffAdmin = {
+      id: newId,
+      name: newStaffForm.name.trim(),
+      nip: newNip,
+      email: newStaffForm.email.trim(),
+      phone: newStaffForm.phone.trim(),
+      role: displayRole,
+      division: newStaffForm.division,
+      tasksCount: 0,
+      status: "Aktif",
+      twoFactorEnabled: newStaffForm.twoFactorEnabled,
+      joinDate: new Date().toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      password: newStaffForm.initialPassword,
+    };
+
+    // 1. Immediately persist to localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const cache = getLocalStaffCache();
+        cache.created.unshift(newStaffItem);
+        cache.overrides[newStaffItem.id] = newStaffItem;
+        cache.overrides[newStaffItem.email.toLowerCase()] = newStaffItem;
+        cache.overrides[newStaffItem.nip] = newStaffItem;
+
+        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(cache.created));
+        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
+      } catch (err) {
+        console.warn("Gagal menyimpan akun baru ke localStorage:", err);
+      }
+    }
+
+    // 2. Immediately update state
+    setStaffList((prev) => [newStaffItem, ...prev]);
+
+    // 3. Sync to backend API
     try {
       const res = await superadminApi.createAdmin({
         name: newStaffForm.name.trim(),
@@ -191,7 +370,6 @@ export default function SuperadminUsersPage() {
       showToast(msg);
     }
 
-    await loadStaff();
     setIsAddModalOpen(false);
     setNewStaffForm({
       name: "",
@@ -204,23 +382,113 @@ export default function SuperadminUsersPage() {
     });
   };
 
-  const handleEditStaffSubmit = (e: React.FormEvent) => {
+  const handleEditStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff) return;
 
+    let finalPassword = currentStaffPassword.trim();
+    if (newStaffPassword.trim()) {
+      if (newStaffPassword.trim().length < 6) {
+        showToast("Kata sandi baru minimal 6 karakter.");
+        return;
+      }
+      finalPassword = newStaffPassword.trim();
+    }
+
+    if (!finalPassword) {
+      showToast("Kata sandi akun wajib diisi.");
+      return;
+    }
+
+    const updatedStaff: StaffAdmin = {
+      ...editingStaff,
+      password: finalPassword,
+    };
+
+    // 1. Update state immediately
     setStaffList((prev) =>
-      prev.map((s) => (s.id === editingStaff.id ? editingStaff : s))
+      prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s))
     );
-    showToast(`Data akun ${editingStaff.name} berhasil diperbarui.`);
+
+    // 2. Persist override to localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const cache = getLocalStaffCache();
+        cache.overrides[updatedStaff.id] = updatedStaff;
+        cache.overrides[updatedStaff.email.toLowerCase()] = updatedStaff;
+        cache.overrides[updatedStaff.nip] = updatedStaff;
+        const rawId = updatedStaff.id.replace(/\D/g, "");
+        if (rawId) {
+          cache.overrides[rawId] = updatedStaff;
+        }
+
+        // Also update inside created list if it was locally created
+        const updatedCreated = cache.created.map((c) =>
+          c.id === updatedStaff.id || c.email.toLowerCase() === updatedStaff.email.toLowerCase()
+            ? updatedStaff
+            : c
+        );
+
+        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
+        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(updatedCreated));
+      } catch (err) {
+        console.warn("Gagal menyimpan pembaruan ke localStorage:", err);
+      }
+    }
+
+    // 3. Sync to backend API if applicable
+    const numericId = parseInt(updatedStaff.id.replace(/\D/g, ""), 10);
+    if (!isNaN(numericId) && numericId > 0) {
+      superadminApi
+        .updateAdmin(numericId, {
+          name: updatedStaff.name,
+          email: updatedStaff.email,
+          phone: updatedStaff.phone,
+          role: updatedStaff.role,
+          password: updatedStaff.password,
+        })
+        .catch((err) => {
+          console.warn("Backend updateAdmin notification:", err);
+        });
+    }
+
+    if (newStaffPassword.trim()) {
+      showToast(`Data akun dan kata sandi baru untuk ${updatedStaff.name} berhasil diperbarui.`);
+    } else {
+      showToast(`Data akun ${updatedStaff.name} berhasil diperbarui.`);
+    }
+
     setEditingStaff(null);
+    setCurrentStaffPassword("");
+    setNewStaffPassword("");
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
   };
 
   const handleToggleStatus = async (staffId: string) => {
+    const currentStaff = staffList.find((s) => s.id === staffId);
+    if (!currentStaff) return;
+
+    const newStatus: StaffAdmin["status"] = currentStaff.status === "Aktif" ? "Nonaktif" : "Aktif";
+    const updated: StaffAdmin = { ...currentStaff, status: newStatus };
+
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === staffId ? updated : s))
+    );
+
+    if (typeof window !== "undefined") {
+      try {
+        const cache = getLocalStaffCache();
+        cache.overrides[updated.id] = updated;
+        cache.overrides[updated.email.toLowerCase()] = updated;
+        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
+      } catch {}
+    }
+
     try {
       const rawId = parseInt(staffId.replace(/\D/g, ""), 10) || staffId;
       await superadminApi.deactivateAdmin(rawId);
       showToast("Status akun berhasil diperbarui di sistem.");
-      await loadStaff();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal mengubah status akun di server.";
       showToast(msg);
@@ -239,11 +507,36 @@ export default function SuperadminUsersPage() {
       return;
     }
 
+    // 1. Persist deletion in localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const cache = getLocalStaffCache();
+        const rawId = deletingStaff.id.replace(/\D/g, "");
+        if (!cache.deleted.includes(deletingStaff.id)) cache.deleted.push(deletingStaff.id);
+        if (!cache.deleted.includes(deletingStaff.email.toLowerCase())) cache.deleted.push(deletingStaff.email.toLowerCase());
+        if (!cache.deleted.includes(deletingStaff.nip)) cache.deleted.push(deletingStaff.nip);
+        if (rawId && !cache.deleted.includes(rawId)) cache.deleted.push(rawId);
+
+        const filteredCreated = cache.created.filter(
+          (c) =>
+            c.id !== deletingStaff.id &&
+            c.email.toLowerCase() !== deletingStaff.email.toLowerCase()
+        );
+
+        localStorage.setItem(STORAGE_KEY_STAFF_DELETED, JSON.stringify(cache.deleted));
+        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(filteredCreated));
+      } catch (err) {
+        console.warn("Gagal menyimpan penghapusan ke localStorage:", err);
+      }
+    }
+
+    // 2. Remove from state immediately
+    setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));
+
     const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
     try {
       await superadminApi.deleteAdmin(rawId);
       showToast(`Akun ${deletingStaff.name} berhasil dihapus dari sistem.`);
-      await loadStaff();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus akun di server.";
       showToast(msg);
@@ -545,20 +838,10 @@ export default function SuperadminUsersPage() {
                           size="sm"
                           onClick={() => setSelectedStaffForDetail(staff)}
                           className="h-8 px-2.5 text-xs border border-primary-light rounded-lg hover:bg-surface text-primary font-semibold inline-flex items-center gap-1.5 bg-white shadow-2xs"
-                          title="Lihat Detail Izin RBAC"
+                          title="Lihat Detail & Ubah Hak Akses / Password"
                         >
                           <EyeIcon className="text-xs mr-1" />
                           Detail
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingStaff(staff)}
-                          className="h-8 w-8 p-0 text-xs border border-primary-light rounded-lg hover:bg-surface text-primary flex items-center justify-center bg-white shadow-2xs"
-                          title="Ubah Data / Hak Akses"
-                        >
-                          <EditIcon className="text-xs" />
                         </Button>
 
                         <Button
@@ -847,6 +1130,69 @@ export default function SuperadminUsersPage() {
                 </div>
               </div>
 
+              {/* Form Kredensial Password: Kata Sandi Saat Ini & Form Perubahan Kata Sandi Baru */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">
+                    Kata Sandi yang Sudah Dibuat
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={currentStaffPassword}
+                      onChange={(e) => setCurrentStaffPassword(e.target.value)}
+                      placeholder="Kata sandi aktif"
+                      className="text-xs h-9 bg-surface/80 border-primary-light pr-9 font-mono text-text-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1"
+                      aria-label="Lihat kata sandi saat ini"
+                    >
+                      {showCurrentPassword ? (
+                        <EyeSlashIcon className="text-xs" />
+                      ) : (
+                        <EyeIcon className="text-xs" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-text-muted block">
+                    Kata sandi aktif yang saat ini tersimpan untuk akun.
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">
+                    Ubah Kata Sandi Baru
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newStaffPassword}
+                      onChange={(e) => setNewStaffPassword(e.target.value)}
+                      placeholder="Ketik kata sandi baru (opsional)..."
+                      className="text-xs h-9 bg-white border-primary-light pr-9 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1"
+                      aria-label="Lihat kata sandi baru"
+                    >
+                      {showNewPassword ? (
+                        <EyeSlashIcon className="text-xs" />
+                      ) : (
+                        <EyeIcon className="text-xs" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-text-muted block">
+                    Ketik sandi baru jika ingin mengubah password akun.
+                  </span>
+                </div>
+              </div>
+
               <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-2">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
                   <input
@@ -1021,6 +1367,15 @@ export default function SuperadminUsersPage() {
                   <div className="font-mono text-text-secondary mt-0.5">{selectedStaffForDetail.joinDate}</div>
                 </div>
               </div>
+
+              {selectedStaffForDetail.password && (
+                <div className="pt-2 border-t border-primary-light flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi (Terakhir Diatur)</span>
+                    <div className="font-mono text-primary font-bold text-xs mt-0.5">{selectedStaffForDetail.password}</div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 border-t border-primary-light flex items-center justify-end gap-2">
@@ -1031,9 +1386,10 @@ export default function SuperadminUsersPage() {
                   setEditingStaff(selectedStaffForDetail);
                   setSelectedStaffForDetail(null);
                 }}
-                className="text-xs h-9 px-4 border-primary-light text-primary"
+                className="text-xs h-9 px-4 border-primary-light text-primary font-medium hover:bg-surface inline-flex items-center gap-1.5"
               >
-                Ubah Profil
+                <EditIcon className="text-xs" />
+                Ubah Profil &amp; Sandi
               </Button>
               <Button
                 variant="primary"

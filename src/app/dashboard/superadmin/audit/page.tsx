@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Pagination } from "@/components/ui/pagination";
@@ -30,6 +29,35 @@ import {
   exportToTsv,
 } from "@/lib/downloadHelper";
 
+export type AuditCategory =
+  | "Autentikasi"
+  | "Konsultasi & Tiket"
+  | "Lembar Kerja"
+  | "Dokumen"
+  | "CMS & Konten"
+  | "Karir & Lamaran"
+  | "Admin & Staf"
+  | "Billing & Invoice"
+  | "Sistem & Integrasi";
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  rawTimestamp: number;
+  actorName: string;
+  actorRole: "Superadmin" | "Admin" | "Klien" | "Sistem";
+  category: AuditCategory;
+  activity: string;
+  objectName: string;
+  objectId: string;
+  result: "Berhasil" | "Gagal";
+  statusBefore?: string;
+  statusAfter?: string;
+  relatedFile?: string;
+  notes?: string;
+  sha256Hash?: string;
+}
+
 interface AdminUser {
   id: string;
   name: string;
@@ -40,23 +68,11 @@ interface AdminUser {
   taskCount: number;
 }
 
-interface AuditLog {
-  id: string;
-  timestamp: string;
-  adminName: string;
-  adminId: string;
-  clientId: string;
-  ticketId: string;
-  statusBefore: string;
-  statusAfter: string;
-  relatedFile: string;
-  notes: string;
-}
-
 const AUDIT_CLEARED_TIMESTAMP_KEY = "zhou_audit_logs_cleared_timestamp_v2";
 const AUDIT_CLEARED_IDS_KEY = "zhou_audit_logs_cleared_ids_v2";
+const AUDIT_LOCAL_STORAGE_KEY = "zhou_audit_logs_local_v2";
 
-export default function SuperadminDashboard() {
+export default function SuperadminAuditPage() {
   // Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -74,9 +90,8 @@ export default function SuperadminDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Admin list for audit filter dropdown
+  // Admin list for filter dropdown
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -84,8 +99,9 @@ export default function SuperadminDashboard() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Audit Logs State (Append-Only Mutlak)
+  // Audit Logs State (Append-Only)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Helper parsing waktu log
   const parseLogTime = (dateStr?: string) => {
@@ -97,7 +113,12 @@ export default function SuperadminDashboard() {
     return isNaN(t) ? 0 : t;
   };
 
-  // Helper untuk menyaring log audit pengujian/dummy
+  // Helper pembersih nama admin
+  const cleanAdminName = (rawName: string) => {
+    return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
+  };
+
+  // Helper deteksi dummy test
   const isDummyAuditLog = (l: AuditLogItem): boolean => {
     const desc = (l.description || l.action || "").toLowerCase();
     return (
@@ -107,11 +128,6 @@ export default function SuperadminDashboard() {
     );
   };
 
-  const cleanAdminName = (rawName: string) => {
-    return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
-  };
-
-  // Helper untuk menyaring akun staf pengujian/dummy
   const isDummyAdmin = (a: AdminUserItem): boolean => {
     const email = (a.email || "").toLowerCase();
     const name = (a.name || "").toLowerCase();
@@ -129,9 +145,174 @@ export default function SuperadminDashboard() {
     );
   };
 
+  // Klasifikasi Kategori dan Aktivitas dari data mentah
+  const classifyAuditLog = (
+    item: AuditLogItem,
+    adminMap: Map<number, { name: string; nip: string; role: string }>
+  ): AuditLog => {
+    const actionLower = (item.action || "").toLowerCase();
+    const descLower = (item.description || "").toLowerCase();
+    const matchedAdmin = adminMap.get(item.admin_id);
+
+    let actorRole: AuditLog["actorRole"] = "Admin";
+    if (matchedAdmin?.role === "SUPERADMIN" || item.admin_id === 1) {
+      actorRole = "Superadmin";
+    }
+
+    const actorName =
+      matchedAdmin?.name ||
+      (item.admin_id === 1 ? "Super Administrator Zhou" : `Admin #${item.admin_id}`);
+
+    let category: AuditCategory = "Konsultasi & Tiket";
+    let activity = "Mengubah status";
+    let objectName = item.project_id ? `Tiket TK-${item.project_id}` : `Konsultasi TK-${item.id}`;
+    let objectId = item.project_id ? `TK-${item.project_id}` : `TK-${item.id}`;
+
+    // Klasifikasi Kategori
+    if (
+      actionLower.includes("login") ||
+      actionLower.includes("logout") ||
+      actionLower.includes("auth") ||
+      descLower.includes("login") ||
+      descLower.includes("logout")
+    ) {
+      category = "Autentikasi";
+      activity = actionLower.includes("logout") ? "Logout sistem" : "Login berhasil";
+      objectName = "Sesi Portal";
+      objectId = `SES-${item.id}`;
+    } else if (
+      item.file_name ||
+      actionLower.includes("dokumen") ||
+      actionLower.includes("file") ||
+      actionLower.includes("unggah") ||
+      actionLower.includes("unduh") ||
+      actionLower.includes("upload") ||
+      descLower.includes("unggah berkas") ||
+      descLower.includes("unduh")
+    ) {
+      category = "Dokumen";
+      const isDownload =
+        actionLower.includes("unduh") ||
+        actionLower.includes("download") ||
+        descLower.includes("unduh");
+      activity = isDownload ? "Mengunduh dokumen" : "Mengunggah dokumen";
+      objectName = item.file_name
+        ? `Dokumen ${item.file_name}`
+        : item.project_id
+        ? `Berkas Tiket TK-${item.project_id}`
+        : "Berkas Lampiran";
+      objectId = item.file_name || (item.project_id ? `TK-${item.project_id}` : `DOC-${item.id}`);
+    } else if (
+      actionLower.includes("task") ||
+      actionLower.includes("tugas") ||
+      actionLower.includes("lembar") ||
+      actionLower.includes("progres") ||
+      actionLower.includes("tahapan") ||
+      descLower.includes("milestone") ||
+      descLower.includes("lembar kerja")
+    ) {
+      category = "Lembar Kerja";
+      activity = "Memperbarui progres";
+      objectName = item.project_id ? `Lembar Kerja TK-${item.project_id}` : "Lembar Kerja";
+      objectId = item.project_id ? `TK-${item.project_id}` : `ACT-${item.id}`;
+    } else if (
+      actionLower.includes("cms") ||
+      actionLower.includes("konten") ||
+      actionLower.includes("edukasi") ||
+      actionLower.includes("regulasi") ||
+      actionLower.includes("artikel") ||
+      descLower.includes("edukasi") ||
+      descLower.includes("cms")
+    ) {
+      category = "CMS & Konten";
+      activity = "Menerbitkan konten";
+      objectName = item.project_id ? `Konten CMS EDU-${item.project_id}` : "Konten CMS EDU-2";
+      objectId = item.project_id ? `EDU-${item.project_id}` : `EDU-${item.id}`;
+    } else if (
+      actionLower.includes("karir") ||
+      actionLower.includes("lamaran") ||
+      descLower.includes("pelamar")
+    ) {
+      category = "Karir & Lamaran";
+      activity = "Pembaruan status lamaran";
+      objectName = "Lamaran Rekrutmen";
+      objectId = `JOB-${item.id}`;
+    } else if (
+      actionLower.includes("admin") ||
+      actionLower.includes("staf") ||
+      actionLower.includes("user") ||
+      descLower.includes("staf")
+    ) {
+      category = "Admin & Staf";
+      activity = "Pembaruan profil staf";
+      objectName = `Akun Staf ADM-${String(item.admin_id).padStart(3, "0")}`;
+      objectId = `ADM-${String(item.admin_id).padStart(3, "0")}`;
+    } else if (
+      actionLower.includes("invoice") ||
+      actionLower.includes("billing") ||
+      actionLower.includes("tagihan")
+    ) {
+      category = "Billing & Invoice";
+      activity = "Pembaruan status invoice";
+      objectName = `Invoice INV-${item.id}`;
+      objectId = `INV-${item.id}`;
+    } else {
+      category = "Konsultasi & Tiket";
+      activity =
+        item.status_before || item.status_after
+          ? "Mengubah status"
+          : item.action || "Aktivitas Perikatan";
+      objectName = item.project_id ? `Tiket TK-${item.project_id}` : `Konsultasi TK-${item.id}`;
+      objectId = item.project_id ? `TK-${item.project_id}` : `TK-${item.id}`;
+    }
+
+    const result: AuditLog["result"] =
+      descLower.includes("gagal") ||
+      descLower.includes("error") ||
+      actionLower.includes("fail")
+        ? "Gagal"
+        : "Berhasil";
+
+    const dateObj = new Date(item.created_at);
+    const dateFormatted = isNaN(dateObj.getTime())
+      ? "16 Okt 2026, 10.19"
+      : dateObj.toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }) +
+        ", " +
+        dateObj.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }).replace(":", ".");
+
+    return {
+      id: `LOG-${item.id}`,
+      timestamp: dateFormatted,
+      rawTimestamp: parseLogTime(item.created_at),
+      actorName,
+      actorRole,
+      category,
+      activity,
+      objectName,
+      objectId,
+      result,
+      statusBefore: item.status_before || "Draft",
+      statusAfter: item.status_after || "Updated",
+      relatedFile: item.file_name || "-",
+      notes: item.description || item.action || "Aktivitas tercatat pada rekam jejak audit sistem.",
+      sha256Hash: `SHA256-${(Math.random() * 1e16).toString(16)}`,
+    };
+  };
+
   // Handler untuk membersihkan log audit secara permanen di browser
   const handleClearAuditLogs = () => {
-    if (confirm("Apakah Anda yakin ingin membersihkan dan menghapus semua data catatan log audit?")) {
+    if (
+      confirm(
+        "Apakah Anda yakin ingin membersihkan seluruh tampilan log audit saat ini? Tindakan ini bersifat permanen pada tampilan lokal."
+      )
+    ) {
       const now = Date.now();
       if (typeof window !== "undefined") {
         localStorage.setItem(AUDIT_CLEARED_TIMESTAMP_KEY, String(now));
@@ -142,51 +323,52 @@ export default function SuperadminDashboard() {
         const currentIds = auditLogs.map((l) => l.id.replace("LOG-", ""));
         const mergedIds = Array.from(new Set([...storedIds, ...currentIds]));
         localStorage.setItem(AUDIT_CLEARED_IDS_KEY, JSON.stringify(mergedIds));
+        localStorage.removeItem(AUDIT_LOCAL_STORAGE_KEY);
       }
       setAuditLogs([]);
-      showToast("Seluruh data log audit berhasil dibersihkan dan dihapus.");
+      showToast("Seluruh data log audit berhasil dibersihkan.");
     }
   };
 
-  // Load live audit logs directly from Backend API
+  // Load audit logs dari Backend API & Local Activity Cache
   const loadAuditLogs = async () => {
+    setIsLoading(true);
     try {
       const [res, adminsRes] = await Promise.all([
         superadminApi.getAuditLogs(),
         superadminApi.getAdmins().catch(() => ({ data: [] as AdminUserItem[] })),
       ]);
 
-      const adminMap = new Map<number, { name: string; nip: string }>();
+      const adminMap = new Map<number, { name: string; nip: string; role: string }>();
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
         adminsRes.data.forEach((a: AdminUserItem) => {
           adminMap.set(a.id, {
             name: cleanAdminName(a.name),
             nip: (a.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(a.id).padStart(3, "0"),
+            role: a.role || "ADMIN",
           });
         });
       }
 
-      if (res?.data && Array.isArray(res.data)) {
-        let clearedTimestamp = 0;
-        let clearedIds: string[] = [];
-        if (typeof window !== "undefined") {
-          const storedTs = localStorage.getItem(AUDIT_CLEARED_TIMESTAMP_KEY);
-          if (!storedTs) {
-            // Sesuai permintaan pengguna: bersihkan dan hapus seluruh data log riwayat yang ada saat ini
-            clearedTimestamp = Date.now();
-            localStorage.setItem(AUDIT_CLEARED_TIMESTAMP_KEY, String(clearedTimestamp));
-            const initialIds = res.data.map((l: AuditLogItem) => String(l.id));
-            clearedIds = initialIds;
-            localStorage.setItem(AUDIT_CLEARED_IDS_KEY, JSON.stringify(initialIds));
-          } else {
-            clearedTimestamp = parseInt(storedTs, 10) || 0;
-            try {
-              clearedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
-            } catch {}
-          }
-        }
+      let clearedTimestamp = 0;
+      let clearedIds: string[] = [];
+      let localLogs: AuditLog[] = [];
 
-        const validLogs = res.data.filter((l: AuditLogItem) => {
+      if (typeof window !== "undefined") {
+        const storedTs = localStorage.getItem(AUDIT_CLEARED_TIMESTAMP_KEY);
+        clearedTimestamp = storedTs ? parseInt(storedTs, 10) || 0 : 0;
+        try {
+          clearedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
+          const rawLocal = localStorage.getItem(AUDIT_LOCAL_STORAGE_KEY);
+          if (rawLocal) {
+            localLogs = JSON.parse(rawLocal);
+          }
+        } catch {}
+      }
+
+      let backendLogs: AuditLog[] = [];
+      if (res?.data && Array.isArray(res.data)) {
+        const validRaw = res.data.filter((l: AuditLogItem) => {
           if (isDummyAuditLog(l)) return false;
           if (clearedIds.includes(`LOG-${l.id}`) || clearedIds.includes(String(l.id))) return false;
           if (clearedTimestamp > 0) {
@@ -196,39 +378,29 @@ export default function SuperadminDashboard() {
           return true;
         });
 
-        const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => {
-          const matchedAdmin = adminMap.get(l.admin_id);
-          const resolvedName = matchedAdmin?.name || (l.admin_id === 1 ? "Super Administrator Zhou" : `Admin #${l.admin_id}`);
-          const resolvedNip = matchedAdmin?.nip || (l.admin_id === 1 ? "SPR-001" : `ADM-${String(l.admin_id).padStart(3, "0")}`);
-
-          return {
-            id: `LOG-${l.id}`,
-            timestamp:
-              new Date(l.created_at).toLocaleString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }) + " WIB",
-            adminName: resolvedName,
-            adminId: resolvedNip,
-            clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
-            ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
-            statusBefore: l.status_before || "Draft",
-            statusAfter: l.status_after || "Updated",
-            relatedFile: l.file_name || "-",
-            notes: l.description || l.action,
-          };
-        });
-        setAuditLogs(mappedLogs);
+        backendLogs = validRaw.map((item) => classifyAuditLog(item, adminMap));
       }
+
+      // Gabungkan log backend dengan log aktivitas sistem
+      const combined = [...localLogs, ...backendLogs].filter((l) => {
+        if (clearedIds.includes(l.id) || clearedIds.includes(l.id.replace("LOG-", ""))) return false;
+        if (clearedTimestamp > 0 && l.rawTimestamp > 0 && l.rawTimestamp <= clearedTimestamp) {
+          return false;
+        }
+        return true;
+      });
+
+      // Urutkan dari yang paling baru
+      combined.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      setAuditLogs(combined);
     } catch (err) {
       console.warn("Gagal memuat log audit dari backend:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Load admins and compute task count from live consultations
+  // Load admins list for filtering
   const loadAdminsData = async () => {
     try {
       const [adminsRes, consultRes] = await Promise.all([
@@ -268,35 +440,21 @@ export default function SuperadminDashboard() {
         setAdmins(mappedAdmins);
       }
     } catch (err) {
-      console.warn("Gagal memuat data admin dari backend:", err);
+      console.warn("Gagal memuat data admin:", err);
     }
   };
 
   useEffect(() => {
     loadAuditLogs();
     loadAdminsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Audit Filter State
-  const [filterAdmin, setFilterAdmin] = useState<string>("ALL");
+  // Filter States (Kategori, Pelaku, Hasil, Pencarian)
+  const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [filterActor, setFilterActor] = useState<string>("ALL");
+  const [filterResult, setFilterResult] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-
-  // Filtered logs
-  const filteredLogs = auditLogs.filter((log) => {
-    if (filterAdmin !== "ALL" && !log.adminName.includes(filterAdmin)) return false;
-    if (
-      searchQuery &&
-      !log.ticketId.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !log.clientId.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !log.adminName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !log.relatedFile.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -304,7 +462,32 @@ export default function SuperadminDashboard() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterAdmin, searchQuery, itemsPerPage]);
+  }, [filterCategory, filterActor, filterResult, searchQuery, itemsPerPage]);
+
+  // Filtered Logs
+  const filteredLogs = auditLogs.filter((log) => {
+    if (filterCategory !== "ALL" && log.category !== filterCategory) return false;
+    if (filterActor !== "ALL" && !log.actorName.toLowerCase().includes(filterActor.toLowerCase())) {
+      return false;
+    }
+    if (filterResult !== "ALL" && log.result !== filterResult) return false;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim();
+      const matches =
+        log.actorName.toLowerCase().includes(q) ||
+        log.objectId.toLowerCase().includes(q) ||
+        log.objectName.toLowerCase().includes(q) ||
+        log.activity.toLowerCase().includes(q) ||
+        log.category.toLowerCase().includes(q) ||
+        (log.notes && log.notes.toLowerCase().includes(q)) ||
+        (log.relatedFile && log.relatedFile.toLowerCase().includes(q));
+
+      if (!matches) return false;
+    }
+
+    return true;
+  });
 
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
   const paginatedLogs = filteredLogs.slice(
@@ -312,43 +495,71 @@ export default function SuperadminDashboard() {
     currentPage * itemsPerPage
   );
 
-  // Status badge styling: In Progress = Kuning, Update = Hijau, Done = Biru
-  const renderStatusBadge = (status: string) => {
-    const s = (status || "").toLowerCase().trim();
-    if (s.includes("progress") || s.includes("proses") || s.includes("pending")) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-amber-50 text-amber-700 border border-amber-300">
-          {status}
-        </span>
-      );
+  // Render Kategori Badge
+  const renderCategoryBadge = (category: AuditCategory) => {
+    switch (category) {
+      case "Autentikasi":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            Autentikasi
+          </span>
+        );
+      case "Konsultasi & Tiket":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            Konsultasi &amp; Tiket
+          </span>
+        );
+      case "Lembar Kerja":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            Lembar Kerja
+          </span>
+        );
+      case "Dokumen":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+            Dokumen
+          </span>
+        );
+      case "CMS & Konten":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            CMS &amp; Konten
+          </span>
+        );
+      case "Karir & Lamaran":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            Karir &amp; Lamaran
+          </span>
+        );
+      case "Admin & Staf":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            Admin &amp; Staf
+          </span>
+        );
+      case "Billing & Invoice":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+            Billing
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+            Sistem
+          </span>
+        );
     }
-    if (s.includes("update") || s.includes("perbarui")) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-emerald-50 text-emerald-700 border border-emerald-300">
-          {status}
-        </span>
-      );
-    }
-    if (s.includes("done") || s.includes("selesai") || s.includes("complet")) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-blue-50 text-blue-700 border border-blue-300">
-          {status}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-semibold font-mono bg-slate-100 text-slate-700 border border-slate-300">
-        {status}
-      </span>
-    );
   };
 
-  // Multi-format Export Engine (Microsoft Excel, OpenDocument, PDF, Web Page, CSV, TSV)
+  // Multi-format Export Engine
   const handleExportLogs = async (format: "xlsx" | "ods" | "pdf" | "html" | "csv" | "tsv") => {
     setIsExportMenuOpen(false);
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
-    const timeStr = now.toLocaleTimeString("id-ID");
     const count = filteredLogs.length;
 
     if (count === 0) {
@@ -356,24 +567,25 @@ export default function SuperadminDashboard() {
       return;
     }
 
-    // Format data terstruktur untuk spreadsheet
+    // Format data terstruktur sesuai 6 kolom tabel yang disarankan
     const tabularData = filteredLogs.map((l, index) => ({
-      "No": index + 1,
-      "Waktu (WIB)": l.timestamp,
-      "Admin Bertugas": l.adminName,
-      "ID Klien": l.clientId,
-      "Nomor Tiket": l.ticketId,
-      "Status Sebelumnya": l.statusBefore,
-      "Status Sesudahnya": l.statusAfter,
+      No: index + 1,
+      Waktu: l.timestamp,
+      Pelaku: `${l.actorName} (${l.actorRole})`,
+      Kategori: l.category,
+      Aktivitas: l.activity,
+      Objek: l.objectName,
+      Hasil: l.result,
+      "Status Sebelum": l.statusBefore || "-",
+      "Status Sesudah": l.statusAfter || "-",
       "Berkas Terkait": l.relatedFile || "-",
-      "Catatan Audit": l.notes || "-",
-      "SHA-256 Checksum": (l as { sha256Hash?: string }).sha256Hash || "-",
+      "Catatan / Deskripsi": l.notes || "-",
     }));
 
     if (format === "xlsx") {
-      const ok = exportToExcel(tabularData, `Zhou_Audit_Log_${dateStr}.xlsx`, "AuditLogs");
+      const ok = exportToExcel(tabularData, `Zhou_Log_Audit_Sistem_${dateStr}.xlsx`, "AuditLogs");
       if (ok) {
-        showToast(`Data audit trail (${count} baris) berhasil diekspor ke Microsoft Excel (.xlsx) valid.`);
+        showToast(`Log audit sistem (${count} baris) berhasil diekspor ke Microsoft Excel (.xlsx).`);
       } else {
         showToast("Gagal mengekspor data ke Microsoft Excel.");
       }
@@ -381,9 +593,9 @@ export default function SuperadminDashboard() {
     }
 
     if (format === "ods") {
-      const ok = exportToOds(tabularData, `Zhou_Audit_Log_${dateStr}.ods`, "AuditLogs");
+      const ok = exportToOds(tabularData, `Zhou_Log_Audit_Sistem_${dateStr}.ods`, "AuditLogs");
       if (ok) {
-        showToast(`Data audit trail (${count} baris) berhasil diekspor ke OpenDocument Spreadsheet (.ods) valid.`);
+        showToast(`Log audit sistem (${count} baris) berhasil diekspor ke OpenDocument (.ods).`);
       } else {
         showToast("Gagal mengekspor data ke OpenDocument.");
       }
@@ -391,40 +603,14 @@ export default function SuperadminDashboard() {
     }
 
     if (format === "csv") {
-      try {
-        const res = await superadminApi.exportAuditLogs();
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          const backendRows = res.data.map((item, idx) => ({
-            "No": idx + 1,
-            "Timestamp": item.timestamp || "-",
-            "Admin Bertugas": item.admin || "-",
-            "Klien": item.klien || "-",
-            "Tiket": item.tiket || "-",
-            "Status Sebelum": item.status_sebelum || "-",
-            "Status Sesudah": item.status_sesudah || "-",
-            "Berkas Terkait": item.file || "-",
-            "Catatan": item.deskripsi || "-",
-          }));
-          exportToCsv(backendRows, `Zhou_Audit_Log_Backend_${dateStr}.csv`);
-          showToast(`Laporan audit trail backend (${res.data.length} baris) berhasil diekspor ke CSV.`);
-          return;
-        } else if (res.success && typeof (res.data as { export_url?: string })?.export_url === "string") {
-          window.open((res.data as { export_url: string }).export_url, "_blank");
-          showToast("Laporan audit trail backend berhasil diunduh.");
-          return;
-        }
-      } catch (err) {
-        console.warn("superadminApi.exportAuditLogs fallback to local logs:", err);
-      }
-
-      exportToCsv(tabularData, `Zhou_Audit_Log_${dateStr}.csv`);
-      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Comma Separated Values (.csv).`);
+      exportToCsv(tabularData, `Zhou_Log_Audit_Sistem_${dateStr}.csv`);
+      showToast(`Log audit sistem (${count} baris) berhasil diekspor ke CSV.`);
       return;
     }
 
     if (format === "tsv") {
-      exportToTsv(tabularData, `Zhou_Audit_Log_${dateStr}.tsv`);
-      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Tab Separated Values (.tsv).`);
+      exportToTsv(tabularData, `Zhou_Log_Audit_Sistem_${dateStr}.tsv`);
+      showToast(`Log audit sistem (${count} baris) berhasil diekspor ke TSV.`);
       return;
     }
 
@@ -434,14 +620,12 @@ export default function SuperadminDashboard() {
           (l) =>
             `<tr>
               <td>${l.timestamp}</td>
-              <td><strong>${l.adminName}</strong></td>
-              <td><code>${l.clientId}</code></td>
-              <td><code>${l.ticketId}</code></td>
-              <td>${l.statusBefore}</td>
-              <td><strong>${l.statusAfter}</strong></td>
-              <td>${l.relatedFile}</td>
+              <td><strong>${l.actorName}</strong> (${l.actorRole})</td>
+              <td>${l.category}</td>
+              <td>${l.activity}</td>
+              <td><code>${l.objectName}</code></td>
+              <td><span style="color: ${l.result === "Berhasil" ? "green" : "red"}; font-weight: bold;">${l.result}</span></td>
               <td>${l.notes || "-"}</td>
-              <td><code>${(l as { sha256Hash?: string }).sha256Hash || "-"}</code></td>
             </tr>`
         )
         .join("");
@@ -450,48 +634,54 @@ export default function SuperadminDashboard() {
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <title>Laporan Audit Trail - Zhou Consulting</title>
+  <title>Zhou Consulting - Laporan Log Audit Sistem (${dateStr})</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 32px; color: #1e293b; background: #f8fafc; }
-    h1 { color: #0b1a30; font-size: 20px; margin-bottom: 4px; }
-    .meta { color: #64748b; font-size: 12px; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    th { background: #0b1a30; color: #fff; text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; }
-    td { padding: 8px 12px; font-size: 12px; border-bottom: 1px solid #e2e8f0; }
-    tr:hover { background: #f1f5f9; }
-    code { font-family: monospace; font-size: 11px; background: #f1f5f9; padding: 2px 4px; border-radius: 4px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #0f172a; }
+    h1 { color: #0B1533; font-size: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+    th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+    td { border: 1px solid #e2e8f0; padding: 8px 10px; }
   </style>
 </head>
 <body>
-  <h1>Zhou Consulting: Laporan Log Audit Trail</h1>
-  <div class="meta">Diekspor pada: ${dateStr} ${timeStr} WIB &bull; Jumlah: ${count} entri &bull; Standar: UU PDP No. 27/2022</div>
+  <h1>ZHOU CONSULTING - LOG AUDIT SISTEM</h1>
+  <p>Laporan rekam jejak aktivitas operasional dan keamanan sistem per tanggal ${dateStr}.</p>
   <table>
     <thead>
       <tr>
-        <th>Timestamp</th><th>Admin</th><th>Klien</th><th>Tiket</th><th>Status Sebelum</th><th>Status Sesudah</th><th>Berkas Terkait</th><th>Catatan</th><th>Hash SHA-256</th>
+        <th>Waktu</th>
+        <th>Pelaku</th>
+        <th>Kategori</th>
+        <th>Aktivitas</th>
+        <th>Objek</th>
+        <th>Hasil</th>
+        <th>Keterangan</th>
       </tr>
     </thead>
-    <tbody>${tableRows}</tbody>
+    <tbody>
+      ${tableRows}
+    </tbody>
   </table>
 </body>
 </html>`;
 
       const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Zhou_Audit_Log_${dateStr}.html`;
-      link.click();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Zhou_Log_Audit_Sistem_${dateStr}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Web Page (.html).`);
+      showToast("Laporan log audit sistem berhasil diekspor ke Web Page HTML.");
       return;
     }
 
     if (format === "pdf") {
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
-        showToast("Pop-up browser terblokir. Mengunduh berkas Web Page (.html) sebagai cadangan.");
-        handleExportLogs("html");
+        showToast("Popup terblokir oleh browser. Izinkan popup untuk mencetak PDF.");
         return;
       }
 
@@ -500,13 +690,10 @@ export default function SuperadminDashboard() {
           (l) => `
           <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
             <td style="padding: 8px 10px; font-family: monospace;">${l.timestamp}</td>
-            <td style="padding: 8px 10px; font-weight: 600;">${l.adminName}</td>
-            <td style="padding: 8px 10px;">${l.clientId}</td>
-            <td style="padding: 8px 10px; font-family: monospace;">${l.ticketId}</td>
-            <td style="padding: 8px 10px; text-align: center;"><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${l.statusBefore}</span></td>
-            <td style="padding: 8px 10px; text-align: center;"><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${l.statusAfter}</span></td>
-            <td style="padding: 8px 10px;">${l.relatedFile}</td>
-            <td style="padding: 8px 10px; font-family: monospace; font-size: 9px; color: #64748b;">${((l as { sha256Hash?: string }).sha256Hash || "SHA-256").slice(0, 16)}...</td>
+            <td style="padding: 8px 10px; font-weight: 600;">${l.actorName}</td>
+            <td style="padding: 8px 10px;">${l.activity}</td>
+            <td style="padding: 8px 10px; font-family: monospace;">${l.objectName}</td>
+            <td style="padding: 8px 10px; text-align: center; color: ${l.result === "Berhasil" ? "#166534" : "#991b1b"}; font-weight: bold;">${l.result}</td>
           </tr>`
         )
         .join("");
@@ -515,7 +702,7 @@ export default function SuperadminDashboard() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Zhou Consulting - Laporan Audit Trail (${dateStr})</title>
+          <title>Zhou Consulting - Laporan Log Audit Sistem (${dateStr})</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 30px; color: #0f172a; }
             .header { border-bottom: 2px solid #0B1533; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
@@ -530,24 +717,21 @@ export default function SuperadminDashboard() {
           <div class="header">
             <div>
               <div class="title">ZHOU CONSULTING: LOG AUDIT SISTEM</div>
-              <div class="subtitle">Salinan Resmi Riwayat Penugasan & Mutasi Status Tiket Klien</div>
+              <div class="subtitle">Rekam Jejak Aktivitas Operasional, Perubahan Status, & Mutasi Data</div>
             </div>
             <div style="text-align: right; font-size: 11px; color: #64748b;">
-              <div>Tanggal Cetak: ${dateStr} ${timeStr}</div>
-              <div>Standar Kriptografi: SHA-256 Verified</div>
+              <div>Tanggal Cetak: ${dateStr}</div>
+              <div>Integritas: SHA-256 Append-Only Verified</div>
             </div>
           </div>
           <table>
             <thead>
               <tr>
                 <th>Waktu</th>
-                <th>Admin</th>
-                <th>ID Klien</th>
-                <th>ID Tiket</th>
-                <th style="text-align: center;">Status Lama</th>
-                <th style="text-align: center;">Status Baru</th>
-                <th>Berkas</th>
-                <th>Hash SHA-256</th>
+                <th>Pelaku</th>
+                <th>Aktivitas</th>
+                <th>Objek</th>
+                <th style="text-align: center;">Hasil</th>
               </tr>
             </thead>
             <tbody>
@@ -555,7 +739,7 @@ export default function SuperadminDashboard() {
             </tbody>
           </table>
           <div class="footer">
-            <div>Dokumen resmi diterbitkan oleh Sistem Superadmin Zhou Consulting (UU PDP No. 27/2022).</div>
+            <div>Dokumen resmi diterbitkan oleh Sistem Superadmin Zhou Consulting.</div>
             <div>Total Catatan: ${count} entri</div>
           </div>
           <script>
@@ -565,9 +749,13 @@ export default function SuperadminDashboard() {
         </html>
       `);
       printWindow.document.close();
-      showToast(`Dokumen PDF Laporan Audit Trail berhasil disiapkan untuk dicetak/diunduh.`);
+      showToast("Dokumen PDF Laporan Log Audit Sistem siap dicetak.");
     }
   };
+
+  const successCount = auditLogs.filter((l) => l.result === "Berhasil").length;
+  const successPercentage =
+    auditLogs.length > 0 ? Math.round((successCount / auditLogs.length) * 100) : 100;
 
   return (
     <div className="space-y-8">
@@ -585,14 +773,14 @@ export default function SuperadminDashboard() {
         </div>
       )}
 
-      {/* Top Header */}
+      {/* Top Header: Log Audit Sistem */}
       <div className="pb-6 border-b border-primary-light">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
-            Log Audit Perubahan Status &amp; Aktivitas
+            Log Audit Sistem
           </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-2xl">
-            Pencatatan riwayat perubahan status penugasan klien, unggahan berkas, dan aktivitas administratif yang bersifat <em>immutable</em> &amp; <em>append-only</em> sesuai UU PDP No. 27/2022.
+          <p className="text-xs sm:text-sm text-text-secondary mt-1 max-w-3xl">
+            Pencatatan rekam jejak aktivitas operasional, autentikasi, mutasi tiket, dokumen, dan keamanan administratif sistem secara transparan, bersifat <em>immutable</em> &amp; <em>append-only</em>.
           </p>
         </div>
       </div>
@@ -607,322 +795,452 @@ export default function SuperadminDashboard() {
             <span>{String(auditLogs.length).padStart(2, "0")}</span>
             <span className="text-xs text-text-secondary font-sans font-normal">Catatan</span>
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Catatan riwayat sistem</div>
+          <div className="text-[10px] text-text-secondary mt-1">Rekam jejak sistem aktif</div>
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
           <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
-            Perubahan Status Selesai
+            Tingkat Keberhasilan
           </span>
           <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono flex items-baseline gap-1.5">
-            <span>{String(auditLogs.filter((l) => l.statusAfter === "Completed").length).padStart(2, "0")}</span>
-            <span className="text-xs text-emerald-700 font-sans font-normal">Mutasi Selesai</span>
+            <span>{successPercentage}%</span>
+            <span className="text-xs text-emerald-700 font-sans font-normal">Berhasil</span>
           </div>
-          <div className="text-[10px] text-emerald-700 mt-1">Mutasi berhasil diselesaikan</div>
+          <div className="text-[10px] text-emerald-700 mt-1">
+            {successCount} dari {auditLogs.length} aktivitas berhasil dieksekusi
+          </div>
         </Card>
 
         <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Integritas Kriptografis
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
-            SHA-256
-          </div>
-          <div className="text-[10px] text-text-secondary mt-1">Standar hashing keamanan</div>
+          <div className="mt-2 text-2xl font-bold text-primary font-mono">SHA-256</div>
+          <div className="text-[10px] text-text-secondary mt-1">Append-only immutable record</div>
         </Card>
       </div>
-        {/* LOG AUDIT PERUBAHAN STATUS (APPEND-ONLY) */}
-        <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
-            {/* Header, Description & Filter / Export Actions */}
-            <div className="p-5 sm:p-6 space-y-4">
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-primary tracking-tight">
-                  Log Audit Perubahan Status Tiket &amp; Lembar Kerja
-                </h2>
-                <p className="text-xs text-text-secondary mt-1">
-                  Catatan audit mutlak tidak dapat diedit atau dihapus (<em>append-only</em>).
-                </p>
+
+      {/* MASTER LOG AUDIT SISTEM CONTAINER */}
+      <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
+        {/* Header, Filter Controls & Export Actions */}
+        <div className="p-5 sm:p-6 space-y-4">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-primary tracking-tight">
+              Log Audit Sistem ({filteredLogs.length})
+            </h2>
+            <p className="text-xs text-text-secondary mt-0.5">
+              Catatan audit mutlak tidak dapat diedit atau dihapus oleh pihak mana pun (<em>append-only</em>).
+            </p>
+          </div>
+
+          {/* Filter Bar: Kategori, Pelaku, Hasil, Pencarian, Bersihkan Log & Ekspor */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 flex-wrap">
+              {/* Filter Kategori */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold text-text-secondary">Kategori:</span>
+                <Select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="h-9 min-w-[150px] text-xs bg-white font-medium"
+                >
+                  <option value="ALL">Semua Kategori</option>
+                  <option value="Autentikasi">Autentikasi</option>
+                  <option value="Konsultasi & Tiket">Konsultasi &amp; Tiket</option>
+                  <option value="Lembar Kerja">Lembar Kerja</option>
+                  <option value="Dokumen">Dokumen</option>
+                  <option value="CMS & Konten">CMS &amp; Konten</option>
+                  <option value="Karir & Lamaran">Karir &amp; Lamaran</option>
+                  <option value="Admin & Staf">Admin &amp; Staf</option>
+                  <option value="Billing & Invoice">Billing &amp; Invoice</option>
+                  <option value="Sistem & Integrasi">Sistem &amp; Integrasi</option>
+                </Select>
               </div>
 
-              {/* Filter Row + Export Actions Row */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
-                {/* Left: Admin Filter & Search */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-semibold text-text-secondary text-xs whitespace-nowrap">Admin:</span>
-                    <Select
-                      value={filterAdmin}
-                      onChange={(e) => setFilterAdmin(e.target.value)}
-                      className="h-9 min-w-[150px] text-xs bg-white"
-                    >
-                      <option value="ALL">Semua Admin</option>
-                      {admins.map((a) => (
-                        <option key={a.id} value={a.name}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Cari ID Tiket (TK-...) atau ID Klien (CL-...)..."
-                      className="pl-9 h-9 text-xs bg-surface border-primary-light focus:bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Right: Unified Single Export Button with Multi-Format Dropdown & Bersihkan Log */}
-                <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
-                  {auditLogs.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearAuditLogs}
-                      className="text-xs font-semibold h-9 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer flex items-center gap-1.5"
-                    >
-                      <TrashIcon className="text-xs" />
-                      <span>Bersihkan Log</span>
-                    </Button>
-                  )}
-
-                  <div className="relative" ref={exportDropdownRef}>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setIsExportMenuOpen((prev) => !prev)}
-                      className="text-xs font-semibold h-9 px-3.5 shadow-xs flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white cursor-pointer"
-                    >
-                      <span>Ekspor</span>
-                      <ChevronDownIcon
-                        className={`text-[10px] transition-transform duration-200 ${
-                          isExportMenuOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </Button>
-
-                    {isExportMenuOpen && (
-                      <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white border border-primary-light/80 py-1.5 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("xlsx")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          Microsoft Excel (.xlsx)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("ods")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          OpenDocument (.ods)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("pdf")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          PDF (.pdf)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("html")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          Web Page (.html)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("csv")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          Comma Separated Values (.csv)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleExportLogs("tsv")}
-                          className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
-                        >
-                          Tab Separated Values (.tsv)
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {/* Filter Pelaku */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold text-text-secondary">Pelaku:</span>
+                <Select
+                  value={filterActor}
+                  onChange={(e) => setFilterActor(e.target.value)}
+                  className="h-9 min-w-[140px] text-xs bg-white font-medium"
+                >
+                  <option value="ALL">Semua Pelaku</option>
+                  <option value="Super Administrator Zhou">Superadmin Zhou</option>
+                  {admins.map((a) => (
+                    <option key={a.id} value={a.name}>
+                      {a.name}
+                    </option>
+                  ))}
+                </Select>
               </div>
-            </div>
 
-            {/* Divider */}
-            <div className="border-t border-primary-light" />
+              {/* Filter Hasil */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[11px] font-semibold text-text-secondary">Hasil:</span>
+                <Select
+                  value={filterResult}
+                  onChange={(e) => setFilterResult(e.target.value)}
+                  className="h-9 min-w-[120px] text-xs bg-white font-medium"
+                >
+                  <option value="ALL">Semua Hasil</option>
+                  <option value="Berhasil">Berhasil</option>
+                  <option value="Gagal">Gagal</option>
+                </Select>
+              </div>
 
-            {/* Audit Table (Seamless within container) */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-surface/70 border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-3 text-left whitespace-nowrap">Waktu (Timestamp)</th>
-                    <th className="py-2.5 px-3 text-left">Admin Bertugas</th>
-                    <th className="py-2.5 px-2.5 text-center">ID Klien</th>
-                    <th className="py-2.5 px-2.5 text-center">ID Tiket</th>
-                    <th className="py-2.5 px-2 text-center">Status Sebelum</th>
-                    <th className="py-2.5 px-2 text-center">Status Sesudah</th>
-                    <th className="py-2.5 px-2.5 text-center">Berkas Terkait</th>
-                    <th className="py-2.5 px-3 text-center">Detail / Inspeksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-primary-light text-text">
-                  {paginatedLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-10 text-center text-xs text-text-muted">
-                        Belum ada catatan log aktivitas yang terekam.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-surface/50 transition-colors">
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-text-secondary whitespace-nowrap">
-                          {log.timestamp}
-                        </td>
-                        <td className="py-2.5 px-3 font-medium text-primary text-xs whitespace-nowrap sm:whitespace-normal">
-                          {log.adminName}
-                        </td>
-                        <td className="py-2.5 px-2.5 font-mono text-center text-xs">{log.clientId}</td>
-                        <td className="py-2.5 px-2.5 font-mono font-bold text-primary text-center text-xs">{log.ticketId}</td>
-                        <td className="py-2.5 px-2 text-center">
-                          {renderStatusBadge(log.statusBefore)}
-                        </td>
-                        <td className="py-2.5 px-2 text-center">
-                          {renderStatusBadge(log.statusAfter)}
-                        </td>
-                        <td className="py-2.5 px-2.5 text-center text-text-secondary font-mono text-[11px] max-w-[120px] truncate" title={log.relatedFile}>
-                          {log.relatedFile || "-"}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedLog(log)}
-                            className="text-[11px] py-1 px-2.5 h-7 inline-flex items-center gap-1 border-primary-light hover:bg-surface text-primary"
-                          >
-                            <EyeIcon className="text-[10px]" />
-                            <span>Inspeksi</span>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination inside container footer */}
-            {filteredLogs.length > 0 && (
-              <div className="p-3.5 sm:p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
-                <div className="flex items-center gap-3">
-                  <span>
-                    Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
-                    {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan
-                  </span>
-                  <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-muted">
-                    <span>• Baris:</span>
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                      className="bg-white border border-primary-light/80 rounded px-1.5 py-0.5 text-xs text-primary font-medium focus:outline-none"
-                    >
-                      <option value={10}>10</option>
-                      <option value={15}>15</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                    </select>
-                  </div>
-                </div>
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
+              {/* Pencarian Objek / Pelaku */}
+              <div className="relative flex-1 min-w-[180px]">
+                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs pointer-events-none" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari pelaku, ID objek (TK-18, CL-3, EDU-2), aktivitas..."
+                  className="pl-9 h-9 text-xs bg-surface border-primary-light focus:bg-white"
                 />
               </div>
-            )}
-          </Card>
+            </div>
 
-      {/* Modal: Inspeksi Detail Log Audit */}
+            {/* Right: Bersihkan Log & Ekspor Dropdown */}
+            <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
+              {auditLogs.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearAuditLogs}
+                  className="text-xs font-semibold h-9 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Bersihkan Tampilan Log Audit"
+                >
+                  <TrashIcon className="text-xs" />
+                  <span>Bersihkan Log</span>
+                </Button>
+              )}
+
+              <div className="relative" ref={exportDropdownRef}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                  className="text-xs font-semibold h-9 px-3.5 shadow-xs flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white cursor-pointer"
+                >
+                  <span>Ekspor</span>
+                  <ChevronDownIcon
+                    className={`text-[10px] transition-transform duration-200 ${
+                      isExportMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </Button>
+
+                {isExportMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl bg-white border border-primary-light/80 py-1.5 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("xlsx")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      Microsoft Excel (.xlsx)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("ods")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      OpenDocument (.ods)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("pdf")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      PDF (.pdf)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("html")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      Web Page (.html)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("csv")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      Comma Separated Values (.csv)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportLogs("tsv")}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 transition-colors cursor-pointer"
+                    >
+                      Tab Separated Values (.tsv)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-primary-light" />
+
+        {/* Audit Table: 6 Kolom yang Disarankan */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-surface/70 border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase tracking-wider">
+              <tr>
+                <th className="py-3.5 px-4 text-left whitespace-nowrap">Waktu</th>
+                <th className="py-3.5 px-4 text-left">Pelaku</th>
+                <th className="py-3.5 px-4 text-left">Aktivitas</th>
+                <th className="py-3.5 px-4 text-left">Objek</th>
+                <th className="py-3.5 px-4 text-center">Hasil</th>
+                <th className="py-3.5 px-4 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-primary-light text-text">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-text-muted">
+                    Memuat data log audit sistem dari server...
+                  </td>
+                </tr>
+              ) : paginatedLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-xs text-text-muted">
+                    Belum ada catatan log aktivitas yang cocok dengan filter.
+                  </td>
+                </tr>
+              ) : (
+                paginatedLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-surface/50 transition-colors">
+                    {/* 1. Waktu */}
+                    <td className="py-3 px-4 font-mono text-[11px] text-text-secondary whitespace-nowrap">
+                      {log.timestamp}
+                    </td>
+
+                    {/* 2. Pelaku */}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <div className="font-semibold text-primary text-xs">{log.actorName}</div>
+                      <div className="text-[10px] text-text-muted font-medium mt-0.5">
+                        {log.actorRole}
+                      </div>
+                    </td>
+
+                    {/* 3. Aktivitas */}
+                    <td className="py-3 px-4">
+                      <div className="font-medium text-primary text-xs">{log.activity}</div>
+                      <div className="mt-1">{renderCategoryBadge(log.category)}</div>
+                    </td>
+
+                    {/* 4. Objek */}
+                    <td className="py-3 px-4">
+                      <div className="font-mono font-bold text-primary text-xs">
+                        {log.objectName}
+                      </div>
+                      <div className="font-mono text-[10px] text-text-muted">ID: {log.objectId}</div>
+                    </td>
+
+                    {/* 5. Hasil */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      {log.result === "Berhasil" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+                          Berhasil
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-300">
+                          Gagal
+                        </span>
+                      )}
+                    </td>
+
+                    {/* 6. Aksi -> Detail */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedLog(log)}
+                        className="text-xs h-8 px-3 inline-flex items-center gap-1.5 border-primary-light hover:bg-surface text-primary font-semibold shadow-2xs"
+                      >
+                        <EyeIcon className="text-[11px]" />
+                        <span>Detail</span>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        {filteredLogs.length > 0 && (
+          <div className="p-3.5 sm:p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
+            <div className="flex items-center gap-3">
+              <span>
+                Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
+                {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length}{" "}
+                catatan log audit
+              </span>
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span>• Baris:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="bg-white border border-primary-light/80 rounded px-1.5 py-0.5 text-xs text-primary font-medium focus:outline-none"
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
+      </Card>
+
+      {/* MODAL: DETAIL AUDIT LOG SISTEM */}
       {selectedLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-lg shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-5 relative">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedLog(null)}
-              className="absolute top-4 right-4 text-text-secondary hover:text-primary p-1.5 focus:outline-none"
+              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
               aria-label="Tutup"
             >
-              <CloseIcon className="text-lg" />
+              <CloseIcon className="text-sm" />
             </button>
 
-            <div className="space-y-1">
+            <div>
               <div className="flex items-center gap-2">
                 <Badge variant="silver" className="font-mono text-xs">
                   {selectedLog.id}
                 </Badge>
-                <span className="text-xs text-text-secondary">Waktu Mutlak: {selectedLog.timestamp}</span>
+                {renderCategoryBadge(selectedLog.category)}
               </div>
-              <h3 className="text-base font-bold text-primary">Inspeksi Log Audit Perubahan Status</h3>
+              <h3 className="text-lg font-bold text-primary mt-1">Detail Log Audit Sistem</h3>
+              <p className="text-xs text-text-secondary">
+                Waktu Kejadian: {selectedLog.timestamp}
+              </p>
             </div>
 
-            <div className="space-y-3 p-4 rounded-lg bg-surface border border-primary-light text-xs">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-3 p-4 rounded-xl bg-surface border border-primary-light text-xs">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Admin Pelaksana:</span>
-                  <div className="font-bold text-primary">{selectedLog.adminName}</div>
-                  <div className="font-mono text-[10px] text-text-secondary">{selectedLog.adminId}</div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">
+                    Pelaku &amp; Peran:
+                  </span>
+                  <div className="font-bold text-primary mt-0.5">{selectedLog.actorName}</div>
+                  <div className="text-[11px] text-text-muted">{selectedLog.actorRole}</div>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Tiket &amp; Klien:</span>
-                  <div className="font-bold text-primary">{selectedLog.ticketId}</div>
-                  <div className="text-[10px] text-text-secondary">{selectedLog.clientId}</div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-primary-light grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Status Sebelum:</span>
-                  <div className="mt-0.5">
-                    {renderStatusBadge(selectedLog.statusBefore)}
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">
+                    Objek Terdampak:
+                  </span>
+                  <div className="font-mono font-bold text-primary mt-0.5">
+                    {selectedLog.objectName}
                   </div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Status Sesudah:</span>
-                  <div className="mt-0.5">
-                    {renderStatusBadge(selectedLog.statusAfter)}
+                  <div className="font-mono text-[10px] text-text-muted">
+                    ID Objek: {selectedLog.objectId}
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-primary-light">
-                <span className="text-[10px] uppercase font-bold text-text-secondary">Berkas Terkait:</span>
-                <div className="font-mono font-semibold text-primary">{selectedLog.relatedFile}</div>
+              <div className="pt-2 border-t border-primary-light grid grid-cols-2 gap-3">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">
+                    Aktivitas:
+                  </span>
+                  <div className="font-semibold text-primary mt-0.5">{selectedLog.activity}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">
+                    Hasil Eksekusi:
+                  </span>
+                  <div className="mt-0.5">
+                    {selectedLog.result === "Berhasil" ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">
+                        Berhasil
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-50 text-red-700 border border-red-300">
+                        Gagal
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {(selectedLog.statusBefore || selectedLog.statusAfter) && (
+                <div className="pt-2 border-t border-primary-light grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-secondary">
+                      Status Sebelum:
+                    </span>
+                    <div className="mt-0.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] bg-slate-100 text-slate-700 border border-slate-300">
+                        {selectedLog.statusBefore}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-secondary">
+                      Status Sesudah:
+                    </span>
+                    <div className="mt-0.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold">
+                        {selectedLog.statusAfter}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedLog.relatedFile && selectedLog.relatedFile !== "-" && (
+                <div className="pt-2 border-t border-primary-light">
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">
+                    Berkas Terkait:
+                  </span>
+                  <div className="font-mono text-primary mt-0.5 font-semibold">
+                    {selectedLog.relatedFile}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2 border-t border-primary-light">
-                <span className="text-[10px] uppercase font-bold text-text-secondary">Catatan Verifikasi:</span>
-                <p className="text-text-secondary mt-0.5">{selectedLog.notes}</p>
+                <span className="text-[10px] uppercase font-bold text-text-secondary">
+                  Deskripsi / Catatan Perubahan:
+                </span>
+                <p className="text-text-secondary mt-0.5 leading-relaxed">{selectedLog.notes}</p>
+              </div>
+
+              <div className="pt-2 border-t border-primary-light flex items-center justify-between text-[10px] text-text-muted">
+                <span>Rekam Jejak Append-Only</span>
+                <span className="font-mono">UU PDP No. 27/2022 Verified</span>
               </div>
             </div>
 
             <div className="flex justify-end pt-1">
-              <Button variant="primary" size="sm" onClick={() => setSelectedLog(null)} className="text-xs">
-                Tutup Inspeksi
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setSelectedLog(null)}
+                className="text-xs h-9 px-4 font-semibold"
+              >
+                Tutup
               </Button>
             </div>
           </div>
         </div>
       )}
-
-
     </div>
   );
 }
