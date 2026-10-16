@@ -24,6 +24,7 @@ import {
   DocumentIcon,
   MoreVerticalIcon,
 } from "@/components/icons";
+import { downloadRemoteFile } from "@/lib/downloadHelper";
 import {
   addZhouArticle,
   updateZhouArticle,
@@ -1785,7 +1786,6 @@ function AdminCMSPageContent() {
         console.warn("Backend updateCompanyProfile fallback:", apiErr);
       }
       if (typeof window !== "undefined") {
-        localStorage.setItem("zhou_company_hero_v1", JSON.stringify(heroForm));
         window.dispatchEvent(new CustomEvent("zhou_hero_updated", { detail: heroForm }));
       }
       setCmsItems((prev) =>
@@ -1825,7 +1825,6 @@ function AdminCMSPageContent() {
         console.warn("Backend updateContactSettings fallback:", apiErr);
       }
       if (typeof window !== "undefined") {
-        localStorage.setItem("zhou_contact_settings_v1", JSON.stringify(contactForm));
         window.dispatchEvent(new CustomEvent("zhou_contact_updated", { detail: contactForm }));
       }
       setCmsItems((prev) =>
@@ -4074,20 +4073,26 @@ function AdminCMSPageContent() {
                         </span>
                       </div>
                     </div>
-                    <a
-                      href={
-                        (viewingItem.raw as { file_path?: string })?.file_path?.startsWith("http")
-                          ? (viewingItem.raw as { file_path: string }).file_path
-                          : `${process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io"}${(viewingItem.raw as { file_path?: string })?.file_path ||
-                          (viewingItem.raw as { cv_file_path?: string })?.cv_file_path
-                          }`
-                      }
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 text-[11px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover shrink-0"
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const rawPath =
+                          (viewingItem.raw as { file_path?: string })?.file_path ||
+                          (viewingItem.raw as { cv_file_path?: string })?.cv_file_path ||
+                          "";
+                        const fileName = rawPath.split("/").pop() || "Berkas.pdf";
+                        showToast(`Menyiapkan unduhan berkas "${fileName}"...`);
+                        const res = await downloadRemoteFile(rawPath, fileName);
+                        if (res.success) {
+                          showToast(`Berkas "${fileName}" berhasil diunduh.`);
+                        } else {
+                          showToast(res.message || `Berkas tidak tersedia di repositori server.`);
+                        }
+                      }}
+                      className="px-3 py-1.5 text-[11px] font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover shrink-0 cursor-pointer transition-colors"
                     >
                       Buka / Unduh Berkas
-                    </a>
+                    </button>
                   </div>
                 )}
               {/* URL Tautan Web Resmi (untuk Belajar Pajak DJP) */}

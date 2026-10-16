@@ -9,6 +9,7 @@ import {
   setAuthToken,
   removeAuthToken,
 } from "@/lib/api";
+import { isTicketDeleted } from "@/data/sharedTicketsStorage";
 
 export interface AuthUser {
   id?: number;
@@ -106,6 +107,9 @@ export function isDummyTicket(c: {
   id?: string | number;
   client?: { name?: string; company_name?: string };
 }): boolean {
+  if (isTicketDeleted(c.id) || (c.project_code && isTicketDeleted(c.project_code))) {
+    return true;
+  }
   const code = (c.project_code || String(c.id || "")).toLowerCase();
   const title = (c.title || "").toLowerCase();
 

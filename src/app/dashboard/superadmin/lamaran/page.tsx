@@ -5,13 +5,7 @@ import {
   adminCmsApi,
   JobApplicationItem,
 } from "@/lib/api";
-import {
-  getStoredJobApplications,
-  deleteStoredJobApplication,
-  clearAllStoredJobApplications,
-  APPLICATIONS_UPDATED_EVENT,
-  StoredJobApplication,
-} from "@/data/karirStorage";
+import { downloadRemoteFile } from "@/lib/downloadHelper";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,28 +26,8 @@ export type ExtendedJobApplication = JobApplicationItem & {
   linkedin?: string;
   cover_letter?: string;
   registration_code?: string;
+  cv_file_name?: string;
 };
-
-const DELETED_APP_IDS_KEY = "zhou_deleted_job_app_ids_v1";
-
-function getDeletedAppIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(DELETED_APP_IDS_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function recordDeletedAppId(id: string | number): void {
-  if (typeof window === "undefined") return;
-  try {
-    const set = getDeletedAppIds();
-    set.add(String(id));
-    localStorage.setItem(DELETED_APP_IDS_KEY, JSON.stringify(Array.from(set)));
-  } catch {}
-}
 
 const isDummyApplication = (a: {
   id?: string | number;
@@ -105,63 +79,64 @@ function AdminLamaranPageContent() {
   const [selectedApp, setSelectedApp] = useState<ExtendedJobApplication | null>(null);
   const [deletingApp, setDeletingApp] = useState<ExtendedJobApplication | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [downloadingCvId, setDownloadingCvId] = useState<number | string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const handleDownloadCv = async (app: JobApplicationItem) => {
+    setDownloadingCvId(app.id);
+    const ext = app as ExtendedJobApplication;
+    const fileName = (ext.cv_file_name || app.cv_file_path?.split("/").pop() || `CV_${app.applicant_name}.pdf`)
+      .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    showToast(`Menyiapkan unduhan berkas CV "${app.applicant_name}"...`);
+
+    // 1. Coba ambil signed download URL dari backend
+    try {
+      const res = await adminCmsApi.getJobApplicationCvDownloadUrl(app.id);
+      const backendUrl = res.data?.download_url || res.data?.file_url || res.data?.public_url;
+      if (res.success && backendUrl) {
+        const dlRes = await downloadRemoteFile(backendUrl, fileName);
+        if (dlRes.success) {
+          showToast(`Berkas CV "${fileName}" berhasil diunduh.`);
+          setDownloadingCvId(null);
+          return;
+        }
+      }
+    } catch {
+      // lanjut ke fallback
+    }
+
+    // 2. Jika path file langsung tersedia
+    if (app.cv_file_path && app.cv_file_path !== "#") {
+      const dlRes = await downloadRemoteFile(app.cv_file_path, fileName);
+      if (dlRes.success) {
+        showToast(`Berkas CV "${fileName}" berhasil diunduh.`);
+        setDownloadingCvId(null);
+        return;
+      }
+    }
+
+    showToast(`Berkas CV untuk pelamar "${app.applicant_name}" belum tersedia atau tidak ditemukan di repositori server.`);
+    setDownloadingCvId(null);
+  };
+
   const loadApplications = async () => {
     setIsLoading(true);
     try {
-      const deletedIds = getDeletedAppIds();
-      const stored = getStoredJobApplications();
-      const mappedStored: ExtendedJobApplication[] = stored
-        .filter((s: StoredJobApplication) => !deletedIds.has(String(s.id)) && !isDummyApplication(s))
-        .map((s: StoredJobApplication, idx) => ({
-          id: typeof s.id === "number" ? s.id : parseInt(String(s.id).slice(-6), 10) || idx + 1000,
-          job_id: typeof s.job_id === "number" ? s.job_id : 1,
-          career_id: typeof s.career_id === "number" ? s.career_id : undefined,
-          applicant_name: s.applicant_name,
-          applicant_email: s.applicant_email,
-          applicant_phone: s.applicant_phone,
-          cv_file_path: s.cv_file_path || s.cv_file_name || "cv-pelamar.pdf",
-          applied_at: s.applied_at,
-          job: s.job
-            ? {
-                position_code: s.job.position_code,
-                position_title: s.job.position_title,
-              }
-            : undefined,
-          education: s.education,
-          linkedin: s.linkedin,
-          cover_letter: s.cover_letter,
-          registration_code: s.registration_code,
-        }));
-
-      let apiList: JobApplicationItem[] = [];
-      try {
-        const res = await adminCmsApi.getJobApplications();
-        if (res?.data && Array.isArray(res.data)) {
-          apiList = res.data.filter((a: JobApplicationItem) => {
-            return !deletedIds.has(String(a.id)) && !isDummyApplication(a);
-          });
-        }
-      } catch {
-        // Fallback to stored applications if remote server fails
+      const res = await adminCmsApi.getJobApplications();
+      if (res?.data && Array.isArray(res.data)) {
+        const validList = res.data.filter((a: JobApplicationItem) => !isDummyApplication(a));
+        setApplications(validList as ExtendedJobApplication[]);
+      } else {
+        setApplications([]);
       }
-
-      // Gabungkan data backend dan data lokal dengan deduplikasi
-      const apiKeys = new Set(apiList.map((a) => `${String(a.job_id)}:${a.applicant_email.trim().toLowerCase()}`));
-      const nonDuplicateStored = mappedStored.filter(
-        (s) => !apiKeys.has(`${String(s.job_id)}:${s.applicant_email.trim().toLowerCase()}`)
-      );
-
-      setApplications([...nonDuplicateStored, ...apiList]);
     } catch (err) {
       console.warn("Gagal memuat daftar lamaran:", err);
-      const stored = getStoredJobApplications();
-      setApplications(stored as ExtendedJobApplication[]);
+      setApplications([]);
     } finally {
       setIsLoading(false);
     }
@@ -169,17 +144,6 @@ function AdminLamaranPageContent() {
 
   useEffect(() => {
     loadApplications();
-
-    const handleUpdate = () => {
-      loadApplications();
-    };
-
-    window.addEventListener(APPLICATIONS_UPDATED_EVENT, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    return () => {
-      window.removeEventListener(APPLICATIONS_UPDATED_EVENT, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
   }, []);
 
   const confirmDeleteApp = async () => {
@@ -188,18 +152,12 @@ function AdminLamaranPageContent() {
     setDeletingApp(null);
 
     try {
-      recordDeletedAppId(appItem.id);
-      deleteStoredJobApplication(appItem.id);
-      try {
-        await adminCmsApi.deleteJobApplication(appItem.id);
-      } catch {
-        // Backend delete fallback
-      }
-      setApplications((prev) => prev.filter((a) => a.id !== appItem.id));
+      await adminCmsApi.deleteJobApplication(appItem.id);
+      showToast(`Data lamaran "${appItem.applicant_name}" berhasil dihapus.`);
+      await loadApplications();
       if (selectedApp?.id === appItem.id) {
         setSelectedApp(null);
       }
-      showToast(`Data lamaran "${appItem.applicant_name}" berhasil dihapus.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus lamaran";
       showToast(msg);
@@ -336,16 +294,10 @@ function AdminLamaranPageContent() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (confirm("Apakah Anda yakin ingin menghapus SELURUH berkas lamaran kerja yang tersimpan?")) {
-                    applications.forEach((a) => {
-                      recordDeletedAppId(a.id);
-                      try {
-                        adminCmsApi.deleteJobApplication(a.id);
-                      } catch {}
-                    });
-                    clearAllStoredJobApplications();
-                    setApplications([]);
+                    await Promise.allSettled(applications.map((a) => adminCmsApi.deleteJobApplication(a.id)));
+                    await loadApplications();
                     showToast("Seluruh berkas lamaran berhasil dibersihkan.");
                   }
                 }}
@@ -409,17 +361,17 @@ function AdminLamaranPageContent() {
 
                     <td className="py-3.5 px-4">
                       {app.cv_file_path ? (
-                        <a
-                          href={app.cv_file_path}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline bg-primary/5 px-2.5 py-1 rounded-md"
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadCv(app)}
+                          disabled={downloadingCvId === app.id}
+                          className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline bg-primary/5 hover:bg-primary/10 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
                         >
                           <DocumentIcon className="text-xs shrink-0 text-primary" />
                           <span className="truncate max-w-[140px]">
-                            {app.cv_file_path.split("/").pop() || "Lihat CV"}
+                            {downloadingCvId === app.id ? "Mengunduh..." : app.cv_file_path.split("/").pop() || "Lihat CV"}
                           </span>
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-text-muted italic text-[11px]">Tidak ada lampiran</span>
                       )}
@@ -591,15 +543,15 @@ function AdminLamaranPageContent() {
               <div className="flex items-center justify-between pt-1">
                 <span className="text-slate-500 font-medium">Berkas CV (Resume)</span>
                 {selectedApp.cv_file_path ? (
-                  <a
-                    href={selectedApp.cv_file_path}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary font-bold hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadCv(selectedApp)}
+                    disabled={downloadingCvId === selectedApp.id}
+                    className="inline-flex items-center gap-1.5 text-xs text-primary font-bold hover:underline cursor-pointer"
                   >
                     <DocumentIcon className="text-xs" />
-                    Buka Berkas CV
-                  </a>
+                    {downloadingCvId === selectedApp.id ? "Mengunduh CV..." : "Buka / Unduh Berkas CV"}
+                  </button>
                 ) : (
                   <span className="text-slate-400 italic">Tidak ada berkas</span>
                 )}

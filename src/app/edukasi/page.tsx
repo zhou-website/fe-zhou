@@ -35,6 +35,7 @@ import {
   ChevronRightIcon,
   DocumentIcon,
 } from "@/components/icons";
+import { downloadBlob, downloadRemoteFile } from "@/lib/downloadHelper";
 import {
   ZHOU_ARTICLES,
   ZhouArticle,
@@ -523,55 +524,48 @@ function EducationPortalContent() {
 
   const currentFeatured = featuredArticles[carouselIndex] || featuredArticles[0];
 
-  const handleDownloadPdf = (article: ZhouArticle) => {
+  const handleDownloadPdf = async (article: ZhouArticle) => {
     setDownloadSuccessModal(article.title);
 
     try {
+      const cleanBaseName = (article.attachment?.name || article.title || "Materi_Edukasi")
+        .replace(/[^a-zA-Z0-9_\-]/g, "_")
+        .substring(0, 50);
+      const targetFileName = cleanBaseName.toLowerCase().endsWith(".pdf")
+        ? cleanBaseName
+        : `${cleanBaseName}.pdf`;
+
       if (article.attachment?.dataUrl) {
         const link = document.createElement("a");
         link.href = article.attachment.dataUrl;
-        const cleanName = (article.attachment.name || article.title).replace(/[^a-zA-Z0-9_\-]/g, "_");
-        link.download = cleanName.endsWith(".pdf") ? cleanName : `${cleanName}.pdf`;
+        link.download = targetFileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } else if (
+        return;
+      }
+
+      if (
         article.attachment?.url &&
         article.attachment.url !== "#" &&
         article.attachment.url.startsWith("http")
       ) {
-        const link = document.createElement("a");
-        link.href = article.attachment.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        const cleanName = (article.attachment.name || article.title).replace(/[^a-zA-Z0-9_\-]/g, "_");
-        link.download = cleanName.endsWith(".pdf") ? cleanName : `${cleanName}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // Otomatis susun dan generate PDF resmi dari teks yang diinput / diketik superadmin
-        const pdfString = generateArticlePdf(article);
-        const blob = new Blob([pdfString], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        const cleanFileName = `Zhou_Edukasi_${(article.title || "Materi")
-          .replace(/[^a-zA-Z0-9_\-]/g, "_")
-          .substring(0, 50)}`;
-        link.download = `${cleanFileName}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const dlRes = await downloadRemoteFile(article.attachment.url, targetFileName);
+        if (dlRes.success) return;
+        // Jika server host tidak dapat dihubungi, lanjut ke fallback generator
       }
+
+      // Otomatis susun dan generate PDF resmi dari teks yang diinput / diketik superadmin
+      const pdfString = generateArticlePdf(article);
+      const blob = new Blob([pdfString], { type: "application/pdf" });
+      downloadBlob(blob, `Zhou_Edukasi_${targetFileName}`);
     } catch (err) {
       console.error("Gagal membuat dan mengunduh berkas PDF edukasi:", err);
+    } finally {
+      setTimeout(() => {
+        setDownloadSuccessModal(null);
+      }, 4000);
     }
-
-    setTimeout(() => {
-      setDownloadSuccessModal(null);
-    }, 4000);
   };
 
   return (

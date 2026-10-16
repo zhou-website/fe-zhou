@@ -1,4 +1,5 @@
 import { ConsultationItem } from "@/lib/api";
+import { savePersistentFileBlob, getPersistentFileBlob } from "@/lib/fileStorageDB";
 
 export type ConsultationStatus =
   | "Menunggu Penugasan"
@@ -61,6 +62,7 @@ export interface StaffAdminProfile {
 
 export interface ClientTicket {
   id: string;
+  numericId?: number;
   title: string;
   category: "Tax Service Core" | "Accounting Service" | "Legal Compliance" | "Business Advisory" | string;
   priority?: "Normal" | "Tinggi" | "Mendesak";
@@ -292,6 +294,109 @@ export function formatConsultationDate(rawDate?: string): string {
   return rawDate;
 }
 
+/**
+ * Mengekstrak uraian detail masalah klien yang bersih.
+ * Jika deskripsi berasal dari eskalasi bot otomatis (misal mengandung 'Pesan Klien: ...'),
+ * ambil isi pesan klien tersebut agar tampil bersih, jelas, dan informatif.
+ */
+export function formatTicketDescription(desc?: string): string {
+  if (!desc || !desc.trim()) return "";
+  const clientMatch = desc.match(/Pesan Klien:\s*([\s\S]+)$/i);
+  if (clientMatch && clientMatch[1]?.trim()) {
+    return clientMatch[1].trim();
+  }
+  return desc.trim();
+}
+
+/**
+ * Menentukan nama divisi layanan yang akurat dan bersih.
+ * Memeriksa pilihan kategori asli klien dari description, title, maupun katalog service resmi,
+ * serta menyaring nama-nama dummy/pengujian (seperti "Updated Srv Name", "SRV-TEST", "Pengujian").
+ */
+export function resolveConsultationCategory(item?: {
+  service?: { service_name?: string; category?: string } | null;
+  description?: string | null;
+  title?: string | null;
+  category?: string | null;
+}): string {
+  if (!item) return "Tax Service Core";
+
+  const isDummyName = (str?: string | null): boolean => {
+    if (!str) return true;
+    const s = str.trim().toLowerCase();
+    return (
+      s === "" ||
+      s === "-" ||
+      s.includes("updated srv") ||
+      s.includes("srv-test") ||
+      s.includes("layanan pengujian") ||
+      s.includes("pengujian khusus") ||
+      s.includes("dummy") ||
+      s.includes("mock")
+    );
+  };
+
+  const normalizeDivName = (raw?: string | null): string => {
+    if (!raw) return "Tax Service Core";
+    const s = raw.trim();
+    const lower = s.toLowerCase();
+    if (lower.includes("account") || lower.includes("akuntansi")) return "Accounting Service";
+    if (lower.includes("business") || lower.includes("bisnis") || lower.includes("financial") || lower.includes("finansial")) return "Business Consulting";
+    if (lower.includes("legal") || lower.includes("hukum") || lower.includes("sengketa") || lower.includes("dispute")) return "Legal Compliance";
+    if (lower.includes("tax") || lower.includes("pajak") || lower.includes("coretax") || lower.includes("spt")) return "Tax Service Core";
+    return s;
+  };
+
+  // 1. Prioritaskan kata kunci spesifik pada title (mencegah judul 'konsultasi pajak' tertulis 'Accounting Service')
+  if (item.title) {
+    const titleMatch = item.title.match(/\(([^)]+)\)/);
+    if (titleMatch && titleMatch[1]?.trim() && !isDummyName(titleMatch[1])) {
+      const insideParen = titleMatch[1].trim();
+      if (insideParen.toLowerCase() !== "umum" && insideParen.toLowerCase() !== "chatbot") {
+        return normalizeDivName(insideParen);
+      }
+    }
+    const tLower = item.title.toLowerCase();
+    if (tLower.includes("pajak") || tLower.includes("tax") || tLower.includes("spt") || tLower.includes("coretax") || tLower.includes("faktur") || tLower.includes("pph") || tLower.includes("ppn")) {
+      return "Tax Service Core";
+    }
+    if (tLower.includes("account") || tLower.includes("akuntansi") || tLower.includes("pembukuan") || tLower.includes("laporan keuangan") || tLower.includes("neraca") || tLower.includes("jurnal")) {
+      return "Accounting Service";
+    }
+    if (tLower.includes("legal") || tLower.includes("hukum") || tLower.includes("sengketa") || tLower.includes("perizinan") || tLower.includes("akta")) {
+      return "Legal Compliance";
+    }
+    if (tLower.includes("business") || tLower.includes("bisnis") || tLower.includes("financial") || tLower.includes("advisory") || tLower.includes("valuasi")) {
+      return "Business Consulting";
+    }
+  }
+
+  // 2. Ekstrak dari catatan "Kategori: <Divisi Pilihan Klien>" di dalam description
+  if (item.description) {
+    const catMatch = item.description.match(/Kategori:\s*([^\r\n]+)/i);
+    if (catMatch && catMatch[1]?.trim() && !isDummyName(catMatch[1])) {
+      return normalizeDivName(catMatch[1]);
+    }
+  }
+
+  // 3. Cek dari field category bawaan jika sudah berupa divisi valid dan bukan dummy
+  if (item.category && !isDummyName(item.category)) {
+    return normalizeDivName(item.category);
+  }
+
+  // 4. Cek service_name dari objek backend service jika bukan dummy
+  if (item.service?.service_name && !isDummyName(item.service.service_name)) {
+    return normalizeDivName(item.service.service_name);
+  }
+
+  // 5. Cek category bawaan dari service ("Tax", "Akuntansi", dll)
+  if (item.service?.category && !isDummyName(item.service.category)) {
+    return normalizeDivName(item.service.category);
+  }
+
+  return "Tax Service Core";
+}
+
 export function getFormattedToday(): string {
   const now = new Date();
   const d = String(now.getDate()).padStart(2, "0");
@@ -358,14 +463,14 @@ export function getStoredClientTickets(): ClientTicket[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
 
-    // Normalisasi data migrasi tiket dan bersihkan tiket dummy
+    // Normalisasi data migrasi tiket dan bersihkan tiket dummy / terhapus
     return parsed
-      .filter((t) => !isDummyTicketRecord(t))
+      .filter((t) => !isDummyTicketRecord(t) && !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)))
       .map((t) => {
       const normalizedStatus = normalizeConsultationStatus(t.status, t.assignedAdminName || (t.consultant && !t.consultant.includes("Menunggu") ? t.consultant : undefined));
       
       // Hitung progres dari milestones secara dinamis dan presisi
-      let safeMilestones: Milestone[] | undefined = t.milestones;
+      const safeMilestones: Milestone[] | undefined = t.milestones;
       let safeProgress = typeof t.progress === "number" ? t.progress : 35;
 
       if (Array.isArray(safeMilestones) && safeMilestones.length > 0) {
@@ -452,6 +557,82 @@ export function addStoredClientTicket(ticket: ClientTicket): void {
   };
   const updated = [newTicket, ...filtered];
   saveStoredClientTickets(updated);
+}
+
+/**
+ * Menggabungkan tiket dari backend dengan pembaruan/editan lokal terkini.
+ * Editan lokal (status, progres, PIC, deliverable, dokumen klien, catatan) selalu
+ * diprioritaskan agar data editan tidak kembali ke data lama saat refresh halaman.
+ */
+export function mergeTicketsWithLocalOverrides(
+  backendTickets: ClientTicket[],
+  localTickets: ClientTicket[] = typeof window !== "undefined" ? getStoredClientTickets() : []
+): ClientTicket[] {
+  const merged: ClientTicket[] = [...backendTickets];
+
+  localTickets.forEach((lt) => {
+    const existingIdx = merged.findIndex(
+      (mt) =>
+        mt.id.toLowerCase() === lt.id.toLowerCase() ||
+        (lt.numericId && mt.numericId === lt.numericId) ||
+        (lt.numericId && mt.id.replace(/\D/g, "") === String(lt.numericId)) ||
+        (mt.numericId && lt.id.replace(/\D/g, "") === String(mt.numericId)) ||
+        (lt.title && mt.title && lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim())
+    );
+
+    if (existingIdx !== -1) {
+      const bt = merged[existingIdx];
+
+      // Gabungkan berkas deliverables tanpa duplikat
+      const combinedDeliverables = [...(bt.deliverables || [])];
+      (lt.deliverables || []).forEach((ld) => {
+        if (!combinedDeliverables.some((d) => d.name.toLowerCase() === ld.name.toLowerCase() || d.id === ld.id)) {
+          combinedDeliverables.unshift(ld);
+        }
+      });
+
+      // Gabungkan berkas dokumen klien tanpa duplikat
+      const combinedClientDocs = [...(bt.clientDocuments || [])];
+      (lt.clientDocuments || []).forEach((lcd) => {
+        if (!combinedClientDocs.some((d) => d.name.toLowerCase() === lcd.name.toLowerCase() || d.id === lcd.id)) {
+          combinedClientDocs.unshift(lcd);
+        }
+      });
+
+      // Gabungkan korespondensi/catatan
+      const combinedCorrespondences = [...(bt.correspondences || [])];
+      (lt.correspondences || []).forEach((lc) => {
+        if (!combinedCorrespondences.some((c) => c.id === lc.id || (c.message === lc.message && c.date === lc.date))) {
+          combinedCorrespondences.unshift(lc);
+        }
+      });
+
+      // Priority: Editan lokal menimpa data mentah backend
+      merged[existingIdx] = {
+        ...bt,
+        ...lt,
+        id: bt.id || lt.id,
+        numericId: bt.numericId || lt.numericId,
+        deliverables: combinedDeliverables,
+        clientDocuments: combinedClientDocs,
+        correspondences: combinedCorrespondences,
+        milestones: (lt.milestones && lt.milestones.length > 0) ? lt.milestones : bt.milestones,
+        status: lt.status || bt.status,
+        progress: lt.progress !== undefined ? lt.progress : bt.progress,
+        consultant: (lt.consultant && !lt.consultant.includes("Menunggu"))
+          ? lt.consultant
+          : (bt.consultant || lt.consultant),
+        assignedAdminName: lt.assignedAdminName || bt.assignedAdminName,
+        assignedAdminEmail: lt.assignedAdminEmail || bt.assignedAdminEmail,
+        assignedAdminId: lt.assignedAdminId || bt.assignedAdminId,
+        isArchived: Boolean(lt.isArchived ?? bt.isArchived),
+      };
+    } else {
+      merged.unshift(lt);
+    }
+  });
+
+  return merged;
 }
 
 /**
@@ -729,15 +910,32 @@ export function updateTicketByStaff(
     progress?: number;
     notes?: string;
     milestones?: Milestone[];
-  }
+  },
+  fallbackTicket?: ClientTicket
 ): { success: boolean; message: string; ticket?: ClientTicket } {
   const tickets = getStoredClientTickets();
-  const index = tickets.findIndex((t) => t.id.toLowerCase() === ticketId.toLowerCase());
-  if (index === -1) {
-    return { success: false, message: "Konsultasi tidak ditemukan." };
-  }
+  const cleanSearch = ticketId.toLowerCase().trim();
+  const numSearch = ticketId.replace(/\D/g, "");
+  let index = tickets.findIndex(
+    (t) =>
+      t.id.toLowerCase() === cleanSearch ||
+      (numSearch && t.id.replace(/\D/g, "") === numSearch) ||
+      (t.numericId && String(t.numericId) === numSearch) ||
+      (cleanSearch.startsWith("tk-") && t.id.toLowerCase().includes(cleanSearch.replace("tk-", "")))
+  );
 
-  const target = tickets[index];
+  let target: ClientTicket;
+  if (index === -1) {
+    if (fallbackTicket) {
+      target = { ...fallbackTicket };
+      tickets.unshift(target);
+      index = 0;
+    } else {
+      return { success: false, message: "Konsultasi tidak ditemukan." };
+    }
+  } else {
+    target = tickets[index];
+  }
 
   // Batasan akses: Admin tidak boleh mengubah tiket milik PIC lain
   if (staffUser.role !== "superadmin" && !canAdminAccessTicket(target, staffUser)) {
@@ -809,15 +1007,75 @@ export function updateTicketByStaff(
   return { success: true, message: "Status & progres konsultasi berhasil diperbarui.", ticket: updatedTicket };
 }
 
+export function updateStoredClientTicketProgress(
+  ticketId: string,
+  updates: {
+    status?: ConsultationStatus;
+    progress?: number;
+    notes?: string;
+    milestones?: Milestone[];
+  },
+  staffUser: { email?: string; id?: string | number; name?: string; role?: string },
+  fallbackTicket?: ClientTicket
+): { success: boolean; message: string; ticket?: ClientTicket } {
+  return updateTicketByStaff(ticketId, staffUser, updates, fallbackTicket);
+}
+
+/**
+ * In-memory & IndexedDB cache for live downloaded / uploaded files
+ */
+const liveBlobCache = new Map<string, Blob>();
+
+export function cacheFileBlob(key: string | string[], blob: Blob): void {
+  if (!key) return;
+  const keys = Array.isArray(key) ? key : [key];
+  keys.forEach((k) => {
+    if (!k) return;
+    liveBlobCache.set(k.toLowerCase().trim(), blob);
+    if (k !== k.toLowerCase().trim()) liveBlobCache.set(k, blob);
+  });
+  savePersistentFileBlob(keys, blob);
+}
+
+export function getCachedFileBlob(key: string): Blob | undefined {
+  if (!key) return undefined;
+  return liveBlobCache.get(key.toLowerCase().trim()) || liveBlobCache.get(key);
+}
+
+export async function getCachedFileBlobAsync(key: string): Promise<Blob | undefined> {
+  if (!key) return undefined;
+  const inMemory = getCachedFileBlob(key);
+  if (inMemory) return inMemory;
+  const fromDB = await getPersistentFileBlob(key);
+  if (fromDB) {
+    liveBlobCache.set(key.toLowerCase().trim(), fromDB);
+    return fromDB;
+  }
+  return undefined;
+}
+
+export function formatCorrespondenceMessage(msg?: string): string {
+  if (!msg || !msg.trim()) return "";
+  const clientMatch = msg.match(/Pesan Klien:\s*([\s\S]+)$/i);
+  if (clientMatch && clientMatch[1]?.trim()) {
+    return clientMatch[1].trim();
+  }
+  if (msg.includes("Eskalasi Otomatis dari Chatbot")) {
+    return "Permohonan konsultasi diajukan melalui asisten cerdas Zhou Consulting.";
+  }
+  return msg.trim();
+}
+
 /**
  * Klien mengunggah dokumen pendukung tambahan pada konsultasi yang sedang berjalan
  */
 export function addSupportingDocumentToTicket(
   ticketId: string,
   doc: ClientUploadedFile,
-  clientEmail?: string | null
+  clientEmail?: string | null,
+  fallbackTicket?: ClientTicket
 ): { success: boolean; message: string; ticket?: ClientTicket } {
-  return addSupportingDocumentsToTicket(ticketId, [doc], clientEmail);
+  return addSupportingDocumentsToTicket(ticketId, [doc], clientEmail, fallbackTicket);
 }
 
 /**
@@ -826,19 +1084,53 @@ export function addSupportingDocumentToTicket(
 export function addSupportingDocumentsToTicket(
   ticketId: string,
   docs: ClientUploadedFile[],
-  clientEmail?: string | null
+  clientEmail?: string | null,
+  fallbackTicket?: ClientTicket
 ): { success: boolean; message: string; ticket?: ClientTicket } {
   if (!docs || docs.length === 0) {
     return { success: false, message: "Tidak ada dokumen yang dipilih untuk diunggah." };
   }
 
   const tickets = getStoredClientTickets();
-  const index = tickets.findIndex((t) => t.id.toLowerCase() === ticketId.toLowerCase());
-  if (index === -1) {
-    return { success: false, message: `Konsultasi dengan nomor referensi ${ticketId} tidak ditemukan.` };
-  }
+  const cleanSearch = ticketId.toLowerCase().trim();
+  const numSearch = ticketId.replace(/\D/g, "");
+  let index = tickets.findIndex(
+    (t) =>
+      t.id.toLowerCase() === cleanSearch ||
+      (numSearch && t.id.replace(/\D/g, "") === numSearch) ||
+      (t.numericId && String(t.numericId) === numSearch) ||
+      (cleanSearch.startsWith("tk-") && t.id.toLowerCase().includes(cleanSearch.replace("tk-", "")))
+  );
 
-  const target = tickets[index];
+  let target: ClientTicket;
+  if (index === -1) {
+    if (fallbackTicket) {
+      target = { ...fallbackTicket };
+    } else {
+      target = {
+        id: ticketId,
+        numericId: parseInt(numSearch, 10) || undefined,
+        title: `Konsultasi ${ticketId}`,
+        category: "Tax Service Core",
+        description: "Konsultasi Klien",
+        clientName: "Klien Terdaftar",
+        clientEmail: clientEmail || undefined,
+        consultant: "Staf Konsultan Zhou",
+        milestones: [],
+        status: "Dalam Proses",
+        progress: 35,
+        createdAt: new Date().toISOString(),
+        estimatedCompletion: "14 Hari Kerja",
+        deliverables: [],
+        clientDocuments: [],
+        correspondences: [],
+      };
+    }
+    tickets.unshift(target);
+    index = 0;
+  } else {
+    target = tickets[index];
+  }
 
   // Validasi Hak Akses: Klien tidak boleh mengunggah ke konsultasi milik akun lain
   if (clientEmail && clientEmail.trim()) {
@@ -890,7 +1182,7 @@ export function addSupportingDocumentsToTicket(
     sender: target.clientName || "Klien",
     role: "Klien",
     date: nowFormatted,
-    message: `Klien mengunggah dokumen pendukung tambahan: ${docNamesList}.${
+    message: `Klien mengunggah dokumen pendukung: ${docNamesList}.${
       preparedDocs[0]?.description ? ` Keterangan: "${preparedDocs[0].description}"` : ""
     }`,
   };
@@ -899,9 +1191,146 @@ export function addSupportingDocumentsToTicket(
   tickets[index] = target;
   saveStoredClientTickets(tickets);
 
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("zhou_tickets_updated", { detail: { ticketId: target.id } }));
+  }
+
   return {
     success: true,
     message: `${preparedDocs.length} dokumen berhasil diunggah ke konsultasi ${target.id}.`,
+    ticket: target,
+  };
+}
+
+/**
+ * Admin / Konsultan PIC mengunggah berkas deliverable untuk Klien
+ */
+export function addAdminDeliverableToTicket(
+  ticketId: string,
+  deliverable: {
+    name: string;
+    size: string;
+    type?: string;
+    category?: string;
+    notes?: string;
+    downloadUrl?: string;
+  },
+  adminProfile?: { name?: string; role?: string; email?: string },
+  fallbackTicket?: ClientTicket
+): { success: boolean; message: string; ticket?: ClientTicket } {
+  const tickets = getStoredClientTickets();
+  const cleanSearch = ticketId.toLowerCase().trim();
+  const numSearch = ticketId.replace(/\D/g, "");
+  let index = tickets.findIndex(
+    (t) =>
+      t.id.toLowerCase() === cleanSearch ||
+      (numSearch && t.id.replace(/\D/g, "") === numSearch) ||
+      (t.numericId && String(t.numericId) === numSearch) ||
+      (cleanSearch.startsWith("tk-") && t.id.toLowerCase().includes(cleanSearch.replace("tk-", "")))
+  );
+
+  let target: ClientTicket;
+  if (index === -1) {
+    if (fallbackTicket) {
+      target = { ...fallbackTicket };
+    } else {
+      target = {
+        id: ticketId,
+        numericId: parseInt(numSearch, 10) || undefined,
+        title: `Konsultasi ${ticketId}`,
+        category: "Tax Service Core",
+        description: "Konsultasi Klien",
+        clientName: "Klien Terdaftar",
+        consultant: adminProfile?.name || "Staf Konsultan Zhou",
+        milestones: [],
+        status: "Dalam Proses",
+        progress: 50,
+        createdAt: new Date().toISOString(),
+        estimatedCompletion: "14 Hari Kerja",
+        deliverables: [],
+        clientDocuments: [],
+        correspondences: [],
+      };
+    }
+    tickets.unshift(target);
+    index = 0;
+  } else {
+    target = tickets[index];
+  }
+
+  const nowFormatted = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) + " WIB";
+
+  const fileExt = deliverable.name.split(".").pop()?.toUpperCase() || "PDF";
+  const newDeliverable: Deliverable = {
+    id: `deliv-${Date.now()}`,
+    name: deliverable.name,
+    size: deliverable.size,
+    type: fileExt,
+    date: nowFormatted,
+    status: "Tersedia",
+    downloadUrl: deliverable.downloadUrl || "#",
+  };
+
+  const existing = target.deliverables || [];
+  target.deliverables = [newDeliverable, ...existing];
+
+  // Tambahkan catatan resmi dari konsultan
+  const staffName = adminProfile?.name || target.assignedAdminName || "Konsultan PIC";
+  const noteMessage = deliverable.notes?.trim()
+    ? `Konsultan mengunggah berkas deliverable: "${deliverable.name}". Catatan: "${deliverable.notes.trim()}"`
+    : `Konsultan mengunggah berkas deliverable resmi: "${deliverable.name}".`;
+
+  const noteEntry: Correspondence = {
+    id: `staff-deliv-${Date.now()}`,
+    sender: staffName,
+    role: "Konsultan",
+    date: nowFormatted,
+    message: noteMessage,
+  };
+  target.correspondences = [noteEntry, ...(target.correspondences || [])];
+
+  // Sinkronkan juga ke addStoredDocument agar masuk ke vault dokumen klien
+  const docType = (deliverable.name.toLowerCase().endsWith(".xlsx") || deliverable.name.toLowerCase().endsWith(".xls"))
+    ? "XLSX"
+    : (deliverable.name.toLowerCase().endsWith(".docx") || deliverable.name.toLowerCase().endsWith(".doc"))
+    ? "DOC"
+    : "PDF";
+
+  addStoredDocument({
+    id: `doc-deliv-${Date.now()}`,
+    ticketId: target.id,
+    clientName: target.clientName || "Klien Terdaftar",
+    clientNpwp: "-",
+    clientEmail: target.clientEmail,
+    fileName: deliverable.name,
+    fileSize: deliverable.size,
+    fileType: docType,
+    category: (target.category as any) || "Tax Service Core",
+    invoiceNumber: "-",
+    amount: "-",
+    billingStatus: "Lunas",
+    uploadDate: nowFormatted,
+    consultant: staffName,
+    sha256: Math.random().toString(36).substring(2, 15),
+    downloadUrl: deliverable.downloadUrl || "#",
+  });
+
+  tickets[index] = target;
+  saveStoredClientTickets(tickets);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("zhou_tickets_updated", { detail: { ticketId: target.id } }));
+  }
+
+  return {
+    success: true,
+    message: `Berkas deliverable "${deliverable.name}" berhasil dikirimkan ke Klien.`,
     ticket: target,
   };
 }
@@ -981,7 +1410,7 @@ export function convertTicketToConsultationItem(ticket: ClientTicket): Consultat
     project_code: ticket.id,
     client_id: 1,
     title: ticket.title,
-    description: `Divisi: ${ticket.category}. PIC: ${picName} (${ticket.assignedAdminEmail || "-"}). Estimasi: ${ticket.estimatedCompletion}.`,
+    description: ticket.description || `Divisi: ${ticket.category}. PIC: ${picName} (${ticket.assignedAdminEmail || "-"}). Estimasi: ${ticket.estimatedCompletion}.`,
     status: normalizedStatus,
     progress_percent: ticket.status === "Selesai" ? 100 : Math.min(ticket.progress || 35, 95),
     created_at: ticket.createdAt && !isNaN(Date.parse(ticket.createdAt)) ? new Date(ticket.createdAt).toISOString() : new Date().toISOString(),
@@ -1014,7 +1443,11 @@ export function getStoredDocuments(): AdminUploadedDocument[] {
     const raw = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((d) => !isDummyDocumentRecord(d)) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (d) => !isDummyDocumentRecord(d) && (!d.ticketId || !isTicketDeleted(d.ticketId))
+        )
+      : [];
   } catch (err) {
     console.error("Gagal membaca zhou_shared_documents:", err);
     return [];
@@ -1040,7 +1473,7 @@ export function saveStoredDocuments(docs: AdminUploadedDocument[]): void {
  */
 export function addStoredDocument(doc: AdminUploadedDocument): void {
   // Otomatis lengkapi clientEmail dan clientName dari data tiket jika belum terisi
-  let enrichedDoc: AdminUploadedDocument = { ...doc };
+  const enrichedDoc: AdminUploadedDocument = { ...doc };
   if ((!enrichedDoc.clientEmail || !enrichedDoc.clientName) && enrichedDoc.ticketId) {
     const tickets = getStoredClientTickets();
     const t = tickets.find((tk) => tk.id.toLowerCase() === enrichedDoc.ticketId.toLowerCase());
@@ -1215,39 +1648,99 @@ export function getDeletedTicketIds(): string[] {
   }
 }
 
-export function isTicketDeleted(ticketId: string): boolean {
+export function isTicketDeleted(ticketId?: string | number | null): boolean {
+  if (ticketId === undefined || ticketId === null || ticketId === "") return false;
+  if (typeof window === "undefined") return false;
   const ids = getDeletedTicketIds();
-  return ids.includes(ticketId.toLowerCase().trim());
+  if (ids.length === 0) return false;
+
+  const searchStr = String(ticketId).toLowerCase().trim();
+  const numericOnly = String(ticketId).replace(/\D/g, "");
+
+  return ids.some((id) => {
+    const cleanId = String(id).toLowerCase().trim();
+    if (cleanId === searchStr) return true;
+    if (numericOnly && cleanId === numericOnly) return true;
+    const idNum = cleanId.replace(/\D/g, "");
+    if (numericOnly && idNum && numericOnly === idNum) return true;
+    return false;
+  });
 }
 
 /**
- * Menghapus satu tiket konsultasi berdasarkan ID
+ * Menghapus satu tiket konsultasi berdasarkan ID / numericId
  */
-export function deleteStoredClientTicket(ticketId: string): void {
-  if (typeof window === "undefined") return;
-  const searchKey = ticketId.toLowerCase().trim();
+export function deleteStoredClientTicket(ticketId: string | number): void {
+  if (typeof window === "undefined" || !ticketId) return;
+  const rawStr = String(ticketId).toLowerCase().trim();
+  const numStr = String(ticketId).replace(/\D/g, "");
+  const toAdd = [rawStr, numStr].filter(Boolean);
   try {
     const deleted = getDeletedTicketIds();
-    if (!deleted.includes(searchKey)) {
-      localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify([...deleted, searchKey]));
-    }
+    const updated = Array.from(new Set([...deleted, ...toAdd]));
+    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(updated));
   } catch {}
   const current = getStoredClientTickets();
-  const filtered = current.filter((t) => t.id.toLowerCase() !== searchKey);
+  const filtered = current.filter((t) => !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)));
   saveStoredClientTickets(filtered);
+
+  // Bersihkan juga dokumen deliverable vault yang terkait dengan sesi tiket yang dihapus
+  try {
+    const currentDocs = getStoredDocuments();
+    const filteredDocs = currentDocs.filter((d) => {
+      if (!d.ticketId) return true;
+      if (isTicketDeleted(d.ticketId)) return false;
+      const docRaw = d.ticketId.toLowerCase().trim();
+      if (docRaw === rawStr || (numStr && docRaw.replace(/\D/g, "") === numStr)) return false;
+      return true;
+    });
+    saveStoredDocuments(filteredDocs);
+  } catch {}
+
+  window.dispatchEvent(new Event("zhou_tickets_cleared"));
+  window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
 }
 
+export const markTicketAsDeleted = deleteStoredClientTicket;
+
 /**
- * Menghapus seluruh tiket konsultasi yang pernah diinput
+ * Menghapus seluruh tiket konsultasi yang ada (baik kustom maupun respon backend)
  */
-export function clearAllStoredClientTickets(): void {
+export function clearAllStoredClientTickets(activeTicketIds: (string | number)[] = []): void {
   if (typeof window === "undefined") return;
   try {
     const current = getStoredClientTickets();
-    const ids = current.map((t) => t.id.toLowerCase().trim());
-    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(ids));
+    const toAdd: string[] = [];
+    current.forEach((t) => {
+      toAdd.push(t.id.toLowerCase().trim());
+      if (t.numericId) toAdd.push(String(t.numericId));
+      const numOnly = t.id.replace(/\D/g, "");
+      if (numOnly) toAdd.push(numOnly);
+    });
+    activeTicketIds.forEach((id) => {
+      if (id !== undefined && id !== null) {
+        toAdd.push(String(id).toLowerCase().trim());
+        const numOnly = String(id).replace(/\D/g, "");
+        if (numOnly) toAdd.push(numOnly);
+      }
+    });
+    const existing = getDeletedTicketIds();
+    const updated = Array.from(new Set([...existing, ...toAdd]));
+    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(updated));
   } catch {}
   saveStoredClientTickets([]);
+  saveStoredDocuments([]);
+  window.dispatchEvent(new Event("zhou_tickets_cleared"));
+  window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
+}
+
+export const markAllTicketsAsDeleted = clearAllStoredClientTickets;
+
+export function clearDeletedTicketHistory(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(DELETED_TICKETS_KEY);
+  } catch {}
 }
 
 export const ARCHIVED_TICKETS_KEY = "zhou_archived_client_tickets";
@@ -1309,6 +1802,8 @@ export function toggleArchiveClientTicket(ticketId: string, fallbackTicket?: Cli
 
   return nextArchivedState;
 }
+
+
 
 
 

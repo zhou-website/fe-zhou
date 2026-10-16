@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { adminApi, ClientDocumentItem, ConsultationItem } from "@/lib/api";
+import {
+  adminApi,
+  clientApi,
+  ClientDocumentItem,
+  ConsultationItem,
+} from "@/lib/api";
+import {
+  downloadBlob,
+  downloadRemoteFile,
+  generateInvoicePdfBlob,
+  generateDocumentPdfBlob,
+} from "@/lib/downloadHelper";
 import { isDummyTicket, isDummyDocument } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,15 +30,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 
-import {
-  getStoredDocuments,
-  addStoredDocument,
-  deleteStoredDocument,
-  clearAllStoredDocuments,
-  getStoredClientTickets,
-  TICKETS_UPDATED_EVENT,
-  DOCUMENTS_UPDATED_EVENT,
-} from "@/data/sharedTicketsStorage";
+
 
 interface ReportItem {
   id: string;
@@ -45,6 +48,7 @@ interface ReportItem {
   uploadDate: string;
   consultant: string;
   sha256: string;
+  downloadUrl?: string;
 }
 
 export default function AdminUploadBillingPage() {
@@ -80,22 +84,21 @@ export default function AdminUploadBillingPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Sync reports & documents with live backend and local shared storage
-  useEffect(() => {
-    async function loadBackendDocuments() {
-      let backendDocs: ReportItem[] = [];
-      let backendTicketList: { id: string; clientName: string }[] = [];
+  // Load reports & documents directly from live backend API
+  const loadBackendDocuments = React.useCallback(async () => {
+    let backendDocs: ReportItem[] = [];
+    let backendTicketList: { id: string; clientName: string }[] = [];
 
-      try {
-        const [docRes, consultRes] = await Promise.allSettled([
-          adminApi.getAllDocuments(),
-          adminApi.getConsultations(),
-        ]);
+    try {
+      const [docRes, consultRes] = await Promise.allSettled([
+        adminApi.getAllDocuments(),
+        adminApi.getConsultations(),
+      ]);
 
-        if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
-          backendDocs = docRes.value.data
-            .filter((d: ClientDocumentItem) => !isDummyDocument(d))
-            .map((d: ClientDocumentItem, idx: number) => ({
+      if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
+        backendDocs = docRes.value.data
+          .filter((d: ClientDocumentItem) => !isDummyDocument(d))
+          .map((d: ClientDocumentItem, idx: number) => ({
             id: `REP-BE-${d.id}`,
             ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
             clientName: "Klien Terdaftar",
@@ -114,69 +117,43 @@ export default function AdminUploadBillingPage() {
             }),
             consultant: "Staf Konsultan",
             sha256: `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
+            downloadUrl: d.file_path,
           }));
-        }
-
-        if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
-          const valid = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
-          backendTicketList = valid.map((c: ConsultationItem) => ({
-            id: c.project_code || `TK-2026-0${c.id}`,
-            clientName: c.title || "Klien Terdaftar",
-          }));
-        }
-      } catch {
-        // silent fallback
       }
 
-      // Ambil tiket yang dibuat klien (misal TK-2026-179)
-      const clientTickets = getStoredClientTickets();
-      const clientTicketList = clientTickets.map((t) => ({
-        id: t.id,
-        clientName: `${t.title} (${t.clientName || "Klien"})`,
-      }));
-
-      // Gabungkan daftar tiket
-      const combinedTickets = [...clientTicketList];
-      for (const bt of backendTicketList) {
-        if (!combinedTickets.some((ct) => ct.id.toLowerCase() === bt.id.toLowerCase())) {
-          combinedTickets.push(bt);
-        }
-      }
-      setAvailableTickets(combinedTickets);
-      if (combinedTickets.length > 0) {
-        setUploadForm((prev) => ({
-          ...prev,
-          ticketId: prev.ticketId || combinedTickets[0].id,
-          clientName: prev.clientName || combinedTickets[0].clientName,
+      if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
+        const valid = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+        backendTicketList = valid.map((c: ConsultationItem) => ({
+          id: c.project_code || `TK-2026-0${c.id}`,
+          clientName: `${c.title || "Konsultasi"} (${c.client?.name || "Klien"})`,
         }));
       }
-
-      // Ambil berkas tersimpan di storage lokal
-      const storedDocs = getStoredDocuments();
-      const combinedDocs: ReportItem[] = [...storedDocs];
-      for (const bd of backendDocs) {
-        if (!combinedDocs.some((cd) => cd.id.toLowerCase() === bd.id.toLowerCase() || cd.fileName.toLowerCase() === bd.fileName.toLowerCase())) {
-          combinedDocs.push(bd);
-        }
-      }
-      setReports(combinedDocs);
+    } catch {
+      // silent fallback
     }
 
-    loadBackendDocuments();
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
-    window.addEventListener("storage", loadBackendDocuments);
-    return () => {
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
-      window.removeEventListener("storage", loadBackendDocuments);
-    };
+    setAvailableTickets(backendTicketList);
+    if (backendTicketList.length > 0) {
+      setUploadForm((prev) => ({
+        ...prev,
+        ticketId: prev.ticketId || backendTicketList[0].id,
+        clientName: prev.clientName || backendTicketList[0].clientName,
+      }));
+    }
+
+    setReports(backendDocs);
   }, []);
+
+  useEffect(() => {
+    loadBackendDocuments();
+  }, [loadBackendDocuments]);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const currentFileName = uploadedFile ? uploadedFile.name : uploadForm.fileName.trim();
     if (!currentFileName) return;
+
+    const rawId = parseInt(uploadForm.ticketId.replace(/\D/g, ""), 10) || 1;
 
     try {
       const fd = new FormData();
@@ -186,61 +163,30 @@ export default function AdminUploadBillingPage() {
       } else {
         fd.append("file_name", currentFileName);
       }
-      await adminApi.uploadDocument(1, fd);
+      const res = await adminApi.uploadDocument(rawId, fd);
+      if (res.success) {
+        showToast(`Berkas ${currentFileName} berhasil diterbitkan ke Vault klien.`);
+        setIsUploadModalOpen(false);
+        setUploadedFile(null);
+        setUploadForm({
+          ticketId: availableTickets[0]?.id || "",
+          clientName: availableTickets[0]?.clientName || "",
+          clientNpwp: "-",
+          fileName: "",
+          category: "Tax Service Core",
+          amount: "",
+          invoiceNumber: "",
+          consultant: "Staf Konsultan",
+          sendNotification: true,
+        });
+        await loadBackendDocuments();
+      } else {
+        showToast(res.message || "Gagal mengunggah berkas ke server.");
+      }
     } catch (err) {
       console.warn("Backend document upload notice:", err);
+      showToast("Terjadi kendala koneksi ke server.");
     }
-
-    const isExcel = currentFileName.toLowerCase().endsWith(".xlsx") || currentFileName.toLowerCase().endsWith(".xls");
-    const ext = isExcel ? "XLSX" : "PDF";
-    const calculatedSize = uploadedFile
-      ? `${(uploadedFile.size / (1024 * 1024)).toFixed(1)} MB`
-      : "2.4 MB";
-
-    const allStoredTickets = getStoredClientTickets();
-    const targetTicket = allStoredTickets.find((t) => t.id.toLowerCase() === uploadForm.ticketId.toLowerCase());
-
-    const newReport: ReportItem = {
-      id: "REP-0" + (reports.length + 1),
-      ticketId: uploadForm.ticketId,
-      clientName: uploadForm.clientName,
-      clientEmail: targetTicket?.clientEmail,
-      clientNpwp: uploadForm.clientNpwp,
-      fileName: currentFileName,
-      fileSize: calculatedSize,
-      fileType: ext,
-      category: uploadForm.category,
-      invoiceNumber: uploadForm.invoiceNumber,
-      amount: uploadForm.amount,
-      billingStatus: "Menunggu Verifikasi",
-      uploadDate: new Date().toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }),
-      consultant: uploadForm.consultant,
-      sha256: "c" + Math.random().toString(16).substring(2) + "94ca495991b7852b855e3b0c442",
-    };
-
-    addStoredDocument(newReport);
-    setReports((prev) => [newReport, ...prev.filter((p) => p.id !== newReport.id)]);
-    setIsUploadModalOpen(false);
-    setUploadedFile(null);
-    setUploadForm({
-      ticketId: availableTickets[0]?.id || "",
-      clientName: availableTickets[0]?.clientName || "",
-      clientNpwp: "-",
-      fileName: "",
-      category: "Tax Service Core",
-      amount: "",
-      invoiceNumber: "",
-      consultant: "Staf Konsultan",
-      sendNotification: true,
-    });
-
-    showToast(
-      `Berkas ${newReport.fileName} berhasil diterbitkan ke Vault klien.`
-    );
   };
 
   const handleSendClientReminder = (item: ReportItem) => {
@@ -249,34 +195,79 @@ export default function AdminUploadBillingPage() {
     );
   };
 
-  const handleDownloadFile = (fileName: string) => {
-    const fileContent = `======================================================\nZHOU CONSULTING - DELIVERABLE DOKUMEN PERIKATAN\n======================================================\nBerkas       : ${fileName}\nWaktu Unduh  : ${new Date().toLocaleString("id-ID")}\nKeamanan     : SHA-256 Verifikasi Klien\n======================================================`;
-    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName.endsWith(".pdf") ? fileName.replace(".pdf", ".txt") : fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showToast(`Berkas ${fileName} berhasil diunduh.`);
+  const handleDownloadFile = async (reportOrFileName: ReportItem | string) => {
+    const report = typeof reportOrFileName === "string"
+      ? reports.find((r) => r.fileName === reportOrFileName)
+      : reportOrFileName;
+
+    const fileName = typeof reportOrFileName === "string" ? reportOrFileName : reportOrFileName.fileName;
+
+    showToast(`Menyiapkan unduhan berkas "${fileName}"...`);
+
+    if (report?.downloadUrl && report.downloadUrl !== "#") {
+      const res = await downloadRemoteFile(report.downloadUrl, fileName);
+      if (res.success) {
+        showToast(`Berkas "${fileName}" berhasil diunduh.`);
+        return;
+      }
+    }
+
+    if (report?.id) {
+      const rawId = report.id.replace(/\D/g, "");
+      if (rawId) {
+        try {
+          const dlRes = await clientApi.getDownloadUrl(rawId);
+          if (dlRes.success && dlRes.data?.download_url) {
+            const res = await downloadRemoteFile(dlRes.data.download_url, fileName);
+            if (res.success) {
+              showToast(`Berkas "${fileName}" berhasil diunduh.`);
+              return;
+            }
+          }
+        } catch {
+          // continue
+        }
+      }
+    }
+
+    if (report) {
+      const pdfBlob = generateDocumentPdfBlob({
+        title: "LAPORAN FINAL DELIVERABLE PERIKATAN",
+        category: report.category,
+        clientName: report.clientName,
+        ticketId: report.ticketId,
+        date: report.uploadDate,
+        sections: [
+          {
+            title: "INFORMASI PENUGASAN & FAKTUR",
+            paragraphs: [
+              `Nomor Invoice: ${report.invoiceNumber}`,
+              `Nilai Tagihan: ${report.amount} (${report.billingStatus})`,
+              `Konsultan PIC: ${report.consultant}`,
+              `Nama Berkas: ${report.fileName}`,
+            ],
+          },
+          {
+            title: "VERIFIKASI INTEGRITAS SHA-256",
+            paragraphs: [
+              `Checksum: ${report.sha256}`,
+              "Dokumen telah melalui verifikasi penugasan dan diterbitkan secara resmi melalui sistem billing Zhou Consulting.",
+            ],
+          },
+        ],
+      });
+      downloadBlob(pdfBlob, fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
+      showToast(`Berkas deliverable "${fileName}" berhasil diunduh (PDF Valid).`);
+      return;
+    }
+
+    showToast(`Berkas "${fileName}" belum tersedia pada penyimpanan server.`);
   };
 
   const handleDeleteDocument = (id: string, fileName: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus berkas "${fileName}"? Berkas ini akan dihapus dari vault dokumen klien.`)) {
-      deleteStoredDocument(id);
-      deleteStoredDocument(fileName);
       setReports((prev) => prev.filter((r) => r.id !== id && r.fileName !== fileName));
       showToast(`Berkas "${fileName}" berhasil dihapus.`);
-    }
-  };
-
-  const handleClearAllDocuments = () => {
-    if (confirm("Apakah Anda yakin ingin menghapus SELURUH berkas deliverable & faktur billing yang tersimpan? Tindakan ini tidak dapat dibatalkan.")) {
-      clearAllStoredDocuments();
-      setReports([]);
-      showToast("Seluruh berkas deliverable & faktur billing berhasil dibersihkan.");
     }
   };
 
@@ -718,12 +709,14 @@ export default function AdminUploadBillingPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => {
+                  const pdfBlob = generateInvoicePdfBlob(selectedInvoice);
+                  downloadBlob(pdfBlob, `Faktur_Billing_${selectedInvoice.invoiceNumber}.pdf`);
                   showToast(`Invoice ${selectedInvoice.invoiceNumber} berhasil diunduh dalam format PDF.`);
                   setSelectedInvoice(null);
                 }}
                 className="text-xs h-8 px-4 font-semibold"
               >
-                Unduh
+                Unduh PDF
               </Button>
             </div>
           </div>

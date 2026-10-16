@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth, isDummyTicket, normalizeRole } from "@/context/AuthContext";
-import { adminApi, ConsultationItem } from "@/lib/api";
+import { adminApi, clientApi, ConsultationItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -21,23 +21,27 @@ import {
   LockIcon,
   SendIcon,
 } from "@/components/icons";
+import { downloadBlob, downloadRemoteFile, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 
 import {
-  getTicketsForAdmin,
   canAdminAccessTicket,
   getTicketByIdForStaff,
-  updateTicketByStaff,
   getStoredStaffAdmins,
-  addStoredDocument,
   getStoredClientTickets,
-  saveStoredClientTickets,
   formatConsultationDate,
-  TICKETS_UPDATED_EVENT,
-  DOCUMENTS_UPDATED_EVENT,
+  formatTicketDescription,
+  resolveConsultationCategory,
   ClientTicket,
   StaffAdminProfile,
   ConsultationStatus,
   Milestone,
+  addAdminDeliverableToTicket,
+  cacheFileBlob,
+  getCachedFileBlob,
+  getCachedFileBlobAsync,
+  formatCorrespondenceMessage,
+  updateStoredClientTicketProgress,
+  mergeTicketsWithLocalOverrides,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -91,39 +95,82 @@ function AdminTugasSayaContent() {
   };
 
   // Muat data staf admin & tiket
+  // Muat data penugasan langsung dari backend API
   const loadData = React.useCallback(async () => {
     setIsLoading(true);
     const staff = getStoredStaffAdmins();
     setStaffList(staff);
 
-    // Dapatkan data admin aktif saat ini
-    const currentStaffProfile = staff.find(
-      (s) => s.email.toLowerCase() === activeAdminEmail.toLowerCase()
-    );
-    const staffContext = currentStaffProfile || {
-      email: activeAdminEmail,
-      name: user?.name || "Konsultan Senior Zhou",
-      role: normalizedUserRole,
-      id: user?.id ? String(user.id) : "ADM-002",
-    };
-
-    const storedTickets = getTicketsForAdmin(staffContext).filter((t) => !isDummyTicket(t));
-
-    // Sinkronisasi dengan perikatan dari backend (GET /api/v1/admin/consultations)
-    let backendTickets: ClientTicket[] = [];
     try {
       const res = await adminApi.getConsultations();
       if (res?.data && Array.isArray(res.data)) {
-        backendTickets = res.data
-          .filter((c: ConsultationItem) => !isDummyTicket(c))
-          .map((c: ConsultationItem) => ({
+        const email = (activeAdminEmail || "").toLowerCase().trim();
+        const userName = (user?.name || "").toLowerCase().trim();
+
+        const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+
+        // Filter tiket yang ditugaskan ke admin aktif ini
+        const assignedConsultations = validConsultations.filter((c: ConsultationItem) => {
+          if (normalizedUserRole === "superadmin") return true;
+          const assignedEmail = (c.assigned_admin?.email || "").toLowerCase().trim();
+          const assignedName = (c.assigned_admin?.name || "").toLowerCase().trim();
+
+          if (email && assignedEmail && assignedEmail === email) return true;
+          if (userName && assignedName && (assignedName.includes(userName) || userName.includes(assignedName))) return true;
+          return false; // Tiket hanya muncul jika sudah resmi ditugaskan kepada admin yang bersangkutan
+        });
+
+        const mappedTickets: ClientTicket[] = assignedConsultations.map((c: ConsultationItem) => {
+          const taskMilestones: Milestone[] = (c.tasks && c.tasks.length > 0)
+            ? c.tasks.map((task, idx) => ({
+                step: `0${idx + 1}`,
+                title: task.task_name,
+                status: (task.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                date: "Proses",
+                description: task.task_name,
+              }))
+            : [
+                {
+                  step: "1",
+                  title: "Permohonan Diterima",
+                  status: "completed" as const,
+                  date: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID") : "Hari ini",
+                  description: "Permohonan konsultasi diterima dan sedang menunggu penetapan PIC oleh Superadmin.",
+                },
+                {
+                  step: "2",
+                  title: `PIC Ditetapkan: ${c.assigned_admin?.name || "Konsultan Zhou"}`,
+                  status: "completed" as const,
+                  date: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID") : "Hari ini",
+                  description: "Superadmin menetapkan konsultan penanggung jawab kertas kerja.",
+                },
+                {
+                  step: "3",
+                  title: "Pengerjaan Kertas Kerja & Pembahasan",
+                  status: (c.status === "COMPLETED" ? "completed" : "in_progress") as "completed" | "in_progress" | "pending",
+                  date: "Proses",
+                  description: "Konsultan PIC sedang menyusun kertas kerja, rekonsiliasi, serta analisis kepatuhan.",
+                },
+                {
+                  step: "4",
+                  title: "Konsultasi Selesai & Laporan Final",
+                  status: (c.status === "COMPLETED" ? "completed" : "pending") as "completed" | "in_progress" | "pending",
+                  date: c.status === "COMPLETED" ? "Selesai" : "-",
+                  description: "Penyampaian deliverable akhir dan penutupan perikatan konsultasi.",
+                },
+              ];
+
+          const isCompleted = c.status === "COMPLETED";
+
+          return {
             id: c.project_code || `TK-${c.id}`,
+            numericId: c.id,
             title: c.title || "Konsultasi Perpajakan",
-            category: (c.service?.service_name as any) || "Tax Service Core",
-            status: c.status === "COMPLETED" ? "Selesai" : c.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
+            category: resolveConsultationCategory(c) as ClientTicket["category"],
+            status: isCompleted ? "Selesai" : c.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
             priority: "Normal",
             description: c.description || "",
-            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 35),
+            progress: c.progress_percent || (isCompleted ? 100 : 35),
             createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
             estimatedCompletion: "14 Hari Kerja",
             clientName: c.client?.name || "Klien Terdaftar",
@@ -131,42 +178,86 @@ function AdminTugasSayaContent() {
             clientCompany: c.client?.company_name || "-",
             consultant: c.assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
             assignedAdminName: c.assigned_admin?.name,
-            milestones: (c.tasks || []).map((task, idx) => ({
-              step: `0${idx + 1}`,
-              title: task.task_name,
-              status: task.is_completed ? ("completed" as const) : idx === 0 ? ("in_progress" as const) : ("pending" as const),
-              date: "Proses",
-              description: task.task_name,
+            assignedAdminEmail: c.assigned_admin?.email,
+            milestones: taskMilestones,
+            deliverables: (c.documents || []).map((d) => ({
+              id: `DOC-${d.id}`,
+              name: d.file_name,
+              size: d.file_size || "1.5 MB",
+              type: d.file_type || "PDF",
+              date: new Date(d.created_at).toLocaleDateString("id-ID"),
+              status: "Terkirim",
+              downloadUrl: d.file_path,
             })),
-            deliverables: [],
-            correspondences: [],
-            clientDocuments: [],
-          }));
+            correspondences: c.description ? [
+              {
+                id: `msg-${c.id}`,
+                sender: "Klien",
+                role: "Klien",
+                date: "Awal Perikatan",
+                message: c.description,
+              }
+            ] : [],
+            clientDocuments: (c.documents || []).map((d) => ({
+              id: `DOC-${d.id}`,
+              name: d.file_name,
+              size: d.file_size || "1.5 MB",
+              type: d.file_type || "PDF",
+              date: new Date(d.created_at).toLocaleDateString("id-ID"),
+              uploadedBy: c.client?.name || "Klien",
+              status: "Diterima PIC",
+              downloadUrl: d.file_path,
+            })),
+          };
+        });
+
+        // Gabungkan juga dengan tiket lokal yang diinput klien (hanya yang ditugaskan ke admin ini)
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const mergedTickets = mergeTicketsWithLocalOverrides(mappedTickets, localTickets)
+          .filter((t) => normalizedUserRole === "superadmin" || canAdminAccessTicket(t, activeStaffProfile));
+
+        setTickets(mergedTickets);
+
+        setSelectedTicket((prev) => {
+          if (!prev) return null;
+          const updated = mergedTickets.find(
+            (t) =>
+              t.id.toLowerCase() === prev.id.toLowerCase() ||
+              (prev.numericId && t.numericId === prev.numericId)
+          );
+          return updated || prev;
+        });
+      } else {
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const adminTickets = localTickets.filter((lt) => normalizedUserRole === "superadmin" || canAdminAccessTicket(lt, activeStaffProfile));
+        setTickets(adminTickets);
       }
     } catch (err) {
-      console.warn("Gagal memuat konsultasi backend admin tugas:", err);
+      console.warn("Gagal memuat konsultasi backend admin tugas, menggunakan penyimpanan lokal:", err);
+      const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      const adminTickets = normalizedUserRole === "superadmin"
+        ? localTickets
+        : localTickets.filter((lt) => canAdminAccessTicket(lt, activeStaffProfile));
+      setTickets(adminTickets);
+    } finally {
+      setIsLoading(false);
     }
-
-    const combined: ClientTicket[] = [...storedTickets];
-    for (const b of backendTickets) {
-      if (!combined.some((t) => t.id.toLowerCase() === b.id.toLowerCase())) {
-        combined.push(b);
-      }
-    }
-
-    setTickets(combined);
-    setIsLoading(false);
   }, [activeAdminEmail, user?.name, normalizedUserRole]);
 
   useEffect(() => {
     loadData();
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadData);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-    window.addEventListener("storage", loadData);
+  }, [loadData]);
+
+  // Sinkronisasi realtime saat ada dokumen/tugas yang diunggah oleh Klien
+  useEffect(() => {
+    const handleSync = () => {
+      loadData();
+    };
+    window.addEventListener("zhou_tickets_updated", handleSync);
+    window.addEventListener("storage", handleSync);
     return () => {
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadData);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-      window.removeEventListener("storage", loadData);
+      window.removeEventListener("zhou_tickets_updated", handleSync);
+      window.removeEventListener("storage", handleSync);
     };
   }, [loadData]);
 
@@ -190,23 +281,49 @@ function AdminTugasSayaContent() {
   useEffect(() => {
     if (!urlTicketId) return;
 
+    // Cari dari tickets state terlebih dahulu (yang sudah mencakup data live backend & lokal)
+    const matchTicket = tickets.find(
+      (t) =>
+        t.id.toLowerCase() === urlTicketId.toLowerCase() ||
+        (t.numericId && String(t.numericId) === urlTicketId) ||
+        (urlTicketId.startsWith("TK-") && t.id.includes(urlTicketId.replace("TK-", "")))
+    );
+
+    if (matchTicket) {
+      if (canAdminAccessTicket(matchTicket, activeStaffProfile)) {
+        setSelectedTicket(matchTicket);
+        setAccessDeniedMessage(null);
+      } else {
+        setAccessDeniedMessage(
+          `Akses Ditolak: Anda tidak memiliki wewenang untuk mengakses tiket ${urlTicketId} karena ditugaskan kepada PIC lain.`
+        );
+        setSelectedTicket(null);
+      }
+      return;
+    }
+
     const res = getTicketByIdForStaff(urlTicketId, activeStaffProfile);
     if (!res.success) {
-      // Tiket bukan tanggung jawab Admin ini -> Tolak akses & jangan bocorkan data
-      setAccessDeniedMessage(
-        res.error ||
-          `Akses Ditolak: Anda tidak memiliki wewenang untuk mengakses tiket ${urlTicketId} karena ditugaskan kepada PIC lain.`
-      );
-      setSelectedTicket(null);
+      if (!isLoading) {
+        setAccessDeniedMessage(
+          res.error ||
+            `Akses Ditolak: Anda tidak memiliki wewenang untuk mengakses tiket ${urlTicketId} karena ditugaskan kepada PIC lain.`
+        );
+        setSelectedTicket(null);
+      }
     } else if (res.ticket) {
       setSelectedTicket(res.ticket);
       setAccessDeniedMessage(null);
     }
-  }, [urlTicketId, activeStaffProfile]);
+  }, [urlTicketId, activeStaffProfile, tickets, isLoading]);
 
   // Filter tiket milik admin
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
+      // Keamanan ganda: pastikan admin ini memang PIC dari tiket tersebut
+      if (normalizedUserRole !== "superadmin" && !canAdminAccessTicket(t, activeStaffProfile)) {
+        return false;
+      }
       const matchStatus =
         statusFilter === "ALL" ||
         t.status === statusFilter ||
@@ -216,26 +333,30 @@ function AdminTugasSayaContent() {
         !q ||
         t.id.toLowerCase().includes(q) ||
         t.title.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q)) ||
         (t.clientName && t.clientName.toLowerCase().includes(q)) ||
         (t.clientCompany && t.clientCompany.toLowerCase().includes(q));
       return matchStatus && matchSearch;
     });
-  }, [tickets, statusFilter, searchQuery]);
+  }, [tickets, statusFilter, searchQuery, normalizedUserRole, activeStaffProfile]);
 
   // Statistik Tugas
   const stats = useMemo(() => {
-    const total = tickets.length;
-    const inProgress = tickets.filter(
+    const validTickets = normalizedUserRole === "superadmin"
+      ? tickets
+      : tickets.filter((t) => canAdminAccessTicket(t, activeStaffProfile));
+    const total = validTickets.length;
+    const inProgress = validTickets.filter(
       (t) => t.status === "Dalam Proses" || t.status === "Ditugaskan"
     ).length;
-    const waitingClient = tickets.filter((t) => t.status === "Menunggu Klien").length;
-    const completed = tickets.filter((t) => t.status === "Selesai").length;
+    const waitingClient = validTickets.filter((t) => t.status === "Menunggu Klien").length;
+    const completed = validTickets.filter((t) => t.status === "Selesai").length;
     return { total, inProgress, waitingClient, completed };
-  }, [tickets]);
+  }, [tickets, normalizedUserRole, activeStaffProfile]);
 
 
   // Kirim Seluruh Dokumen & Catatan dari dalam Lembar Kerja
-  const handleSendDocFromDetail = (e: React.FormEvent) => {
+  const handleSendDocFromDetail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicket) return;
 
@@ -244,94 +365,112 @@ function AdminTugasSayaContent() {
       return;
     }
 
-    if (!detailSendFile && !detailDocNotes.trim()) {
-      showToast("Silakan tulis catatan atau pilih berkas dokumen deliverable yang ingin dikirimkan.");
-      return;
-    }
-
     setIsSendingDetailDoc(true);
 
     try {
-      const currentTicket = selectedTicket;
-      const fileName = detailSendFile ? detailSendFile.name : "";
-      const fileSize = detailSendFile
-        ? `${(detailSendFile.size / (1024 * 1024)).toFixed(2)} MB`
-        : "";
-      const rawExt = fileName ? fileName.split(".").pop()?.toUpperCase() || "DOC" : "DOC";
-      const fileType =
-        rawExt === "XLSX" || rawExt === "XLS"
-          ? "XLSX"
-          : rawExt === "PDF"
-          ? "PDF"
-          : rawExt === "DOC" || rawExt === "DOCX"
-          ? "DOC"
-          : rawExt === "ZIP" || rawExt === "RAR"
-          ? "ZIP"
-          : rawExt;
+      const rawId = selectedTicket.numericId || parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.id;
 
-      // 1. Simpan dokumen jika ada file yang diunggah
       if (detailSendFile) {
-        addStoredDocument({
-          id: `DOC-${Date.now()}`,
-          ticketId: currentTicket.id,
-          clientName: currentTicket.clientName || "Klien Terdaftar",
-          clientEmail: currentTicket.clientEmail,
-          clientNpwp: "01.234.567.8-012.000",
-          fileName,
-          fileSize,
-          fileType,
-          category: (currentTicket.category.includes("Pajak") || currentTicket.category.includes("Tax")
-            ? "Tax Service Core"
-            : currentTicket.category.includes("Akuntansi") || currentTicket.category.includes("Account")
-            ? "Accounting Service"
-            : currentTicket.category.includes("Legal") || currentTicket.category.includes("Hukum")
-            ? "Legal"
-            : "Business Financial Consulting") as
-            | "Tax Service Core"
-            | "Accounting Service"
-            | "Business Financial Consulting"
-            | "Legal",
-          invoiceNumber: `INV-${currentTicket.id}`,
-          amount: "Sesuai Kontrak Perikatan",
-          billingStatus: "Terkirim",
-          uploadDate: new Date().toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          }),
-          consultant: activeStaffProfile.name,
-          sha256: `SHA256-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        });
-      }
-
-      // 2. Susun pesan catatan korespondensi resmi
-      let combinedMessage = "";
-      if (detailSendFile && detailDocNotes.trim()) {
-        combinedMessage = `[Pengiriman Dokumen: ${detailDocCategory}] Berkas: "${fileName}" (${fileSize}). Catatan Konsultan: ${detailDocNotes.trim()}`;
-      } else if (detailSendFile) {
-        combinedMessage = `[Pengiriman Dokumen: ${detailDocCategory}] Konsultan telah mengunggah berkas: "${fileName}" (${fileSize}). Berkas dapat diunduh oleh Klien di dashboard.`;
-      } else if (detailDocNotes.trim()) {
-        combinedMessage = detailDocNotes.trim();
-      }
-
-      const updateRes = updateTicketByStaff(currentTicket.id, activeStaffProfile, {
-        notes: combinedMessage,
-      });
-
-      if (updateRes.success && updateRes.ticket) {
-        setSelectedTicket(updateRes.ticket);
-        showToast(
+        // Cache blob untuk unduhan instan langsung dari memori browser & IndexedDB
+        cacheFileBlob(
+          [detailSendFile.name, `${selectedTicket.id}:${detailSendFile.name}`, selectedTicket.id],
           detailSendFile
-            ? `Dokumen "${fileName}" berhasil dikirimkan ke Klien.`
-            : `Catatan konsultan berhasil disimpan dan dikirimkan ke Klien.`
         );
-        // Reset input form
-        setDetailSendFile(null);
-        setDetailDocNotes("");
-        loadData();
+
+        // 1. Simpan deliverable langsung ke shared storage (agar instan tersinkron ke portal klien)
+        const saveRes = addAdminDeliverableToTicket(
+          selectedTicket.id,
+          {
+            name: detailSendFile.name,
+            size: `${(detailSendFile.size / (1024 * 1024)).toFixed(2)} MB`,
+            category: detailDocCategory,
+            notes: detailDocNotes.trim() || undefined,
+          },
+          activeStaffProfile,
+          selectedTicket
+        );
+
+        if (saveRes.success && saveRes.ticket) {
+          const updatedTicket = {
+            ...selectedTicket,
+            deliverables: saveRes.ticket.deliverables,
+            correspondences: saveRes.ticket.correspondences,
+          };
+          setSelectedTicket(updatedTicket);
+          setTickets((prev) =>
+            prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? updatedTicket : t))
+          );
+        }
+
+        // 2. Coba kirim juga ke backend secara aman (tidak memblokir jika mock/offline)
+        try {
+          const formData = new FormData();
+          formData.append("file", detailSendFile);
+          if (detailDocNotes.trim()) {
+            formData.append("description", `[${detailDocCategory}] ${detailDocNotes.trim()}`);
+          }
+          await adminApi.uploadDocument(rawId, formData);
+        } catch (apiErr) {
+          console.warn("Backend deliverable upload notice:", apiErr);
+        }
+
+        showToast(`Dokumen deliverable "${detailSendFile.name}" berhasil dikirimkan ke Klien.`);
+      } else if (detailDocNotes.trim()) {
+        const updateRes = updateStoredClientTicketProgress(
+          selectedTicket.id,
+          { notes: detailDocNotes.trim() },
+          activeStaffProfile,
+          selectedTicket
+        );
+        if (updateRes.success && updateRes.ticket) {
+          const updatedTicket = {
+            ...selectedTicket,
+            correspondences: updateRes.ticket.correspondences,
+          };
+          setSelectedTicket(updatedTicket);
+          setTickets((prev) =>
+            prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? updatedTicket : t))
+          );
+        }
+        showToast("Catatan konsultan berhasil disimpan dan diteruskan ke klien.");
       } else {
-        showToast(updateRes.message || "Gagal memperbarui tiket.");
+        // Pembaruan progres murni tanpa berkas maupun catatan
+        const currentMilestones = selectedTicket.milestones || [];
+        const completedCount = currentMilestones.filter((m) => m.status === "completed").length;
+        const calcProgress = currentMilestones.length > 0
+          ? Math.round((completedCount / currentMilestones.length) * 100)
+          : selectedTicket.progress;
+        const calcStatus: ConsultationStatus = calcProgress === 100 ? "Selesai" : "Dalam Proses";
+
+        const updateRes = updateStoredClientTicketProgress(
+          selectedTicket.id,
+          {
+            progress: calcProgress,
+            status: calcStatus,
+            milestones: currentMilestones,
+          },
+          activeStaffProfile,
+          selectedTicket
+        );
+
+        try {
+          await adminApi.updateConsultationStatus(rawId, calcProgress === 100 ? "COMPLETED" : "IN_PROGRESS");
+        } catch (apiErr) {
+          console.warn("Backend consultation status update notice:", apiErr);
+        }
+
+        if (updateRes.success && updateRes.ticket) {
+          setSelectedTicket(updateRes.ticket);
+          setTickets((prev) =>
+            prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? updateRes.ticket! : t))
+          );
+        }
+        showToast(`Progres konsultasi berhasil diperbarui (${calcProgress}% - ${calcStatus}).`);
       }
+
+      setDetailSendFile(null);
+      setDetailDocNotes("");
+      await loadData();
     } catch (err) {
       console.error(err);
       showToast("Terjadi kendala saat memproses pembaruan.");
@@ -341,7 +480,7 @@ function AdminTugasSayaContent() {
   };
 
   // Menandai tahapan pengerjaan kertas kerja secara langsung (1-klik langsung update progres & status)
-  const handleToggleMilestone = (milestoneIdx: number) => {
+  const handleToggleMilestone = async (milestoneIdx: number) => {
     if (!selectedTicket) return;
     if (!canAdminAccessTicket(selectedTicket, activeStaffProfile)) {
       showToast("Akses ditolak: Anda tidak memiliki wewenang untuk tiket ini.");
@@ -393,47 +532,60 @@ function AdminTugasSayaContent() {
     const completedCount = currentMilestones.filter((m) => m.status === "completed").length;
     const nextProgress = Math.round((completedCount / currentMilestones.length) * 100);
 
-    let nextStatus: ConsultationStatus = "Dalam Proses";
-    if (nextProgress === 100) {
-      nextStatus = "Selesai";
-    } else {
-      nextStatus = "Dalam Proses";
-    }
+    const nextStatus: ConsultationStatus = nextProgress === 100 ? "Selesai" : "Dalam Proses";
+    const backendStatus = nextProgress === 100 ? "COMPLETED" : "IN_PROGRESS";
 
-    const noteMsg = `Konsultan PIC memperbarui tahapan "${target.title}" menjadi ${newStatus === "completed" ? "Selesai" : "Sedang Berjalan"} (Progres: ${nextProgress}%).`;
+    const rawId = selectedTicket.numericId || parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.id;
 
-    const res = updateTicketByStaff(selectedTicket.id, activeStaffProfile, {
-      status: nextStatus,
-      progress: nextProgress,
-      milestones: currentMilestones,
-      notes: noteMsg,
-    });
-
-    if (res.success && res.ticket) {
-      const allTickets = getStoredClientTickets();
-      const tIdx = allTickets.findIndex((t) => t.id.toLowerCase() === selectedTicket.id.toLowerCase());
-      if (tIdx !== -1) {
-        allTickets[tIdx].milestones = currentMilestones;
-        allTickets[tIdx].progress = nextProgress;
-        allTickets[tIdx].status = nextStatus;
-        saveStoredClientTickets(allTickets);
-      }
-
-      setSelectedTicket({
-        ...res.ticket,
-        milestones: currentMilestones,
-        progress: nextProgress,
+    // 1. Simpan ke local storage tersinkronisasi
+    const saveRes = updateStoredClientTicketProgress(
+      selectedTicket.id,
+      {
         status: nextStatus,
-      });
-      loadData();
-      showToast(`Tahapan "${target.title}" berhasil diperbarui. Progres: ${nextProgress}% (${nextStatus})`);
-    } else {
-      showToast(res.message || "Gagal memperbarui tahapan.");
+        progress: nextProgress,
+        milestones: currentMilestones,
+      },
+      activeStaffProfile,
+      selectedTicket
+    );
+
+    // 2. Simpan ke backend API
+    try {
+      await adminApi.updateConsultationStatus(rawId, backendStatus);
+    } catch (apiErr) {
+      console.warn("Update consultation status backend notice:", apiErr);
     }
+
+    if (saveRes.success && saveRes.ticket) {
+      setSelectedTicket(saveRes.ticket);
+      setTickets((prev) =>
+        prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? saveRes.ticket! : t))
+      );
+    } else {
+      setSelectedTicket((prev) =>
+        prev
+          ? {
+              ...prev,
+              milestones: currentMilestones,
+              progress: nextProgress,
+              status: nextStatus,
+            }
+          : null
+      );
+    }
+
+    showToast(`Tahapan "${target.title}" berhasil diperbarui. Progres: ${nextProgress}% (${nextStatus})`);
+    await loadData();
   };
 
   // Unduh dokumen pendukung klien (dengan verifikasi otorisasi PIC)
-  const handleDownloadClientDoc = (fileName: string, clientName?: string, ticketId?: string, downloadUrl?: string) => {
+  const handleDownloadClientDoc = async (
+    fileName: string,
+    clientName?: string,
+    ticketId?: string,
+    downloadUrl?: string,
+    docId?: string | number
+  ) => {
     if (ticketId) {
       const authCheck = getTicketByIdForStaff(ticketId, activeStaffProfile);
       if (!authCheck.success) {
@@ -441,53 +593,49 @@ function AdminTugasSayaContent() {
         return;
       }
     }
-    if (downloadUrl && downloadUrl !== "#" && (downloadUrl.startsWith("http") || downloadUrl.startsWith("data:") || downloadUrl.startsWith("blob:"))) {
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      showToast(`Dokumen "${fileName}" berhasil diunduh.`);
-      return;
-    }
-    const content = `======================================================
-ZHOU CONSULTING - DIGITAL AUDIT DOKUMEN PENDUKUNG KLIEN
-======================================================
-Dokumen      : ${fileName}
-Pengunggah   : ${clientName || "Klien Terdaftar"}
-Waktu Unduh  : ${new Date().toLocaleString("id-ID")}
-PIC Bertugas : ${activeStaffProfile.name}
-Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
-======================================================`;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName.endsWith(".pdf") ? fileName.replace(".pdf", ".txt") : fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast(`Dokumen "${fileName}" berhasil diunduh untuk peninjauan.`);
-  };
 
-  // Klik langsung berkas klien dari tabel (langsung unduh berkas yang dikirim klien tanpa buka modal detail)
-  const handleDirectClientDocClick = (ticket: ClientTicket) => {
-    if (!ticket.clientDocuments || ticket.clientDocuments.length === 0) {
-      showToast("Klien belum mengunggah dokumen pendukung untuk penugasan ini.");
+    const cleanFileName = (fileName || "Dokumen.pdf").trim();
+    showToast(`Menyiapkan unduhan berkas "${cleanFileName}"...`);
+
+    // 1. Cek blob file di IndexedDB persistent storage dan memory cache
+    const cachedBlob =
+      (await getCachedFileBlobAsync(cleanFileName)) ||
+      (ticketId ? await getCachedFileBlobAsync(`${ticketId}:${cleanFileName}`) : undefined) ||
+      (docId ? await getCachedFileBlobAsync(String(docId)) : undefined) ||
+      (downloadUrl ? await getCachedFileBlobAsync(downloadUrl) : undefined);
+
+    if (cachedBlob) {
+      downloadBlob(cachedBlob, cleanFileName);
+      showToast(`Dokumen asli "${cleanFileName}" berhasil diunduh.`);
       return;
     }
 
-    ticket.clientDocuments.forEach((doc, idx) => {
-      setTimeout(() => {
-        handleDownloadClientDoc(
-          doc.name,
-          doc.uploadedBy || ticket.clientName,
-          ticket.id,
-          doc.downloadUrl
-        );
-      }, idx * 250);
-    });
+    // 2. Coba minta signed download URL dari backend jika ada docId
+    const numericDocId = docId ? parseInt(String(docId).replace(/\D/g, ""), 10) : undefined;
+    if (numericDocId && !isNaN(numericDocId)) {
+      try {
+        const signRes = await clientApi.getDownloadUrl(numericDocId);
+        if (signRes?.data?.download_url) {
+          const res = await downloadRemoteFile(signRes.data.download_url, cleanFileName);
+          if (res.success) {
+            showToast(`Dokumen "${cleanFileName}" berhasil diunduh.`);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Coba unduh dari URL remote server jika ada
+    if (downloadUrl && downloadUrl !== "#") {
+      const res = await downloadRemoteFile(downloadUrl, cleanFileName);
+      if (res.success) {
+        showToast(`Dokumen "${cleanFileName}" berhasil diunduh untuk peninjauan.`);
+        return;
+      }
+    }
+
+    // Berkas fisik asli klien belum tersedia di repositori server browser saat ini
+    showToast(`Berkas fisik asli "${cleanFileName}" belum tersedia di repositori server browser.`);
   };
 
   // Helper Badge Status
@@ -676,138 +824,144 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
           {/* Konten 2 Kolom Seimbang pada Desktop */}
           <CardContent className="p-5 sm:p-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* KOLOM KIRI (lg:col-span-5): Uraian Kebutuhan & Tahapan Pengerjaan Kertas Kerja */}
-              <div className="lg:col-span-5 space-y-5">
+              {/* KOLOM KIRI (lg:col-span-5): Uraian Kebutuhan & Alur Pengerjaan */}
+              <div className="lg:col-span-5 space-y-4">
                 {/* 1. Uraian Kebutuhan Klien */}
-                <div className="p-4 rounded-xl border border-primary-light bg-surface/40 space-y-2">
+                <div className="p-4 rounded-xl border border-primary-light bg-surface/30 space-y-2">
                   <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                      Uraian Kebutuhan Klien
+                      Uraian Kebutuhan
                     </h4>
-                    <span className="text-[10px] text-text-muted">
+                    <span className="text-[11px] text-text-muted">
                       Pengaju: <strong className="text-primary font-medium">{selectedTicket.clientName || "Klien Terdaftar"}</strong>
                     </span>
                   </div>
-                  {selectedTicket.description && selectedTicket.description.trim() ? (
-                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
-                      {selectedTicket.description}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-text-muted italic">
-                      Belum ada uraian kebutuhan dari klien.
-                    </p>
-                  )}
+                  {(() => {
+                    const cleanDesc = formatTicketDescription(selectedTicket.description);
+                    return cleanDesc ? (
+                      <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">
+                        {cleanDesc}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-text-muted italic">
+                        Belum ada uraian kebutuhan dari klien.
+                      </p>
+                    );
+                  })()}
                 </div>
 
-
-
-                {/* 2. Tahapan Pengerjaan Kertas Kerja (Interactive untuk PIC) */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
+                {/* 2. Alur Pengerjaan Kertas Kerja (Interactive Minimal Stepper untuk Admin) */}
+                <div className="p-4 rounded-xl border border-primary-light bg-white space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                        Tahapan Pengerjaan Kertas Kerja
+                        Alur Pengerjaan
                       </h4>
-                      <p className="text-[11px] text-text-muted">
-                        Klik tombol untuk menandai kemajuan kertas kerja
+                      <p className="text-[10px] text-text-muted">
+                        Klik tombol untuk memperbarui status pengerjaan
                       </p>
                     </div>
-                    <span className="text-[10px] font-semibold text-text-muted">
+                    <span className="text-[10px] font-bold text-text-muted">
                       {completedMilestones} dari {milestonesList.length} Selesai
                     </span>
                   </div>
 
-                  <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white shadow-2xs">
-                    {milestonesList.map((m, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 flex items-start gap-3 hover:bg-surface/30 transition-colors"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleToggleMilestone(idx)}
-                          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold cursor-pointer transition-transform hover:scale-110 ${
-                            m.status === "completed"
-                              ? "bg-emerald-600 text-white shadow-2xs"
-                              : m.status === "in_progress"
-                              ? "bg-primary text-white shadow-2xs"
-                              : "bg-surface border border-primary-light text-text-muted hover:border-primary hover:text-primary"
-                          }`}
-                          title={m.status === "completed" ? "Klik untuk membatalkan" : "Klik untuk menandai selesai"}
+                  <div className="space-y-2.5">
+                    {milestonesList.map((m, idx) => {
+                      const isDone = m.status === "completed";
+                      const isInProg = m.status === "in_progress";
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-primary-light/60 hover:bg-surface/30 transition-colors"
                         >
-                          {m.status === "completed" ? <CheckIcon className="text-[10px]" /> : m.step}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-semibold text-primary text-xs">{m.title}</span>
-                            <span className="text-[10px] text-text-muted font-mono">{m.date}</span>
-                          </div>
-                          <p className="text-[11px] text-text-secondary mt-0.5 leading-relaxed">{m.description}</p>
-                          
-                          {/* Badge Status & Aksi Cepat Menandai */}
-                          <div className="mt-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleMilestone(idx)}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 cursor-pointer transition-transform hover:scale-105 ${
+                                isDone
+                                  ? "bg-emerald-600 text-white shadow-2xs"
+                                  : isInProg
+                                  ? "bg-primary text-white shadow-2xs"
+                                  : "bg-surface border border-primary-light text-text-muted hover:border-primary hover:text-primary"
+                              }`}
+                              title={isDone ? "Klik untuk membatalkan" : "Klik untuk menandai selesai"}
+                            >
+                              {isDone ? <CheckIcon className="text-[10px]" /> : idx + 1}
+                            </button>
                             <span
-                              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                m.status === "completed"
+                              className={`text-xs truncate ${
+                                isDone
+                                  ? "font-semibold text-primary"
+                                  : isInProg
+                                  ? "font-bold text-primary"
+                                  : "text-text-secondary"
+                              }`}
+                            >
+                              {m.title}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span
+                              className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                                isDone
                                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                  : m.status === "in_progress"
+                                  : isInProg
                                   ? "bg-blue-50 text-blue-700 border border-blue-200"
                                   : "bg-slate-100 text-slate-500 border border-slate-200"
                               }`}
                             >
-                              {m.status === "completed"
-                                ? "Selesai"
-                                : m.status === "in_progress"
-                                ? "Sedang Berjalan"
-                                : "Belum Dimulai"}
+                              {isDone ? "Selesai" : isInProg ? "Proses" : "Menunggu"}
                             </span>
 
                             <button
                               type="button"
                               onClick={() => handleToggleMilestone(idx)}
                               className={`text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                                m.status === "completed"
+                                isDone
                                   ? "text-text-muted hover:text-amber-700 hover:bg-amber-50"
-                                  : "text-primary hover:bg-primary-light bg-surface"
+                                  : "text-primary hover:bg-primary hover:text-white bg-surface border border-primary-light"
                               }`}
                             >
-                              {m.status === "completed" ? "Batalkan Selesai" : "Tandai Selesai ✓"}
+                              {isDone ? "Ubah" : "Selesai ✓"}
                             </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
-              {/* KOLOM KANAN (lg:col-span-7): Dokumen & Form PIC */}
-              <div className="lg:col-span-7 space-y-5">
+              {/* KOLOM KANAN (lg:col-span-7): Pusat Dokumen & Form PIC */}
+              <div className="lg:col-span-7 space-y-4">
                 {/* 1. Dokumen Deliverable dari Admin / Konsultan */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                      Dokumen Deliverable dari Admin / Konsultan
-                    </h4>
-                    <span className="text-[11px] font-semibold text-text-secondary">
-                      {selectedTicket.deliverables?.length || 0} Berkas
-                    </span>
+                <div className="p-4 rounded-xl border border-primary-light bg-white space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                        Dokumen Deliverable Resmi
+                      </h4>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
+                        {selectedTicket.deliverables?.length || 0}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-text-muted">Hasil Kertas Kerja Konsultan</span>
                   </div>
 
                   {(!selectedTicket.deliverables || selectedTicket.deliverables.length === 0) ? (
-                    <div className="p-4 rounded-xl border border-dashed border-primary-light bg-surface/30 text-center space-y-1">
-                      <p className="text-xs font-semibold text-primary">Belum ada berkas deliverable terkirim</p>
-                      <p className="text-[11px] text-text-secondary max-w-sm mx-auto">
-                        Unggah hasil kertas kerja atau laporan pada formulir di bawah ini agar dapat diunduh oleh Klien.
-                      </p>
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada berkas deliverable resmi yang dikirimkan ke klien.
                     </div>
                   ) : (
-                    <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white shadow-2xs">
+                    <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
                       {selectedTicket.deliverables.map((d, dIdx) => (
-                        <div key={dIdx} className="p-3 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
+                        <div key={dIdx} className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs shrink-0 font-bold">
-                              <DocumentIcon className="text-sm" />
+                            <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center text-[10px] shrink-0 font-bold">
+                              <DocumentIcon className="text-xs" />
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-primary text-xs truncate">{d.name}</p>
@@ -818,7 +972,7 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDownloadClientDoc(d.name, "Konsultan PIC", selectedTicket.id, d.downloadUrl)}
+                            onClick={() => handleDownloadClientDoc(d.name, "Konsultan PIC", selectedTicket.id, d.downloadUrl, d.id)}
                             className="text-xs h-7 px-2.5 font-medium shrink-0"
                           >
                             Unduh
@@ -830,27 +984,30 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                 </div>
 
                 {/* 2. Dokumen Pendukung dari Klien */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                      Dokumen Pendukung dari Klien
-                    </h4>
-                    <span className="text-[11px] font-semibold text-text-secondary">
-                      {selectedTicket.clientDocuments?.length || 0} Berkas
-                    </span>
+                <div className="p-4 rounded-xl border border-primary-light bg-white space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                        Dokumen Pendukung Klien
+                      </h4>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
+                        {selectedTicket.clientDocuments?.length || 0}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-text-muted">Berkas Unggahan Klien</span>
                   </div>
 
                   {(!selectedTicket.clientDocuments || selectedTicket.clientDocuments.length === 0) ? (
-                    <div className="p-4 rounded-xl border border-dashed border-primary-light bg-surface/30 text-center text-xs text-text-muted">
-                      Belum ada dokumen pendukung yang dilampirkan oleh klien pada konsultasi ini.
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
                     </div>
                   ) : (
-                    <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white shadow-2xs">
+                    <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
                       {selectedTicket.clientDocuments.map((doc, docIdx) => (
-                        <div key={docIdx} className="p-3 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
+                        <div key={docIdx} className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary shrink-0">
-                              <DocumentIcon className="text-sm" />
+                            <div className="w-7 h-7 rounded-md bg-surface text-primary flex items-center justify-center text-[10px] shrink-0 font-bold border border-primary-light">
+                              <DocumentIcon className="text-xs" />
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-primary text-xs truncate">{doc.name}</p>
@@ -861,7 +1018,7 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl)}
+                            onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl, doc.id)}
                             className="text-xs h-7 px-2.5 font-medium shrink-0"
                           >
                             Unduh
@@ -873,19 +1030,15 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                 </div>
 
                 {/* 3. Form Kirim Dokumen & Catatan Konsultan PIC */}
-                <div className="p-4 sm:p-5 bg-surface/40 rounded-xl border border-primary-light space-y-4">
+                <div className="p-4 bg-white rounded-xl border border-primary-light space-y-3.5">
                   <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                        Kirim Dokumen &amp; Catatan Tim
-                      </h4>
-                      <p className="text-[11px] text-text-muted mt-0.5">
-                        Kirim berkas deliverable atau catatan/pesan resmi untuk klien
-                      </p>
-                    </div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                      Kirim Deliverable &amp; Catatan
+                    </h4>
+                    <span className="text-[10px] text-text-muted">Tersinkron Langsung ke Klien</span>
                   </div>
 
-                  <form onSubmit={handleSendDocFromDetail} className="space-y-3.5 text-xs">
+                  <form onSubmit={handleSendDocFromDetail} className="space-y-3 text-xs">
                     <div className="space-y-1">
                       <Label htmlFor="detail-doc-category" className="text-[11px] font-semibold text-text-secondary block">
                         Kategori Dokumen Deliverable
@@ -907,15 +1060,15 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                       </Select>
                     </div>
 
-                    {/* Dropzone File Dokumen */}
+                    {/* File Dokumen Input Ringkas */}
                     <div className="space-y-1">
                       <Label className="text-[11px] font-semibold text-text-secondary block">
-                        Berkas Dokumen (Opsional)
+                        Berkas Dokumen Deliverable (Opsional)
                       </Label>
                       <input
                         type="file"
                         id="detail-file-input"
-                        accept=".pdf,.xlsx,.xls,.doc,.docx,.zip,.rar,.jpg,.jpeg,.png"
+                        accept=".pdf,.xlsx,.xls,.doc,.docx,.zip,.rar"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
                           if (f) setDetailSendFile(f);
@@ -924,10 +1077,10 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                       />
 
                       {detailSendFile ? (
-                        <div className="p-3 bg-white rounded-xl border border-primary-light flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-primary shrink-0">
-                              <DocumentIcon className="text-sm" />
+                        <div className="p-2.5 bg-surface/50 rounded-xl border border-primary-light flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-md bg-white border border-primary-light flex items-center justify-center text-primary shrink-0">
+                              <DocumentIcon className="text-xs" />
                             </div>
                             <div className="min-w-0">
                               <p className="font-semibold text-primary text-xs truncate">
@@ -941,17 +1094,16 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                           <div className="flex items-center gap-1.5 shrink-0">
                             <label
                               htmlFor="detail-file-input"
-                              className="h-7 px-2.5 bg-surface hover:bg-primary-light text-primary rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                              className="h-6 px-2 bg-white border border-primary-light text-primary rounded-md text-[10px] font-semibold flex items-center gap-1 cursor-pointer hover:bg-surface transition-colors"
                             >
                               Ganti
                             </label>
                             <button
                               type="button"
                               onClick={() => setDetailSendFile(null)}
-                              className="h-7 px-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
-                              title="Batal pilih file"
+                              className="h-6 px-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-md text-[10px] font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                             >
-                              <CloseIcon className="text-[10px]" />
+                              <CloseIcon className="text-[9px]" />
                               <span>Hapus</span>
                             </button>
                           </div>
@@ -959,16 +1111,18 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                       ) : (
                         <label
                           htmlFor="detail-file-input"
-                          className="flex flex-col items-center justify-center p-4 bg-white border-2 border-dashed border-primary-light hover:border-primary rounded-xl cursor-pointer transition-colors group"
+                          className="flex items-center justify-between p-2.5 bg-surface/30 border border-dashed border-primary-light hover:border-primary rounded-xl cursor-pointer transition-colors group"
                         >
-                          <div className="w-9 h-9 rounded-full bg-surface group-hover:bg-primary/10 text-primary flex items-center justify-center mb-1.5 transition-colors">
-                            <UploadIcon className="text-sm" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-md bg-white border border-primary-light group-hover:border-primary text-primary flex items-center justify-center shadow-2xs transition-colors">
+                              <UploadIcon className="text-xs" />
+                            </div>
+                            <span className="text-xs font-semibold text-primary">
+                              Pilih Berkas Deliverable (.pdf, .xlsx, .docx)
+                            </span>
                           </div>
-                          <span className="text-xs font-semibold text-primary">
-                            Pilih Berkas Dokumen
-                          </span>
-                          <span className="text-[10px] text-text-muted mt-0.5">
-                            Klik untuk memilih berkas (.pdf, .xlsx, .docx, .zip, gambar)
+                          <span className="text-[11px] font-semibold px-2.5 py-1 bg-white border border-primary-light text-primary rounded-lg shadow-2xs group-hover:bg-primary group-hover:text-white transition-colors">
+                            Pilih Berkas
                           </span>
                         </label>
                       )}
@@ -977,11 +1131,11 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                     {/* Kolom Catatan Konsultan */}
                     <div className="space-y-1">
                       <Label htmlFor="detail-doc-notes" className="text-[11px] font-semibold text-text-secondary block">
-                        Kolom Catatan Konsultan (Opsional)
+                        Catatan Konsultan untuk Klien (Opsional)
                       </Label>
                       <Textarea
                         id="detail-doc-notes"
-                        placeholder="Tuliskan catatan kemajuan pengerjaan atau pesan untuk klien..."
+                        placeholder="Tuliskan catatan kemajuan pengerjaan atau instruksi untuk klien..."
                         value={detailDocNotes}
                         onChange={(e) => setDetailDocNotes(e.target.value)}
                         rows={2}
@@ -990,48 +1144,68 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                     </div>
 
                     {/* Tombol Simpan & Kirim */}
-                    <div className="flex items-center justify-end gap-2.5 pt-2">
+                    <div className="flex items-center justify-end gap-2.5 pt-1">
                       <Button
                         type="submit"
                         variant="primary"
                         size="sm"
-                        disabled={isSendingDetailDoc || (!detailSendFile && !detailDocNotes.trim())}
-                        className="text-xs font-semibold px-4 h-9 shadow-xs cursor-pointer"
+                        disabled={isSendingDetailDoc}
+                        className="text-xs font-semibold px-4 h-8.5 shadow-xs cursor-pointer"
                       >
                         <SendIcon className="mr-1.5 text-xs" />
                         {isSendingDetailDoc
-                          ? "Mengirimkan..."
+                          ? "Memproses..."
                           : detailSendFile
-                          ? "Kirim Dokumen Deliverable"
-                          : "Kirim Catatan Tim"}
+                          ? "Kirim Deliverable ke Klien"
+                          : detailDocNotes.trim()
+                          ? "Kirim Catatan ke Klien"
+                          : "Perbarui Progres & Simpan"}
                       </Button>
                     </div>
                   </form>
                 </div>
 
-                {/* 4. Catatan Terbaru dari Tim Penugasan */}
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                    Catatan Terbaru dari Tim Penugasan
-                  </h4>
-                  {(!selectedTicket.correspondences || selectedTicket.correspondences.length === 0) ? (
-                    <div className="p-4 rounded-xl border border-dashed border-primary-light bg-surface/30 text-center text-xs text-text-muted">
-                      Belum ada riwayat catatan atau korespondensi pada konsultasi ini.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {selectedTicket.correspondences.map((c) => (
-                        <div key={c.id} className="p-3 bg-white rounded-xl border border-primary-light shadow-2xs text-xs space-y-1">
-                          <div className="flex items-center justify-between text-[11px] text-text-muted">
-                            <span className="font-bold text-primary">{c.sender} <span className="font-normal text-text-secondary">({c.role})</span></span>
-                            <span className="font-mono">{c.date}</span>
+                {/* 4. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
+                {(() => {
+                  const cleanCorrespondences = (selectedTicket.correspondences || [])
+                    .map((c) => ({
+                      ...c,
+                      cleanMsg: formatCorrespondenceMessage(c.message),
+                    }))
+                    .filter((c) => c.cleanMsg && c.cleanMsg.length > 0);
+
+                  if (cleanCorrespondences.length === 0) return null;
+
+                  return (
+                    <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                          Catatan &amp; Komunikasi
+                        </h4>
+                        <span className="text-[10px] text-text-muted">Riwayat Korespondensi</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {cleanCorrespondences.map((c) => (
+                          <div
+                            key={c.id}
+                            className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
+                          >
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-bold text-primary">
+                                {c.sender} <span className="font-normal text-text-muted">({c.role})</span>
+                              </span>
+                              <span className="text-text-muted font-mono">{c.date}</span>
+                            </div>
+                            <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
+                              {c.cleanMsg}
+                            </p>
                           </div>
-                          <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-line">{c.message}</p>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
             </div>
           </CardContent>
@@ -1153,8 +1327,9 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
                   <tr>
-                    <th className="py-3 px-4 text-center">Kode &amp; Judul Tugas</th>
-                    <th className="py-3 px-4 text-center">Klien &amp; Entitas</th>
+                    <th className="py-3 px-4 text-center min-w-[200px]">Kode &amp; Judul Kebutuhan</th>
+                    <th className="py-3 px-4 text-center w-48 min-w-[170px]">Uraian Detail Masalah</th>
+                    <th className="py-3 px-4 text-center min-w-[230px]">Klien &amp; Entitas</th>
                     <th className="py-3 px-4 text-center">Kategori Layanan</th>
                     <th className="py-3 px-4 text-center">Status &amp; Progres</th>
                     <th className="py-3 px-4 text-center">Dokumen</th>
@@ -1167,19 +1342,34 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                     const clientDocCount = ticket.clientDocuments?.length || 0;
                     const deliverableCount = ticket.deliverables?.length || 0;
                     const totalDoc = clientDocCount + deliverableCount;
+                    const cleanProblemDesc = formatTicketDescription(ticket.description);
 
                     return (
                       <tr key={ticket.id} className="hover:bg-surface/60 transition-colors">
-                        <td className="py-3.5 px-4 font-medium text-primary">
-                          <span className="font-mono text-[10px] text-text-muted block">
+                        <td className="py-3.5 px-4 font-medium text-primary align-top min-w-[200px]">
+                          <span className="font-mono text-[10px] text-text-muted block font-semibold">
                             {ticket.id}
                           </span>
-                          <span className="font-semibold text-xs text-primary block max-w-xs truncate">
-                            {ticket.title}
+                          <span className="font-bold text-xs text-primary block mt-0.5 leading-snug">
+                            {ticket.title || "Konsultasi Kebutuhan Klien"}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 text-text-secondary align-top w-48 min-w-[170px]">
+                          {cleanProblemDesc ? (
+                            <div className="bg-surface/60 border border-primary-light/70 rounded-lg p-2.5 space-y-1">
+                              <p className="text-xs text-text-primary leading-relaxed whitespace-pre-line line-clamp-3" title={cleanProblemDesc}>
+                                {cleanProblemDesc}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-text-muted italic">
+                              Belum ada uraian masalah
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 align-top min-w-[230px]">
                           <span className="font-semibold text-primary block">
                             {ticket.clientName || "Klien Terdaftar"}
                           </span>
@@ -1188,13 +1378,13 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4 text-text-secondary">
+                        <td className="py-3.5 px-4 text-text-secondary align-top">
                           <span className="block font-medium text-primary">
                             {ticket.category}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 align-top">
                           <div className="flex flex-col gap-1 items-start">
                             {renderStatusBadge(ticket.status)}
                             <div className="w-24 bg-surface rounded-full h-1.5 overflow-hidden border border-primary-light">
@@ -1213,7 +1403,7 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-text-secondary text-[11px]">
+                        <td className="py-3.5 px-4 text-text-secondary text-[11px] align-top">
                           <div>{totalDoc} Berkas</div>
                           {clientDocCount > 0 && (
                             <span className="text-[10px] text-text-muted">
@@ -1222,14 +1412,14 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
                           )}
                         </td>
 
-                        <td className="py-3.5 px-4 text-text-secondary text-[11px]">
+                        <td className="py-3.5 px-4 text-text-secondary text-[11px] align-top">
                           <div>{ticket.estimatedCompletion || "Menunggu Penetapan PIC"}</div>
                           <div className="text-[10px] text-text-muted">
                             Masuk: {formatConsultationDate(ticket.createdAt)}
                           </div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap align-top">
                           <Button
                             type="button"
                             variant="primary"
@@ -1250,7 +1440,7 @@ Kerahasiaan  : Dilindungi Ketentuan NDA Zhou Consulting
 
                   {filteredTickets.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-10 text-center text-text-secondary text-xs">
+                      <td colSpan={8} className="py-10 text-center text-text-secondary text-xs">
                         <div className="max-w-sm mx-auto space-y-2">
                           <LockIcon className="mx-auto text-xl text-text-muted" />
                           <p className="font-semibold text-primary">

@@ -30,6 +30,7 @@ import {
   CheckCircleIcon,
   BookIcon,
 } from "@/components/icons";
+import { downloadBlob, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
@@ -165,6 +166,22 @@ export function EducationSection() {
       : publishedArticles.filter((a) => a.categoryKey === activeCategory);
 
   const handleDownload = () => {
+    if (!selectedArticle) return;
+    const pdfBlob = generateDocumentPdfBlob({
+      title: "MODUL EDUKASI & LITERASI FISKAL",
+      category: selectedArticle.category || "Edukasi Perpajakan",
+      date: selectedArticle.date || "2026",
+      sections: [
+        {
+          title: selectedArticle.title.toUpperCase(),
+          paragraphs: selectedArticle.content || ["Materi literasi perpajakan resmi Zhou Consulting."],
+        },
+      ],
+    });
+    const cleanTitle = (selectedArticle.title || "Modul_Edukasi")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .substring(0, 50);
+    downloadBlob(pdfBlob, `Zhou_Edukasi_${cleanTitle}.pdf`);
     setDownloadSuccess(true);
     setTimeout(() => {
       setDownloadSuccess(false);

@@ -17,12 +17,7 @@ import {
   TrashIcon,
   EyeIcon,
 } from "@/components/icons";
-import { superadminApi, AdminUserItem } from "@/lib/api";
-import {
-  getStoredClientTickets,
-  TICKETS_UPDATED_EVENT,
-  STAFF_UPDATED_EVENT,
-} from "@/data/sharedTicketsStorage";
+import { superadminApi, adminApi, AdminUserItem, ConsultationItem } from "@/lib/api";
 
 export interface StaffAdmin {
   id: string;
@@ -38,27 +33,6 @@ export interface StaffAdmin {
   joinDate: string;
 }
 
-const DELETED_STAFF_IDS_KEY = "zhou_deleted_staff_ids_v2";
-
-function getDeletedStaffIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(DELETED_STAFF_IDS_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function recordDeletedStaffId(id: string | number): void {
-  if (typeof window === "undefined") return;
-  try {
-    const set = getDeletedStaffIds();
-    set.add(String(id));
-    localStorage.setItem(DELETED_STAFF_IDS_KEY, JSON.stringify(Array.from(set)));
-  } catch {}
-}
-
 const isDummyAdmin = (adm: {
   id?: string | number;
   name?: string;
@@ -66,9 +40,6 @@ const isDummyAdmin = (adm: {
 }): boolean => {
   const email = (adm.email || "").toLowerCase();
   const name = (adm.name || "").toLowerCase();
-  const idStr = String(adm.id || "");
-
-  if (getDeletedStaffIds().has(idStr)) return true;
 
   return (
     email.includes("deact.") ||
@@ -114,87 +85,76 @@ export default function SuperadminUsersPage() {
     twoFactorEnabled: true,
   });
 
-  // Sync staff with Backend API and calculate assigned tasks
-  useEffect(() => {
-    let isMounted = true;
+  const [isLoading, setIsLoading] = useState(false);
 
-    const calculateTasks = (staffEmail: string, staffName: string) => {
-      const tickets = getStoredClientTickets();
-      const sEmail = String(staffEmail || "").toLowerCase().trim();
-      const sName = String(staffName || "").toLowerCase().trim();
-      return tickets.filter((t) => {
-        const tEmail = String(t.assignedAdminEmail || "").toLowerCase().trim();
-        const tName = String(t.assignedAdminName || t.consultant || "").toLowerCase().trim();
-        return (
-          (Boolean(sEmail) && Boolean(tEmail) && tEmail === sEmail) ||
-          (Boolean(sName) && Boolean(tName) && (tName.includes(sName) || sName.includes(tName)))
-        );
-      }).length;
-    };
+  // Sync staff with Backend API and calculate assigned tasks from real consultations
+  const loadStaff = async () => {
+    setIsLoading(true);
+    try {
+      const [adminsRes, consultRes] = await Promise.all([
+        superadminApi.getAdmins(),
+        adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
+      ]);
 
-    const loadStaff = () => {
-      superadminApi
-        .getAdmins()
-        .then((res) => {
-          if (!isMounted) return;
-          if (res?.data && Array.isArray(res.data)) {
-            // Purge dummy test runner accounts from backend in background
-            res.data.forEach((adm: AdminUserItem) => {
-              if (isDummyAdmin(adm)) {
-                try {
-                  superadminApi.deleteAdmin(adm.id);
-                } catch {}
-              }
-            });
+      if (adminsRes?.data && Array.isArray(adminsRes.data)) {
+        const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
 
-            const validAdmins = res.data.filter((adm: AdminUserItem) => !isDummyAdmin(adm));
-            const apiStaff: StaffAdmin[] = validAdmins.map((adm: AdminUserItem, idx: number) => ({
-              id: `STF-BE-${adm.id}`,
-              name: cleanAdminName(adm.name),
-              nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
-              email: adm.email,
-              phone: adm.phone || "+62 812-9876-" + (1200 + idx),
-              role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
-              division: "Tax Service Core",
-              tasksCount: calculateTasks(adm.email, adm.name),
-              status: adm.is_active ? "Aktif" : "Nonaktif",
-              twoFactorEnabled: true,
-              joinDate: new Date(adm.created_at || Date.now()).toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              }),
-            }));
-
-            setStaffList(apiStaff);
+        // Purge dummy test runner accounts from backend in background
+        adminsRes.data.forEach((adm: AdminUserItem) => {
+          if (isDummyAdmin(adm)) {
+            try {
+              superadminApi.deleteAdmin(adm.id);
+            } catch {}
           }
-        })
-        .catch(() => {
-          // silent fallback
         });
-    };
 
+        const validAdmins = adminsRes.data.filter((adm: AdminUserItem) => !isDummyAdmin(adm));
+        const apiStaff: StaffAdmin[] = validAdmins.map((adm: AdminUserItem, idx: number) => {
+          const admEmail = (adm.email || "").toLowerCase().trim();
+          const admName = (adm.name || "").toLowerCase().trim();
+          const assignedCount = consultations.filter((c) => {
+            const cAssignedId = c.assigned_to;
+            const cAdminId = c.assigned_admin?.id;
+            const cEmail = (c.assigned_admin?.email || "").toLowerCase().trim();
+            const cName = (c.assigned_admin?.name || "").toLowerCase().trim();
+
+            if (cAssignedId && Number(cAssignedId) === Number(adm.id)) return true;
+            if (cAdminId && Number(cAdminId) === Number(adm.id)) return true;
+            if (admEmail && cEmail && admEmail === cEmail) return true;
+            if (admName && cName && (cName.includes(admName) || admName.includes(cName))) return true;
+            return false;
+          }).length;
+
+          return {
+            id: `STF-BE-${adm.id}`,
+            name: cleanAdminName(adm.name),
+            nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
+            email: adm.email,
+            phone: adm.phone || "+62 812-9876-" + (1200 + idx),
+            role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
+            division: "Tax Service Core",
+            tasksCount: assignedCount,
+            status: adm.is_active ? "Aktif" : "Nonaktif",
+            twoFactorEnabled: true,
+            joinDate: new Date(adm.created_at || Date.now()).toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }),
+          };
+        });
+
+        setStaffList(apiStaff);
+      }
+    } catch (err) {
+      console.warn("Gagal memuat staf admin dari backend:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadStaff();
-
-    const handleSync = () => {
-      setStaffList((prev) =>
-        prev.map((s) => ({
-          ...s,
-          tasksCount: calculateTasks(s.email, s.name),
-        }))
-      );
-    };
-
-    window.addEventListener(TICKETS_UPDATED_EVENT, handleSync);
-    window.addEventListener(STAFF_UPDATED_EVENT, handleSync);
-    window.addEventListener("storage", handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSync);
-      window.removeEventListener(STAFF_UPDATED_EVENT, handleSync);
-      window.removeEventListener("storage", handleSync);
-    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -222,42 +182,16 @@ export default function SuperadminUsersPage() {
       });
 
       if (!res.success && res.message) {
-        console.warn("Backend createAdmin notice:", res.message);
+        showToast(res.message);
+      } else {
+        showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat.`);
       }
-    } catch (err) {
-      console.warn("superadminApi.createAdmin fallback to local state:", err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal membuat akun admin di server.";
+      showToast(msg);
     }
 
-    const nextIndex = staffList.length + 1;
-    const nextId = "STF-" + String(nextIndex).padStart(2, "0");
-    const nextNip = (normalizedRole === "SUPERADMIN" ? "SPR-" : "ADM-") + String(nextIndex).padStart(3, "0");
-
-    const created: StaffAdmin = {
-      id: nextId,
-      name: newStaffForm.name.trim(),
-      nip: nextNip,
-      email: newStaffForm.email.trim(),
-      phone: newStaffForm.phone.trim(),
-      role: displayRole,
-      division: newStaffForm.division,
-      tasksCount: 0,
-      status: "Aktif",
-      twoFactorEnabled: newStaffForm.twoFactorEnabled,
-      joinDate: new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-    };
-
-    setStaffList((prev) => {
-      const updated = [created, ...prev.filter((p) => p.email.toLowerCase() !== created.email.toLowerCase())];
-      try {
-        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
+    await loadStaff();
     setIsAddModalOpen(false);
     setNewStaffForm({
       name: "",
@@ -268,23 +202,15 @@ export default function SuperadminUsersPage() {
       initialPassword: "ZhouPass" + Math.floor(1000 + Math.random() * 9000) + "!",
       twoFactorEnabled: true,
     });
-
-    showToast(
-      `Akun ${displayRole} ${created.name} (${created.nip}) berhasil dibuat.`
-    );
   };
 
   const handleEditStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff) return;
 
-    setStaffList((prev) => {
-      const updated = prev.map((s) => (s.id === editingStaff.id ? editingStaff : s));
-      try {
-        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === editingStaff.id ? editingStaff : s))
+    );
     showToast(`Data akun ${editingStaff.name} berhasil diperbarui.`);
     setEditingStaff(null);
   };
@@ -293,25 +219,12 @@ export default function SuperadminUsersPage() {
     try {
       const rawId = parseInt(staffId.replace(/\D/g, ""), 10) || staffId;
       await superadminApi.deactivateAdmin(rawId);
-    } catch (err) {
-      console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
+      showToast("Status akun berhasil diperbarui di sistem.");
+      await loadStaff();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengubah status akun di server.";
+      showToast(msg);
     }
-
-    setStaffList((prev) => {
-      const updated = prev.map((s) => {
-        if (s.id === staffId) {
-          const nextStatus: "Aktif" | "Nonaktif" =
-            s.status === "Aktif" ? "Nonaktif" : "Aktif";
-          showToast(`Status akun ${s.name} diubah menjadi ${nextStatus}.`);
-          return { ...s, status: nextStatus };
-        }
-        return s;
-      });
-      try {
-        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
   };
 
   const handleConfirmDelete = async () => {
@@ -319,7 +232,7 @@ export default function SuperadminUsersPage() {
 
     if (deletingStaff.tasksCount > 0) {
       showToast(
-        `Penghapusan permanen ditolak: ${deletingStaff.name} memiliki ${deletingStaff.tasksCount} tiket aktif. Akun dialihkan ke status Nonaktif.`
+        `Penghapusan permanen ditolak: ${deletingStaff.name} memiliki ${deletingStaff.tasksCount} perikatan aktif. Akun dialihkan ke status Nonaktif.`
       );
       handleToggleStatus(deletingStaff.id);
       setDeletingStaff(null);
@@ -327,22 +240,14 @@ export default function SuperadminUsersPage() {
     }
 
     const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
-    recordDeletedStaffId(rawId);
-    recordDeletedStaffId(deletingStaff.id);
     try {
       await superadminApi.deleteAdmin(rawId);
-    } catch (err) {
-      console.warn("superadminApi.deleteAdmin fallback to local state:", err);
+      showToast(`Akun ${deletingStaff.name} berhasil dihapus dari sistem.`);
+      await loadStaff();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menghapus akun di server.";
+      showToast(msg);
     }
-
-    setStaffList((prev) => {
-      const updated = prev.filter((s) => s.id !== deletingStaff.id);
-      try {
-        localStorage.setItem("zhou_superadmin_staff_list", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    showToast(`Akun ${deletingStaff.name} berhasil dihapus permanen dari sistem.`);
     setDeletingStaff(null);
   };
 
@@ -458,7 +363,7 @@ export default function SuperadminUsersPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-primary tracking-tight">
-                Daftar Akun Staf Konsultan &amp; Otoritas RBAC ({filteredStaff.length})
+                Daftar Akun Staf Konsultan ({filteredStaff.length})
               </h2>
               <p className="text-xs text-text-secondary mt-0.5">
                 Akses root penuh untuk menambah, menyunting peran, dan menonaktifkan akun staf operasional.
@@ -548,7 +453,13 @@ export default function SuperadminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-primary-light">
-              {filteredStaff.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-text-muted text-xs">
+                    Memuat data staf admin dari server backend...
+                  </td>
+                </tr>
+              ) : filteredStaff.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-text-muted text-xs">
                     Tidak ada akun staf yang cocok dengan kriteria pencarian dan filter.

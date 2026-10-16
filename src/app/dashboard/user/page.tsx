@@ -20,13 +20,16 @@ import {
   UserIcon,
 } from "@/components/icons";
 import {
-  getTicketsForClient,
-  getDocumentsForClient,
-  formatConsultationDate,
   getDisplayPicName,
-  TICKETS_UPDATED_EVENT,
-  DOCUMENTS_UPDATED_EVENT,
+  resolveConsultationCategory,
+  getStoredClientTickets,
+  getStoredDocuments,
+  getCachedFileBlobAsync,
+  isTicketDeleted,
+  formatConsultationDate,
 } from "@/data/sharedTicketsStorage";
+import { downloadRemoteFile, downloadBlob } from "@/lib/downloadHelper";
+
 
 interface Ticket {
   id: string;
@@ -69,141 +72,238 @@ export default function UserDashboardPage() {
     }
   }, [user, router]);
 
-  // Sync consultations & documents with backend, shared tickets, and uploaded documents
-  useEffect(() => {
-    async function loadClientData() {
-      // 1. Tiket yang dibuat secara lokal / booking khusus milik klien ini
-      const storedClientTickets = getTicketsForClient(user?.email, user?.name);
-      const filteredCustom = storedClientTickets.filter((t) => !isDummyTicket(t));
-      const customTickets: Ticket[] = filteredCustom.map((t) => ({
-        id: t.id,
-        title: t.title,
-        category: t.category || "Tax Service Core",
-        consultant: getDisplayPicName(t),
-        status: t.status || "Dalam Proses",
-        progress: t.progress || 25,
-        updatedAt: formatConsultationDate(t.createdAt),
-        checklists: (t.milestones && t.milestones.length > 0)
-          ? t.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
-          : [
-              { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: false },
-              { text: "Penyusunan berkas luaran & final review", done: false },
-            ],
-        deliverableFile: t.deliverables?.[0]?.name,
-        deliverableSize: t.deliverables?.[0]?.size,
-      }));
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-      // 2. Tiket dari backend
-      let backendTickets: Ticket[] = [];
-      try {
-        const res = await clientApi.getConsultations();
-        if (res.success && Array.isArray(res.data)) {
-          const userEmail = (user?.email || "").toLowerCase().trim();
-          const userName = (user?.name || "").toLowerCase().trim();
-          const userId = user?.id;
+  // Load client consultations and documents directly from backend API
+  const loadClientData = React.useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
 
-          const validConsultations = res.data
-            .filter((c: ConsultationItem) => !isDummyTicket(c))
-            .filter((c: ConsultationItem) => {
-              const cEmail = (c.client?.email || "").toLowerCase().trim();
-              const cName = (c.client?.name || "").toLowerCase().trim();
-              const cId = c.client_id || c.client?.id;
+    try {
+      const [consultRes, docRes] = await Promise.allSettled([
+        clientApi.getConsultations(),
+        clientApi.getDocuments(),
+      ]);
 
-              if (userEmail && cEmail && cEmail === userEmail) return true;
-              if (userId && cId && String(cId) === String(userId)) return true;
-              if (userName && cName && (cName === userName || cName.includes(userName))) return true;
+      // 1. Konsultasi dari backend
+      if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
+        const userEmail = (user?.email || "").toLowerCase().trim();
+        const userName = (user?.name || "").toLowerCase().trim();
+        const userId = user?.id;
 
-              return false;
+        const validConsultations = consultRes.value.data
+          .filter((c: ConsultationItem) => !isDummyTicket(c))
+          .filter((c: ConsultationItem) => {
+            const cEmail = (c.client?.email || "").toLowerCase().trim();
+            const cName = (c.client?.name || "").toLowerCase().trim();
+            const cId = c.client_id || c.client?.id;
+
+            if (userEmail && cEmail && cEmail === userEmail) return true;
+            if (userId && cId && String(cId) === String(userId)) return true;
+            if (userName && cName && (cName === userName || cName.includes(userName))) return true;
+
+            // Jika backend sudah memfilter per pengguna terautentikasi (Bearer token)
+            return true;
+          });
+
+        const mappedTickets: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
+          id: c.project_code || `TK-${c.id}`,
+          title: c.title,
+          category: resolveConsultationCategory(c),
+          consultant: c.assigned_admin?.name || "Menunggu PIC",
+          status: c.status === "COMPLETED" ? "Selesai" : "Dalam Proses",
+          progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
+          updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          checklists: (c.tasks && c.tasks.length > 0)
+            ? c.tasks.map((t) => ({ text: t.task_name, done: t.is_completed }))
+            : [
+                { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: c.status === "COMPLETED" },
+                { text: "Penyusunan berkas luaran & final review", done: c.status === "COMPLETED" },
+              ],
+          deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
+          deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
+        }));
+
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const mergedTickets = [...mappedTickets];
+        localTickets.forEach((lt) => {
+          const existingIdx = mergedTickets.findIndex(
+            (mt) =>
+              mt.id.toLowerCase() === lt.id.toLowerCase() ||
+              (lt.numericId && mt.id.includes(String(lt.numericId))) ||
+              (lt.title && mt.title && lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim())
+          );
+          const mappedLt = {
+            id: lt.id,
+            title: lt.title,
+            category: resolveConsultationCategory(lt),
+            consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
+            status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
+            progress: lt.progress !== undefined ? lt.progress : 35,
+            updatedAt: lt.createdAt || "Hari ini",
+            createdAt: lt.createdAt,
+            checklists: (lt.milestones && lt.milestones.length > 0)
+              ? lt.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
+              : [
+                  { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                  { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
+                  { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
+                ],
+            deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
+            deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
+          };
+          if (existingIdx !== -1) {
+            mergedTickets[existingIdx] = {
+              ...mergedTickets[existingIdx],
+              ...mappedLt,
+              id: mergedTickets[existingIdx].id || mappedLt.id,
+              consultant: (mappedLt.consultant && !mappedLt.consultant.includes("Menunggu"))
+                ? mappedLt.consultant
+                : (mergedTickets[existingIdx].consultant || mappedLt.consultant),
+            };
+          } else {
+            mergedTickets.unshift(mappedLt);
+          }
+        });
+
+        setTickets(mergedTickets);
+      } else if (consultRes.status === "rejected") {
+        setLoadError("Gagal memuat konsultasi dari server.");
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        if (localTickets.length > 0) {
+          setTickets(
+            localTickets.map((lt) => ({
+              id: lt.id,
+              title: lt.title,
+              category: resolveConsultationCategory(lt),
+              consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
+              status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
+              progress: lt.progress || 35,
+              updatedAt: lt.createdAt || "Hari ini",
+              createdAt: lt.createdAt,
+              checklists: [
+                { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
+                { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
+              ],
+              deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
+              deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
+            }))
+          );
+        }
+      }
+
+      // 2. Kumpulkan seluruh dokumen: backend, shared documents, serta dokumen tiket aktif (pendukung & deliverable)
+      let backendDocs: ClientDocument[] = [];
+      if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
+        const validBackendDocs = docRes.value.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
+        backendDocs = validBackendDocs.map((d: ClientDocumentItem) => ({
+          id: String(d.id),
+          name: d.file_name,
+          category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
+          date: new Date(d.created_at).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          size: d.file_size || "1.2 MB",
+          ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
+        }));
+      }
+
+      const localShared = typeof window !== "undefined" ? getStoredDocuments() : [];
+      const sharedDocs: ClientDocument[] = localShared
+        .filter((d) => !d.ticketId || !isTicketDeleted(d.ticketId))
+        .map((d) => ({
+          id: d.id,
+          name: d.fileName,
+          category: d.category.toLowerCase().includes("akuntansi") ? "Akuntansi" : "Pajak",
+          date: d.uploadDate,
+          size: d.fileSize || "1.5 MB",
+          ticketRef: d.ticketId || "-",
+        }));
+
+      const allClientTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      const ticketDocs: ClientDocument[] = [];
+      allClientTickets
+        .filter((t) => !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)))
+        .forEach((t) => {
+          const cat = t.category?.toLowerCase() || "";
+          const catLabel = cat.includes("akuntansi") ? "Akuntansi" : "Pajak";
+
+          // Dokumen pendukung klien
+          (t.clientDocuments || []).forEach((cd, i) => {
+            ticketDocs.push({
+              id: cd.id || `cd-${t.id}-${i}`,
+              name: cd.name,
+              category: catLabel,
+              date: cd.date || cd.uploadedAt || "Hari ini",
+              size: cd.size || "1.0 MB",
+              ticketRef: t.id,
             });
+          });
 
-          backendTickets = validConsultations.map((c: ConsultationItem) => ({
-            id: c.project_code || `TK-${c.id}`,
-            title: c.title,
-            category: c.service?.service_name || "Tax Service Core",
-            consultant: (c as any).assigned_admin?.name || "Menunggu PIC",
-            status: c.status === "COMPLETED" ? "Selesai" : "Dalam Proses",
-            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
-            updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
+          // Deliverables
+          (t.deliverables || []).forEach((deliv, i) => {
+            ticketDocs.push({
+              id: deliv.id || `deliv-${t.id}-${i}`,
+              name: deliv.name,
+              category: catLabel,
+              date: deliv.date || "Hari ini",
+              size: deliv.size || "1.5 MB",
+              ticketRef: t.id,
+            });
+          });
+        });
+
+      const mergedDocs: ClientDocument[] = [];
+      const seenNames = new Set<string>();
+      [...ticketDocs, ...sharedDocs, ...backendDocs].forEach((doc) => {
+        const key = doc.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          mergedDocs.push(doc);
+        }
+      });
+      setDocuments(mergedDocs);
+    } catch {
+      setLoadError("Terjadi kendala saat menghubungkan ke server backend.");
+      const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      if (localTickets.length > 0) {
+        setTickets(
+          localTickets.map((lt) => ({
+            id: lt.id,
+            title: lt.title,
+            category: lt.category,
+            consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
+            status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
+            progress: lt.progress || 35,
+            updatedAt: lt.createdAt || "Hari ini",
+            createdAt: lt.createdAt,
             checklists: [
               { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: c.status === "COMPLETED" },
-              { text: "Penyusunan berkas luaran & final review", done: c.status === "COMPLETED" },
+              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
+              { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
             ],
-            deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
-            deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
-          }));
-        }
-      } catch {
-        // silent fallback
+            deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
+            deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
+          }))
+        );
       }
-
-      // Gabungkan tiket tanpa duplikasi
-      const combinedTickets = [...customTickets];
-      backendTickets.forEach((m) => {
-        if (!combinedTickets.some((item) => item.id.toLowerCase() === m.id.toLowerCase())) {
-          combinedTickets.push(m);
-        }
-      });
-      setTickets(combinedTickets);
-
-      // 3. Dokumen dari backend
-      let backendDocs: ClientDocument[] = [];
-      try {
-        const docRes = await clientApi.getDocuments();
-        if (docRes.success && Array.isArray(docRes.data)) {
-          const validBackendDocs = docRes.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
-          backendDocs = validBackendDocs.map((d: ClientDocumentItem) => ({
-            id: String(d.id),
-            name: d.file_name,
-            category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
-            date: new Date(d.created_at).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            size: d.file_size || "1.2 MB",
-            ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
-          }));
-        }
-      } catch {
-        // silent fallback
-      }
-
-      // 4. Dokumen yang diunggah Admin khusus untuk akun klien ini
-      const localDocs = getDocumentsForClient(user?.email, user?.name);
-      const mappedLocalDocs: ClientDocument[] = localDocs.map((d) => ({
-        id: d.id,
-        name: d.fileName,
-        category: d.category.includes("Tax") ? "Pajak" : d.category.includes("Account") ? "Akuntansi" : "Legal",
-        date: d.uploadDate || "Hari ini",
-        size: d.fileSize || "2.1 MB",
-        ticketRef: d.ticketId || "-",
-      }));
-
-      const combinedDocs = [...mappedLocalDocs];
-      backendDocs.forEach((b) => {
-        if (!combinedDocs.some((cd) => cd.id.toLowerCase() === b.id.toLowerCase() || cd.name.toLowerCase() === b.name.toLowerCase())) {
-          combinedDocs.push(b);
-        }
-      });
-      setDocuments(combinedDocs);
+    } finally {
+      setIsLoading(false);
     }
-
-    loadClientData();
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadClientData);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadClientData);
-    window.addEventListener("storage", loadClientData);
-    return () => {
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadClientData);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadClientData);
-      window.removeEventListener("storage", loadClientData);
-    };
   }, [user?.email, user?.name, user?.id]);
+
+  useEffect(() => {
+    loadClientData();
+  }, [loadClientData]);
 
   // Filtered tickets
   const filteredTickets = tickets.filter((t) => {
@@ -221,29 +321,45 @@ export default function UserDashboardPage() {
   const completedCount = tickets.filter((t) => t.status === "Selesai" || t.status === "Completed").length;
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
 
-  const handleDownloadSimulation = (fileName: string) => {
-    const fileContent = `======================================================
-ZHOU CONSULTING - DIGITAL CLIENT VAULT
-======================================================
-Berkas Resmi : ${fileName}
-Entitas      : ${user?.company || "-"}
-PIC Klien    : ${user?.name || "-"}
-Verifikasi   : Tervalidasi SHA-256 & NDA Terikat
-Tanggal Unduh: ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
-======================================================`;
-    const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName.endsWith(".pdf") ? fileName.replace(".pdf", ".txt") : fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setToastMessage(`Berkas resmi "${fileName}" berhasil diunduh (verifikasi enkripsi 256-bit).`);
-    setTimeout(() => setToastMessage(null), 4000);
+  const handleDownloadDocument = async (doc: ClientDocument) => {
+    setDownloadingDocId(doc.id);
+    setToastMessage(`Menyiapkan unduhan berkas resmi "${doc.name}"...`);
+
+    try {
+      // 1. Cek berkas fisik asli di IndexedDB & memory cache
+      const cachedBlob =
+        (await getCachedFileBlobAsync(doc.name)) ||
+        (doc.ticketRef ? await getCachedFileBlobAsync(`${doc.ticketRef}:${doc.name}`) : undefined) ||
+        (doc.id ? await getCachedFileBlobAsync(doc.id) : undefined);
+
+      if (cachedBlob) {
+        downloadBlob(cachedBlob, doc.name);
+        setToastMessage(`Berkas asli "${doc.name}" berhasil diunduh.`);
+        return;
+      }
+
+      // 2. Coba endpoint backend jika tersedia
+      const rawId = doc.id.replace(/\D/g, "");
+      if (rawId) {
+        const res = await clientApi.getDownloadUrl(rawId);
+        if (res.success && res.data?.download_url) {
+          const dlRes = await downloadRemoteFile(res.data.download_url, doc.name);
+          if (dlRes.success) {
+            setToastMessage(`Berkas resmi "${doc.name}" berhasil diunduh.`);
+            return;
+          }
+        }
+      }
+
+      setToastMessage(`Berkas fisik asli "${doc.name}" tidak tersimpan di repositori server browser.`);
+    } catch {
+      setToastMessage(`Terjadi kendala saat mengunduh "${doc.name}".`);
+    } finally {
+      setDownloadingDocId(null);
+      setTimeout(() => setToastMessage(null), 5000);
+    }
   };
 
   return (
@@ -381,12 +497,25 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                   <th scope="col" className="py-3 px-4 hidden md:table-cell text-center">Konsultan Lead</th>
                   <th scope="col" className="py-3 px-4 text-center">Progres</th>
                   <th scope="col" className="py-3 px-4 sm:px-6 text-center">Status</th>
+                  <th scope="col" className="py-3 px-4 sm:px-6 text-center">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-light">
-                {filteredTickets.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-text-muted">
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
+                      Memuat data konsultasi dari server backend...
+                    </td>
+                  </tr>
+                ) : loadError ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-red-500">
+                      {loadError}
+                    </td>
+                  </tr>
+                ) : filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-text-muted">
                       <div className="space-y-1">
                         <p className="font-semibold text-primary">Belum Ada Tiket Konsultasi Aktif</p>
                         <p className="text-[11px] text-text-secondary">
@@ -399,7 +528,8 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                   filteredTickets.map((ticket) => (
                     <tr
                       key={ticket.id}
-                      className="hover:bg-surface/50 transition-colors"
+                      onClick={() => router.push(`/dashboard/user/tiket?id=${encodeURIComponent(ticket.id)}`)}
+                      className="hover:bg-surface/60 transition-colors cursor-pointer"
                     >
                     <td className="py-3.5 px-4 sm:px-6 font-mono font-bold text-primary whitespace-nowrap">
                       {ticket.id}
@@ -407,7 +537,11 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
 
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-primary line-clamp-1">{ticket.title}</div>
-                      <div className="text-[11px] text-text-secondary mt-0.5">{ticket.category}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-text-secondary">
+                        <span className="font-semibold text-primary">{ticket.category}</span>
+                        <span className="text-text-muted">•</span>
+                        <span className="text-text-muted">Dibuat: {formatConsultationDate(ticket.createdAt || ticket.updatedAt)}</span>
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4 hidden md:table-cell whitespace-nowrap">
@@ -450,7 +584,7 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 sm:px-6 text-right whitespace-nowrap">
+                    <td className="py-3.5 px-4 sm:px-6 text-center whitespace-nowrap">
                       {ticket.status === "Menunggu Penugasan" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                           Menunggu PIC
@@ -473,21 +607,26 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                         </span>
                       )}
                     </td>
+
+                    <td className="py-3.5 px-4 sm:px-6 text-center whitespace-nowrap">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/user/tiket?id=${encodeURIComponent(ticket.id)}`);
+                        }}
+                        className="text-xs font-semibold px-3 py-1 bg-[#0B1533] hover:bg-[#0B1533]/90 text-white rounded-xl shadow-2xs cursor-pointer"
+                      >
+                        Buka Tiket
+                      </Button>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
             </table>
-          </div>
-
-          <div className="p-4 border-t border-navy-light text-center bg-surface/30">
-            <Link
-              href="/dashboard/user/tiket"
-              className="text-xs text-primary hover:underline font-semibold inline-flex items-center gap-1.5"
-            >
-              <span>Buka Menu Konsultasi &amp; Kertas Kerja Lengkap</span>
-              <span aria-hidden="true">&rarr;</span>
-            </Link>
           </div>
         </CardContent>
       </Card>
@@ -562,10 +701,11 @@ Kerahasiaan  : Dokumen ini bersifat rahasia profesional.
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDownloadSimulation(doc.name)}
+                          disabled={downloadingDocId === doc.id}
+                          onClick={() => handleDownloadDocument(doc)}
                           className="text-xs py-1 px-3.5 h-auto border-navy-light text-primary hover:bg-surface font-semibold"
                         >
-                          Unduh
+                          {downloadingDocId === doc.id ? "Mengunduh..." : "Unduh"}
                         </Button>
                       </td>
                     </tr>

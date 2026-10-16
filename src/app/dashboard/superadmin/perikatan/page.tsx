@@ -24,21 +24,26 @@ import {
   ArchiveIcon,
   UnarchiveIcon,
 } from "@/components/icons";
+import {
+  downloadBlob,
+  downloadRemoteFile,
+  exportToExcel,
+  generateDocumentPdfBlob,
+} from "@/lib/downloadHelper";
 
 import {
-  getStoredClientTickets,
-  deleteStoredClientTicket,
-  clearAllStoredClientTickets,
-  isTicketDeleted,
   toggleArchiveClientTicket,
   isTicketArchived,
-  getStoredStaffAdmins,
-  saveStoredStaffAdmins,
-  assignTicketPic,
   formatConsultationDate,
-  TICKETS_UPDATED_EVENT,
-  DOCUMENTS_UPDATED_EVENT,
-  STAFF_UPDATED_EVENT,
+  formatTicketDescription,
+  resolveConsultationCategory,
+  getStoredClientTickets,
+  getCachedFileBlobAsync,
+  markTicketAsDeleted,
+  markAllTicketsAsDeleted,
+  isTicketDeleted,
+  assignTicketPic,
+  mergeTicketsWithLocalOverrides,
   ClientTicket,
   StaffAdminProfile,
 } from "@/data/sharedTicketsStorage";
@@ -93,25 +98,18 @@ function SuperadminPerikatanContent() {
   };
 
   const loadData = React.useCallback(async (isInitial = false) => {
-    // Hanya tampilkan loading spinner pada render awal jika belum ada tiket di layar
     if (isInitial) {
       setIsLoading(true);
     }
 
-    let backendList: ConsultationItem[] = [];
     try {
-      const consultRes = await adminApi.getConsultations();
-      if (consultRes?.data && Array.isArray(consultRes.data)) {
-        backendList = consultRes.data.filter((c: ConsultationItem) => !isDummyTicket(c));
-      }
-    } catch (err) {
-      console.warn("Gagal memuat data konsultasi backend:", err);
-    }
+      const [consultRes, staffRes] = await Promise.allSettled([
+        adminApi.getConsultations(),
+        superadminApi.getAdmins(),
+      ]);
 
-    try {
-      const staffRes = await superadminApi.getAdmins();
-      if (staffRes?.data && Array.isArray(staffRes.data)) {
-        const validAdmins = staffRes.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
+      if (staffRes.status === "fulfilled" && staffRes.value?.data && Array.isArray(staffRes.value.data)) {
+        const validAdmins = staffRes.value.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
         const mappedStaff: StaffAdminProfile[] = validAdmins.map((adm: AdminUserItem, idx: number) => ({
           id: `ADM-${String(adm.id).padStart(3, "0")}`,
           numericId: adm.id,
@@ -124,144 +122,88 @@ function SuperadminPerikatanContent() {
           isActive: adm.is_active,
         }));
         setStaffAdmins(mappedStaff);
-        // Cegah perulangan event (STAFF_UPDATED_EVENT loop) jika data staf tidak berubah
-        const currentStaff = getStoredStaffAdmins();
-        if (JSON.stringify(currentStaff) !== JSON.stringify(mappedStaff)) {
-          saveStoredStaffAdmins(mappedStaff);
-        }
-      } else {
-        setStaffAdmins(getStoredStaffAdmins());
-      }
-    } catch {
-      setStaffAdmins(getStoredStaffAdmins());
-    }
-
-    const storedTickets = getStoredClientTickets();
-
-    // Smart non-destructive merge:
-    // Selalu pertahankan tiket lama ("data lama"), jangan pernah menghapus tiket yang sudah tampil
-    // dan mutakhirkan secara halus dengan tiket baru yang masuk dari storage / backend
-    setTickets((prev) => {
-      const map = new Map<string, ClientTicket>();
-
-      // 1. Masukkan tiket lama yang saat ini sudah ada di state
-      for (const t of prev) {
-        if (t && t.id && !isTicketDeleted(t.id)) {
-          map.set(t.id.toLowerCase(), t);
-        }
       }
 
-      // 2. Gabungkan data dari localStorage (storedTickets)
-      for (const st of storedTickets) {
-        if (!st || !st.id || isTicketDeleted(st.id)) continue;
-        const key = st.id.toLowerCase();
-        const existing = map.get(key);
-        if (!existing) {
-          map.set(key, st);
-        } else {
-          // Perbarui data dengan tetap mempertahankan properti paling lengkap & status mutakhir
-          map.set(key, {
-            ...existing,
-            ...st,
-            status: st.status || existing.status,
-            progress: typeof st.progress === "number" ? st.progress : existing.progress,
-            assignedAdminName: st.assignedAdminName || existing.assignedAdminName,
-            assignedAdminEmail: st.assignedAdminEmail || existing.assignedAdminEmail,
-            assignedAdminDivision: st.assignedAdminDivision || existing.assignedAdminDivision,
-            consultant: st.consultant || existing.consultant,
-            milestones: (st.milestones && st.milestones.length > 0) ? st.milestones : existing.milestones,
-            deliverables: (st.deliverables && st.deliverables.length > 0) ? st.deliverables : existing.deliverables,
-            correspondences: (st.correspondences && st.correspondences.length > 0) ? st.correspondences : existing.correspondences,
-            clientDocuments: (st.clientDocuments && st.clientDocuments.length > 0) ? st.clientDocuments : existing.clientDocuments,
-          });
-        }
-      }
+      if (consultRes.status === "fulfilled" && consultRes.value?.data && Array.isArray(consultRes.value.data)) {
+        const validConsultations = consultRes.value.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+        const mappedTickets: ClientTicket[] = validConsultations.map((b: ConsultationItem) => {
+          const bCode = b.project_code || `TK-${b.id}`;
+          const isCompleted = b.status === "COMPLETED";
 
-      // 3. Gabungkan tiket yang masuk dari backend API
-      for (const b of backendList) {
-        const bCode = (b.project_code || `TK-${b.id}`).toLowerCase();
-        const bId = String(b.id).toLowerCase();
-
-        if (isTicketDeleted(bCode) || isTicketDeleted(bId) || isTicketDeleted(`tk-${bId}`)) {
-          continue;
-        }
-
-        const existingKey = map.has(bCode) ? bCode : map.has(bId) ? bId : map.has(`tk-${bId}`) ? `tk-${bId}` : null;
-
-        if (existingKey) {
-          const existing = map.get(existingKey)!;
-          const backendStatus =
-            b.status === "COMPLETED" ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : existing.status;
-          map.set(existingKey, {
-            ...existing,
-            status: existing.status !== "Menunggu Penugasan" ? existing.status : backendStatus,
-            title: existing.title || b.title,
-            clientName: existing.clientName || b.client?.name || "Klien Terdaftar",
-            clientCompany: existing.clientCompany || b.client?.company_name || "-",
-            clientEmail: existing.clientEmail || b.client?.email || "-",
-          });
-        } else {
-          // Tiket baru masuk dari backend
-          const newBackendTicket: ClientTicket = {
-            id: b.project_code || `TK-${b.id}`,
+          return {
+            id: bCode,
+            numericId: b.id,
             title: b.title || "Konsultasi Perpajakan Klien",
-            category: (b.service?.service_name as "Tax Service Core") || "Tax Service Core",
-            status: b.status === "COMPLETED" ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
-            progress: b.status === "COMPLETED" ? 100 : b.status === "IN_PROGRESS" ? 60 : 15,
+            category: resolveConsultationCategory(b) as ClientTicket["category"],
+            status: isCompleted ? "Selesai" : b.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
+            progress: b.progress_percent || (isCompleted ? 100 : b.assigned_admin ? 40 : 15),
             createdAt: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
             estimatedCompletion: "14 Hari Kerja",
             clientName: b.client?.name || "Klien Terdaftar",
             clientEmail: b.client?.email || "-",
             clientCompany: b.client?.company_name || "-",
-            consultant: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() || "Menunggu Penugasan" : "Menunggu Penugasan",
-            assignedAdminName: b.description && b.description.includes("PIC:") ? b.description.split("PIC:")[1]?.split(".")[0]?.trim() : undefined,
-            milestones: [],
-            deliverables: [],
-            correspondences: [],
+            consultant: b.assigned_admin?.name || "Menunggu Penugasan",
+            assignedAdminId: b.assigned_admin ? `ADM-${String(b.assigned_admin.id).padStart(3, "0")}` : undefined,
+            assignedAdminName: b.assigned_admin?.name,
+            assignedAdminEmail: b.assigned_admin?.email,
+            milestones: (b.tasks || []).map((t, idx) => ({
+              step: `0${idx + 1}`,
+              title: t.task_name,
+              status: (t.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+              date: "Proses",
+              description: t.task_name,
+            })),
+            deliverables: (b.documents || []).map((d) => ({
+              id: `DOC-${d.id}`,
+              name: d.file_name,
+              size: d.file_size || "1.5 MB",
+              type: d.file_type || "PDF",
+              date: new Date(d.created_at).toLocaleDateString("id-ID"),
+              status: "Terkirim",
+            })),
+            description: b.description || "",
+            correspondences: b.description ? [
+              {
+                id: `msg-${b.id}`,
+                sender: "Klien",
+                role: "Klien",
+                date: "Awal",
+                message: b.description,
+              }
+            ] : [],
             clientDocuments: [],
+            isArchived: isTicketArchived(bCode),
           };
-          map.set(bCode, newBackendTicket);
+        });
+
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const mergedTickets = mergeTicketsWithLocalOverrides(mappedTickets, localTickets);
+        setTickets(mergedTickets);
+      } else {
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        if (localTickets.length > 0) {
+          setTickets(localTickets);
         }
       }
-
-      return Array.from(map.values());
-    });
-
-    setIsLoading(false);
+    } catch (err) {
+      console.warn("Gagal memuat perikatan superadmin:", err);
+      const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      if (localTickets.length > 0) {
+        setTickets(localTickets);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    // 1. Initial data fetch
     loadData(true);
 
-    // 2. Background polling: lakukan secara senyap tanpa loading skeleton
-    // agar data tidak kedip/hilang dan data lama tetap utuh
-    const intervalId = setInterval(() => {
-      loadData(false);
-    }, 4000);
-
-    const handleSilentSync = () => {
+    const handleCleared = () => {
       loadData(false);
     };
-
-    window.addEventListener(TICKETS_UPDATED_EVENT, handleSilentSync);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, handleSilentSync);
-    window.addEventListener("storage", handleSilentSync);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        loadData(false);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSilentSync);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, handleSilentSync);
-      window.removeEventListener("storage", handleSilentSync);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
+    window.addEventListener("zhou_tickets_cleared", handleCleared);
+    return () => window.removeEventListener("zhou_tickets_cleared", handleCleared);
   }, [loadData]);
 
   // Tutup dropdown menu titik tiga ketika klik di luar
@@ -297,11 +239,18 @@ function SuperadminPerikatanContent() {
   };
 
   // Handler Hapus Perikatan
-  const handleDeleteTicket = (item: ClientTicket) => {
+  const handleDeleteTicket = async (item: ClientTicket) => {
     if (confirm(`Apakah Anda yakin ingin menghapus perikatan "${item.title}" (${item.id})?`)) {
-      deleteStoredClientTicket(item.id);
-      setTickets((prev) => prev.filter((t) => t.id.toLowerCase() !== item.id.toLowerCase()));
+      const rawId = item.numericId || parseInt(item.id.replace(/\D/g, ""), 10) || item.id;
+      markTicketAsDeleted(item.id);
+      if (rawId) {
+        markTicketAsDeleted(rawId);
+      }
+      try {
+        await adminApi.deleteConsultation(rawId);
+      } catch {}
       showToast(`Perikatan ${item.id} berhasil dihapus.`);
+      await loadData(false);
     }
   };
 
@@ -357,81 +306,95 @@ function SuperadminPerikatanContent() {
         managingPicTicket.assignedAdminName.toLowerCase() !== targetAdmin.name.toLowerCase())
     );
 
-    // Sinkronisasi penugasan ke backend database API
-    try {
-      const numAdminId =
-        targetAdmin.numericId ||
-        parseInt(targetAdmin.id.replace(/\D/g, ""), 10) ||
-        (targetAdmin.name.toLowerCase().includes("konsultan") ? 2 : undefined) ||
-        (targetAdmin.name.toLowerCase().includes("ana") ? 23 : undefined);
+    const numAdminId =
+      targetAdmin.numericId ||
+      parseInt(targetAdmin.id.replace(/\D/g, ""), 10);
 
-      const rawTicketId = managingPicTicket.id;
-      let targetProjectId: number | undefined;
-      if (rawTicketId.startsWith("TK-")) {
-        const parsed = parseInt(rawTicketId.replace("TK-", ""), 10);
-        if (!isNaN(parsed)) targetProjectId = parsed;
-      } else {
-        const foundB = (tickets as any[]).find(
-          (b) => (b.id && b.id.toLowerCase() === rawTicketId.toLowerCase())
-        );
-        if (foundB && foundB.id && foundB.id.startsWith("TK-")) {
-          targetProjectId = parseInt(foundB.id.replace("TK-", ""), 10);
+    const rawTicketId = managingPicTicket.id;
+    let targetProjectId = managingPicTicket.numericId;
+    if (!targetProjectId) {
+      const parsed = parseInt(rawTicketId.replace(/\D/g, ""), 10);
+      if (!isNaN(parsed)) targetProjectId = parsed;
+    }
+
+    if (targetProjectId && numAdminId) {
+      try {
+        const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId);
+        if (assignRes.success) {
+          showToast(
+            isReassign
+              ? `Penugasan tiket ${managingPicTicket.id} berhasil dialihkan dari ${prevName} kepada ${targetAdmin.name}.`
+              : `Tiket ${managingPicTicket.id} berhasil ditugaskan kepada ${targetAdmin.name}.`
+          );
+        } else {
+          showToast(assignRes.message || "Gagal memperbarui penugasan PIC di backend.");
         }
+      } catch {
+        showToast("Terjadi kendala koneksi ke server saat menetapkan PIC.");
       }
-
-      if (targetProjectId && numAdminId) {
-        await adminApi.assignConsultation(targetProjectId, numAdminId);
-      }
-    } catch (apiErr) {
-      console.warn("Gagal sinkronisasi PIC ke backend API:", apiErr);
     }
 
-    const updated = assignTicketPic(managingPicTicket.id, targetAdmin, assignmentNotes, managingPicTicket);
+    // Sinkronisasi pembaruan PIC ke penyimpanan tiket bersama lokal
+    assignTicketPic(
+      managingPicTicket.id,
+      {
+        id: targetAdmin.id,
+        name: targetAdmin.name,
+        email: targetAdmin.email,
+        division: targetAdmin.divisions?.[0] || "Tax Service Core",
+        isActive: targetAdmin.isActive,
+      },
+      assignmentNotes,
+      managingPicTicket
+    );
 
-    if (updated) {
-      if (isReassign) {
-        showToast(
-          `Penugasan tiket ${updated.id} berhasil dialihkan dari ${prevName} kepada ${targetAdmin.name}.`
-        );
-      } else {
-        showToast(
-          `Tiket ${updated.id} berhasil ditugaskan kepada ${targetAdmin.name}. Status diperbarui menjadi "Ditugaskan".`
-        );
-      }
-      setManagingPicTicket(null);
-      if (selectedDetailTicket && selectedDetailTicket.id === updated.id) {
-        setSelectedDetailTicket(updated);
-      }
-      // Langsung perbarui state tiket secara instan tanpa jeda
-      setTickets((prev) =>
-        prev.map((t) => (t.id.toLowerCase() === updated.id.toLowerCase() ? updated : t))
+    if (managingPicTicket.numericId) {
+      assignTicketPic(
+        `TK-${managingPicTicket.numericId}`,
+        {
+          id: targetAdmin.id,
+          name: targetAdmin.name,
+          email: targetAdmin.email,
+          division: targetAdmin.divisions?.[0] || "Tax Service Core",
+          isActive: targetAdmin.isActive,
+        },
+        assignmentNotes
       );
-      loadData();
-    } else {
-      showToast("Gagal menetapkan PIC. Silakan coba kembali.");
     }
+
+    setManagingPicTicket(null);
+    await loadData(false);
   };
 
-  // Helper unduh lampiran berkas klien
-  const handleDownloadAttachment = (fileName: string, clientName?: string) => {
-    const content = `======================================================
-ZHOU CONSULTING - LAMPIRAN DOKUMEN KONSULTASI
-======================================================
-Dokumen      : ${fileName}
-Pengunggah   : ${clientName || "Klien Terdaftar"}
-Waktu Unduh  : ${new Date().toLocaleString("id-ID")}
-Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
-======================================================`;
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Dokumen ${fileName} berhasil diunduh.`);
+  // Helper unduh lampiran berkas klien secara valid (XLSX, PDF, atau file server asli)
+  const handleDownloadAttachment = async (
+    fileName: string,
+    clientName?: string,
+    downloadUrl?: string
+  ) => {
+    showToast(`Menyiapkan unduhan berkas asli "${fileName}"...`);
+
+    // 1. Cek berkas fisik asli di IndexedDB & memory cache
+    const cachedBlob =
+      (await getCachedFileBlobAsync(fileName)) ||
+      (selectedDetailTicket?.id ? await getCachedFileBlobAsync(`${selectedDetailTicket.id}:${fileName}`) : undefined);
+
+    if (cachedBlob) {
+      downloadBlob(cachedBlob, fileName);
+      showToast(`Dokumen asli "${fileName}" berhasil diunduh.`);
+      return;
+    }
+
+    // 2. Coba unduh dari URL remote jika ada
+    if (downloadUrl && downloadUrl !== "#") {
+      const res = await downloadRemoteFile(downloadUrl, fileName);
+      if (res.success) {
+        showToast(`Dokumen "${fileName}" berhasil diunduh.`);
+        return;
+      }
+    }
+
+    showToast(`Berkas fisik asli "${fileName}" belum tersedia pada penyimpanan server/peramban.`);
   };
 
   // Helper ekspor Ringkasan Data Klien ke Excel dengan struktur kolom rapi
@@ -760,11 +723,13 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (confirm("Apakah Anda yakin ingin menghapus SELURUH data perikatan konsultasi klien? Tindakan ini tidak dapat dibatalkan.")) {
-                    clearAllStoredClientTickets();
+                    const allIds = tickets.flatMap((t) => [t.id, t.numericId].filter(Boolean) as (string | number)[]);
+                    markAllTicketsAsDeleted(allIds);
                     setTickets([]);
                     showToast("Seluruh perikatan konsultasi berhasil dibersihkan.");
+                    await loadData(false);
                   }
                 }}
                 className="h-9 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-xl cursor-pointer"
@@ -781,7 +746,7 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
           <table className="w-full text-left text-xs">
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
-                <th className="py-3 px-4 text-center w-44 md:w-52 shrink-0">Kode &amp; Judul Proyek</th>
+                <th className="py-3 px-4 text-center w-56 md:w-64 shrink-0">Kode &amp; Judul Kebutuhan</th>
                 <th className="py-3 px-4 text-center min-w-[240px] w-72">Klien &amp; Entitas</th>
                 <th className="py-3 px-4 text-center min-w-[130px]">Kategori Layanan</th>
                 <th className="py-3 px-4 min-w-[150px] whitespace-nowrap text-center">PIC Bertugas</th>
@@ -802,13 +767,21 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                       openActionMenuId === item.id ? "relative z-30" : "relative z-0"
                     }`}
                   >
-                    <td className="py-3.5 px-4 font-medium text-primary w-44 md:w-52">
-                      <span className="font-mono text-[10px] text-text-muted block">
+                    <td className="py-3.5 px-4 font-medium text-primary w-56 md:w-64 align-top">
+                      <span className="font-mono text-[10px] text-text-muted block font-semibold">
                         {item.id}
                       </span>
-                      <span className="font-semibold text-xs text-primary block truncate" title={item.title}>
+                      <span className="font-bold text-xs text-primary block mt-0.5 leading-snug" title={item.title}>
                         {item.title}
                       </span>
+                      {(() => {
+                        const cleanDesc = formatTicketDescription(item.description);
+                        return cleanDesc ? (
+                          <p className="text-[11px] text-text-secondary mt-1 line-clamp-2 italic" title={cleanDesc}>
+                            &ldquo;{cleanDesc}&rdquo;
+                          </p>
+                        ) : null;
+                      })()}
                     </td>
 
                     <td className="py-3.5 px-4 min-w-[240px] w-72">
@@ -1076,8 +1049,8 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                 Uraian Kebutuhan / Permasalahan Klien:
               </label>
               <div className="text-xs text-text-primary p-3 rounded-xl bg-surface border border-primary-light leading-relaxed">
-                {selectedDetailTicket.description ||
-                  selectedDetailTicket.correspondences?.[0]?.message ||
+                {formatTicketDescription(selectedDetailTicket.description) ||
+                  formatTicketDescription(selectedDetailTicket.correspondences?.[0]?.message) ||
                   `Status perikatan diperbarui oleh Konsultan Senior Zhou melalui Ringkasan Operasional: "${selectedDetailTicket.status}" (${selectedDetailTicket.progress || 60}%).`}
               </div>
             </div>
@@ -1145,7 +1118,7 @@ Kerahasiaan  : Dilindungi Perjanjian Kerahasiaan (NDA)
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy)}
+                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl)}
                               className="text-xs h-7 px-2.5 font-medium border-primary-light"
                             >
                               Unduh

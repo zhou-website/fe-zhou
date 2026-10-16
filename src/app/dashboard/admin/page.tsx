@@ -7,17 +7,20 @@ import { adminApi, ConsultationItem } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import {
   SearchIcon,
+  CheckCircleIcon,
+  CloseIcon,
 } from "@/components/icons";
 
 import {
-  getTicketsForAdmin,
-  getStoredStaffAdmins,
-  TICKETS_UPDATED_EVENT,
-  DOCUMENTS_UPDATED_EVENT,
-  STAFF_UPDATED_EVENT,
   ClientTicket,
+  getStoredClientTickets,
+  formatTicketDescription,
+  resolveConsultationCategory,
+  canAdminAccessTicket,
+  mergeTicketsWithLocalOverrides,
 } from "@/data/sharedTicketsStorage";
 
 function AdminDashboardContent() {
@@ -45,100 +48,92 @@ function AdminDashboardContent() {
     }
   }, [normalizedUserRole, user?.email]);
 
+  const currentStaffProfile = useMemo(() => ({
+    id: user?.id || "ADM-001",
+    name: user?.name || "Admin",
+    email: activeAdminEmail,
+    role: normalizedUserRole,
+  }), [user?.id, user?.name, activeAdminEmail, normalizedUserRole]);
+
   const loadData = React.useCallback(async () => {
     setIsLoading(true);
-    const staff = getStoredStaffAdmins();
 
-    // Dapatkan data profil admin aktif saat ini
-    const currentStaffProfile = staff.find(
-      (s) => s.email.toLowerCase() === activeAdminEmail.toLowerCase()
-    );
-    const staffContext = currentStaffProfile || {
-      email: activeAdminEmail,
-      name: user?.name || "Konsultan Senior Zhou",
-      role: normalizedUserRole,
-      id: user?.id ? String(user.id) : "ADM-002",
-    };
-
-    // Muat dari shared storage lokal
-    const storedTickets = getTicketsForAdmin(staffContext).filter((t) => !isDummyTicket(t));
-
-    // Sinkronisasi dengan perikatan dari backend (GET /api/v1/admin/consultations)
-    let backendTickets: ClientTicket[] = [];
     try {
       const res = await adminApi.getConsultations();
       if (res?.data && Array.isArray(res.data)) {
-        backendTickets = res.data
-          .filter((c: ConsultationItem) => !isDummyTicket(c))
-          .map((c: ConsultationItem) => ({
-            id: c.project_code || `TK-${c.id}`,
-            title: c.title || "Konsultasi Perpajakan",
-            category: (c.service?.service_name as any) || "Tax Service Core",
-            status: c.status === "COMPLETED" ? "Selesai" : c.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
-            priority: "Normal",
-            description: c.description || "",
-            progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 35),
-            createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
-            estimatedCompletion: "14 Hari Kerja",
-            clientName: c.client?.name || "Klien Terdaftar",
-            clientEmail: c.client?.email || "-",
-            clientCompany: c.client?.company_name || "-",
-            consultant: c.assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
-            assignedAdminName: c.assigned_admin?.name,
-            milestones: (c.tasks || []).map((task, idx) => ({
-              step: `0${idx + 1}`,
-              title: task.task_name,
-              status: task.is_completed ? ("completed" as const) : idx === 0 ? ("in_progress" as const) : ("pending" as const),
-              date: "Proses",
-              description: task.task_name,
-            })),
-            deliverables: [],
-            correspondences: [],
-            clientDocuments: [],
-          }));
+        const email = (activeAdminEmail || "").toLowerCase().trim();
+        const userName = (user?.name || "").toLowerCase().trim();
+
+        const validConsultations = res.data.filter((c: ConsultationItem) => !isDummyTicket(c));
+
+        // Filter tiket yang relevan dengan admin yang sedang bertugas
+        const assignedConsultations = validConsultations.filter((c: ConsultationItem) => {
+          if (normalizedUserRole === "superadmin") return true;
+          const assignedEmail = (c.assigned_admin?.email || "").toLowerCase().trim();
+          const assignedName = (c.assigned_admin?.name || "").toLowerCase().trim();
+
+          if (email && assignedEmail && assignedEmail === email) return true;
+          if (userName && assignedName && (assignedName.includes(userName) || userName.includes(assignedName))) return true;
+          return false; // HANYA tiket yang sudah resmi ditugaskan kepada admin ini
+        });
+
+        const mappedTickets: ClientTicket[] = assignedConsultations.map((c: ConsultationItem) => ({
+          id: c.project_code || `TK-${c.id}`,
+          title: c.title || "Konsultasi Perpajakan",
+          category: resolveConsultationCategory(c) as ClientTicket["category"],
+          status: c.status === "COMPLETED" ? "Selesai" : c.status === "IN_PROGRESS" ? "Dalam Proses" : "Menunggu Penugasan",
+          priority: "Normal",
+          description: c.description || "",
+          progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 35),
+          createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "Hari ini",
+          estimatedCompletion: "14 Hari Kerja",
+          clientName: c.client?.name || "Klien Terdaftar",
+          clientEmail: c.client?.email || "-",
+          clientCompany: c.client?.company_name || "-",
+          consultant: c.assigned_admin?.name || "Menunggu Penugasan PIC oleh Superadmin",
+          assignedAdminName: c.assigned_admin?.name,
+          assignedAdminEmail: c.assigned_admin?.email,
+          milestones: (c.tasks || []).map((task, idx) => ({
+            step: `0${idx + 1}`,
+            title: task.task_name,
+            status: task.is_completed ? ("completed" as const) : idx === 0 ? ("in_progress" as const) : ("pending" as const),
+            date: "Proses",
+            description: task.task_name,
+          })),
+          deliverables: (c.documents || []).map((d) => ({
+            id: `DOC-${d.id}`,
+            name: d.file_name,
+            size: d.file_size || "1.5 MB",
+            type: d.file_type || "PDF",
+            date: new Date(d.created_at).toLocaleDateString("id-ID"),
+            status: "Terkirim",
+          })),
+          correspondences: [],
+          clientDocuments: [],
+        }));
+
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const mergedTickets = mergeTicketsWithLocalOverrides(mappedTickets, localTickets)
+          .filter((t) => normalizedUserRole === "superadmin" || canAdminAccessTicket(t, currentStaffProfile));
+
+        setTickets(mergedTickets);
+      } else {
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const adminTickets = localTickets.filter((lt) => normalizedUserRole === "superadmin" || canAdminAccessTicket(lt, currentStaffProfile));
+        setTickets(adminTickets);
       }
     } catch (err) {
       console.warn("Gagal memuat konsultasi backend admin:", err);
+      const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      const adminTickets = localTickets.filter((lt) => normalizedUserRole === "superadmin" || canAdminAccessTicket(lt, currentStaffProfile));
+      setTickets(adminTickets);
+    } finally {
+      setIsLoading(false);
     }
-
-    const combined: ClientTicket[] = [...storedTickets];
-    for (const b of backendTickets) {
-      if (!combined.some((t) => t.id.toLowerCase() === b.id.toLowerCase())) {
-        combined.push(b);
-      }
-    }
-
-    setTickets(combined);
-    setIsLoading(false);
-  }, [activeAdminEmail, user?.name, normalizedUserRole]);
+  }, [activeAdminEmail, user?.name, normalizedUserRole, currentStaffProfile]);
 
   useEffect(() => {
     loadData();
-
-    const intervalId = setInterval(() => {
-      loadData();
-    }, 4000);
-
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadData);
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-    window.addEventListener(STAFF_UPDATED_EVENT, loadData);
-    window.addEventListener("storage", loadData);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        loadData();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadData);
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadData);
-      window.removeEventListener(STAFF_UPDATED_EVENT, loadData);
-      window.removeEventListener("storage", loadData);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, [loadData]);
 
 
@@ -146,6 +141,10 @@ function AdminDashboardContent() {
   // Filter tugas milik admin yang sedang login
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
+      // Keamanan ganda: pastikan admin ini memang PIC dari tiket tersebut
+      if (normalizedUserRole !== "superadmin" && !canAdminAccessTicket(t, currentStaffProfile)) {
+        return false;
+      }
       const matchStatus =
         statusFilter === "ALL" ||
         t.status === statusFilter ||
@@ -160,19 +159,22 @@ function AdminDashboardContent() {
         (t.category && t.category.toLowerCase().includes(q));
       return matchStatus && matchSearch;
     });
-  }, [tickets, statusFilter, searchQuery]);
+  }, [tickets, statusFilter, searchQuery, normalizedUserRole, currentStaffProfile]);
 
   // Metrik Tugas Pribadi PIC yang login
   const computedStats = useMemo(() => {
-    const total = tickets.length;
-    const inProgress = tickets.filter(
+    const validTickets = normalizedUserRole === "superadmin"
+      ? tickets
+      : tickets.filter((t) => canAdminAccessTicket(t, currentStaffProfile));
+    const total = validTickets.length;
+    const inProgress = validTickets.filter(
       (t) => t.status === "Dalam Proses" || t.status === "Ditugaskan"
     ).length;
-    const waitingClient = tickets.filter((t) => t.status === "Menunggu Klien").length;
-    const completed = tickets.filter((t) => t.status === "Selesai").length;
+    const waitingClient = validTickets.filter((t) => t.status === "Menunggu Klien").length;
+    const completed = validTickets.filter((t) => t.status === "Selesai").length;
     
     // Total dokumen pada tugas-tugas milik admin ini
-    const totalDocs = tickets.reduce((acc, curr) => {
+    const totalDocs = validTickets.reduce((acc, curr) => {
       const clientDocs = curr.clientDocuments?.length || 0;
       const deliverables = curr.deliverables?.length || 0;
       return acc + clientDocs + deliverables;
@@ -185,10 +187,95 @@ function AdminDashboardContent() {
       completed,
       totalDocs,
     };
-  }, [tickets]);
+  }, [tickets, normalizedUserRole, currentStaffProfile]);
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleExportTasksCsv = () => {
+    const listToExport = filteredTickets.length > 0 ? filteredTickets : tickets;
+    if (listToExport.length === 0) {
+      showToast("Tidak ada data lembar kerja untuk diekspor.");
+      return;
+    }
+
+    const escapeCsv = (val: string | number | undefined | null) => {
+      if (val === undefined || val === null) return '""';
+      const clean = String(val)
+        .replace(/[\r\n\t]+/g, " ")
+        .replace(/"/g, '""')
+        .trim();
+      return `"${clean}"`;
+    };
+
+    const headers = [
+      "No",
+      "Kode Tiket",
+      "Judul Kebutuhan",
+      "Uraian Masalah",
+      "Klien",
+      "Entitas / Perusahaan",
+      "Kategori Layanan",
+      "Status",
+      "Progres (%)",
+      "Tanggal Masuk",
+    ];
+
+    const rows = listToExport.map((t, index) => [
+      escapeCsv(index + 1),
+      escapeCsv(t.id),
+      escapeCsv(t.title || "-"),
+      escapeCsv(formatTicketDescription(t.description) || "-"),
+      escapeCsv(t.clientName || "-"),
+      escapeCsv(t.clientCompany || t.clientEmail || "-"),
+      escapeCsv(t.category || "-"),
+      escapeCsv(t.status || "-"),
+      escapeCsv(`${t.progress || 0}%`),
+      escapeCsv(t.createdAt || "-"),
+    ]);
+
+    const delimiter = ";";
+    const csvContent = [
+      "sep=;",
+      headers.join(delimiter),
+      ...rows.map((row) => row.join(delimiter)),
+    ].join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `Lembar_Kerja_Admin_${dateStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`Daftar tugas (${listToExport.length} baris) berhasil diunduh.`);
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0B1533] text-white px-5 py-3 rounded-xl shadow-xl border border-primary-light flex items-center gap-3 text-xs animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircleIcon className="text-emerald-400 text-sm shrink-0" />
+          <span>{toastMessage}</span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-silver hover:text-white ml-2 p-1 cursor-pointer"
+          >
+            <CloseIcon className="text-xs" />
+          </button>
+        </div>
+      )}
+
       {/* Header & Page Title */}
       <div className="pb-4 border-b border-primary-light">
         <h1 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">
@@ -265,16 +352,26 @@ function AdminDashboardContent() {
               className="pl-8 text-xs h-9 w-full bg-surface border-primary-light"
             />
           </div>
-          <div className="w-full sm:w-44">
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full text-xs h-9"
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="w-full sm:w-44">
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full text-xs h-9"
+              >
+                <option value="ALL">Semua Status</option>
+                <option value="Dalam Proses">Dalam Proses</option>
+                <option value="Selesai">Selesai</option>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              onClick={handleExportTasksCsv}
+              className="h-9 px-4 text-xs font-semibold shrink-0 bg-primary hover:bg-primary-hover text-white rounded-xl shadow-xs transition-colors cursor-pointer"
+              title="Unduh daftar tugas ke Excel"
             >
-              <option value="ALL">Semua Status</option>
-              <option value="Dalam Proses">Dalam Proses</option>
-              <option value="Selesai">Selesai</option>
-            </Select>
+              Unduh
+            </Button>
           </div>
         </div>
 
@@ -284,29 +381,47 @@ function AdminDashboardContent() {
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
                 <th className="py-3 px-3.5 text-center w-12">No</th>
-                <th className="py-3 px-4 text-center">Kode Perikatan</th>
-                <th className="py-3 px-4 text-center">Judul Tugas</th>
-                <th className="py-3 px-4 text-center">Klien &amp; Entitas</th>
+                <th className="py-3 px-4 text-center min-w-[190px]">Kode &amp; Judul Kebutuhan</th>
+                <th className="py-3 px-4 text-center w-48 min-w-[170px]">Uraian Detail Masalah</th>
+                <th className="py-3 px-4 text-center min-w-[230px]">Klien &amp; Entitas</th>
                 <th className="py-3 px-4 text-center">Kategori Layanan</th>
                 <th className="py-3 px-4 text-center">Status &amp; Progres</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-primary-light">
               {filteredTickets.map((t, idx) => {
+                const cleanProblemDesc = formatTicketDescription(t.description);
+
                 return (
-                  <tr key={t.id} className="hover:bg-surface/60 transition-colors">
-                    <td className="py-3.5 px-3.5 text-center text-text-muted font-mono text-[11px]">
+                  <tr
+                    key={t.id}
+                    className="hover:bg-surface/60 transition-colors"
+                  >
+                    <td className="py-3.5 px-3.5 text-center text-text-muted font-mono text-[11px] align-top">
                       {idx + 1}
                     </td>
-                    <td className="py-3.5 px-4 font-mono text-xs font-semibold text-primary">
-                      {t.id}
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-primary">
-                      <span className="font-semibold text-xs text-primary block max-w-xs truncate">
-                        {t.title}
+                    <td className="py-3.5 px-4 font-medium text-primary align-top min-w-[190px]">
+                      <span className="font-mono text-[10px] text-text-muted block font-semibold">
+                        {t.id}
+                      </span>
+                      <span className="font-bold text-xs text-primary block mt-0.5 leading-snug">
+                        {t.title || "Konsultasi Kebutuhan Klien"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 text-text-secondary align-top w-48 min-w-[170px]">
+                      {cleanProblemDesc ? (
+                        <div className="bg-surface/60 border border-primary-light/70 rounded-lg p-2">
+                          <p className="text-xs text-text-primary leading-relaxed whitespace-pre-line line-clamp-2" title={cleanProblemDesc}>
+                            {cleanProblemDesc}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-text-muted italic">
+                          Belum ada uraian masalah
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 align-top min-w-[230px]">
                       <span className="font-semibold text-primary block">
                         {t.clientName || "Klien Terdaftar"}
                       </span>
@@ -314,7 +429,7 @@ function AdminDashboardContent() {
                         {t.clientCompany || t.clientEmail || "-"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-text-secondary">
+                    <td className="py-3.5 px-4 text-text-secondary align-top">
                       <span className="block font-medium text-primary">
                         {t.category || "Tax Service Core"}
                       </span>

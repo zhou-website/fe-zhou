@@ -12,17 +12,23 @@ import {
   CloseIcon,
   SearchIcon,
   EyeIcon,
-  EditIcon,
   TrashIcon,
   CheckCircleIcon,
   ChevronDownIcon,
 } from "@/components/icons";
-import { superadminApi, AdminUserItem, AuditLogItem } from "@/lib/api";
 import {
-  getStoredClientTickets,
-  TICKETS_UPDATED_EVENT,
-  STAFF_UPDATED_EVENT,
-} from "@/data/sharedTicketsStorage";
+  superadminApi,
+  adminApi,
+  AdminUserItem,
+  AuditLogItem,
+  ConsultationItem,
+} from "@/lib/api";
+import {
+  exportToExcel,
+  exportToOds,
+  exportToCsv,
+  exportToTsv,
+} from "@/lib/downloadHelper";
 
 interface AdminUser {
   id: string;
@@ -47,9 +53,10 @@ interface AuditLog {
   notes: string;
 }
 
-export default function SuperadminDashboard() {
-  const [activeTab, setActiveTab] = useState<"admins" | "audit">("audit");
+const AUDIT_CLEARED_TIMESTAMP_KEY = "zhou_audit_logs_cleared_timestamp_v2";
+const AUDIT_CLEARED_IDS_KEY = "zhou_audit_logs_cleared_ids_v2";
 
+export default function SuperadminDashboard() {
   // Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const exportDropdownRef = React.useRef<HTMLDivElement>(null);
@@ -67,21 +74,8 @@ export default function SuperadminDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Admin Management State
+  // Admin list for audit filter dropdown
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-
-  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
-  const [selectedAdminForDetail, setSelectedAdminForDetail] = useState<AdminUser | null>(null);
-  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
-  const [deletingAdmin, setDeletingAdmin] = useState<AdminUser | null>(null);
-  const [adminCurrentPage, setAdminCurrentPage] = useState(1);
-  const [newAdmin, setNewAdmin] = useState({
-    name: "",
-    email: "",
-    role: "admin",
-    specialty: "Tax Service Core",
-    initialPassword: "",
-  });
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -93,21 +87,23 @@ export default function SuperadminDashboard() {
   // Audit Logs State (Append-Only Mutlak)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  // Helper untuk menyaring log audit dummy
+  // Helper parsing waktu log
+  const parseLogTime = (dateStr?: string) => {
+    if (!dateStr) return 0;
+    let t = new Date(dateStr).getTime();
+    if (isNaN(t)) {
+      t = new Date(String(dateStr).replace(" ", "T")).getTime();
+    }
+    return isNaN(t) ? 0 : t;
+  };
+
+  // Helper untuk menyaring log audit pengujian/dummy
   const isDummyAuditLog = (l: AuditLogItem): boolean => {
     const desc = (l.description || l.action || "").toLowerCase();
-    const ticketId = (l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`).toLowerCase();
-    const clientId = (l.client_id ? `CL-${l.client_id}` : "").toLowerCase();
     return (
-      ticketId.startsWith("act-") ||
-      ticketId.startsWith("tk-") ||
-      l.admin_id === 1 ||
-      clientId === "cl-3" ||
-      clientId === "cl-1" ||
-      desc.includes("test") ||
-      desc.includes("dummy") ||
-      desc.includes("mock") ||
-      desc.includes("updated")
+      desc.includes("test runner") ||
+      desc.includes("mock action") ||
+      desc.includes("dummy test")
     );
   };
 
@@ -133,251 +129,159 @@ export default function SuperadminDashboard() {
     );
   };
 
-  // Fetch live audit logs & admins from Backend API
-  useEffect(() => {
-    let isMounted = true;
-    const isCleared = typeof window !== "undefined" && localStorage.getItem("zhou_audit_logs_cleared");
-
-    if (isCleared) {
+  // Handler untuk membersihkan log audit secara permanen di browser
+  const handleClearAuditLogs = () => {
+    if (confirm("Apakah Anda yakin ingin membersihkan dan menghapus semua data catatan log audit?")) {
+      const now = Date.now();
+      if (typeof window !== "undefined") {
+        localStorage.setItem(AUDIT_CLEARED_TIMESTAMP_KEY, String(now));
+        let storedIds: string[] = [];
+        try {
+          storedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
+        } catch {}
+        const currentIds = auditLogs.map((l) => l.id.replace("LOG-", ""));
+        const mergedIds = Array.from(new Set([...storedIds, ...currentIds]));
+        localStorage.setItem(AUDIT_CLEARED_IDS_KEY, JSON.stringify(mergedIds));
+      }
       setAuditLogs([]);
-    } else {
-      superadminApi
-        .getAuditLogs()
-        .then((res) => {
-          if (!isMounted) return;
-          if (res?.data && Array.isArray(res.data)) {
-            const validLogs = res.data.filter((l: AuditLogItem) => !isDummyAuditLog(l));
-            const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => ({
-              id: `LOG-${l.id}`,
-              timestamp:
-                new Date(l.created_at).toLocaleString("id-ID", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }) + " WIB",
-              adminName: `Admin #${l.admin_id}`,
-              adminId: `ADM-${String(l.admin_id).padStart(3, "0")}`,
-              clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
-              ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
-              statusBefore: l.status_before || "Draft",
-              statusAfter: l.status_after || "Updated",
-              relatedFile: l.file_name || "-",
-              notes: l.description || l.action,
-            }));
-            setAuditLogs(mappedLogs);
-          }
-        })
-        .catch(() => {
-          // silent fallback
-        });
+      showToast("Seluruh data log audit berhasil dibersihkan dan dihapus.");
     }
+  };
 
-    const calculateAdminTasks = (adminEmail: string, adminName: string) => {
-      const tickets = getStoredClientTickets();
-      const aEmail = String(adminEmail || "").toLowerCase().trim();
-      const aName = String(adminName || "").toLowerCase().trim();
-      return tickets.filter((t) => {
-        const tEmail = String(t.assignedAdminEmail || "").toLowerCase().trim();
-        const tName = String(t.assignedAdminName || t.consultant || "").toLowerCase().trim();
-        return (
-          (Boolean(aEmail) && Boolean(tEmail) && tEmail === aEmail) ||
-          (Boolean(aName) && Boolean(tName) && (tName.includes(aName) || aName.includes(tName)))
-        );
-      }).length;
-    };
+  // Load live audit logs directly from Backend API
+  const loadAuditLogs = async () => {
+    try {
+      const [res, adminsRes] = await Promise.all([
+        superadminApi.getAuditLogs(),
+        superadminApi.getAdmins().catch(() => ({ data: [] as AdminUserItem[] })),
+      ]);
 
-    const loadAdminsData = () => {
-      superadminApi
-        .getAdmins()
-        .then((res) => {
-          if (!isMounted) return;
-          if (res?.data && Array.isArray(res.data)) {
-            const validAdmins = res.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
-            const mappedAdmins: AdminUser[] = validAdmins.map((a: AdminUserItem) => ({
-              id: `ADM-${String(a.id).padStart(3, "0")}`,
-              name: cleanAdminName(a.name),
-              email: a.email,
-              role: a.role === "SUPERADMIN" ? "Superadmin" : "Admin",
-              specialty: "Core Tax & Legal Compliance",
-              status: a.is_active ? "Active" : "Inactive",
-              taskCount: calculateAdminTasks(a.email, a.name),
-            }));
-            setAdmins(mappedAdmins);
-          }
-        })
-        .catch(() => {
-          // silent fallback
+      const adminMap = new Map<number, { name: string; nip: string }>();
+      if (adminsRes?.data && Array.isArray(adminsRes.data)) {
+        adminsRes.data.forEach((a: AdminUserItem) => {
+          adminMap.set(a.id, {
+            name: cleanAdminName(a.name),
+            nip: (a.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(a.id).padStart(3, "0"),
+          });
         });
-    };
+      }
 
+      if (res?.data && Array.isArray(res.data)) {
+        let clearedTimestamp = 0;
+        let clearedIds: string[] = [];
+        if (typeof window !== "undefined") {
+          const storedTs = localStorage.getItem(AUDIT_CLEARED_TIMESTAMP_KEY);
+          if (!storedTs) {
+            // Sesuai permintaan pengguna: bersihkan dan hapus seluruh data log riwayat yang ada saat ini
+            clearedTimestamp = Date.now();
+            localStorage.setItem(AUDIT_CLEARED_TIMESTAMP_KEY, String(clearedTimestamp));
+            const initialIds = res.data.map((l: AuditLogItem) => String(l.id));
+            clearedIds = initialIds;
+            localStorage.setItem(AUDIT_CLEARED_IDS_KEY, JSON.stringify(initialIds));
+          } else {
+            clearedTimestamp = parseInt(storedTs, 10) || 0;
+            try {
+              clearedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
+            } catch {}
+          }
+        }
+
+        const validLogs = res.data.filter((l: AuditLogItem) => {
+          if (isDummyAuditLog(l)) return false;
+          if (clearedIds.includes(`LOG-${l.id}`) || clearedIds.includes(String(l.id))) return false;
+          if (clearedTimestamp > 0) {
+            const logTime = parseLogTime(l.created_at);
+            if (logTime > 0 && logTime <= clearedTimestamp) return false;
+          }
+          return true;
+        });
+
+        const mappedLogs: AuditLog[] = validLogs.map((l: AuditLogItem) => {
+          const matchedAdmin = adminMap.get(l.admin_id);
+          const resolvedName = matchedAdmin?.name || (l.admin_id === 1 ? "Super Administrator Zhou" : `Admin #${l.admin_id}`);
+          const resolvedNip = matchedAdmin?.nip || (l.admin_id === 1 ? "SPR-001" : `ADM-${String(l.admin_id).padStart(3, "0")}`);
+
+          return {
+            id: `LOG-${l.id}`,
+            timestamp:
+              new Date(l.created_at).toLocaleString("id-ID", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }) + " WIB",
+            adminName: resolvedName,
+            adminId: resolvedNip,
+            clientId: l.client_id ? `CL-${l.client_id}` : "Umum",
+            ticketId: l.project_id ? `TK-${l.project_id}` : `ACT-${l.id}`,
+            statusBefore: l.status_before || "Draft",
+            statusAfter: l.status_after || "Updated",
+            relatedFile: l.file_name || "-",
+            notes: l.description || l.action,
+          };
+        });
+        setAuditLogs(mappedLogs);
+      }
+    } catch (err) {
+      console.warn("Gagal memuat log audit dari backend:", err);
+    }
+  };
+
+  // Load admins and compute task count from live consultations
+  const loadAdminsData = async () => {
+    try {
+      const [adminsRes, consultRes] = await Promise.all([
+        superadminApi.getAdmins(),
+        adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
+      ]);
+
+      if (adminsRes?.data && Array.isArray(adminsRes.data)) {
+        const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
+        const validAdmins = adminsRes.data.filter((a: AdminUserItem) => !isDummyAdmin(a));
+        const mappedAdmins: AdminUser[] = validAdmins.map((a: AdminUserItem) => {
+          const aEmail = (a.email || "").toLowerCase().trim();
+          const aName = (a.name || "").toLowerCase().trim();
+          const assignedCount = consultations.filter((c) => {
+            const cAssignedId = c.assigned_to;
+            const cAdminId = c.assigned_admin?.id;
+            const cEmail = (c.assigned_admin?.email || "").toLowerCase().trim();
+            const cName = (c.assigned_admin?.name || "").toLowerCase().trim();
+
+            if (cAssignedId && Number(cAssignedId) === Number(a.id)) return true;
+            if (cAdminId && Number(cAdminId) === Number(a.id)) return true;
+            if (aEmail && cEmail && aEmail === cEmail) return true;
+            if (aName && cName && (cName.includes(aName) || aName.includes(cName))) return true;
+            return false;
+          }).length;
+
+          return {
+            id: `ADM-${String(a.id).padStart(3, "0")}`,
+            name: cleanAdminName(a.name),
+            email: a.email,
+            role: a.role === "SUPERADMIN" ? "Superadmin" : "Admin",
+            specialty: "Core Tax & Legal Compliance",
+            status: a.is_active ? "Active" : "Inactive",
+            taskCount: assignedCount,
+          };
+        });
+        setAdmins(mappedAdmins);
+      }
+    } catch (err) {
+      console.warn("Gagal memuat data admin dari backend:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadAuditLogs();
     loadAdminsData();
-
-    // Event listener sinkronisasi saat PIC diubah di halaman perikatan
-    const handleSyncAdmins = () => {
-      setAdmins((prev) =>
-        prev.map((adm) => ({
-          ...adm,
-          taskCount: calculateAdminTasks(adm.email, adm.name),
-        }))
-      );
-    };
-
-    window.addEventListener(TICKETS_UPDATED_EVENT, handleSyncAdmins);
-    window.addEventListener(STAFF_UPDATED_EVENT, handleSyncAdmins);
-    window.addEventListener("storage", handleSyncAdmins);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener(TICKETS_UPDATED_EVENT, handleSyncAdmins);
-      window.removeEventListener(STAFF_UPDATED_EVENT, handleSyncAdmins);
-      window.removeEventListener("storage", handleSyncAdmins);
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Audit Filter State
   const [filterAdmin, setFilterAdmin] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-
-  // Add new admin
-  const handleAddAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdmin.name || !newAdmin.email || !newAdmin.initialPassword) {
-      showToast("Mohon lengkapi seluruh kolom formulir.");
-      return;
-    }
-
-    const normalizedRole = newAdmin.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
-    const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
-
-    try {
-      const res = await superadminApi.createAdmin({
-        name: newAdmin.name,
-        email: newAdmin.email,
-        password: newAdmin.initialPassword,
-        role: normalizedRole,
-      });
-
-      if (!res.success && res.message) {
-        console.warn("Backend createAdmin notice:", res.message);
-      }
-    } catch (err) {
-      console.warn("superadminApi.createAdmin fallback to local state:", err);
-    }
-
-    const created: AdminUser = {
-      id: (displayRole === "Superadmin" ? "SPR-00" : "ADM-00") + (admins.length + 1),
-      name: newAdmin.name,
-      email: newAdmin.email,
-      role: displayRole,
-      specialty: newAdmin.specialty,
-      status: "Active",
-      taskCount: 0,
-    };
-
-    setAdmins((prev) => {
-      const updated = [...prev.filter((a) => a.email.toLowerCase() !== created.email.toLowerCase()), created];
-      try {
-        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    setShowAddAdminModal(false);
-    setNewAdmin({
-      name: "",
-      email: "",
-      role: "admin",
-      specialty: "Tax Service Core",
-      initialPassword: "",
-    });
-    showToast(`Akun ${displayRole} ${created.name} berhasil ditambahkan.`);
-  };
-
-  // Toggle soft-delete
-  const handleToggleStatus = async (adminId: string) => {
-    try {
-      const rawId = parseInt(adminId.replace(/\D/g, ""), 10) || adminId;
-      await superadminApi.deactivateAdmin(rawId);
-    } catch (err) {
-      console.warn("superadminApi.deactivateAdmin fallback to local state:", err);
-    }
-
-    setAdmins((prev) => {
-      const updated = prev.map((a) => {
-        if (a.id === adminId) {
-          const next: "Active" | "Inactive" = a.status === "Active" ? "Inactive" : "Active";
-          showToast(`Status admin ${a.name} diubah menjadi ${next}.`);
-          return { ...a, status: next };
-        }
-        return a;
-      });
-      try {
-        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
-
-  // Hard delete check
-  const handleDeleteAdmin = async (admin: AdminUser) => {
-    if (admin.taskCount > 0) {
-      showToast(
-        `Penghapusan permanen ditolak: Akun ${admin.name} memiliki ${admin.taskCount} riwayat tugas aktif. Gunakan fitur Nonaktifkan (Soft Delete).`
-      );
-      return;
-    }
-
-    try {
-      const rawId = parseInt(admin.id.replace(/\D/g, ""), 10) || admin.id;
-      await superadminApi.deleteAdmin(rawId);
-    } catch (err) {
-      console.warn("superadminApi.deleteAdmin fallback to local state:", err);
-    }
-
-    setAdmins((prev) => {
-      const updated = prev.filter((a) => a.id !== admin.id);
-      try {
-        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    showToast(`Akun admin ${admin.name} berhasil dihapus permanen.`);
-  };
-
-  const handleEditAdminSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingAdmin) return;
-    setAdmins((prev) => {
-      const updated = prev.map((a) => (a.id === editingAdmin.id ? editingAdmin : a));
-      try {
-        localStorage.setItem("zhou_superadmin_admins", JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    showToast(`Data administrator ${editingAdmin.name} berhasil diperbarui.`);
-    setEditingAdmin(null);
-  };
-
-  const handleConfirmDeleteAdmin = async () => {
-    if (!deletingAdmin) return;
-    if (deletingAdmin.taskCount > 0) {
-      handleToggleStatus(deletingAdmin.id);
-      showToast(`Akun ${deletingAdmin.name} dinonaktifkan (soft delete) karena memiliki riwayat tugas.`);
-    } else {
-      await handleDeleteAdmin(deletingAdmin);
-    }
-    setDeletingAdmin(null);
-  };
-
-  const adminItemsPerPage = 6;
-  const adminTotalPages = Math.ceil(admins.length / adminItemsPerPage) || 1;
-  const paginatedAdmins = admins.slice(
-    (adminCurrentPage - 1) * adminItemsPerPage,
-    adminCurrentPage * adminItemsPerPage
-  );
 
   // Filtered logs
   const filteredLogs = auditLogs.filter((log) => {
@@ -396,12 +300,12 @@ export default function SuperadminDashboard() {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterAdmin, searchQuery]);
+  }, [filterAdmin, searchQuery, itemsPerPage]);
 
-  const itemsPerPage = 6;
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
   const paginatedLogs = filteredLogs.slice(
     (currentPage - 1) * itemsPerPage,
@@ -452,153 +356,75 @@ export default function SuperadminDashboard() {
       return;
     }
 
+    // Format data terstruktur untuk spreadsheet
+    const tabularData = filteredLogs.map((l, index) => ({
+      "No": index + 1,
+      "Waktu (WIB)": l.timestamp,
+      "Admin Bertugas": l.adminName,
+      "ID Klien": l.clientId,
+      "Nomor Tiket": l.ticketId,
+      "Status Sebelumnya": l.statusBefore,
+      "Status Sesudahnya": l.statusAfter,
+      "Berkas Terkait": l.relatedFile || "-",
+      "Catatan Audit": l.notes || "-",
+      "SHA-256 Checksum": (l as { sha256Hash?: string }).sha256Hash || "-",
+    }));
+
+    if (format === "xlsx") {
+      const ok = exportToExcel(tabularData, `Zhou_Audit_Log_${dateStr}.xlsx`, "AuditLogs");
+      if (ok) {
+        showToast(`Data audit trail (${count} baris) berhasil diekspor ke Microsoft Excel (.xlsx) valid.`);
+      } else {
+        showToast("Gagal mengekspor data ke Microsoft Excel.");
+      }
+      return;
+    }
+
+    if (format === "ods") {
+      const ok = exportToOds(tabularData, `Zhou_Audit_Log_${dateStr}.ods`, "AuditLogs");
+      if (ok) {
+        showToast(`Data audit trail (${count} baris) berhasil diekspor ke OpenDocument Spreadsheet (.ods) valid.`);
+      } else {
+        showToast("Gagal mengekspor data ke OpenDocument.");
+      }
+      return;
+    }
+
     if (format === "csv") {
       try {
         const res = await superadminApi.exportAuditLogs();
-        if (res?.data?.export_url) {
-          window.open(res.data.export_url, "_blank");
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          const backendRows = res.data.map((item, idx) => ({
+            "No": idx + 1,
+            "Timestamp": item.timestamp || "-",
+            "Admin Bertugas": item.admin || "-",
+            "Klien": item.klien || "-",
+            "Tiket": item.tiket || "-",
+            "Status Sebelum": item.status_sebelum || "-",
+            "Status Sesudah": item.status_sesudah || "-",
+            "Berkas Terkait": item.file || "-",
+            "Catatan": item.deskripsi || "-",
+          }));
+          exportToCsv(backendRows, `Zhou_Audit_Log_Backend_${dateStr}.csv`);
+          showToast(`Laporan audit trail backend (${res.data.length} baris) berhasil diekspor ke CSV.`);
+          return;
+        } else if (res.success && typeof (res.data as { export_url?: string })?.export_url === "string") {
+          window.open((res.data as { export_url: string }).export_url, "_blank");
           showToast("Laporan audit trail backend berhasil diunduh.");
           return;
         }
       } catch (err) {
-        console.warn("superadminApi.exportAuditLogs fallback to client CSV:", err);
+        console.warn("superadminApi.exportAuditLogs fallback to local logs:", err);
       }
 
-      const csvContent =
-        "Timestamp,Admin Bertugas,ID Klien,ID Tiket,Status Sebelum,Status Sesudah,Berkas Terkait,Catatan,Hash SHA-256\n" +
-        filteredLogs
-          .map(
-            (l) =>
-              `"${l.timestamp}","${l.adminName}","${l.clientId}","${l.ticketId}","${l.statusBefore}","${l.statusAfter}","${l.relatedFile}","${l.notes || "-"}","${(l as { sha256Hash?: string }).sha256Hash || "-"}"`
-          )
-          .join("\n");
-      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Zhou_Audit_Log_${dateStr}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      exportToCsv(tabularData, `Zhou_Audit_Log_${dateStr}.csv`);
       showToast(`Data audit trail (${count} baris) berhasil diekspor ke Comma Separated Values (.csv).`);
       return;
     }
 
     if (format === "tsv") {
-      const tsvContent =
-        "Timestamp\tAdmin Bertugas\tID Klien\tID Tiket\tStatus Sebelum\tStatus Sesudah\tBerkas Terkait\tCatatan\tHash SHA-256\n" +
-        filteredLogs
-          .map(
-            (l) =>
-              `${l.timestamp}\t${l.adminName}\t${l.clientId}\t${l.ticketId}\t${l.statusBefore}\t${l.statusAfter}\t${l.relatedFile}\t${l.notes || "-"}\t${(l as { sha256Hash?: string }).sha256Hash || "-"}`
-          )
-          .join("\n");
-      const blob = new Blob(["\uFEFF" + tsvContent], { type: "text/tab-separated-values;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Zhou_Audit_Log_${dateStr}.tsv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      exportToTsv(tabularData, `Zhou_Audit_Log_${dateStr}.tsv`);
       showToast(`Data audit trail (${count} baris) berhasil diekspor ke Tab Separated Values (.tsv).`);
-      return;
-    }
-
-    if (format === "xlsx") {
-      const tableRows = filteredLogs
-        .map(
-          (l) =>
-            `<tr>
-              <td>${l.timestamp}</td>
-              <td>${l.adminName}</td>
-              <td>${l.clientId}</td>
-              <td>${l.ticketId}</td>
-              <td>${l.statusBefore}</td>
-              <td>${l.statusAfter}</td>
-              <td>${l.relatedFile}</td>
-              <td>${l.notes || "-"}</td>
-              <td>${(l as { sha256Hash?: string }).sha256Hash || "-"}</td>
-            </tr>`
-        )
-        .join("");
-
-      const excelTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8" />
-        <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Audit Logs</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
-      </head>
-      <body>
-        <table border="1">
-          <thead>
-            <tr style="background-color: #0b1a30; color: #ffffff; font-weight: bold;">
-              <th>Timestamp</th><th>Admin Bertugas</th><th>ID Klien</th><th>ID Tiket</th><th>Status Sebelum</th><th>Status Sesudah</th><th>Berkas Terkait</th><th>Catatan</th><th>Hash SHA-256</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </body>
-      </html>`;
-
-      const blob = new Blob(["\uFEFF" + excelTemplate], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Zhou_Audit_Log_${dateStr}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showToast(`Data audit trail (${count} baris) berhasil diekspor ke Microsoft Excel (.xlsx).`);
-      return;
-    }
-
-    if (format === "ods") {
-      const tableRows = filteredLogs
-        .map(
-          (l) =>
-            `<table:table-row>
-              <table:table-cell office:value-type="string"><text:p>${l.timestamp}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.adminName}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.clientId}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.ticketId}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.statusBefore}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.statusAfter}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.relatedFile}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${l.notes || "-"}</text:p></table:table-cell>
-              <table:table-cell office:value-type="string"><text:p>${(l as { sha256Hash?: string }).sha256Hash || "-"}</text:p></table:table-cell>
-            </table:table-row>`
-        )
-        .join("");
-
-      const odsXml = `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
-  <office:body>
-    <office:spreadsheet>
-      <table:table table:name="AuditLogs">
-        <table:table-row>
-          <table:table-cell office:value-type="string"><text:p>Timestamp</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Admin Bertugas</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>ID Klien</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>ID Tiket</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Status Sebelum</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Status Sesudah</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Berkas Terkait</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Catatan</text:p></table:table-cell>
-          <table:table-cell office:value-type="string"><text:p>Hash SHA-256</text:p></table:table-cell>
-        </table:table-row>
-        ${tableRows}
-      </table:table>
-    </office:spreadsheet>
-  </office:body>
-</office:document-content>`;
-
-      const blob = new Blob([odsXml], { type: "application/vnd.oasis.opendocument.spreadsheet;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Zhou_Audit_Log_${dateStr}.ods`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showToast(`Data audit trail (${count} baris) berhasil diekspor ke OpenDocument (.ods).`);
       return;
     }
 
@@ -805,162 +631,8 @@ export default function SuperadminDashboard() {
           <div className="text-[10px] text-text-secondary mt-1">Standar hashing keamanan</div>
         </Card>
       </div>
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 flex-wrap border-b border-primary-light pb-3">
-          <button
-            type="button"
-            onClick={() => setActiveTab("audit")}
-            className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
-              activeTab === "audit"
-                ? "bg-primary text-white"
-                : "bg-white text-text-secondary hover:text-primary border border-primary-light"
-            }`}
-          >
-            Log Audit Perubahan Status (Append-Only)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("admins")}
-            className={`px-4 py-2 rounded-md text-xs font-bold transition-colors ${
-              activeTab === "admins"
-                ? "bg-primary text-white"
-                : "bg-white text-text-secondary hover:text-primary border border-primary-light"
-            }`}
-          >
-            Kelola Pengguna Admin ({admins.length})
-          </button>
-        </div>
-
-        {/* TAB 1: KELOLA ADMIN */}
-        {activeTab === "admins" && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-primary">Manajemen Akses Administrator</h2>
-                <p className="text-xs text-text-secondary">
-                  Kelola hak akses staf konsultan, nonaktifkan akun saat pergantian staf (*soft delete*), dan audit tugas.
-                </p>
-              </div>
-
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setShowAddAdminModal(true)}
-                className="text-xs font-semibold px-3 py-1.5"
-              >
-                <span>Tambah Admin Baru</span>
-              </Button>
-            </div>
-
-            {/* Admin Table */}
-            <div className="bg-white rounded-xl border border-primary-light shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase">
-                    <tr>
-                      <th className="py-3 px-5">ID &amp; Nama Admin</th>
-                      <th className="py-3 px-5">Email Resmi</th>
-                      <th className="py-3 px-5">Peran RBAC</th>
-                      <th className="py-3 px-5">Spesialisasi</th>
-                      <th className="py-3.5 px-4 text-center">Status</th>
-                      <th className="py-3.5 px-4 text-center">Riwayat Tugas</th>
-                      <th className="py-3.5 px-4 text-right font-bold uppercase tracking-wider text-[11px] text-primary">AKSI SUPERADMIN</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-primary-light text-text">
-                    {admins.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-xs text-text-muted">
-                          Belum ada akun staf administrator terdaftar.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedAdmins.map((admin) => (
-                        <tr key={admin.id} className="hover:bg-surface/50 transition-colors">
-                        <td className="py-4 px-5">
-                          <div className="font-bold text-primary">{admin.name}</div>
-                          <span className="font-mono text-[11px] text-text-secondary">{admin.id}</span>
-                        </td>
-                        <td className="py-4 px-5 text-text-secondary">{admin.email}</td>
-                        <td className="py-4 px-5">
-                          <Badge
-                            variant={admin.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
-                            className="text-[10px]"
-                          >
-                            {admin.role}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-5 font-medium">{admin.specialty}</td>
-                        <td className="py-4 px-5 text-center">
-                          <Badge
-                            variant={admin.status === "Active" ? "success" : "secondary"}
-                            className="text-[10px]"
-                          >
-                            {admin.status === "Active" ? "Aktif" : "Nonaktif (Soft Delete)"}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-5 text-center font-bold text-primary">
-                          {admin.taskCount} Tiket
-                        </td>
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedAdminForDetail(admin)}
-                              className="h-8 px-2.5 text-xs border-primary-light hover:bg-surface text-primary font-semibold"
-                              title="Lihat Detail Admin"
-                            >
-                              <EyeIcon className="text-xs mr-1" />
-                              Detail
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setEditingAdmin(admin)}
-                              className="h-8 w-8 p-0 text-xs border-primary-light hover:bg-surface text-primary flex items-center justify-center"
-                              title="Ubah Data Admin"
-                            >
-                              <EditIcon className="text-xs" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setDeletingAdmin(admin)}
-                              className="h-8 w-8 p-0 text-xs border border-primary-light rounded-lg hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-red-500 flex items-center justify-center bg-white shadow-2xs"
-                              title="Hapus Akun Admin"
-                            >
-                              <TrashIcon className="text-xs text-red-500" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                  </tbody>
-                </table>
-              </div>
-
-              {admins.length > 0 && (
-                <div className="p-4 bg-surface border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
-                  <span>
-                    Menampilkan {(adminCurrentPage - 1) * adminItemsPerPage + 1} &ndash;{" "}
-                    {Math.min(adminCurrentPage * adminItemsPerPage, admins.length)} dari {admins.length} administrator terdaftar
-                  </span>
-                  <Pagination
-                    currentPage={adminCurrentPage}
-                    totalPages={adminTotalPages}
-                    onPageChange={setAdminCurrentPage}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: LOG AUDIT PERUBAHAN STATUS (APPEND-ONLY) */}
-        {activeTab === "audit" && (
-          <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
+        {/* LOG AUDIT PERUBAHAN STATUS (APPEND-ONLY) */}
+        <Card className="rounded-2xl border-primary-light bg-white shadow-xs overflow-hidden">
             {/* Header, Description & Filter / Export Actions */}
             <div className="p-5 sm:p-6 space-y-4">
               <div>
@@ -1010,13 +682,7 @@ export default function SuperadminDashboard() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        if (confirm("Apakah Anda yakin ingin membersihkan seluruh catatan log audit sistem?")) {
-                          localStorage.setItem("zhou_audit_logs_cleared", "true");
-                          setAuditLogs([]);
-                          showToast("Seluruh catatan log audit berhasil dibersihkan.");
-                        }
-                      }}
+                      onClick={handleClearAuditLogs}
                       className="text-xs font-semibold h-9 px-3 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 cursor-pointer flex items-center gap-1.5"
                     >
                       <TrashIcon className="text-xs" />
@@ -1099,14 +765,14 @@ export default function SuperadminDashboard() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-surface/70 border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase tracking-wider">
                   <tr>
-                    <th className="py-3 px-4">Waktu (Timestamp)</th>
-                    <th className="py-3 px-4">Admin Bertugas</th>
-                    <th className="py-3 px-4">ID Klien</th>
-                    <th className="py-3 px-4">ID Tiket</th>
-                    <th className="py-3 px-4 text-center">Status Sebelum</th>
-                    <th className="py-3 px-4 text-center">Status Sesudah</th>
-                    <th className="py-3 px-4">Berkas Terkait</th>
-                    <th className="py-3 px-4 text-right">Detail / Inspeksi</th>
+                    <th className="py-2.5 px-3 text-left whitespace-nowrap">Waktu (Timestamp)</th>
+                    <th className="py-2.5 px-3 text-left">Admin Bertugas</th>
+                    <th className="py-2.5 px-2.5 text-center">ID Klien</th>
+                    <th className="py-2.5 px-2.5 text-center">ID Tiket</th>
+                    <th className="py-2.5 px-2 text-center">Status Sebelum</th>
+                    <th className="py-2.5 px-2 text-center">Status Sesudah</th>
+                    <th className="py-2.5 px-2.5 text-center">Berkas Terkait</th>
+                    <th className="py-2.5 px-3 text-center">Detail / Inspeksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary-light text-text">
@@ -1119,29 +785,29 @@ export default function SuperadminDashboard() {
                   ) : (
                     paginatedLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-surface/50 transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-text-secondary whitespace-nowrap">
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                           {log.timestamp}
                         </td>
-                        <td className="py-3.5 px-4 font-medium text-primary whitespace-nowrap">
+                        <td className="py-2.5 px-3 font-medium text-primary text-xs whitespace-nowrap sm:whitespace-normal">
                           {log.adminName}
                         </td>
-                        <td className="py-3.5 px-4 font-mono">{log.clientId}</td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-primary">{log.ticketId}</td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-2.5 px-2.5 font-mono text-center text-xs">{log.clientId}</td>
+                        <td className="py-2.5 px-2.5 font-mono font-bold text-primary text-center text-xs">{log.ticketId}</td>
+                        <td className="py-2.5 px-2 text-center">
                           {renderStatusBadge(log.statusBefore)}
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-2.5 px-2 text-center">
                           {renderStatusBadge(log.statusAfter)}
                         </td>
-                        <td className="py-3.5 px-4 text-text-secondary font-mono text-[11px]">
-                          {log.relatedFile}
+                        <td className="py-2.5 px-2.5 text-center text-text-secondary font-mono text-[11px] max-w-[120px] truncate" title={log.relatedFile}>
+                          {log.relatedFile || "-"}
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-2.5 px-3 text-center">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedLog(log)}
-                            className="text-[11px] py-1 px-2.5 h-auto inline-flex items-center gap-1 border-primary-light hover:bg-surface text-primary"
+                            className="text-[11px] py-1 px-2.5 h-7 inline-flex items-center gap-1 border-primary-light hover:bg-surface text-primary"
                           >
                             <EyeIcon className="text-[10px]" />
                             <span>Inspeksi</span>
@@ -1156,11 +822,26 @@ export default function SuperadminDashboard() {
 
             {/* Pagination inside container footer */}
             {filteredLogs.length > 0 && (
-              <div className="p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
-                <span>
-                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
-                  {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan audit log
-                </span>
+              <div className="p-3.5 sm:p-4 bg-surface/40 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-secondary">
+                <div className="flex items-center gap-3">
+                  <span>
+                    Menampilkan {(currentPage - 1) * itemsPerPage + 1} &ndash;{" "}
+                    {Math.min(currentPage * itemsPerPage, filteredLogs.length)} dari {filteredLogs.length} catatan
+                  </span>
+                  <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-muted">
+                    <span>• Baris:</span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                      className="bg-white border border-primary-light/80 rounded px-1.5 py-0.5 text-xs text-primary font-medium focus:outline-none"
+                    >
+                      <option value={10}>10</option>
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -1169,114 +850,6 @@ export default function SuperadminDashboard() {
               </div>
             )}
           </Card>
-        )}
-
-      {/* Modal: Tambah Admin Baru */}
-      {showAddAdminModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-lg shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-5 relative">
-            <button
-              onClick={() => setShowAddAdminModal(false)}
-              className="absolute top-4 right-4 text-text-secondary hover:text-primary p-1.5 focus:outline-none"
-              aria-label="Tutup"
-            >
-              <CloseIcon className="text-lg" />
-            </button>
-
-            <div>
-              <h3 className="text-base font-bold text-primary">Tambah Administrator Baru</h3>
-              <p className="text-xs text-text-secondary">
-                Daftarkan staf konsultan resmi untuk mengelola lembar kerja klien.
-              </p>
-            </div>
-
-            <form onSubmit={handleAddAdminSubmit} className="space-y-3.5 text-xs">
-              <div className="space-y-1">
-                <Label htmlFor="admin-name">Nama Lengkap &amp; Gelar</Label>
-                <Input
-                  id="admin-name"
-                  value={newAdmin.name}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                  placeholder="Nama Lengkap & Gelar"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="admin-email">Alamat Email Kantor</Label>
-                <Input
-                  id="admin-email"
-                  type="email"
-                  value={newAdmin.email}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                  placeholder="nama@perusahaan.com"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="admin-role">Peran / Hak Akses (RBAC)</Label>
-                <Select
-                  id="admin-role"
-                  value={newAdmin.role}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
-                  className="w-full h-10 text-xs"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="admin-spec">Spesialisasi Penugasan</Label>
-                <Select
-                  id="admin-spec"
-                  value={newAdmin.specialty}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, specialty: e.target.value })}
-                  className="w-full h-10 text-xs"
-                >
-                  <option value="Tax Service Core">Tax Service Core (Coretax DJP)</option>
-                  <option value="Accounting Service">Accounting Service (SAK)</option>
-                  <option value="Business Financial Consulting">Business &amp; Financial Consulting</option>
-                  <option value="Legal & Corporate Compliance">Legal &amp; Corporate Compliance</option>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="admin-pass">Kata Sandi Awal</Label>
-                <Input
-                  id="admin-pass"
-                  type="password"
-                  value={newAdmin.initialPassword}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, initialPassword: e.target.value })}
-                  placeholder="Minimal 8 karakter"
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAddAdminModal(false)}
-                  className="flex-1"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  className="flex-1"
-                >
-                  Daftarkan Admin
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal: Inspeksi Detail Log Audit */}
       {selectedLog && (
@@ -1349,281 +922,7 @@ export default function SuperadminDashboard() {
         </div>
       )}
 
-      {/* MODAL: DETAIL ADMINISTRATOR */}
-      {selectedAdminForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
-            <button
-              onClick={() => setSelectedAdminForDetail(null)}
-              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
-              aria-label="Tutup"
-            >
-              <CloseIcon className="text-sm" />
-            </button>
 
-            <div>
-              <span className="text-[10px] font-mono text-text-muted font-bold block uppercase">
-                DETAIL ADMINISTRATOR &bull; {selectedAdminForDetail.id}
-              </span>
-              <h3 className="text-lg font-bold text-primary">{selectedAdminForDetail.name}</h3>
-              <p className="text-xs text-text-secondary">{selectedAdminForDetail.email}</p>
-            </div>
-
-            <div className="p-4 rounded-xl bg-surface border border-primary-light space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Peran RBAC</span>
-                  <div className="mt-0.5">
-                    <Badge
-                      variant={selectedAdminForDetail.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {selectedAdminForDetail.role}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Status Akun</span>
-                  <div className="mt-0.5">
-                    <Badge
-                      variant={selectedAdminForDetail.status === "Active" ? "success" : "secondary"}
-                      className="text-[10px]"
-                    >
-                      {selectedAdminForDetail.status === "Active" ? "Aktif" : "Nonaktif"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-primary-light">
-                <span className="text-[10px] uppercase font-bold text-text-secondary">Spesialisasi Penugasan</span>
-                <p className="font-semibold text-primary mt-0.5">{selectedAdminForDetail.specialty}</p>
-              </div>
-
-              <div className="pt-2 border-t border-primary-light flex items-center justify-between">
-                <span className="text-[10px] uppercase font-bold text-text-secondary">Riwayat Beban Tugas</span>
-                <span className="font-bold text-primary font-mono">{selectedAdminForDetail.taskCount} Tiket</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-primary-light flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    handleToggleStatus(selectedAdminForDetail.id);
-                    setSelectedAdminForDetail(null);
-                  }}
-                  className="text-xs h-9 px-3 border-primary-light text-primary flex-1 sm:flex-none"
-                >
-                  {selectedAdminForDetail.status === "Active" ? "Nonaktifkan" : "Aktifkan"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    showToast(`Tautan reset sandi telah dikirim ke ${selectedAdminForDetail.email}`);
-                    setSelectedAdminForDetail(null);
-                  }}
-                  className="text-xs h-9 px-3 border-primary-light text-primary flex-1 sm:flex-none"
-                >
-                  Reset Sandi
-                </Button>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setSelectedAdminForDetail(null)}
-                className="text-xs h-9 px-4 w-full sm:w-auto"
-              >
-                Tutup
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: EDIT ADMINISTRATOR */}
-      {editingAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-lg w-full p-6 space-y-4 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setEditingAdmin(null)}
-              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
-              aria-label="Tutup"
-            >
-              <CloseIcon className="text-sm" />
-            </button>
-
-            <div>
-              <span className="text-[10px] font-mono text-text-muted font-bold block uppercase">
-                EDIT ADMINISTRATOR &bull; {editingAdmin.id}
-              </span>
-              <h3 className="text-lg font-bold text-primary">Perbarui Data Administrator</h3>
-            </div>
-
-            <form onSubmit={handleEditAdminSubmit} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">Nama Lengkap &amp; Gelar</Label>
-                <Input
-                  type="text"
-                  required
-                  value={editingAdmin.name}
-                  onChange={(e) => setEditingAdmin({ ...editingAdmin, name: e.target.value })}
-                  className="text-xs h-9 bg-white border-primary-light"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">Alamat Email Kantor</Label>
-                <Input
-                  type="email"
-                  required
-                  value={editingAdmin.email}
-                  onChange={(e) => setEditingAdmin({ ...editingAdmin, email: e.target.value })}
-                  className="text-xs h-9 bg-white border-primary-light font-mono"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Peran RBAC</Label>
-                  <Select
-                    value={editingAdmin.role.toLowerCase().includes("superadmin") ? "superadmin" : "admin"}
-                    onChange={(e) =>
-                      setEditingAdmin({
-                        ...editingAdmin,
-                        role: e.target.value === "superadmin" ? "Superadmin" : "Admin",
-                      })
-                    }
-                    className="w-full text-xs h-9 font-medium"
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="superadmin">Superadmin</option>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Status</Label>
-                  <Select
-                    value={editingAdmin.status}
-                    onChange={(e) =>
-                      setEditingAdmin({
-                        ...editingAdmin,
-                        status: e.target.value as "Active" | "Inactive",
-                      })
-                    }
-                    className="w-full text-xs h-9 font-medium"
-                  >
-                    <option value="Active">Aktif</option>
-                    <option value="Inactive">Nonaktif</option>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">Spesialisasi Penugasan</Label>
-                <Select
-                  value={editingAdmin.specialty}
-                  onChange={(e) => setEditingAdmin({ ...editingAdmin, specialty: e.target.value })}
-                  className="w-full text-xs h-9 font-medium"
-                >
-                  <option value="Tax Service Core">Tax Service Core (Coretax DJP)</option>
-                  <option value="Accounting Service">Accounting Service (SAK)</option>
-                  <option value="Business Financial Consulting">Business &amp; Financial Consulting</option>
-                  <option value="Legal & Corporate Compliance">Legal &amp; Corporate Compliance</option>
-                  <option value="Core Tax & Legal Compliance">Core Tax &amp; Legal Compliance</option>
-                </Select>
-              </div>
-
-              <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditingAdmin(null)}
-                  className="text-xs h-9 px-4 border-primary-light"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="sm"
-                  className="text-xs h-9 px-5 font-semibold shadow-xs"
-                >
-                  Simpan Perubahan
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: KONFIRMASI HAPUS ADMINISTRATOR */}
-      {deletingAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
-            <button
-              onClick={() => setDeletingAdmin(null)}
-              className="absolute top-5 right-5 text-text-secondary hover:text-primary p-1"
-              aria-label="Tutup"
-            >
-              <CloseIcon className="text-sm" />
-            </button>
-
-            <div className="flex items-center gap-3 text-error">
-              <div className="w-10 h-10 rounded-xl bg-error/15 flex items-center justify-center text-error text-base">
-                <TrashIcon />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-primary">Konfirmasi Hapus Administrator</h3>
-                <span className="text-xs text-text-muted font-mono">{deletingAdmin.id} &bull; {deletingAdmin.name}</span>
-              </div>
-            </div>
-
-            <div className="text-xs text-text-secondary space-y-2">
-              <p>
-                Apakah Anda yakin ingin menghapus akun administrator <strong>{deletingAdmin.name}</strong>?
-              </p>
-              {deletingAdmin.taskCount > 0 ? (
-                <div className="p-3 bg-error/10 border border-error/25 rounded-xl text-text-primary text-xs space-y-1">
-                  <span className="font-bold text-error block">Peringatan Audit Trail:</span>
-                  <p className="text-[11px] text-text-secondary">
-                    Administrator ini memiliki <strong>{deletingAdmin.taskCount} riwayat tugas aktif</strong>. Menghapus permanen akan merusak integritas audit. Sistem akan mengalihkan status akun ke <strong>Nonaktif (Soft Delete)</strong>.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[11px] text-text-muted">
-                  Akun tidak memiliki riwayat tugas aktif dan dapat dihapus permanen dari basis data.
-                </p>
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-primary-light flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDeletingAdmin(null)}
-                className="text-xs h-9 px-4 border-primary-light"
-              >
-                Batal
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={handleConfirmDeleteAdmin}
-                className="text-xs h-9 px-4 bg-error hover:bg-red-700 text-white font-semibold"
-              >
-                {deletingAdmin.taskCount > 0 ? "Nonaktifkan Saja" : "Hapus Permanen"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

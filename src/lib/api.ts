@@ -137,6 +137,7 @@ export async function apiFetch<T = unknown>(
 
   try {
     const response = await fetch(url, {
+      cache: "no-store",
       ...rest,
       headers: reqHeaders,
     });
@@ -298,6 +299,7 @@ export interface ConsultationItem {
     name: string;
     email?: string;
   } | null;
+  assigned_to?: number;
   tasks?: AdminTaskItem[];
   documents?: ClientDocumentItem[];
 }
@@ -331,17 +333,50 @@ export const clientApi = {
 
   getChatbotTree: () => apiFetch("/api/v1/client/chatbot/tree"),
 
-  createConsultation: (payload: {
+  createConsultation: async (payload: {
     title: string;
     description: string;
     category?: string;
     priority?: string;
     service_id?: number;
-  }) =>
-    apiFetch<ConsultationItem>("/api/v1/client/consultations", {
+  }) => {
+    // Map category name to valid backend service_id if not explicitly passed
+    let srvId = payload.service_id;
+    if (!srvId && payload.category) {
+      const cat = payload.category.toLowerCase();
+      if (cat.includes("tax") || cat.includes("pajak")) srvId = 1;
+      else if (cat.includes("account") || cat.includes("akuntansi")) srvId = 9;
+      else if (cat.includes("business") || cat.includes("bisnis") || cat.includes("financial")) srvId = 10;
+      else if (cat.includes("legal") || cat.includes("hukum")) srvId = 11;
+      else srvId = 1;
+    }
+
+    // 1. Try standard POST /api/v1/client/consultations
+    try {
+      const directRes = await apiFetch<ConsultationItem>("/api/v1/client/consultations", {
+        method: "POST",
+        body: JSON.stringify({
+          ...payload,
+          service_id: srvId,
+        }),
+      });
+      if (directRes.success && directRes.data) {
+        return directRes;
+      }
+    } catch {}
+
+    // 2. Official backend escalation endpoint for creating client consultations
+    return apiFetch<ConsultationItem>("/api/v1/client/chatbot/escalate", {
       method: "POST",
-      body: JSON.stringify(payload),
-    }),
+      body: JSON.stringify({
+        title: payload.title,
+        last_message: payload.description,
+        category: payload.category || "Tax Service Core",
+        service_id: srvId || 1,
+        answered_node: "Permohonan Konsultasi Baru",
+      }),
+    });
+  },
 
   escalateChatbot: (payload: {
     message: string;
@@ -368,6 +403,11 @@ export const clientApi = {
     }>(`/api/v1/client/consultations/${consultationId}/documents`, {
       method: "POST",
       body: formData,
+    }),
+
+  deleteConsultation: (id: number | string) =>
+    apiFetch(`/api/v1/client/consultations/${id}`, {
+      method: "DELETE",
     }),
 };
 
@@ -447,14 +487,6 @@ export const adminApi = {
     ),
 
   uploadDocument: (consultationId: number | string, formData: FormData) => {
-    const role = getCurrentUserRole();
-    if (role && role !== "superadmin") {
-      return Promise.resolve<ApiResponse<ClientDocumentItem>>({
-        success: false,
-        error: "FORBIDDEN",
-        message: "Akses ditolak: Pengelolaan upload laporan dan billing hanya dapat dilakukan oleh Superadmin.",
-      });
-    }
     return apiFetch<ClientDocumentItem>(
       `/api/v1/admin/consultations/${consultationId}/documents`,
       {
@@ -465,6 +497,11 @@ export const adminApi = {
   },
 
   getAllDocuments: () => apiFetch<ClientDocumentItem[]>("/api/v1/admin/documents"),
+
+  deleteConsultation: (id: number | string) =>
+    apiFetch(`/api/v1/admin/consultations/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 // ----------------------------------------------------
@@ -689,6 +726,12 @@ export const adminCmsApi = {
     return apiFetch(`/api/v1/admin/cms/job-applications/${id}`, {
       method: "DELETE",
     });
+  },
+
+  getJobApplicationCvDownloadUrl: (id: number | string) => {
+    return apiFetch<{ download_url?: string; file_url?: string; public_url?: string }>(
+      `/api/v1/admin/cms/job-applications/${id}/download`
+    );
   },
 
   getFaqs: () => apiFetch<ChatbotFaqItem[]>("/api/v1/admin/cms/faqs"),
@@ -999,6 +1042,28 @@ export const publicApi = {
     apiFetch<ChatbotTreeItem[]>("/api/v1/client/chatbot/tree", {
       skipAuth: true,
     }),
+
+  getRegulationDownloadUrl: (id: number | string) =>
+    apiFetch<{
+      title?: string;
+      file_path?: string;
+      download_url?: string;
+      public_url?: string;
+      expires_in_seconds?: number;
+    }>(`/api/v1/public/regulations/${id}/download`, {
+      skipAuth: true,
+    }),
+
+  getEducationDownloadUrl: (id: number | string) =>
+    apiFetch<{
+      title?: string;
+      file_path?: string;
+      download_url?: string;
+      public_url?: string;
+      expires_in_seconds?: number;
+    }>(`/api/v1/public/education/${id}/download`, {
+      skipAuth: true,
+    }),
 };
 
 // ----------------------------------------------------
@@ -1064,7 +1129,20 @@ export const superadminApi = {
   getAuditLogs: () => apiFetch<AuditLogItem[]>("/api/v1/superadmin/audit-logs"),
 
   exportAuditLogs: () =>
-    apiFetch<{ export_url: string }>("/api/v1/superadmin/audit-logs/export"),
+    apiFetch<
+      | Array<{
+          id?: number;
+          timestamp?: string;
+          admin?: string;
+          klien?: string;
+          tiket?: string;
+          status_sebelum?: string;
+          status_sesudah?: string;
+          file?: string;
+          deskripsi?: string;
+        }>
+      | { export_url: string }
+    >("/api/v1/superadmin/audit-logs/export"),
 };
 
 // ----------------------------------------------------

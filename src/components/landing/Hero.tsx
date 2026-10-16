@@ -179,20 +179,6 @@ export function Hero() {
   useEffect(() => {
     let isMounted = true;
 
-    // Baca terlebih dahulu dari localStorage jika sudah diperbarui oleh Superadmin
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("zhou_company_hero_v1");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.headline || parsed.subheadline) {
-            setHeroData({ title: parsed.headline, content: parsed.subheadline });
-            setIsLoading(false);
-          }
-        }
-      } catch {}
-    }
-
     const handleHeroUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ headline?: string; subheadline?: string }>;
       if (customEvent.detail) {
@@ -213,11 +199,7 @@ export function Hero() {
             (p) => p.section_key === "hero" || p.section_key === "hero_tentang_kami"
           );
           if (found && (found.title || found.content)) {
-            setHeroData((prev) => {
-              // Jika sudah ada data dari localStorage admin, utamakan yang dari localStorage
-              if (prev?.title) return prev;
-              return { title: found.title, content: found.content };
-            });
+            setHeroData({ title: found.title, content: found.content });
           }
         }
       })

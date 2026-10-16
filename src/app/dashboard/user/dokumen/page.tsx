@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { clientApi, ClientDocumentItem } from "@/lib/api";
-import { useAuth, isDummyDocument } from "@/context/AuthContext";
+import { isDummyDocument } from "@/context/AuthContext";
+import { downloadRemoteFile, downloadBlob, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +22,16 @@ import {
   CloseIcon,
 } from "@/components/icons";
 
+
+
 import {
-  getDocumentsForClient,
+  getStoredDocuments,
+  getStoredClientTickets,
+  getCachedFileBlobAsync,
   DOCUMENTS_UPDATED_EVENT,
-  TICKETS_UPDATED_EVENT,
+  isTicketDeleted,
 } from "@/data/sharedTicketsStorage";
+import { useAuth } from "@/context/AuthContext";
 
 interface VaultDocument {
   id: string;
@@ -55,79 +61,189 @@ export default function ClientDocumentVaultPage() {
   const [selectedDoc, setSelectedDoc] = useState<VaultDocument | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync documents with live backend and shared admin uploads
-  useEffect(() => {
-    async function loadBackendDocuments() {
-      let backendDocs: VaultDocument[] = [];
-      try {
-        const res = await clientApi.getDocuments();
-        if (res.success && Array.isArray(res.data)) {
-          const validBackend = res.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
-          backendDocs = validBackend.map((d: ClientDocumentItem) => ({
-            id: `DOC-BE-${d.id}`,
-            name: d.file_name,
-            category: "Pajak",
-            format: d.file_type === "XLSX" ? "XLSX" : "PDF",
-            ticketRef: `PROJ-${d.project_id}`,
-            ticketTitle: "Perikatan Konsultasi Zhou",
-            date: new Date(d.created_at).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            year: "2026",
-            size: d.file_size || "1.2 MB",
-            bytes: 1258291,
-            statusBadge: "Terverifikasi Resmi",
-            statusType: "success",
-            sha256Hash: `hash-${d.id}-${d.file_name.slice(0, 8)}`,
-            signatory: "Zhou Consulting Cloud Vault",
-            description: `Dokumen resmi ${d.file_name} yang tersimpan aman pada storage terenkripsi.`,
-          }));
-        }
-      } catch {
-        // quiet fallback
-      }
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-      // Berkas yang diunggah oleh admin khusus untuk akun klien ini
-      const localDocs = getDocumentsForClient(user?.email, user?.name);
-      const mappedLocal: VaultDocument[] = localDocs.map((d) => ({
+  // Load documents directly from live backend API + shared storage
+  const loadBackendDocuments = React.useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      // 1. Dokumen dari shared documents
+      const localDocs = typeof window !== "undefined" ? getStoredDocuments() : [];
+      const userEmail = user?.email?.toLowerCase().trim();
+      const filteredLocal = localDocs.filter((ld) => {
+        if (ld.ticketId && isTicketDeleted(ld.ticketId)) return false;
+        if (!userEmail) return true;
+        if (!ld.clientEmail) return true;
+        return ld.clientEmail.toLowerCase().trim() === userEmail;
+      });
+
+      const convertedLocal: VaultDocument[] = filteredLocal.map((d) => ({
         id: d.id,
         name: d.fileName,
-        category: d.category.includes("Tax") ? "Pajak" : d.category.includes("Account") ? "Akuntansi" : "Legal",
+        category: d.category.toLowerCase().includes("akuntansi")
+          ? "Akuntansi"
+          : d.category.toLowerCase().includes("legal")
+          ? "Legal"
+          : "Pajak",
         format: d.fileType === "XLSX" ? "XLSX" : "PDF",
-        ticketRef: d.ticketId || "TK-2026",
-        ticketTitle: `Layanan ${d.category} - ${d.clientName}`,
-        date: d.uploadDate || "Hari ini",
+        ticketRef: d.ticketId || "-",
+        ticketTitle: `Deliverable Resmi (${d.consultant || "Zhou Consulting"})`,
+        date: d.uploadDate,
         year: "2026",
-        size: d.fileSize || "2.1 MB",
-        bytes: 2200000,
-        statusBadge: d.billingStatus === "Lunas" ? "Terverifikasi Lunas" : "Dokumen Diterbitkan",
+        size: d.fileSize || "1.5 MB",
+        bytes: 1572864,
+        statusBadge: "Deliverable Resmi",
         statusType: "success",
-        sha256Hash: d.sha256 || "sha256-hash",
-        signatory: d.consultant || "Tim Konsultan Zhou",
-        description: `Berkas resmi ${d.fileName} yang diterbitkan oleh konsultan untuk penugasan ${d.ticketId}.`,
+        sha256Hash: d.sha256 || `hash-${d.id}`,
+        signatory: d.consultant || "Zhou Consulting PIC",
+        description: `Dokumen deliverable resmi yang dikirimkan oleh ${d.consultant || "Konsultan Zhou"}.`,
       }));
 
-      const combined = [...mappedLocal];
-      for (const b of backendDocs) {
-        if (!combined.some((c) => c.id.toLowerCase() === b.id.toLowerCase() || c.name.toLowerCase() === b.name.toLowerCase())) {
-          combined.push(b);
-        }
-      }
-      setDocuments(combined);
-    }
+      // 2. Dokumen dari tiket konsultasi aktif (dokumen pendukung yang diunggah klien & deliverable perikatan)
+      const allTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+      const activeTickets = allTickets.filter((t) => {
+        if (isTicketDeleted(t.id)) return false;
+        if (t.numericId && isTicketDeleted(t.numericId)) return false;
+        if (userEmail && t.clientEmail && t.clientEmail.toLowerCase().trim() !== userEmail) return false;
+        return true;
+      });
 
+      const ticketDocs: VaultDocument[] = [];
+      activeTickets.forEach((ticket) => {
+        const cat = (ticket.category || "").toLowerCase();
+        const categoryLabel: "Akuntansi" | "Legal" | "Pajak" =
+          cat.includes("akuntansi") || cat.includes("account")
+            ? "Akuntansi"
+            : cat.includes("legal") || cat.includes("hukum")
+            ? "Legal"
+            : "Pajak";
+
+        // A. Berkas Pendukung yang diunggah Klien pada konsultasi ini
+        (ticket.clientDocuments || []).forEach((cd, idx) => {
+          const isXlsx =
+            cd.type === "XLSX" ||
+            cd.name.toLowerCase().endsWith(".xlsx") ||
+            cd.name.toLowerCase().endsWith(".xls");
+          ticketDocs.push({
+            id: cd.id || `cd-${ticket.id}-${idx}`,
+            name: cd.name,
+            category: categoryLabel,
+            format: isXlsx ? "XLSX" : "PDF",
+            ticketRef: ticket.id,
+            ticketTitle: ticket.title || "Konsultasi Klien",
+            date: cd.date || cd.uploadedAt || "Hari ini",
+            year: "2026",
+            size: cd.size || "1.0 MB",
+            bytes: 1048576,
+            statusBadge: cd.status || "Diterima PIC",
+            statusType: "primary",
+            sha256Hash: `hash-${ticket.id}-${cd.name.slice(0, 8)}`,
+            signatory: cd.uploadedBy || user?.name || "Klien Terdaftar",
+            description: `Dokumen lampiran pendukung klien untuk perikatan ${ticket.id}.`,
+          });
+        });
+
+        // B. Berkas Deliverable resmi dari Konsultan pada tiket ini
+        (ticket.deliverables || []).forEach((deliv, idx) => {
+          const isXlsx =
+            deliv.type === "XLSX" ||
+            deliv.name.toLowerCase().endsWith(".xlsx") ||
+            deliv.name.toLowerCase().endsWith(".xls");
+          ticketDocs.push({
+            id: deliv.id || `deliv-${ticket.id}-${idx}`,
+            name: deliv.name,
+            category: categoryLabel,
+            format: isXlsx ? "XLSX" : "PDF",
+            ticketRef: ticket.id,
+            ticketTitle: `Deliverable (${ticket.title || ticket.id})`,
+            date: deliv.date || "Hari ini",
+            year: "2026",
+            size: deliv.size || "1.5 MB",
+            bytes: 1572864,
+            statusBadge: "Deliverable Resmi",
+            statusType: "success",
+            sha256Hash: `hash-${ticket.id}-${deliv.name.slice(0, 8)}`,
+            signatory: ticket.assignedAdminName || ticket.consultant || "Zhou Consulting PIC",
+            description: `Dokumen deliverable resmi dari konsultan untuk perikatan ${ticket.id}.`,
+          });
+        });
+      });
+
+      const res = await clientApi.getDocuments();
+      let backendDocs: VaultDocument[] = [];
+      if (res.success && Array.isArray(res.data)) {
+        const validBackend = res.data.filter((d: ClientDocumentItem) => {
+          if (isDummyDocument(d)) return false;
+          if (
+            d.project_id &&
+            (isTicketDeleted(d.project_id) ||
+              isTicketDeleted(`PROJ-${d.project_id}`) ||
+              isTicketDeleted(`TK-${d.project_id}`) ||
+              isTicketDeleted(`TCK-${d.project_id}`))
+          ) {
+            return false;
+          }
+          return true;
+        });
+        backendDocs = validBackend.map((d: ClientDocumentItem) => ({
+          id: `DOC-BE-${d.id}`,
+          name: d.file_name,
+          category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
+          format: d.file_type === "XLSX" ? "XLSX" : "PDF",
+          ticketRef: d.project_id ? `PROJ-${d.project_id}` : "-",
+          ticketTitle: "Perikatan Konsultasi Zhou",
+          date: new Date(d.created_at).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          year: "2026",
+          size: d.file_size || "1.2 MB",
+          bytes: 1258291,
+          statusBadge: "Terverifikasi Resmi",
+          statusType: "success",
+          sha256Hash: `hash-${d.id}-${d.file_name.slice(0, 8)}`,
+          signatory: "Zhou Consulting Cloud Vault",
+          description: `Dokumen resmi ${d.file_name} yang tersimpan aman pada storage backend terenkripsi.`,
+        }));
+      }
+
+      // Gabungkan seluruh berkas dengan deduplikasi berdasarkan nama berkas
+      const mergedList: VaultDocument[] = [];
+      const seenNames = new Set<string>();
+
+      [...ticketDocs, ...convertedLocal, ...backendDocs].forEach((doc) => {
+        const key = doc.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          mergedList.push(doc);
+        }
+      });
+
+      setDocuments(mergedList);
+    } catch {
+      setLoadError("Terjadi kendala saat menghubungkan ke server dokumen backend.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
     loadBackendDocuments();
-    window.addEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
-    window.addEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
-    window.addEventListener("storage", loadBackendDocuments);
+    const handleSync = () => loadBackendDocuments();
+    window.addEventListener(DOCUMENTS_UPDATED_EVENT, handleSync);
+    window.addEventListener("zhou_tickets_updated", handleSync);
+    window.addEventListener("zhou_tickets_cleared", handleSync);
+    window.addEventListener("storage", handleSync);
     return () => {
-      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, loadBackendDocuments);
-      window.removeEventListener(TICKETS_UPDATED_EVENT, loadBackendDocuments);
-      window.removeEventListener("storage", loadBackendDocuments);
+      window.removeEventListener(DOCUMENTS_UPDATED_EVENT, handleSync);
+      window.removeEventListener("zhou_tickets_updated", handleSync);
+      window.removeEventListener("zhou_tickets_cleared", handleSync);
+      window.removeEventListener("storage", handleSync);
     };
-  }, [user?.email, user?.name, user?.id]);
+  }, [loadBackendDocuments]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -182,32 +298,67 @@ export default function ClientDocumentVaultPage() {
   const taxCount = documents.filter((d) => d.category === "Pajak").length;
   const legalAuditCount = documents.filter((d) => d.category !== "Pajak").length;
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
     if (documents.length === 0) {
       showToast("Belum ada dokumen yang tersedia untuk diunduh.");
       return;
     }
-    showToast(
-      `Menyiapkan arsip ZIP seluruh berkas terenkripsi (Total: ${documents.length} Berkas)... Unduhan akan dimulai otomatis.`
-    );
+    showToast(`Memproses pengunduhan ${documents.length} berkas vault klien...`);
+    let downloadedCount = 0;
+    for (const doc of documents) {
+      const rawId = doc.id.replace(/\D/g, "");
+      if (rawId) {
+        try {
+          const res = await clientApi.getDownloadUrl(rawId);
+          if (res.success && res.data?.download_url) {
+            const dl = await downloadRemoteFile(res.data.download_url, doc.name);
+            if (dl.success) downloadedCount++;
+          }
+        } catch {
+          // continue
+        }
+      }
+    }
+    if (downloadedCount > 0) {
+      showToast(`Berhasil mengunduh ${downloadedCount} dari ${documents.length} berkas resmi.`);
+    } else {
+      showToast("Berkas arsip resmi sedang dalam sinkronisasi repositori server konsultan.");
+    }
   };
 
   const handleDownloadSingle = async (doc: VaultDocument) => {
     showToast(`Menyiapkan unduhan ${doc.name}...`);
     try {
-      const rawId = doc.id.replace("DOC-BE-", "");
-      if (Number(rawId)) {
+      // 1. Cek blob file di IndexedDB persistent storage dan memory cache
+      const cachedBlob =
+        (await getCachedFileBlobAsync(doc.name)) ||
+        (doc.ticketRef ? await getCachedFileBlobAsync(`${doc.ticketRef}:${doc.name}`) : undefined) ||
+        (doc.id ? await getCachedFileBlobAsync(doc.id) : undefined);
+
+      if (cachedBlob) {
+        downloadBlob(cachedBlob, doc.name);
+        showToast(`Berkas asli "${doc.name}" berhasil diunduh.`);
+        return;
+      }
+
+      // 2. Coba endpoint backend jika tersedia
+      const rawId = doc.id.replace(/\D/g, "");
+      if (rawId) {
         const res = await clientApi.getDownloadUrl(rawId);
         if (res.success && res.data?.download_url) {
-          window.open(res.data.download_url, "_blank");
-          showToast(`Mengunduh ${doc.name} via secure URL.`);
-          return;
+          const dlRes = await downloadRemoteFile(res.data.download_url, doc.name);
+          if (dlRes.success) {
+            showToast(`Berkas "${doc.name}" berhasil diunduh.`);
+            return;
+          }
         }
       }
+
+      // Berkas fisik asli klien tidak boleh digantikan dengan PDF buatan
+      showToast(`Berkas fisik asli "${doc.name}" tidak tersimpan di repositori server browser.`);
     } catch {
-      // fallback
+      showToast(`Terjadi kendala saat mengunduh "${doc.name}".`);
     }
-    showToast(`Mengunduh ${doc.name} (Enkripsi SSL 256-bit terverifikasi).`);
   };
 
   return (
@@ -365,83 +516,19 @@ export default function ClientDocumentVaultPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-primary-light">
-                {paginatedDocuments.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-surface/50 transition-colors">
-                    {/* File Name & Format */}
-                    <td className="py-3.5 px-4 max-w-sm">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                            doc.format === "PDF"
-                              ? "bg-red-50 text-error border border-red-200"
-                              : "bg-emerald-50 text-success border border-emerald-200"
-                          }`}
-                        >
-                          {doc.format}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-primary truncate max-w-xs sm:max-w-sm" title={doc.name}>
-                            {doc.name}
-                          </div>
-                          <div className="text-[11px] text-text-muted font-mono flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
-                            <span>ID: {doc.id}</span>
-                            <span>&bull;</span>
-                            <span className="text-primary font-semibold">{doc.signatory}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Category & Ticket Ref */}
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-semibold text-text-primary text-xs">
-                          {doc.category}
-                        </span>
-                        <div className="font-mono text-[11px] text-primary">
-                          {doc.ticketRef}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Date & Size */}
-                    <td className="py-3.5 px-4 text-text-secondary text-xs">
-                      <div>{doc.date}</div>
-                      <div className="font-mono text-[11px] text-text-muted">{doc.size}</div>
-                    </td>
-
-                    {/* Verified Status */}
-                    <td className="py-3.5 px-4">
-                      <Badge variant={doc.statusType} size="sm">
-                        {doc.statusBadge}
-                      </Badge>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedDoc(doc)}
-                          className="text-[11px] h-8 px-2.5 border-primary-light text-text-secondary hover:text-primary font-medium"
-                        >
-                          Rincian
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={() => handleDownloadSingle(doc)}
-                          className="text-[11px] h-8 px-3.5 shadow-sm font-semibold"
-                        >
-                          <span>Unduh</span>
-                        </Button>
-                      </div>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-text-muted">
+                      Memuat berkas dokumen dari server backend...
                     </td>
                   </tr>
-                ))}
-
-                {filteredDocuments.length === 0 && (
+                ) : loadError ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-red-500">
+                      {loadError}
+                    </td>
+                  </tr>
+                ) : filteredDocuments.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-text-muted">
                       {documents.length === 0
@@ -449,6 +536,74 @@ export default function ClientDocumentVaultPage() {
                         : "Tidak ditemukan berkas dokumen dengan filter pencarian tersebut."}
                     </td>
                   </tr>
+                ) : (
+                  paginatedDocuments.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-surface/50 transition-colors">
+                      {/* File Name & Format */}
+                      <td className="py-3.5 px-4 max-w-sm">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                              doc.format === "PDF"
+                                ? "bg-red-50 text-error border border-red-200"
+                                : "bg-emerald-50 text-success border border-emerald-200"
+                            }`}
+                          >
+                            {doc.format}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-primary truncate max-w-xs sm:max-w-sm" title={doc.name}>
+                              {doc.name}
+                            </div>
+                            <div className="text-[11px] text-text-muted font-mono flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+                              <span>ID: {doc.id}</span>
+                              <span>&bull;</span>
+                              <span className="text-primary font-semibold">{doc.signatory}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Category & Ticket Ref */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-semibold text-text-primary text-xs">
+                            {doc.category}
+                          </span>
+                          <div className="font-mono text-[11px] text-primary">
+                            {doc.ticketRef}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Date & Size */}
+                      <td className="py-3.5 px-4 text-text-secondary text-xs">
+                        <div>{doc.date}</div>
+                        <div className="font-mono text-[11px] text-text-muted">{doc.size}</div>
+                      </td>
+
+                      {/* Verified Status */}
+                      <td className="py-3.5 px-4">
+                        <Badge variant={doc.statusType} size="sm">
+                          {doc.statusBadge}
+                        </Badge>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleDownloadSingle(doc)}
+                            className="text-[11px] h-8 px-3.5 shadow-sm font-semibold"
+                          >
+                            <span>Unduh</span>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

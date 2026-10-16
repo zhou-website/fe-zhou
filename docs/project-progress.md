@@ -232,7 +232,7 @@ Do not reintroduce gold.
 
 - **TypeScript (`npx tsc --noEmit`):** `0 errors` (Type-safe 100%)
 - **ESLint (`npm run lint`):** `✔ No ESLint warnings or errors`
-- **Next.js Production Build (`npm run build`):** `Exit Code 0` (41/41 Rute Statis & Dinamis Terkompilasi Bersih)
+- **Next.js Production Build (`npm run build`):** `Exit Code 0` (43/43 Rute Statis & Dinamis Terkompilasi Bersih)
 
 ---
 
@@ -240,5 +240,37 @@ Do not reintroduce gold.
 
 1. **SMTP Server / Layanan Email Transaksional**:
    - Untuk pengiriman email konfirmasi penerimaan lamaran kerja resmi ke inbox pelamar dan notifikasi tagihan invoice ke klien. (Saat ini dicatat sebagai dependensi backend; frontend tidak menampilkan konfirmasi email palsu).
-2. **Koneksi Database & Backend API (`http://localhost:8000/api`)**:
-   - Sistem front-end telah dilengkapi adapter dua arah (*hybrid*): memprioritaskan endpoint REST API backend saat aktif, dan secara anggun (*graceful fallback*) beralih ke penyimpanan persisten lokal dengan event sinkronisasi real-time ketika server API luring.
+2. **Koneksi Database & Backend API**:
+   - Endpoint backend API (`http://43.173.2.162` / `https://43.173.2.162.sslip.io`) kini berfungsi sebagai **Single Source of Truth** utama untuk seluruh fitur sistem.
+
+---
+
+### 5. Migrasi Menyeluruh ke Backend API & Penghapusan Cache / Mock Persistence
+
+**Tanggal Pelaksanaan:** 15 Oktober 2026  
+**Status:** `COMPLETED`
+
+#### A. Kebijakan Penyimpanan Data Baru (Strict Storage Policy)
+- **Single Source of Truth:** Semua data operasional (konsultasi, tiket, berkas deliverable, data staf/admin, audit log, lamaran kerja, profil perusahaan, kontak, layanan, dan regulasi) wajib diambil dan dimutasi langsung melalui endpoint Backend API.
+- **Batasan Browser Storage (`localStorage` / `sessionStorage`):**
+  - **Diizinkan:** Hanya untuk token autentikasi (`zhou_auth_token`), sesi user/peran (`zhou_user_role`), dan preferensi UI (`zhou_language`).
+  - **Dihapus/Dilarang:** Tidak ada lagi penyimpanan array mock tiket, dokumen vault, daftar staf admin, riwayat audit trail, atau item CMS yang disimpan atau digabungkan (*merged*) dari browser storage lokal.
+- **Cache Invalidation:** Semua permintaan fetch ke backend pada `src/lib/api.ts` dikonfigurasi secara eksplisit dengan `cache: "no-store"` untuk mencegah Next.js dan browser menyajikan respon lama/stale.
+
+#### B. Audit Modul & File yang Dimigrasikan
+
+| Modul / Halaman | File yang Dimigrasikan | Perubahan yang Diterapkan | Status Endpoint Backend |
+|---|---|---|---|
+| **API Client Core** | `src/lib/api.ts` | Default `cache: "no-store"` pada `apiFetch`. Penambahan endpoint `clientApi.deleteConsultation`, `adminApi.deleteConsultation`, serta validasi `updateCompanyProfile`. | Aktif (`/api/v1/*`) |
+| **Portal Klien - Overview** | `src/app/dashboard/user/page.tsx` | Menghapus merge `localStorage`. Mengambil tiket via `clientApi.getConsultations()` dan dokumen via `clientApi.getDocuments()`. Dilengkapi state `isLoading` dan penanganan error. | Terkoneksi Penuh |
+| **Portal Klien - Vault Dokumen** | `src/app/dashboard/user/dokumen/page.tsx` | Menghapus pembacaan dari storage lokal. Mengambil dokumen riil klien dari `clientApi.getDocuments()` dan unduhan via `clientApi.getDownloadUrl()`. | Terkoneksi Penuh |
+| **Portal Klien - Monitoring Tiket** | `src/app/dashboard/user/tiket/page.tsx` | Pembuatan konsultasi via `clientApi.createConsultation`, upload berkas awal & tambahan via `clientApi.uploadConsultationDocument`, dan hapus tiket via `clientApi.deleteConsultation`. | Terkoneksi Penuh |
+| **Portal Admin - Overview Tugas** | `src/app/dashboard/admin/page.tsx` | Mengambil data konsultasi riil melalui `adminApi.getConsultations()`. Menghitung tugas personal PIC yang sedang login. | Terkoneksi Penuh |
+| **Portal Admin - Lembar Kerja / Tugas** | `src/app/dashboard/admin/tugas/page.tsx` | Sinkronisasi status konsultasi langsung ke `adminApi.updateConsultationStatus` dan pengiriman dokumen deliverable ke klien via `adminApi.uploadDocument`. | Terkoneksi Penuh |
+| **Portal Superadmin - Perikatan & PIC** | `src/app/dashboard/superadmin/perikatan/page.tsx` | Menghapus *smart non-destructive merge* storage. Mengambil konsultasi via `adminApi.getConsultations()` dan daftar admin via `superadminApi.getAdmins()`. Penugasan PIC langsung via `adminApi.assignConsultation` dan hapus via `adminApi.deleteConsultation`. | Terkoneksi Penuh |
+| **Portal Superadmin - Upload & Billing** | `src/app/dashboard/superadmin/upload/page.tsx` | Menghapus pembacaan dokumen dari `localStorage`. Menarik berkas deliverable langsung via `adminApi.getAllDocuments()` dan `adminApi.getConsultations()`. Upload via `adminApi.uploadDocument`. | Terkoneksi Penuh |
+| **Portal Superadmin - Kelola Admin / Staf** | `src/app/dashboard/superadmin/users/page.tsx` | Menghapus `zhou_superadmin_staff_list`. Menarik admin via `superadminApi.getAdmins()` dan sinkronisasi tugas via `adminApi.getConsultations()`. Mutasi via `createAdmin`, `deactivateAdmin`, dan `deleteAdmin`. | Terkoneksi Penuh |
+| **Portal Superadmin - Log Audit Trail** | `src/app/dashboard/superadmin/audit/page.tsx` | Menghapus flag `zhou_audit_logs_cleared` dan mock data. Mengambil data audit log asli langsung melalui `superadminApi.getAuditLogs()` dan ekspor via `superadminApi.exportAuditLogs()`. | Terkoneksi Penuh |
+| **Portal Superadmin - Lamaran Kerja** | `src/app/dashboard/superadmin/lamaran/page.tsx` | Menghapus pembacaan dari `getStoredJobApplications` dan `DELETED_APP_IDS_KEY`. Mengambil lamaran riil via `adminCmsApi.getJobApplications()` dan mutasi via `adminCmsApi.deleteJobApplication`. | Terkoneksi Penuh |
+| **Portal Superadmin - CMS Manager** | `src/app/dashboard/superadmin/cms/page.tsx` | Menghapus penyimpanan lokal hero & kontak. Mutasi konten dikirim ke `adminCmsApi.updateContactSettings` dan `adminCmsApi.updateCompanyProfile`. | Terkoneksi Penuh |
+| **Landing Page & Halaman Publik** | `src/components/landing/Hero.tsx`, `src/app/kontak/page.tsx`, `src/app/karir/page.tsx`, `src/app/edukasi/page.tsx`, `src/app/peraturan/page.tsx` | Menghapus prioritas fallback dari `localStorage`. Memprioritaskan respon backend API langsung dari `publicApi.*`. | Terkoneksi Penuh |

@@ -21,6 +21,7 @@ import {
   CloseIcon,
   CheckCircleIcon,
 } from "@/components/icons";
+import { downloadBlob, downloadRemoteFile } from "@/lib/downloadHelper";
 
 import {
   StoredRegulationItem,
@@ -254,46 +255,81 @@ export default function PeraturanPage() {
     effectiveDate?: string;
     scope?: string;
   }): string => {
-    const escapePdf = (str: string) => (str || "").replace(/[\\()]/g, "");
+    const escapePdf = (str: string) =>
+      (str || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\(/g, "\\(")
+        .replace(/\)/g, "\\)")
+        .replace(/[\u2018\u2019]/g, "'")
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2013\u2014]/g, "-")
+        .replace(/[^\x20-\x7E]/g, " ");
 
-    const safeDoc = escapePdf(item.docNumber || "REGULASI-ZHOU");
-    const safeCat = escapePdf(item.category || "Regulasi Perpajakan");
-    const safeDate = escapePdf(item.effectiveDate || "-");
-    const safeTitle = escapePdf(item.title || "Salinan Regulasi Resmi").slice(0, 90);
-    const safeScope = escapePdf(item.scope || "Ketentuan perpajakan resmi Zhou Consulting.").slice(0, 120);
+    const wrapText = (text: string, maxLen = 75): string[] => {
+      const words = (text || "").split(" ");
+      const lines: string[] = [];
+      let cur = "";
+      for (const w of words) {
+        if (!w) continue;
+        if ((cur ? cur + " " + w : w).length <= maxLen) {
+          cur = cur ? cur + " " + w : w;
+        } else {
+          if (cur) lines.push(cur);
+          cur = w;
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines;
+    };
 
-    const stream = [
+    const streamLines: string[] = [
       "BT",
-      "/F1 16 Tf",
-      "50 780 Td",
-      "(ZHOU CONSULTING - ARSIP REGULASI RESMI) Tj",
-      "0 -30 Td",
-      "/F1 11 Tf",
-      `(${escapePdf("Nomor Dokumen : " + safeDoc)}) Tj`,
-      "0 -18 Td",
-      `(${escapePdf("Kategori      : " + safeCat)}) Tj`,
-      "0 -18 Td",
-      `(${escapePdf("Tanggal Berlaku: " + safeDate)}) Tj`,
-      "0 -30 Td",
-      "/F1 13 Tf",
-      "(Judul Peraturan:) Tj",
-      "0 -18 Td",
-      "/F1 10 Tf",
-      `(${safeTitle}) Tj`,
-      "0 -30 Td",
-      "/F1 13 Tf",
-      "(Deskripsi / Ruang Lingkup:) Tj",
-      "0 -18 Td",
-      "/F1 10 Tf",
-      `(${safeScope}) Tj`,
-      "0 -40 Td",
-      "/F1 8 Tf",
-      "(Dokumen ini adalah salinan digital resmi yang diterbitkan melalui Zhou Consulting Portal.) Tj",
-      "0 -14 Td",
-      "(Terverifikasi Enkripsi SHA-256 & Akreditasi Konsultan Berizin BKP DJP.) Tj",
-      "ET",
-    ].join("\n");
+      "/F2 15 Tf",
+      "50 785 Td",
+      "(ZHOU CONSULTING - SALINAN RESMI REGULASI PERPAJAKAN) Tj",
+      "0 -22 Td",
+      "/F1 9.5 Tf",
+      `(${escapePdf("Nomor Dokumen  : " + (item.docNumber || "REGULASI-ZHOU"))}) Tj`,
+      "0 -16 Td",
+      `(${escapePdf("Kategori       : " + (item.category || "Regulasi Perpajakan"))}) Tj`,
+      "0 -16 Td",
+      `(${escapePdf("Tanggal Berlaku: " + (item.effectiveDate || "-"))}) Tj`,
+      "0 -22 Td",
+      "/F2 11 Tf",
+      "(JUDUL / NOMENKLATUR PERATURAN:) Tj",
+      "0 -16 Td",
+      "/F1 9.5 Tf",
+    ];
 
+    const titleLines = wrapText(escapePdf(item.title || "Salinan Regulasi Resmi"), 72);
+    for (const tLine of titleLines) {
+      streamLines.push(`(${tLine}) Tj`);
+      streamLines.push("0 -15 Td");
+    }
+
+    streamLines.push("0 -8 Td");
+    streamLines.push("/F2 11 Tf");
+    streamLines.push("(RUANG LINGKUP & KETENTUAN POKOK:) Tj");
+    streamLines.push("0 -16 Td");
+    streamLines.push("/F1 9 Tf");
+
+    const scopeLines = wrapText(
+      escapePdf(item.scope || "Ketentuan perpajakan resmi Zhou Consulting untuk kepatuhan wajib pajak."),
+      76
+    );
+    for (const sLine of scopeLines) {
+      streamLines.push(`(${sLine}) Tj`);
+      streamLines.push("0 -15 Td");
+    }
+
+    streamLines.push("0 -20 Td");
+    streamLines.push("/F1 8 Tf");
+    streamLines.push("(Dokumen ini adalah salinan digital resmi yang diterbitkan melalui Zhou Consulting Portal.) Tj");
+    streamLines.push("0 -13 Td");
+    streamLines.push("(Terverifikasi Enkripsi SHA-256 & Akreditasi Konsultan Berizin BKP DJP.) Tj");
+    streamLines.push("ET");
+
+    const stream = streamLines.join("\n");
     const streamLen = new TextEncoder().encode(stream).length;
 
     let pdf = "%PDF-1.4\n";
@@ -307,22 +343,24 @@ export default function PeraturanPage() {
     addObj("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj");
     addObj("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj");
     addObj(
-      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj"
+      "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>\nendobj"
     );
-    addObj(`4 0 obj\n<< /Length ${streamLen} >>\nstream\n${stream}\nendstream\nendobj`);
-    addObj("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj");
+    addObj("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj");
+    addObj("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj");
+    addObj(`6 0 obj\n<< /Length ${streamLen} >>\nstream\n${stream}\nendstream\nendobj`);
 
+    const totalObjs = 6;
     const startxref = new TextEncoder().encode(pdf).length;
-    pdf += "xref\n0 6\n0000000000 65535 f \n";
+    pdf += `xref\n0 ${totalObjs + 1}\n0000000000 65535 f \n`;
     for (let i = 0; i < offsets.length; i++) {
       const offStr = String(offsets[i]).padStart(10, "0");
       pdf += offStr + " 00000 n \n";
     }
-    pdf += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${startxref}\n%%EOF`;
+    pdf += `trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\nstartxref\n${startxref}\n%%EOF`;
     return pdf;
   };
 
-  const handleDownload = (
+  const handleDownload = async (
     docNumberOrItem: string | StoredRegulationItem,
     customTitle?: string,
     category = "Regulasi Perpajakan",
@@ -346,50 +384,40 @@ export default function PeraturanPage() {
             status: "Berlaku",
           };
 
-    setDownloadNotice(`Mengunduh salinan resmi: ${item.docNumber} - ${item.title}...`);
+    setDownloadNotice(`Menyiapkan salinan resmi: ${item.docNumber} - ${item.title}...`);
 
     try {
+      const cleanFileName = (item.docNumber || item.title || "Salinan-Regulasi")
+        .replace(/[^a-zA-Z0-9_\-]/g, "_")
+        .substring(0, 60);
+      const targetFileName = cleanFileName.endsWith(".pdf") ? cleanFileName : `${cleanFileName}.pdf`;
+
       if (item.fileDataUrl || (item.downloadUrl && item.downloadUrl.startsWith("data:application/pdf"))) {
         const link = document.createElement("a");
         link.href = item.fileDataUrl || item.downloadUrl!;
-        const cleanFileName = (item.docNumber || item.title || "Salinan-Regulasi")
-          .replace(/[^a-zA-Z0-9_\-]/g, "_")
-          .substring(0, 60);
-        link.download = `${cleanFileName}.pdf`;
+        link.download = targetFileName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } else if (item.downloadUrl && item.downloadUrl !== "#" && item.downloadUrl.startsWith("http")) {
-        const link = document.createElement("a");
-        link.href = item.downloadUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.download = `${(item.docNumber || item.title || "Salinan-Regulasi").replace(/[^a-zA-Z0-9_\-]/g, "_")}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        const pdfString = generateRegulationPdf(item);
-        const blob = new Blob([pdfString], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        const cleanFileName = (item.docNumber || item.title || "Salinan-Regulasi")
-          .replace(/[^a-zA-Z0-9_\-]/g, "_")
-          .substring(0, 60);
-        link.download = `${cleanFileName}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        return;
       }
+
+      if (item.downloadUrl && item.downloadUrl !== "#" && item.downloadUrl.startsWith("http")) {
+        const dlRes = await downloadRemoteFile(item.downloadUrl, targetFileName);
+        if (dlRes.success) return;
+        // Jika server remote unreachable (misal Supabase mati), lanjut ke fallback generator
+      }
+
+      const pdfString = generateRegulationPdf(item);
+      const blob = new Blob([pdfString], { type: "application/pdf" });
+      downloadBlob(blob, targetFileName);
     } catch (err) {
       console.error("Gagal mengunduh berkas regulasi:", err);
+    } finally {
+      setTimeout(() => {
+        setDownloadNotice(null);
+      }, 4000);
     }
-
-    setTimeout(() => {
-      setDownloadNotice(null);
-    }, 4000);
   };
 
   return (

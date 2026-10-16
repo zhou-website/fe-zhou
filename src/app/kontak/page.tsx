@@ -25,24 +25,6 @@ export default function ContactPage() {
   useEffect(() => {
     let isMounted = true;
 
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("zhou_contact_settings_v1");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.companyName || parsed.email || parsed.whatsapp || parsed.address) {
-            setContactInfo((prev) => ({
-              ...prev,
-              companyName: parsed.companyName || prev.companyName,
-              email: parsed.email || prev.email,
-              whatsapp: parsed.whatsapp || prev.whatsapp,
-              address: parsed.address || prev.address,
-            }));
-          }
-        }
-      } catch {}
-    }
-
     const handleContactUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{
         companyName?: string;
