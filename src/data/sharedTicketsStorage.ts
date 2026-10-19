@@ -571,14 +571,34 @@ export function mergeTicketsWithLocalOverrides(
   const merged: ClientTicket[] = [...backendTickets];
 
   localTickets.forEach((lt) => {
-    const existingIdx = merged.findIndex(
-      (mt) =>
-        mt.id.toLowerCase() === lt.id.toLowerCase() ||
-        (lt.numericId && mt.numericId === lt.numericId) ||
-        (lt.numericId && mt.id.replace(/\D/g, "") === String(lt.numericId)) ||
-        (mt.numericId && lt.id.replace(/\D/g, "") === String(mt.numericId)) ||
-        (lt.title && mt.title && lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim())
-    );
+    const existingIdx = merged.findIndex((mt) => {
+      // 1. Exact ID match (case-insensitive)
+      if (mt.id.toLowerCase() === lt.id.toLowerCase()) return true;
+
+      // 2. Exact Numeric ID match
+      if (lt.numericId && mt.numericId && lt.numericId === mt.numericId) return true;
+
+      // 3. Numeric ID matching project code digits
+      const mtNum = mt.id.replace(/\D/g, "");
+      const ltNum = lt.id.replace(/\D/g, "");
+      if (lt.numericId && mtNum && mtNum === String(lt.numericId)) return true;
+      if (mt.numericId && ltNum && ltNum === String(mt.numericId)) return true;
+      if (mtNum && ltNum && mtNum === ltNum && mtNum.length >= 4) return true;
+
+      // 4. Temporary ID matching by title only if one is a temporary ticket without real numeric ID
+      const isLtTemp = lt.id.startsWith("TK-") && !lt.numericId;
+      const isMtTemp = mt.id.startsWith("TK-") && !mt.numericId;
+      if (
+        (isLtTemp || isMtTemp) &&
+        lt.title &&
+        mt.title &&
+        lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim()
+      ) {
+        return true;
+      }
+
+      return false;
+    });
 
     if (existingIdx !== -1) {
       const bt = merged[existingIdx];

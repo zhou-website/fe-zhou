@@ -120,8 +120,8 @@ export function Footer() {
                   <div className="flex items-start gap-2.5">
                     <LocationIcon className="text-silver text-xs shrink-0 mt-0.5" />
                     <span className="leading-relaxed">
-                      {contact.address.includes("SCBD") || contact.address.includes("Sudirman")
-                        ? "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340"
+                      {contact.address.includes("SCBD") || contact.address.includes("Sudirman") || contact.address.includes("Botanica")
+                        ? "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345"
                         : contact.address}
                     </span>
                   </div>

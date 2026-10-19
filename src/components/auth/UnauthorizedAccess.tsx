@@ -34,7 +34,7 @@ export function UnauthorizedAccess({ requiredRoleLabel, allowedRoles }: Unauthor
       ? "Superadmin Portal"
       : currentRole === "admin"
       ? "Admin Portal"
-      : "Dashboard Saya";
+      : "Dashboard";
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">

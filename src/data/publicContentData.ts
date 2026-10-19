@@ -100,7 +100,7 @@ export const INITIAL_HOMEPAGE_CONTENT: HomepageContent = {
     { id: "m4", label: "Konsultan BKP & CA Berlisensi", sub: "Akreditasi Profesional" },
   ],
   boardroomCaption:
-    "Rapat konsultasi strategis perpajakan & kepatuhan fiskal di Menara Sudirman Kav. 21 Lt. 12, Jakarta Selatan.",
+    "Rapat konsultasi strategis perpajakan & kepatuhan fiskal di MyRepublic Plaza, BSD Green Office Park, Tangerang.",
   status: "Published",
   lastUpdated: "18 Sep 2026",
 };
@@ -266,18 +266,18 @@ export interface ContactConsultationContent {
 }
 
 export const INITIAL_CONTACT_CONTENT: ContactConsultationContent = {
-  officeName: "-",
-  address: "-",
-  floorBuilding: "-",
-  city: "-",
-  email: "-",
+  officeName: "Zhou Consulting",
+  address: "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345",
+  floorBuilding: "Wing A, Lantai Dasar Zona 6",
+  city: "Kabupaten Tangerang, Banten 15345",
+  email: "consultingzhou@gmail.com",
   phone: "-",
-  operatingHours: "-",
-  transitAccess: "-",
+  operatingHours: "Senin – Jumat: 08:30 – 17:30 WIB",
+  transitAccess: "Stasiun Cisauk / BSD Link Shuttle",
   whatsappHotlines: [],
   consultationSlots: [],
-  status: "Draft",
-  lastUpdated: "-",
+  status: "Published",
+  lastUpdated: "Oktober 2026",
 };
 
 // Unified items mapping for master table in Admin Overview
@@ -430,12 +430,12 @@ export function buildInitialPublicCMSItems(): PublicCMSItem[] {
     section: "contact",
     sectionLabel: "Kontak & Operasional",
     publicRoute: "/kontak",
-    title: `Kantor Sudirman & Saluran Komunikasi Resmi (${INITIAL_CONTACT_CONTENT.email})`,
+    title: `Kantor BSD & Saluran Komunikasi Resmi (${INITIAL_CONTACT_CONTENT.email})`,
     category: "Informasi Kantor & CS",
-    summary: `${INITIAL_CONTACT_CONTENT.address}, ${INITIAL_CONTACT_CONTENT.city}. Jam: ${INITIAL_CONTACT_CONTENT.operatingHours}`,
+    summary: `${INITIAL_CONTACT_CONTENT.address}. Jam: ${INITIAL_CONTACT_CONTENT.operatingHours}`,
     status: INITIAL_CONTACT_CONTENT.status,
     lastUpdated: INITIAL_CONTACT_CONTENT.lastUpdated,
-    editor: "Operasional Menara Sudirman",
+    editor: "Operasional MyRepublic Plaza BSD",
     contactInfo: {
       address: INITIAL_CONTACT_CONTENT.address,
       email: INITIAL_CONTACT_CONTENT.email,

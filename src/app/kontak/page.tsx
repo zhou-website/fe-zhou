@@ -18,8 +18,8 @@ export default function ContactPage() {
     companyName: "Zhou Consulting",
     email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "consultingzhou@gmail.com",
     phone: "",
-    address: "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340",
-    whatsapp: process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 812-9876-5432",
+    address: "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345",
+    whatsapp: process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086",
   });
 
   useEffect(() => {
@@ -53,8 +53,8 @@ export default function ContactPage() {
           if (!parsed.email || parsed.email === "contact@zhouconsulting.com") {
             parsed.email = "consultingzhou@gmail.com";
           }
-          if (!parsed.address || parsed.address.includes("SCBD") || parsed.address.includes("Sudirman")) {
-            parsed.address = "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340";
+          if (!parsed.address || parsed.address.includes("SCBD") || parsed.address.includes("Sudirman") || parsed.address.includes("Botanica")) {
+            parsed.address = "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345";
           }
           parsed.phone = "";
           setContactInfo((prev) => ({
@@ -128,7 +128,7 @@ export default function ContactPage() {
                       <WhatsappIcon className="text-[11px] text-emerald-600 shrink-0" />
                       <span className="text-[11px] text-text-muted shrink-0">WhatsApp Business:</span>
                       <a
-                        href={`https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, "") || "6281298765432"}`}
+                        href={`https://wa.me/${contactInfo.whatsapp.replace(/[^0-9]/g, "") || "6285121286086"}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
@@ -152,13 +152,9 @@ export default function ContactPage() {
                       <span className="text-[11px] text-text-muted shrink-0 w-28">Senin &ndash; Jumat:</span>
                       <span className="font-semibold text-text-primary">08.00 &ndash; 17.00 WIB</span>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[11px] text-text-muted shrink-0 w-28">Sabtu &ndash; Minggu:</span>
-                      <div className="flex flex-wrap items-baseline gap-1.5">
-                        <span className="font-semibold text-text-primary">Tutup</span>
-                        <span className="text-[11px] text-text-muted">(Online Helpdesk via WhatsApp)</span>
-                      </div>
-                    </div>
+                    <p className="text-[11px] text-text-muted">
+                      (Online Helpdesk via WhatsApp)
+                    </p>
                     <p className="pt-2 text-[11px] text-text-muted leading-relaxed border-t border-primary-light/50">
                       Konsultasi tatap muka wajib melakukan reservasi jadwal terlebih dahulu.
                     </p>

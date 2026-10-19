@@ -88,8 +88,8 @@ export function ChatbotWidget({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const rawPhone =
-    whatsappNumber || process.env.NEXT_PUBLIC_WA_PHONE || "6281234567890";
-  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6281234567890";
+    whatsappNumber || process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
+  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6285121286086";
 
   // Sync FAQ tree from backend if available, fallback safely without error
   useEffect(() => {

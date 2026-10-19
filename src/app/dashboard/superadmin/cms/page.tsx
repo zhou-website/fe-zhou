@@ -264,8 +264,8 @@ function AdminCMSPageContent() {
     companyName: "Zhou Consulting",
     email: "consultingzhou@gmail.com",
     phone: "",
-    address: "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340",
-    whatsapp: "+6281298765432",
+    address: "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345",
+    whatsapp: "+62 851-2128-6086",
   });
 
   // Kurs Form
@@ -434,8 +434,10 @@ function AdminCMSPageContent() {
   const [serviceForm, setServiceForm] = useState({
     service_code: "",
     service_name: "",
-    category: "TAX",
+    category: "akuntansi",
     description: "",
+    scopes: "",
+    deliverable: "",
     is_active: true,
   });
 
@@ -483,6 +485,15 @@ function AdminCMSPageContent() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const getStableCmsNumericId = (str: string): number => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash % 9000) + 1000;
   };
 
   // Load all backend resources into ONE unified list
@@ -551,7 +562,7 @@ function AdminCMSPageContent() {
         if (!existingEduTitles.has(titleKey) && !existingEduIds.has(art.id)) {
           existingEduTitles.add(titleKey);
           existingEduIds.add(art.id);
-          const numId = parseInt(art.id.replace(/\D/g, "")) || Math.floor(Math.random() * 9000) + 1000;
+          const numId = parseInt(art.id.replace(/\D/g, "")) || getStableCmsNumericId(art.id + art.title);
           const displayId = art.id.startsWith("EDU-") ? art.id : `EDU-${numId}`;
           items.push({
             id: displayId,
@@ -576,7 +587,7 @@ function AdminCMSPageContent() {
       const storedGovLinks = getStoredBelajarPajakLinks();
       storedGovLinks.forEach((link) => {
         if (isCmsItemDeleted(link.id, link.title, undefined, link.url)) return;
-        const numId = parseInt(link.id.replace(/\D/g, "")) || Math.floor(Math.random() * 9000) + 1000;
+        const numId = parseInt(link.id.replace(/\D/g, "")) || getStableCmsNumericId(link.id + link.title);
         const displayId = link.id.startsWith("DJP-") || link.id.startsWith("GOV-") ? link.id : `DJP-${link.id}`;
         items.push({
           id: displayId,
@@ -617,10 +628,9 @@ function AdminCMSPageContent() {
             }
             return;
           }
-          const domain = getServiceDomain(s.category, s.service_name);
           existingSrvIds.add(id);
+          if (s.service_code) existingSrvIds.add(s.service_code.trim().toLowerCase());
           existingSrvTitles.add(s.service_name.trim().toLowerCase());
-          if (domain) existingSrvDomains.add(domain);
 
           items.push({
             id,
@@ -641,25 +651,29 @@ function AdminCMSPageContent() {
       storedServices.forEach((s) => {
         if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
         const titleKey = s.name.trim().toLowerCase();
-        const domain = getServiceDomain(s.categoryKey, s.name);
+        const codeKey = (s.code || "").trim().toLowerCase();
 
-        // Jangan masukkan duplikasi layanan jika domain yang sama sudah ada dari backend API
-        if (domain && existingSrvDomains.has(domain)) return;
+        // Hindari duplikasi jika sudah terdaftar dari backend dengan ID, kode, atau judul yang sama persis
+        const isDuplicate =
+          existingSrvTitles.has(titleKey) ||
+          existingSrvIds.has(s.id.toLowerCase()) ||
+          (codeKey && existingSrvIds.has(codeKey));
 
-        if (!existingSrvTitles.has(titleKey) && !existingSrvIds.has(s.id)) {
+        if (!isDuplicate) {
           existingSrvTitles.add(titleKey);
-          existingSrvIds.add(s.id);
-          if (domain) existingSrvDomains.add(domain);
-          const numId = parseInt(s.id.replace(/\D/g, "")) || Math.floor(Math.random() * 9000) + 1000;
+          existingSrvIds.add(s.id.toLowerCase());
+          if (codeKey) existingSrvIds.add(codeKey);
+          const numId = parseInt(s.id.replace(/\D/g, ""), 10) || getStableCmsNumericId(s.id + s.name);
+          const displayId = s.id.startsWith("SVC-") || s.id.startsWith("SRV-") ? s.id : `SVC-${s.code || s.id}`;
           items.push({
-            id: s.id.startsWith("SVC-") || s.id.startsWith("SRV-") ? s.id : `SVC-${numId}`,
+            id: displayId,
             numericId: numId,
             section: "services",
             title: s.name,
             category: "Katalog Layanan",
             subcategory: s.categoryKey || "Akuntansi",
             summary: s.subtitle || "Layanan konsultasi resmi",
-            status: getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]),
+            status: getCmsItemStatus(displayId, s.name, s.status === "Draft" ? "Draft" : "Published", [s.id, s.code, numId]),
             updatedAt: s.lastUpdated || "Aktif",
             raw: s,
           });
@@ -1002,54 +1016,74 @@ function AdminCMSPageContent() {
     const isActive = nextStatus === "Published";
 
     try {
+      const rawObj = (item.raw || {}) as Record<string, unknown>;
+      const rawId = rawObj.id !== undefined ? String(rawObj.id) : undefined;
+      const rawCode = (rawObj.code || rawObj.service_code || rawObj.position_code || rawObj.docNumber || rawObj.currency_code) as string | undefined;
+
       // 1. Simpan override status ke cmsStatusStorage agar persisten saat refresh!
       setCmsItemStatus(
         {
           id: item.id,
           numericId: item.numericId,
           title: item.title,
-          code:
-            (item.raw as { service_code?: string; position_code?: string; docNumber?: string; currency_code?: string })?.service_code ||
-            (item.raw as { position_code?: string })?.position_code ||
-            (item.raw as { docNumber?: string })?.docNumber ||
-            (item.raw as { currency_code?: string })?.currency_code,
+          code: rawCode,
+          aliases: [rawId, rawCode, item.title, item.id],
         },
         nextStatus
       );
 
+      // 2. Update state CMS di tabel secara instan (zero flicker)
+      setCmsItems((prev) =>
+        prev.map((i) =>
+          i.id === item.id ||
+          (rawId && i.id === rawId) ||
+          i.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+            ? { ...i, status: nextStatus }
+            : i
+        )
+      );
+
       if (item.section === "services") {
-        try {
-          await adminCmsApi.updateService(item.numericId, { is_active: isActive });
-        } catch (apiErr) {
-          console.warn("Backend service status update fallback:", apiErr);
+        const isBackendId = typeof item.numericId === "number" && item.numericId > 0 && item.numericId < 1000;
+        if (isBackendId) {
+          try {
+            await adminCmsApi.updateService(item.numericId, { is_active: isActive });
+          } catch (apiErr) {
+            console.warn("Backend service status update fallback:", apiErr);
+          }
         }
-        updateStoredService(`SVC-${item.numericId}`, { status: nextStatus });
-        updateStoredService(item.id, { status: nextStatus });
+        updateStoredService(item.id, { status: nextStatus, name: item.title });
+        if (rawId) updateStoredService(rawId, { status: nextStatus, name: item.title });
+        if (rawCode) updateStoredService(rawCode, { status: nextStatus, name: item.title });
+        updateStoredService(item.title, { status: nextStatus, name: item.title });
       } else if (item.section === "karir") {
-        try {
-          await adminCmsApi.updateCareer(item.numericId, { is_active: isActive });
-        } catch (apiErr) {
-          console.warn("Backend career status update fallback:", apiErr);
+        const isBackendId = typeof item.numericId === "number" && item.numericId > 0 && item.numericId < 1000;
+        if (isBackendId) {
+          try {
+            await adminCmsApi.updateCareer(item.numericId, { is_active: isActive });
+          } catch (apiErr) {
+            console.warn("Backend career status update fallback:", apiErr);
+          }
         }
         updateStoredCareerPosition(`CAR-${item.numericId}`, { status: nextStatus });
         updateStoredCareerPosition(item.id, { status: nextStatus });
+        if (rawId) updateStoredCareerPosition(rawId, { status: nextStatus });
       } else if (item.section === "edukasi") {
         toggleArticleStatus(`be-${item.numericId}`);
         toggleArticleStatus(item.id);
         updateZhouArticle(item.id, { status: nextStatus });
         updateZhouArticle(`be-${item.numericId}`, { status: nextStatus });
+        if (rawId) updateZhouArticle(rawId, { status: nextStatus });
         if ((item.raw as { isDjpLink?: boolean })?.isDjpLink) {
           updateStoredBelajarPajakLink(item.id, { status: nextStatus });
+          if (rawId) updateStoredBelajarPajakLink(rawId, { status: nextStatus });
         }
       } else if (item.section === "regulasi") {
         toggleRegulationStatus(`REG-${item.numericId}`);
         toggleRegulationStatus(item.id);
         updateRegulation(item.id, { status: nextStatus === "Draft" ? "Draft" : "Berlaku" });
+        if (rawId) updateRegulation(rawId, { status: nextStatus === "Draft" ? "Draft" : "Berlaku" });
       }
-
-      setCmsItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus } : i))
-      );
       showToast(
         nextStatus === "Draft"
           ? `Konten "${item.title.slice(0, 30)}..." berhasil diubah menjadi Draft.`
@@ -1281,9 +1315,7 @@ function AdminCMSPageContent() {
               ? "/layanan/bisnis"
               : catKey.includes("hukum") || catKey.includes("legal")
                 ? "/layanan/hukum"
-                : catKey.includes("coretax")
-                  ? "/layanan/tax-service#coretax"
-                  : "/layanan/tax-service";
+                : "/layanan/tax-service";
 
         const badgeText =
           catKey.includes("akun")
@@ -1292,36 +1324,54 @@ function AdminCMSPageContent() {
               ? "BUSINESS & FINANCIAL"
               : catKey.includes("hukum")
                 ? "LAW SERVICES"
-                : catKey.includes("coretax")
-                  ? "CORETAX DJP"
-                  : "TAX SERVICES";
+                : "TAX SERVICES";
+
+        const parsedScopes = serviceForm.scopes
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const deliverableVal = serviceForm.deliverable.trim() || "Dokumen Laporan & Rekomendasi Resmi";
 
         if (editingServiceId) {
-          try {
-            await adminCmsApi.updateService(editingServiceId, {
-              service_code: serviceForm.service_code || `SRV-${editingServiceId}`,
-              service_name: serviceForm.service_name,
-              category: catKey,
-              description: serviceForm.description,
-              is_active: serviceForm.is_active,
-            });
-          } catch (apiErr) {
-            console.warn("Backend updateService fallback:", apiErr);
+          const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0 && editingServiceId < 1000;
+          if (isBackendId) {
+            try {
+              await adminCmsApi.updateService(editingServiceId, {
+                service_code: serviceForm.service_code || `SRV-${editingServiceId}`,
+                service_name: serviceForm.service_name,
+                category: catKey,
+                description: serviceForm.description,
+                is_active: serviceForm.is_active,
+              });
+            } catch (apiErr) {
+              console.warn("Backend updateService fallback:", apiErr);
+            }
           }
-          updateStoredService(`SVC-${editingServiceId}`, {
+          const finalSrvId = serviceForm.service_code || `SVC-${editingServiceId}`;
+          updateStoredService(finalSrvId, {
+            id: finalSrvId,
+            code: serviceForm.service_code,
             name: serviceForm.service_name,
             categoryKey: catKey,
             subtitle: serviceForm.description,
             badge: badgeText,
             route: targetRoute,
+            scopes: parsedScopes.length > 0 ? parsedScopes : undefined,
+            deliverable: deliverableVal,
+            deliverables: [deliverableVal],
+            pillars: parsedScopes.map((sc) => ({ title: sc, description: sc })),
             status: srvStatus,
           });
+          updateStoredService(serviceForm.service_name, { status: srvStatus, name: serviceForm.service_name });
+          updateStoredService(`SVC-${editingServiceId}`, { status: srvStatus, name: serviceForm.service_name });
           setCmsItemStatus(
             {
-              id: `SVC-${editingServiceId}`,
+              id: finalSrvId,
               numericId: editingServiceId,
               title: serviceForm.service_name,
               code: serviceForm.service_code,
+              aliases: [serviceForm.service_code, `SVC-${editingServiceId}`, `SRV-${editingServiceId}`, serviceForm.service_name],
             },
             srvStatus
           );
@@ -1335,6 +1385,14 @@ function AdminCMSPageContent() {
                   subcategory: catKey,
                   summary: serviceForm.description.slice(0, 140) + (serviceForm.description.length > 140 ? "..." : ""),
                   status: srvStatus,
+                  raw: {
+                    ...(i.raw || {}),
+                    service_name: serviceForm.service_name,
+                    category: catKey,
+                    description: serviceForm.description,
+                    scopes: parsedScopes,
+                    deliverable: deliverableVal,
+                  },
                 }
                 : i
             )
@@ -1359,19 +1417,17 @@ function AdminCMSPageContent() {
           }
           addStoredService({
             id: srvCode,
+            code: srvCode,
             name: serviceForm.service_name,
             categoryKey: catKey,
             subtitle: serviceForm.description,
             badge: badgeText,
             route: targetRoute,
-            pillars: [
-              {
-                title: serviceForm.service_name,
-                description: serviceForm.description,
-              },
-            ],
+            scopes: parsedScopes,
+            deliverable: deliverableVal,
+            deliverables: [deliverableVal],
+            pillars: parsedScopes.map((sc) => ({ title: sc, description: sc })),
             workflow: ["Konsultasi Awal", "Analisis & Telaah Regulasi", "Eksekusi Layanan", "Penyampaian Laporan Final"],
-            deliverables: ["Laporan Hasil Kerja & Dokumentasi Resmi"],
             status: srvStatus,
           });
           setCmsItemStatus(
@@ -1899,8 +1955,10 @@ function AdminCMSPageContent() {
       setServiceForm({
         service_code: "",
         service_name: "",
-        category: "tax-service",
+        category: "akuntansi",
         description: "",
+        scopes: "",
+        deliverable: "",
         is_active: true,
       });
     } else if (sec === "regulasi") {
@@ -2013,7 +2071,13 @@ function AdminCMSPageContent() {
   };
 
   const openEditService = (item: UnifiedCMSItem) => {
-    const raw = item.raw as (PublicServiceItem & { categoryKey?: string }) | undefined;
+    const raw = item.raw as (PublicServiceItem & {
+      categoryKey?: string;
+      scopes?: string[];
+      deliverable?: string;
+      pillars?: { title: string; description?: string }[];
+      deliverables?: string[];
+    }) | undefined;
     resetAllEditingState();
     setEditingServiceId(item.numericId);
     const catRaw = (raw?.categoryKey || raw?.category || item.subcategory || "").toLowerCase();
@@ -2024,15 +2088,48 @@ function AdminCMSPageContent() {
           ? "bisnis"
           : catRaw.includes("hukum") || catRaw.includes("legal")
             ? "hukum"
-            : catRaw.includes("coretax")
-              ? "coretax"
-              : "tax-service";
+            : "tax-service";
+
+    // Cari data scopes dan deliverable dari storedServices jika tidak ada di raw
+    let scopesList: string[] = [];
+    if (Array.isArray(raw?.scopes) && raw.scopes.length > 0) {
+      scopesList = raw.scopes.filter(Boolean);
+    } else if (Array.isArray(raw?.pillars) && raw.pillars.length > 0) {
+      scopesList = raw.pillars.map((p) => p.title || p.description || "").filter(Boolean);
+    } else {
+      const stored = getStoredServices();
+      const match = stored.find(
+        (s) =>
+          s.id === item.id ||
+          (raw?.service_code && s.code === raw.service_code) ||
+          s.name.trim().toLowerCase() === item.title.trim().toLowerCase()
+      );
+      if (match) {
+        scopesList = match.scopes || match.pillars?.map((p) => p.title || p.description || "").filter(Boolean) || [];
+      }
+    }
+
+    let deliverableText = raw?.deliverable || raw?.deliverables?.[0] || "";
+    if (!deliverableText) {
+      const stored = getStoredServices();
+      const match = stored.find(
+        (s) =>
+          s.id === item.id ||
+          (raw?.service_code && s.code === raw.service_code) ||
+          s.name.trim().toLowerCase() === item.title.trim().toLowerCase()
+      );
+      if (match) {
+        deliverableText = match.deliverable || match.deliverables?.[0] || "";
+      }
+    }
 
     setServiceForm({
       service_code: raw?.service_code || item.id,
       service_name: raw?.service_name || item.title,
       category: mappedCategory,
       description: raw?.description || item.summary,
+      scopes: scopesList.join("\n"),
+      deliverable: deliverableText,
       is_active: item.status === "Published",
     });
     setModalSection("services");
@@ -3201,11 +3298,10 @@ function AdminCMSPageContent() {
                         onChange={(e) => setServiceForm((prev) => ({ ...prev, category: e.target.value }))}
                         className="text-[11px] text-slate-600 mt-1"
                       >
-                        <option value="tax-service">Tax Services (Kepatuhan Pajak &amp; SPT)</option>
                         <option value="akuntansi">Accounting Services (Akuntansi &amp; SAK)</option>
                         <option value="bisnis">Business &amp; Financial (Advisory Finansial)</option>
+                        <option value="tax-service">Tax Services (Kepatuhan Pajak &amp; SPT)</option>
                         <option value="hukum">Law Services (Hukum Bisnis &amp; Sengketa)</option>
-                        <option value="coretax">Coretax DJP (Transisi &amp; Integrasi Coretax 2026)</option>
                       </Select>
                     </div>
                   </div>
@@ -3230,6 +3326,19 @@ function AdminCMSPageContent() {
                       onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))}
                       className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] mt-1"
                     />
+                  </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-primary">Cakupan Layanan (Satu poin per baris)</Label>
+                    <Textarea
+                      rows={4}
+                      placeholder={"e.g.\nPenyusunan Laporan Posisi Keuangan (Neraca) komparatif multi-periode\nPenyusunan Laporan Laba Rugi dan Penghasilan Komprehensif Lain\nLaporan Arus Kas, Catatan atas Laporan Keuangan (CALK)"}
+                      value={serviceForm.scopes}
+                      onChange={(e) => setServiceForm((prev) => ({ ...prev, scopes: e.target.value }))}
+                      className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] mt-1 font-mono leading-relaxed"
+                    />
+                    <p className="text-[10px] text-text-secondary mt-1">
+                      Poin-poin di atas akan ditampilkan dengan tanda centang hijau pada kartu layanan website.
+                    </p>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold text-primary">Status Publikasi Layanan *</Label>
@@ -3793,7 +3902,7 @@ function AdminCMSPageContent() {
                     <Input
                       type="text"
                       required
-                      placeholder="+6281298765432"
+                      placeholder="+62 851-2128-6086"
                       value={contactForm.whatsapp}
                       onChange={(e) => setContactForm((prev) => ({ ...prev, whatsapp: e.target.value }))}
                       className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] h-9 mt-1"

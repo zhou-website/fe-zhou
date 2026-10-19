@@ -47,6 +47,7 @@ export function setCmsItemStatus(
     numericId?: string | number | null;
     title?: string | null;
     code?: string | null;
+    aliases?: (string | number | null | undefined)[];
   },
   status: CMSPublicationStatus
 ): void {
@@ -61,9 +62,16 @@ export function setCmsItemStatus(
       const norm = normalizeStr(val);
       if (norm) {
         updatedMap[norm] = status;
-        const stripped = norm.replace(/^(edu|svc|srv|reg|car|tax|app|faq|be|cfg|pos)-/, "");
+        const stripped = norm.replace(/^(edu|svc|srv|reg|car|tax|app|faq|be|cfg|pos)[-_]/, "");
         if (stripped && stripped !== norm) {
           updatedMap[stripped] = status;
+        }
+        // Normalize underscore to hyphen and vice versa
+        if (norm.includes("_")) {
+          updatedMap[norm.replace(/_/g, "-")] = status;
+        }
+        if (norm.includes("-")) {
+          updatedMap[norm.replace(/-/g, "_")] = status;
         }
       }
       const slug = slugify(val);
@@ -76,6 +84,9 @@ export function setCmsItemStatus(
     recordKey(item.numericId);
     recordKey(item.title);
     recordKey(item.code);
+    if (item.aliases && Array.isArray(item.aliases)) {
+      item.aliases.forEach((a) => recordKey(a));
+    }
 
     if (item.numericId !== undefined && item.numericId !== null) {
       const numStr = String(item.numericId);

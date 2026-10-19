@@ -134,35 +134,64 @@ const TAX_SERVICE_MODULES: TaxModuleItem[] = [
 ];
 
 export default function TaxServicePage() {
-  const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6281234567890";
-  const [extraModules, setExtraModules] = useState<TaxModuleItem[]>([]);
+  const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
+  const [modules, setModules] = useState<TaxModuleItem[]>(TAX_SERVICE_MODULES);
 
   useEffect(() => {
     const syncModules = () => {
       const stored = getStoredServices();
-      const customItems = stored.filter(
+      const taxStored = stored.filter(
         (s) =>
           (s.categoryKey?.toLowerCase() === "tax-service" || s.categoryKey?.toLowerCase() === "tax") &&
           s.status === "Published" &&
-          !isCmsItemDeleted(s.id, s.name, undefined, s.code) &&
-          s.id !== "SRV-TAX-CORE"
+          !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
-      setExtraModules(
-        customItems.map((c) => ({
-          id: c.id,
-          code: c.code || c.id,
-          title: c.name,
-          badge: c.badge || "TAX SERVICES",
-          subtitle: c.subtitle,
-          scopes: c.pillars?.map((p) => p.title || p.description) || [
-            "Konsultasi dan kepatuhan perpajakan terpadu",
-            "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
-          ],
-          deliverable: c.deliverables?.[0] || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
-          topicParam: "tax-service",
-          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-        }))
-      );
+
+      if (taxStored.length > 0) {
+        setModules(
+          taxStored.map((c) => {
+            const defaultItem = TAX_SERVICE_MODULES.find(
+              (m) =>
+                m.id === c.id ||
+                m.code === c.code ||
+                m.title.toLowerCase() === c.name.toLowerCase()
+            );
+
+            const rawScopes =
+              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
+              (c.pillars && c.pillars.length > 0
+                ? c.pillars.map((p) => p.title || p.description)
+                : undefined) ||
+              defaultItem?.scopes || [
+                "Konsultasi dan kepatuhan perpajakan terpadu",
+                "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
+              ];
+
+            const rawDeliverable =
+              (c.deliverable && c.deliverable.trim()) ||
+              (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
+              defaultItem?.deliverable ||
+              "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)";
+
+            return {
+              id: c.id,
+              code: c.code || defaultItem?.code || c.id,
+              title: c.name,
+              badge: c.badge || defaultItem?.badge || "TAX SERVICES",
+              subtitle: c.subtitle || defaultItem?.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
+              scopes: rawScopes,
+              deliverable: rawDeliverable,
+              topicParam: c.topicParam || defaultItem?.topicParam || "tax-service",
+              waTemplate:
+                c.waTemplate ||
+                defaultItem?.waTemplate ||
+                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+            };
+          })
+        );
+      } else {
+        setModules(TAX_SERVICE_MODULES);
+      }
     };
 
     syncModules();
@@ -170,19 +199,12 @@ export default function TaxServicePage() {
     return () => window.removeEventListener(SERVICES_EVENT, syncModules);
   }, []);
 
-  const visibleModules = [
-    ...TAX_SERVICE_MODULES.filter(
-      (m) => !isCmsItemDeleted(m.id, m.title, undefined, m.code)
-    ),
-    ...extraModules,
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
       <Navbar />
 
       <main className="flex-1">
-        {/* 5 Core Tax Services Cards Grid + Coretax */}
+        {/* 6 Core Tax Services Cards Grid */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center md:text-left max-w-2xl">
@@ -195,7 +217,7 @@ export default function TaxServicePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visibleModules.map((item) => (
+              {modules.map((item) => (
                 <Card
                   key={item.id}
                   id={item.id}
@@ -226,15 +248,6 @@ export default function TaxServicePage() {
                           <span className="leading-snug text-text-secondary text-[11px]">{scope}</span>
                         </div>
                       ))}
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-surface border border-primary-light/70 space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block">
-                        Luaran / Deliverable:
-                      </span>
-                      <p className="text-[11px] text-primary font-medium leading-relaxed">
-                        {item.deliverable}
-                      </p>
                     </div>
                   </CardContent>
 

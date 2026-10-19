@@ -19,7 +19,7 @@ interface NavItem {
 
 const USER_MAIN_NAV: NavItem[] = [
   {
-    label: "Dashboard Saya",
+    label: "Dashboard",
     href: "/dashboard/user",
     icon: BuildingIcon,
   },

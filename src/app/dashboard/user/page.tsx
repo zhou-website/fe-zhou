@@ -27,12 +27,14 @@ import {
   getCachedFileBlobAsync,
   isTicketDeleted,
   formatConsultationDate,
+  mergeTicketsWithLocalOverrides,
 } from "@/data/sharedTicketsStorage";
 import { downloadRemoteFile, downloadBlob } from "@/lib/downloadHelper";
 
 
 interface Ticket {
   id: string;
+  numericId?: number;
   title: string;
   category: "Tax Service Core" | "Accounting Service" | "Legal" | "Business Consulting" | string;
   consultant: string;
@@ -86,7 +88,26 @@ export default function UserDashboardPage() {
         clientApi.getDocuments(),
       ]);
 
-      // 1. Konsultasi dari backend
+      // 1. Kumpulkan seluruh dokumen backend
+      let backendDocs: ClientDocument[] = [];
+      let rawBackendDocs: ClientDocumentItem[] = [];
+      if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
+        rawBackendDocs = docRes.value.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
+        backendDocs = rawBackendDocs.map((d: ClientDocumentItem) => ({
+          id: String(d.id),
+          name: d.file_name,
+          category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
+          date: new Date(d.created_at).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+          size: d.file_size || "1.2 MB",
+          ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
+        }));
+      }
+
+      // 2. Konsultasi dari backend
       if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
         const userEmail = (user?.email || "").toLowerCase().trim();
         const userName = (user?.name || "").toLowerCase().trim();
@@ -107,116 +128,128 @@ export default function UserDashboardPage() {
             return true;
           });
 
-        const mappedTickets: Ticket[] = validConsultations.map((c: ConsultationItem) => ({
-          id: c.project_code || `TK-${c.id}`,
-          title: c.title,
-          category: resolveConsultationCategory(c),
-          consultant: c.assigned_admin?.name || "Menunggu PIC",
-          status: c.status === "COMPLETED" ? "Selesai" : "Dalam Proses",
-          progress: c.progress_percent || (c.status === "COMPLETED" ? 100 : 40),
-          updatedAt: new Date(c.updated_at || c.created_at).toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          }),
-          checklists: (c.tasks && c.tasks.length > 0)
-            ? c.tasks.map((t) => ({ text: t.task_name, done: t.is_completed }))
-            : [
-                { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-                { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: c.status === "COMPLETED" },
-                { text: "Penyusunan berkas luaran & final review", done: c.status === "COMPLETED" },
-              ],
-          deliverableFile: c.status === "COMPLETED" ? "Laporan_Final_Konsultasi.pdf" : undefined,
-          deliverableSize: c.status === "COMPLETED" ? "1.5 MB" : undefined,
-        }));
-
-        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
-        const mergedTickets = [...mappedTickets];
-        localTickets.forEach((lt) => {
-          const existingIdx = mergedTickets.findIndex(
-            (mt) =>
-              mt.id.toLowerCase() === lt.id.toLowerCase() ||
-              (lt.numericId && mt.id.includes(String(lt.numericId))) ||
-              (lt.title && mt.title && lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim())
+        const backendMappedTickets = validConsultations.map((c: ConsultationItem) => {
+          const ticketCode = c.project_code || `TK-${c.id}`;
+          const isCompleted = c.status === "COMPLETED";
+          const matchingBackendDocs = rawBackendDocs.filter(
+            (d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code))
           );
-          const mappedLt = {
-            id: lt.id,
-            title: lt.title,
-            category: resolveConsultationCategory(lt),
-            consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
-            status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
-            progress: lt.progress !== undefined ? lt.progress : 35,
-            updatedAt: lt.createdAt || "Hari ini",
-            createdAt: lt.createdAt,
-            checklists: (lt.milestones && lt.milestones.length > 0)
-              ? lt.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
-              : [
-                  { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-                  { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
-                  { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
-                ],
-            deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
-            deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
+          const taskMilestones = (c.tasks && c.tasks.length > 0)
+            ? c.tasks.map((task, idx) => ({
+                step: `0${idx + 1}`,
+                title: task.task_name,
+                status: (task.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                date: "Proses",
+                description: task.task_name,
+              }))
+            : [
+                {
+                  step: "01",
+                  title: "Telaah awal dokumen & verifikasi data perikatan",
+                  status: "completed" as const,
+                  date: "Hari ke-1",
+                  description: "Permohonan konsultasi diverifikasi.",
+                },
+                {
+                  step: "02",
+                  title: "Pengerjaan kertas kerja & perhitungan fiskal",
+                  status: (isCompleted || matchingBackendDocs.length > 0 ? "completed" : "in_progress") as "completed" | "in_progress" | "pending",
+                  date: "Proses",
+                  description: "Pengerjaan kertas kerja.",
+                },
+                {
+                  step: "03",
+                  title: "Penyusunan berkas luaran & final review",
+                  status: (isCompleted ? "completed" : matchingBackendDocs.length > 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                  date: "Final",
+                  description: "Penerbitan luaran.",
+                },
+              ];
+
+          return {
+            id: ticketCode,
+            numericId: c.id,
+            title: c.title,
+            category: resolveConsultationCategory(c),
+            priority: "Normal" as const,
+            description: c.description || "",
+            consultant: c.assigned_admin?.name || "Menunggu PIC",
+            assignedAdminName: c.assigned_admin?.name,
+            status: isCompleted ? ("Selesai" as const) : c.assigned_admin ? ("Dalam Proses" as const) : ("Menunggu Penugasan" as const),
+            progress: c.progress_percent || (isCompleted ? 100 : matchingBackendDocs.length > 0 ? 75 : 40),
+            createdAt: new Date(c.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            estimatedCompletion: "Sesuai Jadwal SLA",
+            milestones: taskMilestones,
+            deliverables: [],
+            correspondences: [],
           };
-          if (existingIdx !== -1) {
-            mergedTickets[existingIdx] = {
-              ...mergedTickets[existingIdx],
-              ...mappedLt,
-              id: mergedTickets[existingIdx].id || mappedLt.id,
-              consultant: (mappedLt.consultant && !mappedLt.consultant.includes("Menunggu"))
-                ? mappedLt.consultant
-                : (mergedTickets[existingIdx].consultant || mappedLt.consultant),
-            };
-          } else {
-            mergedTickets.unshift(mappedLt);
-          }
         });
 
-        setTickets(mergedTickets);
+        const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
+        const mergedClientTickets = mergeTicketsWithLocalOverrides(backendMappedTickets as any, localTickets);
+
+        const mappedTickets: Ticket[] = mergedClientTickets.map((t) => {
+          const isDone = t.status === "Selesai" || (t.status as string) === "Completed" || t.progress === 100;
+          return {
+            id: t.id,
+            numericId: t.numericId,
+            title: t.title,
+            category: resolveConsultationCategory(t),
+            consultant: t.assignedAdminName || t.consultant || "Menunggu PIC",
+            status: isDone ? "Selesai" : (t.status || "Dalam Proses"),
+            progress: isDone ? 100 : (t.progress !== undefined ? t.progress : 35),
+            updatedAt: t.createdAt || "Hari ini",
+            createdAt: t.createdAt,
+            checklists: (t.milestones && t.milestones.length > 0)
+              ? t.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
+              : [
+                  { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                  { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: isDone },
+                  { text: "Penyusunan berkas luaran & final review", done: isDone },
+                ],
+            deliverableFile: isDone ? "Laporan_Final_Konsultasi.pdf" : undefined,
+            deliverableSize: isDone ? "1.5 MB" : undefined,
+          };
+        });
+
+        setTickets(mappedTickets);
       } else if (consultRes.status === "rejected") {
         setLoadError("Gagal memuat konsultasi dari server.");
         const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
         if (localTickets.length > 0) {
           setTickets(
-            localTickets.map((lt) => ({
-              id: lt.id,
-              title: lt.title,
-              category: resolveConsultationCategory(lt),
-              consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
-              status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
-              progress: lt.progress || 35,
-              updatedAt: lt.createdAt || "Hari ini",
-              createdAt: lt.createdAt,
-              checklists: [
-                { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-                { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
-                { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
-              ],
-              deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
-              deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
-            }))
+            localTickets.map((lt) => {
+              const isDone = lt.status === "Selesai" || (lt.status as string) === "Completed" || lt.progress === 100;
+              return {
+                id: lt.id,
+                numericId: lt.numericId,
+                title: lt.title,
+                category: resolveConsultationCategory(lt),
+                consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
+                status: isDone ? "Selesai" : (lt.status || "Dalam Proses"),
+                progress: isDone ? 100 : (lt.progress !== undefined ? lt.progress : 35),
+                updatedAt: lt.createdAt || "Hari ini",
+                createdAt: lt.createdAt,
+                checklists: (lt.milestones && lt.milestones.length > 0)
+                  ? lt.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
+                  : [
+                      { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                      { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: isDone },
+                      { text: "Penyusunan berkas luaran & final review", done: isDone },
+                    ],
+                deliverableFile: isDone ? "Laporan_Final_Konsultasi.pdf" : undefined,
+                deliverableSize: isDone ? "1.5 MB" : undefined,
+              };
+            })
           );
         }
       }
 
-      // 2. Kumpulkan seluruh dokumen: backend, shared documents, serta dokumen tiket aktif (pendukung & deliverable)
-      let backendDocs: ClientDocument[] = [];
-      if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
-        const validBackendDocs = docRes.value.data.filter((d: ClientDocumentItem) => !isDummyDocument(d));
-        backendDocs = validBackendDocs.map((d: ClientDocumentItem) => ({
-          id: String(d.id),
-          name: d.file_name,
-          category: d.file_type === "XLSX" ? "Akuntansi" : "Pajak",
-          date: new Date(d.created_at).toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          }),
-          size: d.file_size || "1.2 MB",
-          ticketRef: d.project_id ? `TK-${d.project_id}` : "-",
-        }));
-      }
-
+      // 3. Kumpulkan seluruh dokumen: backend, shared documents, serta dokumen tiket aktif (pendukung & deliverable)
       const localShared = typeof window !== "undefined" ? getStoredDocuments() : [];
       const sharedDocs: ClientDocument[] = localShared
         .filter((d) => !d.ticketId || !isTicketDeleted(d.ticketId))
@@ -277,23 +310,29 @@ export default function UserDashboardPage() {
       const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
       if (localTickets.length > 0) {
         setTickets(
-          localTickets.map((lt) => ({
-            id: lt.id,
-            title: lt.title,
-            category: lt.category,
-            consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
-            status: lt.status === "Selesai" ? "Selesai" : "Dalam Proses",
-            progress: lt.progress || 35,
-            updatedAt: lt.createdAt || "Hari ini",
-            createdAt: lt.createdAt,
-            checklists: [
-              { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
-              { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: lt.status === "Selesai" },
-              { text: "Penyusunan berkas luaran & final review", done: lt.status === "Selesai" },
-            ],
-            deliverableFile: lt.status === "Selesai" ? "Laporan_Final_Konsultasi.pdf" : undefined,
-            deliverableSize: lt.status === "Selesai" ? "1.5 MB" : undefined,
-          }))
+          localTickets.map((lt) => {
+            const isDone = lt.status === "Selesai" || (lt.status as string) === "Completed" || lt.progress === 100;
+            return {
+              id: lt.id,
+              numericId: lt.numericId,
+              title: lt.title,
+              category: resolveConsultationCategory(lt),
+              consultant: lt.assignedAdminName || lt.consultant || "Menunggu PIC",
+              status: isDone ? "Selesai" : (lt.status || "Dalam Proses"),
+              progress: isDone ? 100 : (lt.progress !== undefined ? lt.progress : 35),
+              updatedAt: lt.createdAt || "Hari ini",
+              createdAt: lt.createdAt,
+              checklists: (lt.milestones && lt.milestones.length > 0)
+                ? lt.milestones.map((m) => ({ text: m.title, done: m.status === "completed" }))
+                : [
+                    { text: "Telaah awal dokumen & verifikasi data perikatan", done: true },
+                    { text: "Pengerjaan kertas kerja & perhitungan fiskal", done: isDone },
+                    { text: "Penyusunan berkas luaran & final review", done: isDone },
+                  ],
+              deliverableFile: isDone ? "Laporan_Final_Konsultasi.pdf" : undefined,
+              deliverableSize: isDone ? "1.5 MB" : undefined,
+            };
+          })
         );
       }
     } finally {
@@ -303,6 +342,21 @@ export default function UserDashboardPage() {
 
   useEffect(() => {
     loadClientData();
+  }, [loadClientData]);
+
+  // Sinkronisasi realtime saat ada tiket/progres/dokumen yang diupdate
+  useEffect(() => {
+    const handleSync = () => {
+      loadClientData();
+    };
+    window.addEventListener("zhou_tickets_updated", handleSync);
+    window.addEventListener("storage", handleSync);
+    window.addEventListener("focus", handleSync);
+    return () => {
+      window.removeEventListener("zhou_tickets_updated", handleSync);
+      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("focus", handleSync);
+    };
   }, [loadClientData]);
 
   // Filtered tickets
@@ -383,7 +437,7 @@ export default function UserDashboardPage() {
       <div>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-primary tracking-tight mb-1">
-            Dashboard Saya
+            Dashboard
           </h1>
           <p className="text-xs text-text-secondary">
             Pantau progres layanan konsultasi, lembar kerja akuntansi, dan unduh berkas resmi Anda di sini.
@@ -573,7 +627,9 @@ export default function UserDashboardPage() {
                         <div className="w-20 sm:w-24 bg-surface rounded-full h-2 overflow-hidden border border-navy-light">
                           <div
                             className={`h-full rounded-full transition-all duration-300 ${
-                              ticket.status === "Completed" ? "bg-success" : "bg-primary"
+                              ticket.status === "Completed" || ticket.status === "Selesai" || ticket.progress === 100
+                                ? "bg-success"
+                                : "bg-primary"
                             }`}
                             style={{ width: `${ticket.progress}%` }}
                           />

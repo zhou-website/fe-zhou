@@ -27,8 +27,8 @@ export function ServicesSection() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
 
-  const rawPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6281298765432";
-  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6281298765432";
+  const rawPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
+  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6285121286086";
 
   const getAuthHref = (target: string) => {
     if (target.startsWith("/dashboard") && !isAuthenticated) {

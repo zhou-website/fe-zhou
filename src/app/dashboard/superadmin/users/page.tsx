@@ -300,6 +300,19 @@ export default function SuperadminUsersPage() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const handleOpenAddModal = () => {
+    setNewStaffForm({
+      name: "",
+      email: "",
+      phone: "+62 8",
+      role: "admin",
+      division: "Tax Service Core",
+      initialPassword: `Admin${Math.floor(100 + Math.random() * 900)}!`,
+      twoFactorEnabled: true,
+    });
+    setIsAddModalOpen(true);
+  };
+
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffForm.name.trim() || !newStaffForm.email.trim()) {
@@ -307,79 +320,102 @@ export default function SuperadminUsersPage() {
       return;
     }
 
-    const normalizedRole = newStaffForm.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
-    const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
-    const newId = `STF-LOCAL-${Date.now()}`;
-    const newNip = (normalizedRole === "SUPERADMIN" ? "SPR-" : "ADM-") + String(Math.floor(100 + Math.random() * 900));
-
-    const newStaffItem: StaffAdmin = {
-      id: newId,
-      name: newStaffForm.name.trim(),
-      nip: newNip,
-      email: newStaffForm.email.trim(),
-      phone: newStaffForm.phone.trim(),
-      role: displayRole,
-      division: newStaffForm.division,
-      tasksCount: 0,
-      status: "Aktif",
-      twoFactorEnabled: newStaffForm.twoFactorEnabled,
-      joinDate: new Date().toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      password: newStaffForm.initialPassword,
-    };
-
-    // 1. Immediately persist to localStorage
-    if (typeof window !== "undefined") {
-      try {
-        const cache = getLocalStaffCache();
-        cache.created.unshift(newStaffItem);
-        cache.overrides[newStaffItem.id] = newStaffItem;
-        cache.overrides[newStaffItem.email.toLowerCase()] = newStaffItem;
-        cache.overrides[newStaffItem.nip] = newStaffItem;
-
-        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(cache.created));
-        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
-      } catch (err) {
-        console.warn("Gagal menyimpan akun baru ke localStorage:", err);
-      }
+    const emailVal = newStaffForm.email.trim();
+    if (!emailVal.includes("@") || !emailVal.includes(".")) {
+      showToast("Format email tidak valid. Pastikan menyertakan domain lengkap (misal: @zhouconsulting.com).");
+      return;
     }
 
-    // 2. Immediately update state
-    setStaffList((prev) => [newStaffItem, ...prev]);
+    const passwordVal = newStaffForm.initialPassword.trim() || "Admin123!";
+    if (passwordVal.length < 6) {
+      showToast("Kata sandi minimal 6 karakter.");
+      return;
+    }
 
-    // 3. Sync to backend API
+    const normalizedRole = newStaffForm.role.toLowerCase() === "superadmin" ? "SUPERADMIN" : "ADMIN";
+    const displayRole = normalizedRole === "SUPERADMIN" ? "Superadmin" : "Admin";
+
+    setIsLoading(true);
     try {
+      // 1. Buat akun terlebih dahulu ke live backend API
       const res = await superadminApi.createAdmin({
         name: newStaffForm.name.trim(),
-        email: newStaffForm.email.trim(),
-        password: newStaffForm.initialPassword,
+        email: emailVal,
+        password: passwordVal,
         phone: newStaffForm.phone.trim(),
         role: normalizedRole,
       });
 
-      if (!res.success && res.message) {
-        showToast(res.message);
-      } else {
-        showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat.`);
+      if (!res.success) {
+        showToast(res.message || "Gagal membuat akun staf di server backend.");
+        setIsLoading(false);
+        return;
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal membuat akun admin di server.";
-      showToast(msg);
-    }
 
-    setIsAddModalOpen(false);
-    setNewStaffForm({
-      name: "",
-      email: "",
-      phone: "+62 8",
-      role: "admin",
-      division: "Tax Service Core",
-      initialPassword: "ZhouPass" + Math.floor(1000 + Math.random() * 9000) + "!",
-      twoFactorEnabled: true,
-    });
+      // 2. Ambil ID resmi yang dikembalikan oleh backend
+      const createdBackendId = res.data?.id;
+      const finalId = createdBackendId ? `STF-BE-${createdBackendId}` : `STF-LOCAL-${Date.now()}`;
+      const finalNip =
+        (normalizedRole === "SUPERADMIN" ? "SPR-" : "ADM-") +
+        (createdBackendId ? String(createdBackendId).padStart(3, "0") : String(Math.floor(100 + Math.random() * 900)));
+
+      const newStaffItem: StaffAdmin = {
+        id: finalId,
+        name: newStaffForm.name.trim(),
+        nip: finalNip,
+        email: emailVal,
+        phone: newStaffForm.phone.trim(),
+        role: displayRole,
+        division: newStaffForm.division,
+        tasksCount: 0,
+        status: "Aktif",
+        twoFactorEnabled: newStaffForm.twoFactorEnabled,
+        joinDate: new Date().toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        password: passwordVal,
+      };
+
+      // 3. Simpan ke local cache
+      if (typeof window !== "undefined") {
+        try {
+          const cache = getLocalStaffCache();
+          cache.created.unshift(newStaffItem);
+          cache.overrides[newStaffItem.id] = newStaffItem;
+          cache.overrides[newStaffItem.email.toLowerCase()] = newStaffItem;
+          cache.overrides[newStaffItem.nip] = newStaffItem;
+          if (createdBackendId) {
+            cache.overrides[String(createdBackendId)] = newStaffItem;
+          }
+
+          localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(cache.created));
+          localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
+        } catch (err) {
+          console.warn("Gagal menyimpan akun baru ke localStorage:", err);
+        }
+      }
+
+      // 4. Update state dan tampilkan notifikasi sukses beserta kredensial
+      setStaffList((prev) => [newStaffItem, ...prev]);
+      showToast(`Akun ${displayRole} ${newStaffItem.name} berhasil dibuat! Kata sandi: ${passwordVal}`);
+      setIsAddModalOpen(false);
+      setNewStaffForm({
+        name: "",
+        email: "",
+        phone: "+62 8",
+        role: "admin",
+        division: "Tax Service Core",
+        initialPassword: "Admin" + Math.floor(100 + Math.random() * 900) + "!",
+        twoFactorEnabled: true,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal membuat akun admin di server backend.";
+      showToast(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditStaffSubmit = async (e: React.FormEvent) => {
@@ -437,14 +473,23 @@ export default function SuperadminUsersPage() {
     }
 
     // 3. Sync to backend API if applicable
-    const numericId = parseInt(updatedStaff.id.replace(/\D/g, ""), 10);
-    if (!isNaN(numericId) && numericId > 0) {
+    let numericId: number | null = null;
+    if (updatedStaff.id.startsWith("STF-BE-")) {
+      numericId = parseInt(updatedStaff.id.replace("STF-BE-", ""), 10);
+    } else if (!updatedStaff.id.startsWith("STF-LOCAL-")) {
+      const parsed = parseInt(updatedStaff.id.replace(/\D/g, ""), 10);
+      if (!isNaN(parsed) && parsed > 0 && parsed < 100000) {
+        numericId = parsed;
+      }
+    }
+
+    if (numericId && !isNaN(numericId)) {
       superadminApi
         .updateAdmin(numericId, {
           name: updatedStaff.name,
           email: updatedStaff.email,
           phone: updatedStaff.phone,
-          role: updatedStaff.role,
+          role: updatedStaff.role.toUpperCase() === "SUPERADMIN" ? "SUPERADMIN" : "ADMIN",
           password: updatedStaff.password,
         })
         .catch((err) => {
@@ -720,7 +765,7 @@ export default function SuperadminUsersPage() {
                 type="button"
                 variant="primary"
                 size="sm"
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={handleOpenAddModal}
                 className="text-xs font-semibold h-9 px-4 shadow-sm flex items-center justify-center whitespace-nowrap"
               >
                 <span>Tambah Akun Staf Baru</span>

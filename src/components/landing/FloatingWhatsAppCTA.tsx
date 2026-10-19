@@ -8,7 +8,7 @@ export function FloatingWhatsAppCTA() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [waNumber, setWaNumber] = useState<string>(
-    process.env.NEXT_PUBLIC_WA_PHONE || ""
+    process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086"
   );
 
   useEffect(() => {

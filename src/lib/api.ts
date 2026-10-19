@@ -914,13 +914,13 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
   [key: string]: string;
 } {
   const corporateEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "consultingzhou@gmail.com";
-  const corporateAddress = "Jl. Botanica Valley Blok B2 No.6, Rawakalong, Kec. Gn. Sindur, Kabupaten Bogor, Jawa Barat 16340";
+  const corporateAddress = "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345";
   const map: Record<string, string> = {
     companyName: "Zhou Consulting",
     email: corporateEmail,
     phone: "",
     address: corporateAddress,
-    whatsapp: "+6281298765432",
+    whatsapp: process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086",
   };
 
   if (Array.isArray(settings)) {
@@ -937,17 +937,25 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
       }
       if (s.setting_key === "company_address" || s.setting_key === "contact_address") {
         const val = s.setting_value;
-        map.address = (!val || val.includes("SCBD") || val.includes("Sudirman")) ? corporateAddress : val;
+        map.address = (!val || val.includes("SCBD") || val.includes("Sudirman") || val.includes("Botanica")) ? corporateAddress : val;
       }
-      if (s.setting_key === "cs_whatsapp" || s.setting_key === "contact_whatsapp") map.whatsapp = s.setting_value;
+      if (s.setting_key === "cs_whatsapp" || s.setting_key === "contact_whatsapp") {
+        const val = s.setting_value;
+        map.whatsapp = (!val || val.includes("1234567890") || val.includes("81298765432") || val.includes("9876-5432"))
+          ? (process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086")
+          : val;
+      }
     });
   }
 
   if (!map.email || map.email === "contact@zhouconsulting.com") {
     map.email = corporateEmail;
   }
-  if (!map.address || map.address.includes("SCBD") || map.address.includes("Sudirman")) {
+  if (!map.address || map.address.includes("SCBD") || map.address.includes("Sudirman") || map.address.includes("Botanica")) {
     map.address = corporateAddress;
+  }
+  if (!map.whatsapp || map.whatsapp.includes("1234567890") || map.whatsapp.includes("81298765432") || map.whatsapp.includes("9876-5432")) {
+    map.whatsapp = process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086";
   }
   map.phone = "";
 

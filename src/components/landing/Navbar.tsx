@@ -342,7 +342,7 @@ export function Navbar() {
                     asChild
                     className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
                   >
-                    <Link href="/dashboard/user">Dashboard Saya</Link>
+                    <Link href="/dashboard/user">Dashboard</Link>
                   </Button>
                 )}
               </>
@@ -409,7 +409,7 @@ export function Navbar() {
                   ? "Superadmin Portal"
                   : userRole === "admin"
                   ? "Admin Portal"
-                  : "Dashboard Saya"}
+                  : "Dashboard"}
               </Link>
             </Button>
           ) : (
@@ -644,7 +644,7 @@ export function Navbar() {
                       ? "Superadmin Portal"
                       : userRole === "admin"
                       ? "Admin Portal"
-                      : "Dashboard Saya"}
+                      : "Dashboard"}
                   </Link>
                 </Button>
               </>

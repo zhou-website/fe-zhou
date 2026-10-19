@@ -289,7 +289,7 @@ function RegisterFormContent() {
                   className="w-full font-semibold text-xs justify-center shadow-md h-11"
                 >
                   <Link href={redirectParam || "/dashboard/user"}>
-                    <span>{redirectParam ? "Lanjutkan ke Halaman Pilihan Anda" : "Buka Dashboard Saya"}</span>
+                    <span>{redirectParam ? "Lanjutkan ke Halaman Pilihan Anda" : "Buka Dashboard"}</span>
                   </Link>
                 </Button>
                 <Button

@@ -34,9 +34,9 @@ interface LegalModuleItem {
   waTemplate: string;
 }
 
-const LEGAL_SERVICE_MODULES: LegalModuleItem[] = [
+const DEFAULT_LEGAL_MODULES: LegalModuleItem[] = [
   {
-    id: "kontrak-komersial",
+    id: "SRV-LAW-CTR",
     code: "LAW-CTR",
     title: "Drafting & Review Kontrak Komersial",
     badge: "KONTRAK & PERJANJIAN BISNIS",
@@ -52,7 +52,7 @@ const LEGAL_SERVICE_MODULES: LegalModuleItem[] = [
     waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai pembuatan dan penelaahan Kontrak Bisnis / Komersial.",
   },
   {
-    id: "perizinan-oss",
+    id: "SRV-LAW-OSS",
     code: "LAW-OSS",
     title: "Perizinan Usaha Berbasis Risiko OSS-RBA",
     badge: "PERIZINAN BERUSAHA & KBLI",
@@ -68,23 +68,7 @@ const LEGAL_SERVICE_MODULES: LegalModuleItem[] = [
     waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perizinan usaha OSS-RBA dan penyesuaian KBLI perusahaan.",
   },
   {
-    id: "kepatuhan-pdp",
-    code: "LAW-PDP",
-    title: "Kepatuhan UU Pelindungan Data Pribadi (UU PDP)",
-    badge: "PRIVACY COMPLIANCE UU 27/2022",
-    subtitle: "Audit tata kelola pemrosesan data pribadi konsumen/karyawan, privacy policy, dan penunjukan DPO eksternal.",
-    scopes: [
-      "Data Protection Impact Assessment (DPIA) dan pemetaan inventaris data pribadi",
-      "Penyusunan Kebijakan Privasi (Privacy Policy) & Formulir Persetujuan (Consent)",
-      "Klausul Data Processing Agreement (DPA) dengan pihak ketiga dan vendor TI",
-      "Protokol penanganan insiden kebocoran data (Data Breach Notification SOP)",
-    ],
-    deliverable: "Laporan Audit Kepatuhan PDP, Dokumen Privacy Policy Terstandar, & SOP Penanganan Insiden.",
-    topicParam: "kepatuhan-pdp",
-    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai audit dan kepatuhan UU Pelindungan Data Pribadi (UU PDP).",
-  },
-  {
-    id: "restrukturisasi-pt",
+    id: "SRV-LAW-CORP",
     code: "LAW-CORP",
     title: "Restrukturisasi Legalitas & Anggaran Dasar PT",
     badge: "HUKUM PERSEROAN TERBATAS",
@@ -102,35 +86,57 @@ const LEGAL_SERVICE_MODULES: LegalModuleItem[] = [
 ];
 
 export default function KonsultasiHukumPage() {
-  const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6281234567890";
-  const [extraModules, setExtraModules] = useState<LegalModuleItem[]>([]);
+  const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
+  const [modules, setModules] = useState<LegalModuleItem[]>(DEFAULT_LEGAL_MODULES);
 
   useEffect(() => {
     const syncModules = () => {
       const stored = getStoredServices();
-      const customItems = stored.filter(
+      const lawItems = stored.filter(
         (s) =>
           (s.categoryKey?.toLowerCase() === "hukum" || s.categoryKey?.toLowerCase() === "legal") &&
           s.status === "Published" &&
-          !isCmsItemDeleted(s.id, s.name, undefined, s.code) &&
-          s.id !== "SRV-LEGAL-TAX"
+          s.id !== "kepatuhan-pdp" &&
+          s.code !== "LAW-PDP" &&
+          !(s.name || "").toLowerCase().includes("perlindungan data pribadi") &&
+          !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
-      setExtraModules(
-        customItems.map((c) => ({
-          id: c.id,
-          code: c.code || c.id,
-          title: c.name,
-          badge: c.badge || "LAW SERVICES",
-          subtitle: c.subtitle,
-          scopes: c.pillars?.map((p) => p.title || p.description) || [
-            "Pendampingan aspek kepatuhan hukum dan perizinan bisnis",
-            "Mitigasi risiko sengketa perdata dan telaah kontrak komersial",
-          ],
-          deliverable: c.deliverables?.[0] || "Dokumen Legal Opinion & Panduan Kepatuhan Regulasi",
-          topicParam: "hukum",
-          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-        }))
-      );
+
+      if (lawItems.length > 0) {
+        setModules(
+          lawItems.map((c) => {
+            const rawScopes =
+              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
+              (c.pillars && c.pillars.length > 0
+                ? c.pillars.map((p) => p.title || p.description)
+                : undefined) || [
+                "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
+                "Mitigasi risiko hukum dan telaah perjanjian bisnis",
+              ];
+
+            const rawDeliverable =
+              (c.deliverable && c.deliverable.trim()) ||
+              (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
+              "Dokumen Legal Opinion & Panduan Kepatuhan Regulasi";
+
+            return {
+              id: c.id,
+              code: c.code || c.id,
+              title: c.name,
+              badge: c.badge || "LAW SERVICES",
+              subtitle: c.subtitle || "Layanan pendampingan hukum dan kepatuhan regulasi bisnis Zhou Consulting.",
+              scopes: rawScopes,
+              deliverable: rawDeliverable,
+              topicParam: c.topicParam || "hukum",
+              waTemplate:
+                c.waTemplate ||
+                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+            };
+          })
+        );
+      } else {
+        setModules(DEFAULT_LEGAL_MODULES);
+      }
     };
 
     syncModules();
@@ -138,19 +144,12 @@ export default function KonsultasiHukumPage() {
     return () => window.removeEventListener(SERVICES_EVENT, syncModules);
   }, []);
 
-  const visibleModules = [
-    ...LEGAL_SERVICE_MODULES.filter(
-      (m) => !isCmsItemDeleted(m.id, m.title, undefined, m.code)
-    ),
-    ...extraModules,
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
       <Navbar />
 
       <main className="flex-1">
-        {/* 4 Core Legal Services Cards Grid */}
+        {/* Core Legal Services Cards Grid (3 Grid) */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center md:text-left max-w-2xl">
@@ -162,8 +161,8 @@ export default function KonsultasiHukumPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-              {visibleModules.map((item) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {modules.map((item) => (
                 <Card
                   key={item.id}
                   id={item.id}
@@ -194,15 +193,6 @@ export default function KonsultasiHukumPage() {
                           <span className="leading-snug text-text-secondary text-[11px]">{scope}</span>
                         </div>
                       ))}
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-surface border border-primary-light/70 space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted block">
-                        Luaran / Deliverable:
-                      </span>
-                      <p className="text-[11px] text-primary font-medium leading-relaxed">
-                        {item.deliverable}
-                      </p>
                     </div>
                   </CardContent>
 
