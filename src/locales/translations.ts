@@ -27,15 +27,15 @@ export const translations = {
     hero: {
       title: "Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial",
       subtitle1: "Tax and accounting, finance and law services",
-      subtitle2: "Strategic Advisory in Tax, Accounting & Business Law",
+      subtitle2:
+        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
       ctaConsult: "Mulai Konsultasi",
       ctaServices: "Lihat Layanan",
     },
     about: {
       badge: "Profil Perusahaan",
       companyName: "Zhou Consulting",
-      headline:
-        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
+      headline: "Tentang Zhou Consulting",
       btnSchedule: "Jadwalkan Konsultasi",
       btnCatalog: "Lihat Katalog Layanan",
       whyBadge: "Mengapa Zhou Consulting",
@@ -104,7 +104,8 @@ export const translations = {
     },
     footer: {
       tagline1: "Tax and accounting, finance and law services",
-      tagline2: "Strategic Advisory in Tax, Accounting & Business Law",
+      tagline2:
+        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
       desc:
         "Kami menghadirkan pendampingan pajak, keuangan, dan hukum terpadu untuk mendukung bisnis Anda. Melalui strategi menyeluruh, kami memitigasi risiko, memastikan kepatuhan hukum, dan mendorong pertumbuhan perusahaan secara berkelanjutan.",
       navTitle: "Navigasi Website",
@@ -143,15 +144,15 @@ export const translations = {
     hero: {
       title: "Zhou Consulting",
       subtitle1: "Tax and accounting, finance and law services",
-      subtitle2: "Strategic Advisory in Tax, Accounting & Business Law",
+      subtitle2:
+        "As a strategic partner, we ensure your company meets tax, accounting, and legal obligations accurately. We focus on providing practical solutions so you can focus on business growth without worrying about regulatory compliance.",
       ctaConsult: "Start Consultation",
       ctaServices: "View Services",
     },
     about: {
       badge: "Company Profile",
       companyName: "Zhou Consulting",
-      headline:
-        "We provide integrated tax, finance, and legal advisory to empower your business. Through comprehensive strategies, we mitigate risks, ensure regulatory compliance, and drive sustainable corporate growth.",
+      headline: "Tentang Zhou Consulting",
       btnSchedule: "Schedule Consultation",
       btnCatalog: "View Service Catalog",
       whyBadge: "Why Zhou Consulting",
@@ -220,7 +221,8 @@ export const translations = {
     },
     footer: {
       tagline1: "Tax and accounting, finance and law services",
-      tagline2: "Strategic Advisory in Tax, Accounting & Business Law",
+      tagline2:
+        "As a strategic partner, we ensure your company meets tax, accounting, and legal obligations accurately. We focus on providing practical solutions so you can focus on business growth without worrying about regulatory compliance.",
       desc:
         "We provide integrated tax, finance, and legal advisory to empower your business. Through comprehensive strategies, we mitigate risks, ensure regulatory compliance, and drive sustainable corporate growth.",
       navTitle: "Website Navigation",

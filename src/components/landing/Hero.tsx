@@ -400,8 +400,8 @@ export function Hero() {
 
             {/* Subtitles */}
             <div className="space-y-2 text-left">
-              <p className="text-lg sm:text-xl lg:text-2xl font-semibold text-white/95 leading-snug text-left">
-                {heroData?.content || t.hero.subtitle2}
+              <p className="text-base sm:text-lg lg:text-xl font-normal text-white/90 leading-relaxed text-left max-w-2xl">
+                {t.hero.subtitle2}
               </p>
             </div>
 
