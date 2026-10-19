@@ -137,9 +137,6 @@ export async function apiFetch<T = unknown>(
 
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    Pragma: "no-cache",
-    Expires: "0",
     ...(headers as Record<string, string>),
   };
 
