@@ -40,6 +40,29 @@ const cleanAdminName = (rawName: string) => {
   return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
 };
 
+const STORAGE_KEY_PASSWORDS = "zhou_admin_saved_passwords_v4";
+
+const getStoredPasswords = (): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const setStoredPassword = (keys: (string | number | undefined | null)[], pass: string) => {
+  if (typeof window === "undefined" || !pass) return;
+  try {
+    const map = getStoredPasswords();
+    keys.forEach((k) => {
+      if (k) map[String(k).toLowerCase().trim()] = pass;
+    });
+    localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(map));
+  } catch {}
+};
+
 export default function SuperadminUsersPage() {
   const [staffList, setStaffList] = useState<StaffAdmin[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,12 +112,10 @@ export default function SuperadminUsersPage() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Bersihkan semua varian cache lokal usang saat mount agar semua browser sinkron 100% dengan backend
+  // Bersihkan hanya cache lama usang yang bukan password tersimpan
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
-        localStorage.removeItem("zhou_admin_passwords_v2");
-        localStorage.removeItem("zhou_admin_passwords");
         localStorage.removeItem("zhou_staff_admin_created_v2");
         localStorage.removeItem("zhou_staff_admin_deleted_v2");
         localStorage.removeItem("zhou_staff_admin_overrides_v2");
@@ -118,7 +139,9 @@ export default function SuperadminUsersPage() {
       ]);
 
       const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
-      const pwdMap = (pwdRes?.passwords || {}) as Record<string, string>;
+      const localPwdMap = getStoredPasswords();
+      const serverPwdMap = (pwdRes?.passwords || {}) as Record<string, string>;
+      const pwdMap: Record<string, string> = { ...serverPwdMap, ...localPwdMap };
 
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
         const validAdmins = adminsRes.data;
@@ -141,11 +164,24 @@ export default function SuperadminUsersPage() {
             return false;
           }).length;
 
-          const staffPassword =
+          // Ambil kata sandi yang telah diinputkan oleh superadmin
+          const savedPwd =
+            localPwdMap[admEmail] ||
+            localPwdMap[staffNip.toLowerCase()] ||
+            localPwdMap[rawId] ||
+            localPwdMap[`stf-be-${rawId}`] ||
             pwdMap[admEmail] ||
             pwdMap[staffNip.toLowerCase()] ||
             pwdMap[rawId] ||
+            pwdMap[`stf-be-${rawId}`];
+
+          // Gunakan password yang pernah diinputkan, atau default awal jika belum pernah diset
+          const finalStaffPassword =
+            savedPwd ||
             (adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!");
+
+          // Kunci ke local storage agar tidak berubah secara otomatis saat refresh
+          setStoredPassword([admEmail, staffNip, rawId, `stf-be-${rawId}`], finalStaffPassword);
 
           return {
             id: `STF-BE-${adm.id}`,
@@ -163,7 +199,7 @@ export default function SuperadminUsersPage() {
               month: "short",
               year: "numeric",
             }),
-            password: staffPassword,
+            password: finalStaffPassword,
           };
         });
 
@@ -267,6 +303,12 @@ export default function SuperadminUsersPage() {
         }),
       };
 
+      // Simpan password persisten yang DIINPUT oleh user
+      setStoredPassword(
+        [emailVal, finalNip, createdBackendId, finalId, `stf-be-${createdBackendId}`],
+        passwordVal
+      );
+
       // Simpan password ke endpoint sinkronisasi superadmin
       await fetch("/api/superadmin/passwords", {
         method: "POST",
@@ -348,6 +390,10 @@ export default function SuperadminUsersPage() {
       }
 
       if (trimmedNewPass) {
+        setStoredPassword(
+          [editingStaff.email, editingStaff.nip, numericId, editingStaff.id, `stf-be-${numericId}`],
+          trimmedNewPass
+        );
         await fetch("/api/superadmin/passwords", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
