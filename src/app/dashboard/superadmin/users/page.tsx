@@ -33,6 +33,7 @@ export interface StaffAdmin {
   status: "Aktif" | "Nonaktif";
   twoFactorEnabled: boolean;
   joinDate: string;
+  password?: string;
 }
 
 const cleanAdminName = (rawName: string) => {
@@ -53,17 +54,26 @@ export default function SuperadminUsersPage() {
   const [editingStaff, setEditingStaff] = useState<StaffAdmin | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<StaffAdmin | null>(null);
 
-  // Edit Staff Password State (Opsional ganti kata sandi baru)
+  // Password visibility states
+  const [showDetailPassword, setShowDetailPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [newStaffPassword, setNewStaffPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  // Reset password form state when edit modal opens
+  // Reset password states when modals open
   useEffect(() => {
     if (editingStaff) {
       setNewStaffPassword("");
       setShowNewPassword(false);
+      setShowCurrentPassword(false);
     }
   }, [editingStaff?.id]);
+
+  useEffect(() => {
+    if (selectedStaffForDetail) {
+      setShowDetailPassword(false);
+    }
+  }, [selectedStaffForDetail?.id]);
 
   // Add Form State
   const [newStaffForm, setNewStaffForm] = useState({
@@ -99,18 +109,25 @@ export default function SuperadminUsersPage() {
   const loadStaff = async () => {
     setIsLoading(true);
     try {
-      const [adminsRes, consultRes] = await Promise.all([
+      const [adminsRes, consultRes, pwdRes] = await Promise.all([
         superadminApi.getAdmins(),
         adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
+        fetch("/api/superadmin/passwords")
+          .then((r) => r.json())
+          .catch(() => ({ passwords: {} })),
       ]);
 
       const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
+      const pwdMap = (pwdRes?.passwords || {}) as Record<string, string>;
 
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
         const validAdmins = adminsRes.data;
         const apiStaff: StaffAdmin[] = validAdmins.map((adm: AdminUserItem, idx: number) => {
           const admEmail = (adm.email || "").toLowerCase().trim();
           const admName = (adm.name || "").toLowerCase().trim();
+          const staffNip = (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0");
+          const rawId = String(adm.id);
+
           const assignedCount = consultations.filter((c) => {
             const cAssignedId = c.assigned_to;
             const cAdminId = c.assigned_admin?.id;
@@ -124,14 +141,20 @@ export default function SuperadminUsersPage() {
             return false;
           }).length;
 
+          const staffPassword =
+            pwdMap[admEmail] ||
+            pwdMap[staffNip.toLowerCase()] ||
+            pwdMap[rawId] ||
+            (adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!");
+
           return {
             id: `STF-BE-${adm.id}`,
             name: cleanAdminName(adm.name),
-            nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
+            nip: staffNip,
             email: adm.email,
             phone: adm.phone || "+62 812-9876-" + (1200 + idx),
             role: adm.role === "SUPERADMIN" ? "Superadmin" : "Admin",
-            division: "Tax Service Core",
+            division: adm.role === "SUPERADMIN" ? "IT & Operasional" : "Tax Service Core",
             tasksCount: assignedCount,
             status: adm.is_active ? "Aktif" : "Nonaktif",
             twoFactorEnabled: true,
@@ -140,6 +163,7 @@ export default function SuperadminUsersPage() {
               month: "short",
               year: "numeric",
             }),
+            password: staffPassword,
           };
         });
 
@@ -243,8 +267,20 @@ export default function SuperadminUsersPage() {
         }),
       };
 
+      // Simpan password ke endpoint sinkronisasi superadmin
+      await fetch("/api/superadmin/passwords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailVal,
+          nip: finalNip,
+          id: createdBackendId,
+          password: passwordVal,
+        }),
+      }).catch(() => {});
+
       await loadStaff();
-      showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat di server backend!`);
+      showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat!`);
       setIsAddModalOpen(false);
       setNewStaffForm({
         name: "",
@@ -311,16 +347,30 @@ export default function SuperadminUsersPage() {
         }
       }
 
+      if (trimmedNewPass) {
+        await fetch("/api/superadmin/passwords", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: editingStaff.email,
+            nip: editingStaff.nip,
+            id: numericId,
+            password: trimmedNewPass,
+          }),
+        }).catch(() => {});
+      }
+
       await loadStaff();
 
       if (trimmedNewPass) {
-        showToast(`Profil & kata sandi baru untuk ${editingStaff.name} berhasil diperbarui di server live.`);
+        showToast(`Profil & kata sandi baru untuk ${editingStaff.name} berhasil diperbarui.`);
       } else {
         showToast(`Data profil ${editingStaff.name} berhasil diperbarui.`);
       }
       setEditingStaff(null);
       setNewStaffPassword("");
       setShowNewPassword(false);
+      setShowCurrentPassword(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memperbarui akun staf di server.";
       showToast(msg);
@@ -725,7 +775,7 @@ export default function SuperadminUsersPage() {
                 Tambah Akun Staf Konsultan Baru
               </h3>
               <p className="text-xs text-text-secondary mt-0.5">
-                Pendaftaran kredensial staf operasional dan konfigurasi hak akses role-based (RBAC).
+                Pendaftaran kredensial staf operasional dan konfigurasi hak akses.
               </p>
             </div>
 
@@ -733,12 +783,12 @@ export default function SuperadminUsersPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">
-                    Nama Lengkap &amp; Gelar <span className="text-error">*</span>
+                    Nama Lengkap <span className="text-error">*</span>
                   </Label>
                   <Input
                     type="text"
                     required
-                    placeholder="Nama Lengkap & Gelar"
+                    placeholder="Nama Lengkap"
                     value={newStaffForm.name}
                     onChange={(e) =>
                       setNewStaffForm((prev) => ({ ...prev, name: e.target.value }))
@@ -749,7 +799,7 @@ export default function SuperadminUsersPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">
-                    Email Korporat <span className="text-error">*</span>
+                    Email <span className="text-error">*</span>
                   </Label>
                   <Input
                     type="email"
@@ -781,31 +831,7 @@ export default function SuperadminUsersPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">
-                    Divisi Layanan Penugasan <span className="text-error">*</span>
-                  </Label>
-                  <Select
-                    value={newStaffForm.division}
-                    onChange={(e) =>
-                      setNewStaffForm((prev) => ({
-                        ...prev,
-                        division: e.target.value as StaffAdmin["division"],
-                      }))
-                    }
-                    className="w-full text-xs h-9 font-medium"
-                  >
-                    <option value="Tax Service Core">Tax Service Core</option>
-                    <option value="Accounting Service">Accounting Service</option>
-                    <option value="Business Financial Consulting">Business Financial Consulting</option>
-                    <option value="Legal Compliance">Legal Compliance</option>
-                    <option value="IT & Operasional">IT &amp; Operasional</option>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">
-                    Peran / Hak Akses (RBAC) <span className="text-error">*</span>
+                    Peran / Hak Akses <span className="text-error">*</span>
                   </Label>
                   <Select
                     value={newStaffForm.role}
@@ -818,6 +844,32 @@ export default function SuperadminUsersPage() {
                     <option value="superadmin">Superadmin</option>
                   </Select>
                 </div>
+              </div>
+
+              <div className={`grid grid-cols-1 ${newStaffForm.role.toLowerCase() !== "superadmin" ? "sm:grid-cols-2" : ""} gap-3`}>
+                {newStaffForm.role.toLowerCase() !== "superadmin" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-primary">
+                      Divisi Layanan Penugasan <span className="text-error">*</span>
+                    </Label>
+                    <Select
+                      value={newStaffForm.division}
+                      onChange={(e) =>
+                        setNewStaffForm((prev) => ({
+                          ...prev,
+                          division: e.target.value as StaffAdmin["division"],
+                        }))
+                      }
+                      className="w-full text-xs h-9 font-medium"
+                    >
+                      <option value="Tax Service Core">Tax Service Core</option>
+                      <option value="Accounting Service">Accounting Service</option>
+                      <option value="Business Financial Consulting">Business Financial Consulting</option>
+                      <option value="Legal Compliance">Legal Compliance</option>
+                      <option value="IT & Operasional">IT &amp; Operasional</option>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">
@@ -900,7 +952,7 @@ export default function SuperadminUsersPage() {
 
             <form onSubmit={handleEditStaffSubmit} className="space-y-4 text-xs">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-primary">Nama Lengkap &amp; Gelar</Label>
+                <Label className="text-xs font-semibold text-primary">Nama Lengkap</Label>
                 <Input
                   type="text"
                   required
@@ -914,7 +966,7 @@ export default function SuperadminUsersPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Email Korporat</Label>
+                  <Label className="text-xs font-semibold text-primary">Email</Label>
                   <Input
                     type="email"
                     required
@@ -939,9 +991,9 @@ export default function SuperadminUsersPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className={`grid grid-cols-1 ${editingStaff.role.toLowerCase() !== "superadmin" ? "sm:grid-cols-2" : ""} gap-3`}>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Peran / Hak Akses (RBAC)</Label>
+                  <Label className="text-xs font-semibold text-primary">Peran / Hak Akses</Label>
                   <Select
                     value={editingStaff.role.toLowerCase().includes("superadmin") ? "superadmin" : "admin"}
                     onChange={(e) =>
@@ -957,61 +1009,85 @@ export default function SuperadminUsersPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Divisi</Label>
-                  <Select
-                    value={editingStaff.division}
-                    onChange={(e) =>
-                      setEditingStaff({
-                        ...editingStaff,
-                        division: e.target.value as StaffAdmin["division"],
-                      })
-                    }
-                    className="w-full text-xs h-9 font-medium"
-                  >
-                    <option value="Tax Service Core">Tax Service Core</option>
-                    <option value="Accounting Service">Accounting Service</option>
-                    <option value="Business Financial Consulting">Business Financial Consulting</option>
-                    <option value="Legal Compliance">Legal Compliance</option>
-                    <option value="IT & Operasional">IT &amp; Operasional</option>
-                  </Select>
-                </div>
+                {editingStaff.role.toLowerCase() !== "superadmin" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-primary">Divisi</Label>
+                    <Select
+                      value={editingStaff.division}
+                      onChange={(e) =>
+                        setEditingStaff({
+                          ...editingStaff,
+                          division: e.target.value as StaffAdmin["division"],
+                        })
+                      }
+                      className="w-full text-xs h-9 font-medium"
+                    >
+                      <option value="Tax Service Core">Tax Service Core</option>
+                      <option value="Accounting Service">Accounting Service</option>
+                      <option value="Business Financial Consulting">Business Financial Consulting</option>
+                      <option value="Legal Compliance">Legal Compliance</option>
+                      <option value="IT & Operasional">IT &amp; Operasional</option>
+                    </Select>
+                  </div>
+                )}
               </div>
 
-              {/* Form Ganti Kata Sandi Baru (Opsional) */}
-              <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold text-primary">
-                    Ganti Kata Sandi Baru (Opsional)
-                  </Label>
-                  <span className="text-[10px] text-text-muted">
-                    Kosongkan jika tidak diubah
+              {/* Form Kredensial: Lihat Kata Sandi Saat Ini & Ubah Kata Sandi Baru */}
+              <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-primary">Kata Sandi Saat Ini</Label>
+                  <div className="relative">
+                    <Input
+                      type={showCurrentPassword ? "text" : "password"}
+                      readOnly
+                      value={editingStaff.password || (editingStaff.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!")}
+                      className="text-xs h-9 bg-white border-primary-light pr-9 font-mono text-primary select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1 cursor-pointer"
+                      aria-label="Lihat kata sandi saat ini"
+                    >
+                      {showCurrentPassword ? <EyeSlashIcon className="text-xs" /> : <EyeIcon className="text-xs" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-primary">
+                      Ubah Kata Sandi Baru (Opsional)
+                    </Label>
+                    <span className="text-[10px] text-text-muted">
+                      Kosongkan jika tidak diubah
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newStaffPassword}
+                      onChange={(e) => setNewStaffPassword(e.target.value)}
+                      placeholder="Masukkan kata sandi baru (minimal 6 karakter)..."
+                      className="text-xs h-9 bg-white border-primary-light pr-9 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1 cursor-pointer"
+                      aria-label="Lihat kata sandi baru"
+                    >
+                      {showNewPassword ? (
+                        <EyeSlashIcon className="text-xs" />
+                      ) : (
+                        <EyeIcon className="text-xs" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-text-muted block">
+                    Ketik sandi baru jika ingin mengubah kata sandi akun staf ini.
                   </span>
                 </div>
-                <div className="relative">
-                  <Input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newStaffPassword}
-                    onChange={(e) => setNewStaffPassword(e.target.value)}
-                    placeholder="Masukkan sandi baru (minimal 6 karakter)..."
-                    className="text-xs h-9 bg-white border-primary-light pr-9 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1"
-                    aria-label="Lihat kata sandi baru"
-                  >
-                    {showNewPassword ? (
-                      <EyeSlashIcon className="text-xs" />
-                    ) : (
-                      <EyeIcon className="text-xs" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-[10px] text-text-secondary leading-relaxed">
-                  Kata sandi staf tersimpan terenkripsi secara aman di live database backend. Biarkan kosong jika tetap memakai kata sandi lama.
-                </p>
               </div>
 
               <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-2">
@@ -1139,13 +1215,15 @@ export default function SuperadminUsersPage() {
             </div>
 
             <div className="p-4 rounded-xl bg-surface border border-primary-light space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+              <div className={selectedStaffForDetail.role.toLowerCase().includes("superadmin") ? "" : "grid grid-cols-2 gap-2"}>
+                {!selectedStaffForDetail.role.toLowerCase().includes("superadmin") && (
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-text-secondary">Divisi Penugasan</span>
+                    <div className="font-semibold text-primary mt-0.5">{selectedStaffForDetail.division}</div>
+                  </div>
+                )}
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Divisi Penugasan</span>
-                  <div className="font-semibold text-primary mt-0.5">{selectedStaffForDetail.division}</div>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Peran RBAC</span>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Peran / Hak Akses</span>
                   <div className="mt-0.5">
                     <Badge
                       variant={selectedStaffForDetail.role.toLowerCase().includes("superadmin") ? "primary" : "secondary"}
@@ -1192,7 +1270,21 @@ export default function SuperadminUsersPage() {
               <div className="pt-2 border-t border-primary-light flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi Akun</span>
-                  <div className="font-mono text-primary font-bold text-xs mt-0.5">••••••••••••</div>
+                  <div className="font-mono text-primary font-bold text-xs mt-0.5 flex items-center gap-2">
+                    <span>
+                      {showDetailPassword
+                        ? (selectedStaffForDetail.password || (selectedStaffForDetail.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!"))
+                        : "••••••••••••"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDetailPassword(!showDetailPassword)}
+                      className="text-text-muted hover:text-primary p-0.5 transition-colors cursor-pointer"
+                      aria-label="Lihat kata sandi"
+                    >
+                      {showDetailPassword ? <EyeSlashIcon className="text-xs" /> : <EyeIcon className="text-xs" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
