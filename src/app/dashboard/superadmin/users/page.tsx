@@ -36,9 +36,6 @@ export interface StaffAdmin {
   password?: string;
 }
 
-const STORAGE_KEY_STAFF_OVERRIDES = "zhou_staff_admin_overrides_v2";
-const STORAGE_KEY_STAFF_CREATED = "zhou_staff_admin_created_v2";
-const STORAGE_KEY_STAFF_DELETED = "zhou_staff_admin_deleted_v2";
 const STORAGE_KEY_ADMIN_PASSWORDS = "zhou_admin_passwords_v2";
 
 const getSavedAdminPasswords = (): Record<string, string> => {
@@ -60,163 +57,12 @@ const saveAdminPassword = (key: string, pass: string) => {
   } catch {}
 };
 
-const getLocalStaffCache = () => {
-  if (typeof window === "undefined") {
-    return {
-      overrides: {} as Record<string, Partial<StaffAdmin>>,
-      created: [] as StaffAdmin[],
-      deleted: [] as string[],
-    };
-  }
-  try {
-    const rawOverrides = localStorage.getItem(STORAGE_KEY_STAFF_OVERRIDES);
-    const rawCreated = localStorage.getItem(STORAGE_KEY_STAFF_CREATED);
-    const rawDeleted = localStorage.getItem(STORAGE_KEY_STAFF_DELETED);
-
-    return {
-      overrides: rawOverrides ? (JSON.parse(rawOverrides) as Record<string, Partial<StaffAdmin>>) : {},
-      created: rawCreated ? (JSON.parse(rawCreated) as StaffAdmin[]) : [],
-      deleted: rawDeleted ? (JSON.parse(rawDeleted) as string[]) : [],
-    };
-  } catch (err) {
-    console.warn("Error reading staff cache from localStorage:", err);
-    return {
-      overrides: {} as Record<string, Partial<StaffAdmin>>,
-      created: [] as StaffAdmin[],
-      deleted: [] as string[],
-    };
-  }
-};
-
-const isDummyAdmin = (adm: {
-  id?: string | number;
-  name?: string;
-  email?: string;
-}): boolean => {
-  return false;
-};
-
 const cleanAdminName = (rawName: string) => {
   return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
 };
 
-const DEFAULT_PERMANENT_STAFF: StaffAdmin[] = [
-  {
-    id: "ADM-001",
-    name: "Super Administrator Zhou",
-    nip: "SPR-001",
-    email: "superadmin@zhouconsulting.com",
-    phone: "+6281234567890",
-    role: "Superadmin",
-    division: "IT & Operasional",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Jan 2026",
-    password: "SuperAdmin123!",
-  },
-  {
-    id: "ADM-002",
-    name: "Konsultan Senior Zhou",
-    nip: "ADM-002",
-    email: "admin@zhouconsulting.com",
-    phone: "+6281234567899",
-    role: "Admin",
-    division: "Tax Service Core",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Jan 2026",
-    password: "Admin123!",
-  },
-  {
-    id: "ADM-005",
-    name: "Muhammad Dekhsa Afnan",
-    nip: "SPR-005",
-    email: "dekhsafnan@gmail.com",
-    phone: "+62 81210619043",
-    role: "Superadmin",
-    division: "IT & Operasional",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "15 Jan 2026",
-    password: "SuperAdmin123!",
-  },
-  {
-    id: "ADM-023",
-    name: "Ana, S.E",
-    nip: "ADM-023",
-    email: "ana@zhouconsulting",
-    phone: "+62 812-9876-1202",
-    role: "Admin",
-    division: "Accounting Service",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Okt 2026",
-    password: "Admin123!",
-  },
-  {
-    id: "ADM-024",
-    name: "Admin2",
-    nip: "ADM-024",
-    email: "admin2@zhouconsulting",
-    phone: "+62 812-9876-1201",
-    role: "Admin",
-    division: "Tax Service Core",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "01 Okt 2026",
-    password: "Admin123!",
-  },
-  {
-    id: "STF-BE-32",
-    name: "Tasya",
-    nip: "ADM-032",
-    email: "tasya123@gmail.com",
-    phone: "+62 81536749946",
-    role: "Admin",
-    division: "Tax Service Core",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "19 Okt 2026",
-    password: "Tasya123",
-  },
-  {
-    id: "STF-BE-33",
-    name: "Anna",
-    nip: "SPR-033",
-    email: "Anna123@gmail.com",
-    phone: "+62 82914658836",
-    role: "Superadmin",
-    division: "IT & Operasional",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "19 Okt 2026",
-    password: "Anna123",
-  },
-  {
-    id: "STF-BE-26",
-    name: "Lydian,S.AK",
-    nip: "ADM-026",
-    email: "lydia123@gmail.com",
-    phone: "+62 81532638856",
-    role: "Admin",
-    division: "Accounting Service",
-    tasksCount: 0,
-    status: "Aktif",
-    twoFactorEnabled: true,
-    joinDate: "15 Okt 2026",
-    password: "Admin123!",
-  },
-];
-
 export default function SuperadminUsersPage() {
-  const [staffList, setStaffList] = useState<StaffAdmin[]>(DEFAULT_PERMANENT_STAFF);
+  const [staffList, setStaffList] = useState<StaffAdmin[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -264,26 +110,23 @@ export default function SuperadminUsersPage() {
   });
   const [showAddPassword, setShowAddPassword] = useState(true);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Initial load from localStorage cache for instant zero-flicker UI
+  // Bersihkan semua varian cache lokal usang saat mount agar semua browser sinkron 100% dengan backend
   useEffect(() => {
-    const cache = getLocalStaffCache();
-    if (cache.created.length > 0 || Object.keys(cache.overrides).length > 0) {
-      const initialMerged: StaffAdmin[] = [];
-      cache.created.forEach((item) => {
-        if (!cache.deleted.includes(item.id) && !cache.deleted.includes(item.email.toLowerCase())) {
-          const override = cache.overrides[item.id] || cache.overrides[item.email.toLowerCase()];
-          initialMerged.push(override ? { ...item, ...override } : item);
-        }
-      });
-      if (initialMerged.length > 0) {
-        setStaffList(initialMerged);
-      }
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("zhou_staff_admin_created_v2");
+        localStorage.removeItem("zhou_staff_admin_deleted_v2");
+        localStorage.removeItem("zhou_staff_admin_overrides_v2");
+        localStorage.removeItem("zhou_staff_admin_created");
+        localStorage.removeItem("zhou_staff_admin_deleted");
+        localStorage.removeItem("zhou_staff_admin_overrides");
+      } catch {}
     }
   }, []);
 
-  // Sync staff with Backend API and merge with persistent local overrides
+  // Sync staff with Backend API as the single source of truth across all browsers
   const loadStaff = async () => {
     setIsLoading(true);
     try {
@@ -292,7 +135,6 @@ export default function SuperadminUsersPage() {
         adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
       ]);
 
-      const cache = getLocalStaffCache();
       const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
 
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
@@ -313,7 +155,14 @@ export default function SuperadminUsersPage() {
             return false;
           }).length;
 
-          const baseItem: StaffAdmin = {
+          const savedPasswords = getSavedAdminPasswords();
+          const rawId = String(adm.id);
+          const knownPassword =
+            savedPasswords[adm.email?.toLowerCase().trim()] ||
+            savedPasswords[`stf-be-${rawId}`] ||
+            savedPasswords[rawId];
+
+          return {
             id: `STF-BE-${adm.id}`,
             name: cleanAdminName(adm.name),
             nip: (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0"),
@@ -329,92 +178,14 @@ export default function SuperadminUsersPage() {
               month: "short",
               year: "numeric",
             }),
-            password: adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!",
+            password: knownPassword || (adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!"),
           };
-
-          // Reconcile with local overrides by ID, Email, NIP, or raw backend ID
-          const rawId = String(adm.id);
-          const override =
-            cache.overrides[baseItem.id] ||
-            cache.overrides[baseItem.email.toLowerCase()] ||
-            cache.overrides[baseItem.nip] ||
-            cache.overrides[rawId];
-
-          const savedPasswords = getSavedAdminPasswords();
-          const knownPassword =
-            savedPasswords[adm.email?.toLowerCase().trim()] ||
-            savedPasswords[baseItem.id.toLowerCase()] ||
-            savedPasswords[baseItem.nip.toLowerCase()] ||
-            savedPasswords[rawId] ||
-            override?.password;
-
-          if (knownPassword) {
-            baseItem.password = knownPassword;
-          }
-
-          if (override) {
-            return {
-              ...baseItem,
-              ...override,
-              password: knownPassword || override.password || baseItem.password,
-              tasksCount: override.tasksCount !== undefined ? override.tasksCount : assignedCount,
-            };
-          }
-
-          return baseItem;
         });
 
-        // Filter out deleted staff
-        let mergedList = apiStaff.filter((s) => {
-          const rawId = s.id.replace(/\D/g, "");
-          const isDeleted =
-            cache.deleted.includes(s.id) ||
-            cache.deleted.includes(s.email.toLowerCase()) ||
-            cache.deleted.includes(s.nip) ||
-            (rawId && cache.deleted.includes(rawId));
-          return !isDeleted;
-        });
-
-        // Prepend locally created staff not yet returned by backend
-        cache.created.forEach((createdItem) => {
-          const isDeleted =
-            cache.deleted.includes(createdItem.id) ||
-            cache.deleted.includes(createdItem.email.toLowerCase()) ||
-            cache.deleted.includes(createdItem.nip);
-          if (isDeleted) return;
-
-          const alreadyInList = mergedList.some(
-            (s) =>
-              s.id === createdItem.id ||
-              s.email.toLowerCase() === createdItem.email.toLowerCase() ||
-              s.nip === createdItem.nip
-          );
-
-          if (!alreadyInList) {
-            const override =
-              cache.overrides[createdItem.id] ||
-              cache.overrides[createdItem.email.toLowerCase()] ||
-              cache.overrides[createdItem.nip];
-            mergedList.unshift(override ? { ...createdItem, ...override } : createdItem);
-          }
-        });
-
-        setStaffList(mergedList);
+        setStaffList(apiStaff);
       }
     } catch (err) {
       console.warn("Gagal memuat staf admin dari backend:", err);
-      // Fallback to cache if network fails
-      const cache = getLocalStaffCache();
-      const fallbackList: StaffAdmin[] = [];
-      cache.created.forEach((c) => {
-        if (!cache.deleted.includes(c.id) && !cache.deleted.includes(c.email.toLowerCase())) {
-          const override = cache.overrides[c.id] || cache.overrides[c.email.toLowerCase()];
-          fallbackList.push(override ? { ...c, ...override } : c);
-        }
-      });
-      if (fallbackList.length > 0) {
-        setStaffList(fallbackList);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -512,34 +283,14 @@ export default function SuperadminUsersPage() {
         password: passwordVal,
       };
 
-      // 3. Simpan ke local cache
-      if (typeof window !== "undefined") {
-        try {
-          const cache = getLocalStaffCache();
-          cache.created.unshift(newStaffItem);
-          cache.overrides[newStaffItem.id] = newStaffItem;
-          cache.overrides[newStaffItem.email.toLowerCase()] = newStaffItem;
-          cache.overrides[newStaffItem.nip] = newStaffItem;
-          saveAdminPassword(emailVal, passwordVal);
-          saveAdminPassword(finalId, passwordVal);
-          saveAdminPassword(finalNip, passwordVal);
-          if (createdBackendId) {
-            cache.overrides[String(createdBackendId)] = newStaffItem;
-            saveAdminPassword(String(createdBackendId), passwordVal);
-            saveAdminPassword(`ADM-${String(createdBackendId).padStart(3, "0")}`, passwordVal);
-            saveAdminPassword(`SPR-${String(createdBackendId).padStart(3, "0")}`, passwordVal);
-          }
-
-          localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(cache.created));
-          localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
-        } catch (err) {
-          console.warn("Gagal menyimpan akun baru ke localStorage:", err);
-        }
+      saveAdminPassword(emailVal, passwordVal);
+      if (res.data?.id) {
+        saveAdminPassword(String(res.data.id), passwordVal);
+        saveAdminPassword(`STF-BE-${res.data.id}`, passwordVal);
       }
 
-      // 4. Update state dan tampilkan notifikasi sukses beserta kredensial
-      setStaffList((prev) => [newStaffItem, ...prev]);
-      showToast(`Akun ${displayRole} ${newStaffItem.name} berhasil dibuat dengan kata sandi yang Anda tentukan!`);
+      await loadStaff();
+      showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat dengan kata sandi yang Anda tentukan!`);
       setIsAddModalOpen(false);
       setNewStaffForm({
         name: "",
@@ -576,107 +327,60 @@ export default function SuperadminUsersPage() {
       return;
     }
 
-    const updatedStaff: StaffAdmin = {
-      ...editingStaff,
-      password: finalPassword,
-    };
-
-    // 1. Update state immediately
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === updatedStaff.id ? updatedStaff : s))
-    );
-
-    // 2. Persist override to localStorage
-    if (typeof window !== "undefined") {
-      try {
-        const cache = getLocalStaffCache();
-        cache.overrides[updatedStaff.id] = updatedStaff;
-        cache.overrides[updatedStaff.email.toLowerCase()] = updatedStaff;
-        cache.overrides[updatedStaff.nip] = updatedStaff;
-        saveAdminPassword(updatedStaff.email, finalPassword);
-        saveAdminPassword(updatedStaff.id, finalPassword);
-        saveAdminPassword(updatedStaff.nip, finalPassword);
-        const rawId = updatedStaff.id.replace(/\D/g, "");
-        if (rawId) {
-          cache.overrides[rawId] = updatedStaff;
-          saveAdminPassword(rawId, finalPassword);
-        }
-
-        // Also update inside created list if it was locally created
-        const updatedCreated = cache.created.map((c) =>
-          c.id === updatedStaff.id || c.email.toLowerCase() === updatedStaff.email.toLowerCase()
-            ? updatedStaff
-            : c
-        );
-
-        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
-        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(updatedCreated));
-      } catch (err) {
-        console.warn("Gagal menyimpan pembaruan ke localStorage:", err);
-      }
-    }
-
-    // 3. Sync to backend API if applicable
     let numericId: number | null = null;
-    if (updatedStaff.id.startsWith("STF-BE-")) {
-      numericId = parseInt(updatedStaff.id.replace("STF-BE-", ""), 10);
-    } else if (!updatedStaff.id.startsWith("STF-LOCAL-")) {
-      const parsed = parseInt(updatedStaff.id.replace(/\D/g, ""), 10);
+    if (editingStaff.id.startsWith("STF-BE-")) {
+      numericId = parseInt(editingStaff.id.replace("STF-BE-", ""), 10);
+    } else {
+      const parsed = parseInt(editingStaff.id.replace(/\D/g, ""), 10);
       if (!isNaN(parsed) && parsed > 0 && parsed < 100000) {
         numericId = parsed;
       }
     }
 
-    if (numericId && !isNaN(numericId)) {
-      superadminApi
-        .updateAdmin(numericId, {
-          name: updatedStaff.name,
-          email: updatedStaff.email,
-          phone: updatedStaff.phone,
-          role: updatedStaff.role.toUpperCase() === "SUPERADMIN" ? "SUPERADMIN" : "ADMIN",
-          password: updatedStaff.password,
-        })
-        .catch((err) => {
-          console.warn("Backend updateAdmin notification:", err);
+    setIsLoading(true);
+    try {
+      if (numericId && !isNaN(numericId)) {
+        await superadminApi.updateAdmin(numericId, {
+          name: editingStaff.name,
+          email: editingStaff.email,
+          phone: editingStaff.phone,
+          role: editingStaff.role.toUpperCase() === "SUPERADMIN" ? "SUPERADMIN" : "ADMIN",
+          password: finalPassword,
         });
-    }
+      }
 
-    if (newStaffPassword.trim()) {
-      showToast(`Data akun dan kata sandi baru untuk ${updatedStaff.name} berhasil diperbarui.`);
-    } else {
-      showToast(`Data akun ${updatedStaff.name} berhasil diperbarui.`);
-    }
+      saveAdminPassword(editingStaff.email, finalPassword);
+      saveAdminPassword(editingStaff.id, finalPassword);
+      if (numericId) saveAdminPassword(String(numericId), finalPassword);
 
-    setEditingStaff(null);
-    setCurrentStaffPassword("");
-    setNewStaffPassword("");
-    setShowCurrentPassword(false);
-    setShowNewPassword(false);
+      await loadStaff();
+
+      if (newStaffPassword.trim()) {
+        showToast(`Data akun dan kata sandi baru untuk ${editingStaff.name} berhasil diperbarui.`);
+      } else {
+        showToast(`Data akun ${editingStaff.name} berhasil diperbarui.`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal memperbarui akun staf di server.";
+      showToast(msg);
+    } finally {
+      setIsLoading(false);
+      setEditingStaff(null);
+      setCurrentStaffPassword("");
+      setNewStaffPassword("");
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+    }
   };
 
   const handleToggleStatus = async (staffId: string) => {
     const currentStaff = staffList.find((s) => s.id === staffId);
     if (!currentStaff) return;
 
-    const newStatus: StaffAdmin["status"] = currentStaff.status === "Aktif" ? "Nonaktif" : "Aktif";
-    const updated: StaffAdmin = { ...currentStaff, status: newStatus };
-
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === staffId ? updated : s))
-    );
-
-    if (typeof window !== "undefined") {
-      try {
-        const cache = getLocalStaffCache();
-        cache.overrides[updated.id] = updated;
-        cache.overrides[updated.email.toLowerCase()] = updated;
-        localStorage.setItem(STORAGE_KEY_STAFF_OVERRIDES, JSON.stringify(cache.overrides));
-      } catch {}
-    }
-
     try {
       const rawId = parseInt(staffId.replace(/\D/g, ""), 10) || staffId;
       await superadminApi.deactivateAdmin(rawId);
+      await loadStaff();
       showToast("Status akun berhasil diperbarui di sistem.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal mengubah status akun di server.";
@@ -696,39 +400,20 @@ export default function SuperadminUsersPage() {
       return;
     }
 
-    // 1. Persist deletion in localStorage
-    if (typeof window !== "undefined") {
-      try {
-        const cache = getLocalStaffCache();
-        const rawId = deletingStaff.id.replace(/\D/g, "");
-        if (!cache.deleted.includes(deletingStaff.id)) cache.deleted.push(deletingStaff.id);
-        if (!cache.deleted.includes(deletingStaff.email.toLowerCase())) cache.deleted.push(deletingStaff.email.toLowerCase());
-        if (!cache.deleted.includes(deletingStaff.nip)) cache.deleted.push(deletingStaff.nip);
-        if (rawId && !cache.deleted.includes(rawId)) cache.deleted.push(rawId);
-
-        const filteredCreated = cache.created.filter(
-          (c) =>
-            c.id !== deletingStaff.id &&
-            c.email.toLowerCase() !== deletingStaff.email.toLowerCase()
-        );
-
-        localStorage.setItem(STORAGE_KEY_STAFF_DELETED, JSON.stringify(cache.deleted));
-        localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(filteredCreated));
-      } catch (err) {
-        console.warn("Gagal menyimpan penghapusan ke localStorage:", err);
-      }
-    }
-
-    // 2. Remove from state immediately
-    setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));
-
     const rawId = parseInt(deletingStaff.id.replace(/\D/g, ""), 10) || deletingStaff.id;
     try {
-      await superadminApi.deleteAdmin(rawId);
-      showToast(`Akun ${deletingStaff.name} berhasil dihapus dari sistem.`);
+      setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));
+      const res = await superadminApi.deleteAdmin(rawId);
+      if (res?.success) {
+        showToast(`Akun ${deletingStaff.name} berhasil dihapus dari sistem.`);
+      } else {
+        showToast(res?.message || `Akun ${deletingStaff.name} berhasil dihapus dari sistem.`);
+      }
+      await loadStaff();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus akun di server.";
       showToast(msg);
+      await loadStaff();
     }
     setDeletingStaff(null);
   };

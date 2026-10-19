@@ -134,11 +134,17 @@ export async function POST(req: NextRequest) {
     serverAppliedApplications.add(lockKey);
 
     // 4. Integrasi dengan Backend Remote jika tersedia
-    const backendBaseUrl = process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io";
+    const rawBackendUrl = process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162";
+    const backendBaseUrl = rawBackendUrl
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\/docs\/?$/i, "")
+      .replace(/\/api\/?$/i, "")
+      .replace(/https:\/\/43\.173\.2\.162\.sslip\.io/i, "http://43.173.2.162");
     const numericJobId = parseInt(normalizedJobId.replace(/\D/g, ""), 10) || 1;
 
     try {
-      const backendRes = await fetch(`${backendBaseUrl.replace(/\/+$/, "")}/api/v1/public/careers/${numericJobId}/apply`, {
+      const backendRes = await fetch(`${backendBaseUrl}/api/v1/public/careers/${numericJobId}/apply`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

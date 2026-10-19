@@ -5,26 +5,25 @@
  */
 
 export function getApiBaseUrl(): string {
-  let envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!envUrl) {
-    return "https://43.173.2.162.sslip.io";
-  }
-
-  envUrl = envUrl.replace(/\/+$/, "").replace(/\/api\/?$/, "");
-
-  // Jika web dimuat via HTTPS (seperti Vercel), cegah Mixed Content block dengan otomatis gunakan endpoint HTTPS
+  // Jika dimuat di browser via HTTPS (seperti domain Vercel), gunakan relative root ('')
+  // agar request otomatis melewati Next.js reverse-proxy rewrite ke http://43.173.2.162.
+  // Ini mencegah browser memblokir request karena Mixed Content (HTTPS -> HTTP insecure).
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
-    if (envUrl.startsWith("http://43.173.2.162")) {
-      return "https://43.173.2.162.sslip.io";
-    }
-    if (envUrl.startsWith("http://")) {
-      return envUrl.replace(/^http:\/\//i, "https://");
-    }
+    return "";
   }
 
-  // Jika konfigurasi masih http mentah ke IP backend VPS
-  if (envUrl === "http://43.173.2.162") {
-    return "https://43.173.2.162.sslip.io";
+  let envUrl = process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162";
+
+  // Bersihkan spasi, trailing slash, /docs, /docs/, dan /api
+  envUrl = envUrl
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/docs\/?$/i, "")
+    .replace(/\/api\/?$/i, "");
+
+  // Selalu gunakan langsung endpoint backend VPS http://43.173.2.162 tanpa sslip.io
+  if (!envUrl || envUrl.includes("sslip.io")) {
+    return "http://43.173.2.162";
   }
 
   return envUrl;
@@ -137,6 +136,8 @@ export async function apiFetch<T = unknown>(
 
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
     ...(headers as Record<string, string>),
   };
 

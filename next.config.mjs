@@ -4,9 +4,13 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
-    const backendUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://43.173.2.162.sslip.io')
+    const rawUrl = process.env.NEXT_PUBLIC_API_URL || 'http://43.173.2.162';
+    const backendUrl = rawUrl
+      .trim()
       .replace(/\/+$/, '')
-      .replace(/\/api\/?$/, '');
+      .replace(/\/docs\/?$/i, '')
+      .replace(/\/api\/?$/i, '')
+      .replace(/https:\/\/43\.173\.2\.162\.sslip\.io/i, 'http://43.173.2.162');
     return [
       {
         source: '/api/:path*',
