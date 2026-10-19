@@ -37,14 +37,11 @@ export const CAREER_SETTINGS_STORAGE_KEY = "zhou_career_settings_data_v2";
 export const CAREER_SETTINGS_EVENT = "zhou_career_settings_updated";
 
 export const DEFAULT_CAREER_SETTINGS: CareerSettings = {
-  isOpen: false,
-  closedTitle: "Lowongan Periode Ini Belum Dibuka",
-  closedMessage:
-    "Saat ini seluruh posisi di Zhou Consulting telah terisi dan belum ada lowongan baru yang dibuka untuk publik. Silakan pantau halaman ini secara berkala untuk pembaruan jadwal rekrutmen berikutnya.",
-  closedPeriodNote:
-    "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun media sosial resmi Zhou Consulting.",
-  lastUpdated: "-",
-  positions: [],
+  "isOpen": true,
+  "closedTitle": "Lowongan Periode Ini Belum Dibuka",
+  "closedMessage": "Saat ini seluruh posisi di Zhou Consulting telah terisi dan belum ada lowongan baru yang dibuka untuk publik. Silakan pantau halaman ini secara berkala untuk pembaruan jadwal rekrutmen berikutnya.",
+  "closedPeriodNote": "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun LinkedIn Zhou Consulting.",
+  "lastUpdated": "24 September 2026"
 };
 
 /**

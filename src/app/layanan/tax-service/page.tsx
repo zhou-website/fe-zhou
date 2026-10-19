@@ -117,19 +117,16 @@ const TAX_SERVICE_MODULES: TaxModuleItem[] = [
   },
   {
     id: "kesiapan-coretax",
-    code: "TAX-CTX",
-    title: "Kesiapan Coretax 2026 & Mitigasi SP2DK",
+    code: "SRV-TAX-CTX",
+    title: "Layanan Mitigasi Pajak",
     badge: "CORETAX DJP 2026",
-    subtitle: "Asistensi transisi akun deposit pajak Coretax DJP dan pendampingan klarifikasi surat SP2DK.",
+    subtitle: "Penyelesaian SP2DK yang Tepat dan Akurat.",
     scopes: [
-      "Asistensi adaptasi akun deposit pajak dan modul pelaporan ekosistem Coretax 2026",
-      "Simulasi transaksi fiskal digital dan pemutakhiran data profil wajib pajak",
-      "Telaah materi surat Permintaan Penjelasan atas Data/Keterangan (SP2DK) KPP",
-      "Penyusunan surat sanggahan/tanggapan formal dan pendampingan di hadapan fungsional pemeriksa",
-    ],
+      "Kami mendampingi Anda dalam menghadapi Fase Pengawasan Awal dari Kantor Pelayanan Pajak (KPP). Tim kami membantu menyusun tanggapan resmi, melakukan rekonsiliasi data, serta mendampingi proses konseling atas Surat Permintaan Penjelasan atas Data dan/atau Keterangan (SP2DK) guna menyelesaikan ketidaksesuaian data secara persuasif sebelum masuk ke ranah pemeriksaan."
+],
     deliverable: "Laporan Kesiapan Coretax, Berita Acara Pendampingan, & Draf Resmi Tanggapan SP2DK.",
     topicParam: "coretax",
-    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Kesiapan Coretax 2026 dan respon surat SP2DK.",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Layanan Mitigasi Pajak dan respon surat SP2DK.",
   },
 ];
 

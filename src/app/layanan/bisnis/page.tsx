@@ -35,17 +35,14 @@ interface BusinessModuleItem {
 }
 
 const DEFAULT_BUSINESS_MODULE: BusinessModuleItem = {
-  id: "SRV-FIN-CONS",
-  code: "BIZ-SERV",
-  title: "Studi Kelayakan Bisnis & Advisory Finansial",
+  id: "FIN_CONS",
+  code: "FIN_CONS",
+  title: "Konsultasi Bisnis & Strategi Finansial",
   badge: "BUSINESS & FINANCIAL",
-  subtitle: "Analisis komprehensif aspek pasar, teknis operasional, pemodelan finansial 3-5 tahun, valuasi bisnis, dan restrukturisasi arus kas korporasi.",
+  subtitle: "Konsultasi restrukturisasi bisnis, perencanaan keuangan strategis, dan manajemen arus kas perusahaan.",
   scopes: [
-    "Studi Kelayakan Bisnis (Feasibility Study) dan riset analisis pasar potensial",
-    "Financial Modeling & Proyeksi Finansial 3-5 tahun (Three-Statement Model)",
-    "Valuasi Bisnis Independen (DCF & CCA) dan Financial Due Diligence",
-    "Restrukturisasi Arus Kas, Likuiditas, dan Optimalisasi Modal Kerja",
-  ],
+    "Layanan penasihat keuangan dan bisnis strategis untuk membantu eksekutif perusahaan mengidentifikasi peluang pertumbuhan, melakukan efisiensi modal, serta mengelola risiko keuangan. Kami memastikan performa bisnis Anda berjalan optimal dan berkelanjutan."
+],
   deliverable: "Laporan Studi Kelayakan Bisnis Resmi, Model Finansial Excel Dinamis, & Rekomendasi Solvabilitas.",
   topicParam: "studi-kelayakan",
   waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Studi Kelayakan Bisnis (Feasibility Study) dan rencana investasi.",

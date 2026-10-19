@@ -35,20 +35,17 @@ interface AccountingModuleItem {
 }
 
 const DEFAULT_ACCOUNTING_MODULE: AccountingModuleItem = {
-  id: "SRV-ACC-SERV",
-  code: "ACC-SERV",
-  title: "Penyusunan Laporan Keuangan SAK EP / PSAK",
+  id: "SVC-4798",
+  code: "SVC-4798",
+  title: "Penyusunan Laporan Keuangan & Pembukuan",
   badge: "ACCOUNTING SERVICES",
-  subtitle: "Penyusunan laporan posisi keuangan (neraca), laba rugi, perubahan ekuitas, arus kas, dan restrukturisasi pembukuan standar resmi perbankan & audit.",
+  subtitle: "Penyusunan laporan posisi keuangan (neraca), laba rugi, perubahan ekuitas, dan arus kas standar resmi perbankan & audit.",
   scopes: [
-    "Penyusunan Laporan Posisi Keuangan (Neraca) komparatif multi-periode",
-    "Penyusunan Laporan Laba Rugi dan Penghasilan Komprehensif Lain",
-    "Laporan Arus Kas, Catatan atas Laporan Keuangan (CALK), & Rekonsiliasi Fiskal",
-    "Perancangan & Restrukturisasi Bagan Akun (COA) serta asistensi audit eksternal",
-  ],
+    "Layanan pengelolaan akuntansi berbasis data yang akurat guna menghasilkan laporan keuangan bulanan dan tahunan yang kredibel. Kami memastikan seluruh pencatatan bisnis Anda rapi, patuh regulasi, serta siap digunakan untuk kebutuhan internal maupun eksternal (seperti perbankan dan audit)."
+],
   deliverable: "Bundel Laporan Keuangan Lengkap (Audit-ready / Bank-ready) beserta CALK resmi.",
   topicParam: "laporan-keuangan",
-  waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai penyusunan Laporan Keuangan standar SAK EP/PSAK.",
+  waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Penyusunan Laporan Keuangan & Pembukuan.",
 };
 
 export default function AccountingServicePage() {

@@ -111,7 +111,138 @@ export function mapToRegulationCategory(typeOrCategory?: string, title?: string)
   return "Peraturan Menteri";
 }
 
-export const DEFAULT_REGULATIONS: StoredRegulationItem[] = [];
+export const DEFAULT_REGULATIONS: StoredRegulationItem[] = [
+  {
+    "id": "ZHOU-REG-01",
+    "docNumber": "SOP-ZHOU/TAX/2026/01",
+    "title": "Standar Prosedur Operasional Kepatuhan Coretax & Rekonsiliasi SPT Unifikasi Zhou",
+    "category": "Regulasi Zhou",
+    "effectiveDate": "2 Januari 2026",
+    "scope": "Pedoman kerja dan kepatuhan penyusunan rekonsiliasi fiskal, tata kelola akun deposit pajak, dan integrasi modul unifikasi Coretax DJP bagi klien korporat Zhou Consulting.",
+    "fileSize": "1.4 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "ZHOU-REG-02",
+    "docNumber": "GUIDE-ZHOU/ACC/2025/03",
+    "title": "Panduan Teknis Pelaporan Keuangan Standar SAK EP Entitas Privat & Manufaktur",
+    "category": "Regulasi Zhou",
+    "effectiveDate": "15 Juli 2025",
+    "scope": "Standar operasional konversi pembukuan komersial ke SAK EP, prosedur revaluasi aset tetap, dan pedoman pengungkapan catatan atas laporan keuangan (CALK).",
+    "fileSize": "2.2 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "ZHOU-REG-03",
+    "docNumber": "CIRCULAR-ZHOU/TP/2026/02",
+    "title": "Surat Edaran Teknis: Tata Kelola Dokumentasi Transfer Pricing (TP Doc Local File)",
+    "category": "Regulasi Zhou",
+    "effectiveDate": "10 Februari 2026",
+    "scope": "Instruksi kerja telaah kepatuhan transaksi hubungan istimewa domestik dan lintas batas, penerapan metode Arm's Length Principle (ALP), serta benchmarking rasio profitabilitas.",
+    "fileSize": "1.9 MB",
+    "status": "Pembaruan"
+  },
+  {
+    "id": "REG-01",
+    "docNumber": "UU No. 7 Tahun 2021",
+    "title": "Harmonisasi Peraturan Perpajakan (UU HPP)",
+    "category": "Undang-Undang",
+    "effectiveDate": "29 Oktober 2021",
+    "scope": "Reformasi PPh Badan, kenaikan tarif PPN 11%, integrasi NIK menjadi NPWP, dan program pengungkapan sukarela.",
+    "fileSize": "2.4 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-02",
+    "docNumber": "PMK No. 168/PMK.03/2023",
+    "title": "Petunjuk Teknis Pemotongan Pajak atas Penghasilan Sehubungan dengan Pekerjaan (PPh 21 TER)",
+    "category": "Peraturan Menteri",
+    "effectiveDate": "1 Januari 2024",
+    "scope": "Penerapan skema Tarif Efektif Rata-Rata (TER) PPh 21 bulanan kategori A, B, C dan TER harian pegawai.",
+    "fileSize": "1.8 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-03",
+    "docNumber": "PMK No. 81 Tahun 2024",
+    "title": "Ketentuan Perpajakan dalam Rangka Pelaksanaan Sistem Inti Administrasi Perpajakan (Coretax)",
+    "category": "Peraturan Menteri",
+    "effectiveDate": "1 Januari 2025",
+    "scope": "Standardisasi akun wajib pajak, deposit pajak terpadu, e-Bupot unifikasi, dan pemadanan NIK 16 digit.",
+    "fileSize": "3.7 MB",
+    "status": "Pembaruan"
+  },
+  {
+    "id": "REG-04",
+    "docNumber": "PP No. 55 Tahun 2022",
+    "title": "Penyesuaian Pengaturan di Bidang Pajak Penghasilan Badan dan Orang Pribadi",
+    "category": "Peraturan Pemerintah",
+    "effectiveDate": "20 Desember 2022",
+    "scope": "Perlakuan natura/kenikmatan, instrumen pencegahan penghindaran pajak (GAAR), dan batasan omzet tidak kena pajak UMKM.",
+    "fileSize": "1.9 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-05",
+    "docNumber": "PER-04/PJ/2024",
+    "title": "Petunjuk Teknis Administrasi Nomor Pokok Wajib Pajak dan Sertifikat Elektronik Coretax DJP",
+    "category": "Peraturan DJP",
+    "effectiveDate": "1 Juli 2024",
+    "scope": "Tata cara aktivasi akun wajib pajak baru, penataan sertifikat digital, dan otentikasi multi-faktor DJP.",
+    "fileSize": "2.1 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-06",
+    "docNumber": "KMK No. 38/KM.10/2026",
+    "title": "Nilai Kurs Valuta Asing sebagai Dasar Pelunasan Bea Masuk, PPN, dan PPh",
+    "category": "Keputusan KMK",
+    "effectiveDate": "15 September 2026",
+    "scope": "Penetapan kurs pajak mingguan resmi Kemenkeu untuk konversi transaksi ekspor, impor, dan faktur valas.",
+    "fileSize": "850 KB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-07",
+    "docNumber": "PER-03/PJ/2022 jo PER-11/PJ/2022",
+    "title": "Pedoman Teknis Faktur Pajak Elektronik (e-Faktur PPN)",
+    "category": "Peraturan DJP",
+    "effectiveDate": "1 April 2022",
+    "scope": "Ketentuan upload faktur pajak keluaran paling lambat tanggal 15 bulan berikutnya serta mitigasi faktur fiktif.",
+    "fileSize": "1.5 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-08",
+    "docNumber": "PER-17/PJ/2021",
+    "title": "Tata Cara Pembuatan Bukti Pemotongan/Pemungutan Unifikasi dan Pelaporan SPT Masa PPh Unifikasi",
+    "category": "Peraturan DJP",
+    "effectiveDate": "1 Januari 2022",
+    "scope": "Integrasi pelaporan PPh Pasal 22, 23, 26, dan PPh Final Pasal 4 ayat (2) ke dalam satu format pelaporan digital.",
+    "fileSize": "2.8 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-09",
+    "docNumber": "PP No. 44 Tahun 2022",
+    "title": "Penerapan Pajak Pertambahan Nilai Barang dan Jasa serta Pajak Penjualan atas Barang Mewah",
+    "category": "Peraturan Pemerintah",
+    "effectiveDate": "2 Desember 2022",
+    "scope": "Penunjukan pemungut PPN PMSE (perdagangan melalui sistem elektronik) dan fasilitas PPN dibebaskan/tidak dipungut.",
+    "fileSize": "1.6 MB",
+    "status": "Berlaku"
+  },
+  {
+    "id": "REG-10",
+    "docNumber": "UU No. 1 Tahun 2022",
+    "title": "Hubungan Keuangan antara Pemerintah Pusat dan Pemerintahan Daerah (UU HKPD)",
+    "category": "Undang-Undang",
+    "effectiveDate": "5 Januari 2022",
+    "scope": "Penyelarasan Pajak Daerah dan Retribusi Daerah (PDRD) dengan tarif PBJT korporat serta opsen pajak provinsi/kabupaten.",
+    "fileSize": "3.2 MB",
+    "status": "Berlaku"
+  }
+];
 
 export const REGULATIONS_STORAGE_KEY = "zhou_regulations_data_v2";
 export const REGULATIONS_EVENT = "zhou_regulations_updated";
