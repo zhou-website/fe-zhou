@@ -1,6 +1,6 @@
 /**
  * Zhou Consulting - RESTful API Client Integration
- * Connected to live backend at http://43.173.2.162 (OpenAPI 3.1.0)
+ * Connected to live backend at http://43.173.2.162 (OpenAPI Docs: http://43.173.2.162/docs)
  * Handles JWT authentication, automatic token injection, error handling, and type-safe endpoints.
  */
 
