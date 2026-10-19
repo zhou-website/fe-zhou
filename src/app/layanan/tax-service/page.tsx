@@ -136,7 +136,7 @@ export default function TaxServicePage() {
   const [modules, setModules] = useState<TaxModuleItem[]>(TAX_SERVICE_MODULES);
 
   useEffect(() => {
-    const syncModules = () => {
+    const syncModules = (apiItems?: PublicServiceItem[]) => {
       const stored = getStoredServices();
       const taxStored = stored.filter(
         (s) =>
@@ -145,56 +145,95 @@ export default function TaxServicePage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      if (taxStored.length > 0) {
-        setModules(
-          taxStored.map((c) => {
-            const defaultItem = TAX_SERVICE_MODULES.find(
-              (m) =>
-                m.id === c.id ||
-                m.code === c.code ||
-                m.title.toLowerCase() === c.name.toLowerCase()
-            );
-
-            const rawScopes =
-              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
-              (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p) => p.title || p.description)
-                : undefined) ||
-              defaultItem?.scopes || [
-                "Konsultasi dan kepatuhan perpajakan terpadu",
-                "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
-              ];
-
-            const rawDeliverable =
-              (c.deliverable && c.deliverable.trim()) ||
-              (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
-              defaultItem?.deliverable ||
-              "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)";
-
-            return {
-              id: c.id,
-              code: c.code || defaultItem?.code || c.id,
-              title: c.name,
-              badge: c.badge || defaultItem?.badge || "TAX SERVICES",
-              subtitle: c.subtitle || defaultItem?.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
-              scopes: rawScopes,
-              deliverable: rawDeliverable,
-              topicParam: c.topicParam || defaultItem?.topicParam || "tax-service",
-              waTemplate:
-                c.waTemplate ||
-                defaultItem?.waTemplate ||
-                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-            };
-          })
+      // Pastikan seluruh 6 Modul Utama Tax Services selalu ada dan terupdate
+      const baseMerged = TAX_SERVICE_MODULES.map((base) => {
+        const storedItem = taxStored.find(
+          (c) =>
+            c.id === base.id ||
+            c.code === base.code ||
+            (c.name && c.name.toLowerCase() === base.title.toLowerCase())
         );
-      } else {
-        setModules(TAX_SERVICE_MODULES);
-      }
+
+        const apiItem = apiItems?.find(
+          (a) =>
+            (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+            (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+        );
+
+        const rawScopes =
+          (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
+          (storedItem?.pillars && storedItem.pillars.length > 0
+            ? storedItem.pillars.map((p) => p.title || p.description)
+            : undefined) ||
+          (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
+          base.scopes;
+
+        const rawDeliverable =
+          (storedItem?.deliverable && storedItem.deliverable.trim()) ||
+          (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
+          base.deliverable;
+
+        return {
+          id: base.id,
+          code: base.code,
+          title: storedItem?.name || apiItem?.service_name || base.title,
+          badge: storedItem?.badge || base.badge,
+          subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
+          scopes: rawScopes,
+          deliverable: rawDeliverable,
+          topicParam: storedItem?.topicParam || base.topicParam,
+          waTemplate:
+            storedItem?.waTemplate ||
+            base.waTemplate ||
+            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
+        };
+      });
+
+      // Tambahkan layanan tambahan kustom jika ditambahkan oleh admin/superadmin
+      const extraStored = taxStored.filter(
+        (c) =>
+          !TAX_SERVICE_MODULES.some(
+            (base) =>
+              base.id === c.id ||
+              base.code === c.code ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          )
+      );
+
+      const extraMapped = extraStored.map((c) => {
+        const rawScopes =
+          (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
+          (c.pillars && c.pillars.length > 0
+            ? c.pillars.map((p) => p.title || p.description)
+            : undefined) || [
+            "Konsultasi dan kepatuhan perpajakan terpadu",
+            "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
+          ];
+
+        return {
+          id: c.id,
+          code: c.code || c.id,
+          title: c.name,
+          badge: c.badge || "TAX SERVICES",
+          subtitle: c.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
+          scopes: rawScopes,
+          deliverable: c.deliverable || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
+          topicParam: c.topicParam || "tax-service",
+          waTemplate:
+            c.waTemplate ||
+            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+        };
+      });
+
+      setModules([...baseMerged, ...extraMapped]);
     };
 
     let isMounted = true;
 
-    // 1. Ambil langsung dari live endpoint backend (zero-cache)
+    // Inisialisasi awal 6 modul tax services
+    syncModules();
+
+    // 1. Ambil data dari live endpoint backend (zero-cache) untuk sinkronisasi atribut terbaru
     publicApi
       .getServices()
       .then((res) => {
@@ -203,46 +242,24 @@ export default function TaxServicePage() {
           const taxFromApi = res.data.filter((item: PublicServiceItem) => {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
+            const name = (item.service_name || "").toLowerCase();
             return (
-              (cat.includes("tax") || cat.includes("pajak") || code.includes("tax")) &&
+              (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
 
-          if (taxFromApi.length > 0) {
-            setModules(
-              taxFromApi.map((c: PublicServiceItem) => {
-                const defaultItem = TAX_SERVICE_MODULES.find(
-                  (m) =>
-                    m.code === c.service_code ||
-                    m.title.toLowerCase() === c.service_name.toLowerCase()
-                );
-                return {
-                  id: `TAX-${c.id}`,
-                  code: c.service_code || defaultItem?.code || `TAX-${c.id}`,
-                  title: c.service_name,
-                  badge: c.category?.toUpperCase() || defaultItem?.badge || "TAX SERVICES",
-                  subtitle: c.description || defaultItem?.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
-                  scopes: c.features && c.features.length > 0 ? c.features : defaultItem?.scopes || TAX_SERVICE_MODULES[0].scopes,
-                  deliverable: defaultItem?.deliverable || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
-                  topicParam: defaultItem?.topicParam || "tax-service",
-                  waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-                };
-              })
-            );
-            return;
-          }
+          syncModules(taxFromApi);
         }
-        syncModules();
       })
       .catch(() => {
         syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, syncModules);
+    window.addEventListener(SERVICES_EVENT, () => syncModules());
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, syncModules);
+      window.removeEventListener(SERVICES_EVENT, () => syncModules());
     };
   }, []);
 

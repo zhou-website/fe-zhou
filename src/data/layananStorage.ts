@@ -435,6 +435,53 @@ export const DEFAULT_SERVICES: StoredServiceItem[] = [
     "waTemplate": "Halo Zhou Consulting, saya ingin konsultasi mengenai perubahan anggaran dasar PT, RUPS, dan legalitas perseroan.",
     "status": "Published",
     "lastUpdated": "Oktober 2026"
+  },
+  {
+    "id": "SRV-LEGAL-TAX",
+    "code": "LEGAL_TAX",
+    "categoryKey": "hukum",
+    "name": "Legal & Tax Dispute Advisory",
+    "subtitle": "Pendampingan pemeriksaan pajak, klarifikasi SP2DK, pengajuan keberatan, dan mitigasi risiko regulasi.",
+    "badge": "ADVOKASI & SENGKETA HUKUM",
+    "route": "/layanan/hukum",
+    "scopes": [
+      "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+      "Penyusunan Tanggapan Resmi Surat Klarifikasi SP2DK",
+      "Pengajuan Permohonan Keberatan Pajak",
+      "Advokasi & Banding di Pengadilan Pajak"
+    ],
+    "deliverable": "Risalah Tanggapan Hukum & SPHP, Surat Keberatan / Memori Banding, & Legal Opinion Resmi.",
+    "pillars": [
+      {
+        "title": "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+        "description": "Pendampingan Pemeriksaan Pajak (Audit Assistance)"
+      },
+      {
+        "title": "Penyusunan Tanggapan Resmi Surat Klarifikasi SP2DK",
+        "description": "Penyusunan Tanggapan Resmi Surat Klarifikasi SP2DK"
+      },
+      {
+        "title": "Pengajuan Permohonan Keberatan Pajak",
+        "description": "Pengajuan Permohonan Keberatan Pajak"
+      },
+      {
+        "title": "Advokasi & Banding di Pengadilan Pajak",
+        "description": "Advokasi & Banding di Pengadilan Pajak"
+      }
+    ],
+    "workflow": [
+      "Analisis Surat Klarifikasi / Pemeriksaan",
+      "Penyusunan Bukti & Argumen Hukum",
+      "Asistensi Pembahasan Akhir (Closing)",
+      "Evaluasi Tindak Lanjut"
+    ],
+    "deliverables": [
+      "Risalah Tanggapan Hukum & SPHP, Surat Keberatan / Memori Banding, & Legal Opinion Resmi."
+    ],
+    "topicParam": "sengketa-hukum-pajak",
+    "waTemplate": "Halo Zhou Consulting, saya ingin konsultasi mengenai Legal & Tax Dispute Advisory dan pendampingan sengketa hukum.",
+    "status": "Published",
+    "lastUpdated": "19 Okt 2026"
   }
 ];
 
@@ -474,7 +521,7 @@ export function getStoredServices(): StoredServiceItem[] {
     let currentServices: StoredServiceItem[] = raw ? JSON.parse(raw) : [];
 
     // Jika belum ada di localStorage atau belum memiliki layanan lengkap (termasuk 6 tax services dan penghapusan PDP)
-    if (!Array.isArray(currentServices) || currentServices.length < 11 || !currentServices.some((s) => s.code === "TAX-EFK")) {
+    if (!Array.isArray(currentServices) || currentServices.length < 12 || !currentServices.some((s) => s.code === "LEGAL_TAX")) {
       const mergedMap = new Map<string, StoredServiceItem>();
 
       // Isi dengan DEFAULT_SERVICES terbaru
