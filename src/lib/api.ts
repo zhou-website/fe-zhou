@@ -5,16 +5,32 @@
  */
 
 export function getApiBaseUrl(): string {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    return envUrl.replace(/\/+$/, "").replace(/\/api\/?$/, "");
+  let envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!envUrl) {
+    return "https://43.173.2.162.sslip.io";
   }
-  return "https://43.173.2.162.sslip.io";
+
+  envUrl = envUrl.replace(/\/+$/, "").replace(/\/api\/?$/, "");
+
+  // Jika web dimuat via HTTPS (seperti Vercel), cegah Mixed Content block dengan otomatis gunakan endpoint HTTPS
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    if (envUrl.startsWith("http://43.173.2.162")) {
+      return "https://43.173.2.162.sslip.io";
+    }
+    if (envUrl.startsWith("http://")) {
+      return envUrl.replace(/^http:\/\//i, "https://");
+    }
+  }
+
+  // Jika konfigurasi masih http mentah ke IP backend VPS
+  if (envUrl === "http://43.173.2.162") {
+    return "https://43.173.2.162.sslip.io";
+  }
+
+  return envUrl;
 }
 
-export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "https://43.173.2.162.sslip.io"
-).replace(/\/+$/, "").replace(/\/api\/?$/, "");
+export const API_BASE_URL = getApiBaseUrl();
 
 export const TOKEN_STORAGE_KEY = "zhou_auth_token";
 
