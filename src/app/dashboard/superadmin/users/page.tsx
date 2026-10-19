@@ -73,22 +73,7 @@ const isDummyAdmin = (adm: {
   name?: string;
   email?: string;
 }): boolean => {
-  const email = (adm.email || "").toLowerCase();
-  const name = (adm.name || "").toLowerCase();
-
-  return (
-    email.includes("deact.") ||
-    email.includes("staff.admin.") ||
-    email.includes("test") ||
-    email.includes("dummy") ||
-    email.includes("mock") ||
-    name.includes("test runner") ||
-    name.includes("to deactivate") ||
-    name.includes("dummy") ||
-    name.includes("mock") ||
-    /\b17\d{10,12}\b/.test(email) ||
-    /\b17\d{10,12}\b/.test(name)
-  );
+  return false;
 };
 
 const cleanAdminName = (rawName: string) => {
@@ -194,6 +179,20 @@ const DEFAULT_PERMANENT_STAFF: StaffAdmin[] = [
     joinDate: "19 Okt 2026",
     password: "Anna123",
   },
+  {
+    id: "STF-BE-26",
+    name: "Lydian,S.AK",
+    nip: "ADM-026",
+    email: "lydia123@gmail.com",
+    phone: "+62 81532638856",
+    role: "Admin",
+    division: "Accounting Service",
+    tasksCount: 0,
+    status: "Aktif",
+    twoFactorEnabled: true,
+    joinDate: "15 Okt 2026",
+    password: "Admin123!",
+  },
 ];
 
 export default function SuperadminUsersPage() {
@@ -272,16 +271,7 @@ export default function SuperadminUsersPage() {
       const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
 
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
-        // Purge dummy test runner accounts from backend in background
-        adminsRes.data.forEach((adm: AdminUserItem) => {
-          if (isDummyAdmin(adm)) {
-            try {
-              superadminApi.deleteAdmin(adm.id);
-            } catch {}
-          }
-        });
-
-        const validAdmins = adminsRes.data.filter((adm: AdminUserItem) => !isDummyAdmin(adm));
+        const validAdmins = adminsRes.data;
         const apiStaff: StaffAdmin[] = validAdmins.map((adm: AdminUserItem, idx: number) => {
           const admEmail = (adm.email || "").toLowerCase().trim();
           const admName = (adm.name || "").toLowerCase().trim();

@@ -77,27 +77,6 @@ export function normalizeRole(backendRole?: string | null, email?: string | null
 }
 
 export function isDummyValue(val?: string | null): boolean {
-  if (!val) return false;
-  const s = val.trim().toLowerCase();
-  if (s === "-" || s === "") return false;
-  if (
-    s.includes("mitra klien") ||
-    s.includes("perusahaan klien") ||
-    s.includes("zhou consulting klien") ||
-    s.includes("maju makmur") ||
-    s === "klien terdaftar" ||
-    s === "nama klien"
-  ) {
-    return true;
-  }
-  const cleanDigits = s.replace(/\D/g, "");
-  if (
-    cleanDigits === "6281234567890" ||
-    cleanDigits === "081234567890" ||
-    cleanDigits === "6281123456789"
-  ) {
-    return true;
-  }
   return false;
 }
 
@@ -110,16 +89,7 @@ export function isDummyTicket(c: {
   if (isTicketDeleted(c.id) || (c.project_code && isTicketDeleted(c.project_code))) {
     return true;
   }
-  const code = (c.project_code || String(c.id || "")).toLowerCase();
-  const title = (c.title || "").toLowerCase();
-
-  return (
-    code === "prj-tax-2026-001" ||
-    (code === "1" && title.includes("spt tahunan badan pt maju")) ||
-    (code === "tk-1" && title.includes("spt tahunan badan pt maju")) ||
-    title.includes("spt tahunan badan pt maju") ||
-    title.includes("pt maju makmur")
-  );
+  return false;
 }
 
 export function isDummyDocument(doc: {

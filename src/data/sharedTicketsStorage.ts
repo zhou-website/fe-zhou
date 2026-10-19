@@ -208,6 +208,17 @@ export const DEFAULT_STAFF_ADMINS: StaffAdminProfile[] = [
     divisions: ["IT & Operasional"],
     isActive: true,
   },
+  {
+    id: "STF-BE-26",
+    numericId: 26,
+    name: "Lydian,S.AK",
+    email: "lydia123@gmail.com",
+    nip: "ADM-026",
+    phone: "+62 81532638856",
+    role: "admin",
+    divisions: ["Accounting Service", "Tax Service Core"],
+    isActive: true,
+  },
 ];
 
 /**

@@ -198,16 +198,6 @@ export function isDummyCmsItem(item?: {
     return true;
   }
 
-  // Perikatan / Tiket dummy
-  if (
-    title.includes("spt tahunan badan pt maju") ||
-    title.includes("pt maju makmur") ||
-    code.includes("prj-tax-2026-001") ||
-    strId === "1"
-  ) {
-    return true;
-  }
-
   return false;
 }
 
