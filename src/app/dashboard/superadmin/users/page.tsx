@@ -39,6 +39,26 @@ export interface StaffAdmin {
 const STORAGE_KEY_STAFF_OVERRIDES = "zhou_staff_admin_overrides_v2";
 const STORAGE_KEY_STAFF_CREATED = "zhou_staff_admin_created_v2";
 const STORAGE_KEY_STAFF_DELETED = "zhou_staff_admin_deleted_v2";
+const STORAGE_KEY_ADMIN_PASSWORDS = "zhou_admin_passwords_v2";
+
+const getSavedAdminPasswords = (): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_ADMIN_PASSWORDS);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveAdminPassword = (key: string, pass: string) => {
+  if (typeof window === "undefined" || !key || !pass) return;
+  try {
+    const map = getSavedAdminPasswords();
+    map[key.toLowerCase().trim()] = pass;
+    localStorage.setItem(STORAGE_KEY_ADMIN_PASSWORDS, JSON.stringify(map));
+  } catch {}
+};
 
 const getLocalStaffCache = () => {
   if (typeof window === "undefined") {
@@ -218,7 +238,11 @@ export default function SuperadminUsersPage() {
   // Pre-fill password with the staff's existing created password when edit modal opens
   useEffect(() => {
     if (editingStaff) {
+      const savedPasswords = getSavedAdminPasswords();
       const existingPassword =
+        savedPasswords[editingStaff.email?.toLowerCase().trim()] ||
+        savedPasswords[editingStaff.id?.toLowerCase()] ||
+        savedPasswords[editingStaff.nip?.toLowerCase()] ||
         editingStaff.password ||
         (editingStaff.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!");
       setCurrentStaffPassword(existingPassword);
@@ -238,6 +262,7 @@ export default function SuperadminUsersPage() {
     initialPassword: "",
     twoFactorEnabled: true,
   });
+  const [showAddPassword, setShowAddPassword] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -315,10 +340,23 @@ export default function SuperadminUsersPage() {
             cache.overrides[baseItem.nip] ||
             cache.overrides[rawId];
 
+          const savedPasswords = getSavedAdminPasswords();
+          const knownPassword =
+            savedPasswords[adm.email?.toLowerCase().trim()] ||
+            savedPasswords[baseItem.id.toLowerCase()] ||
+            savedPasswords[baseItem.nip.toLowerCase()] ||
+            savedPasswords[rawId] ||
+            override?.password;
+
+          if (knownPassword) {
+            baseItem.password = knownPassword;
+          }
+
           if (override) {
             return {
               ...baseItem,
               ...override,
+              password: knownPassword || override.password || baseItem.password,
               tasksCount: override.tasksCount !== undefined ? override.tasksCount : assignedCount,
             };
           }
@@ -398,9 +436,10 @@ export default function SuperadminUsersPage() {
       phone: "+62 8",
       role: "admin",
       division: "Tax Service Core",
-      initialPassword: `Admin${Math.floor(100 + Math.random() * 900)}!`,
+      initialPassword: "",
       twoFactorEnabled: true,
     });
+    setShowAddPassword(true);
     setIsAddModalOpen(true);
   };
 
@@ -417,7 +456,11 @@ export default function SuperadminUsersPage() {
       return;
     }
 
-    const passwordVal = newStaffForm.initialPassword.trim() || "Admin123!";
+    const passwordVal = newStaffForm.initialPassword.trim();
+    if (!passwordVal) {
+      showToast("Kata sandi akun wajib diisi oleh Superadmin.");
+      return;
+    }
     if (passwordVal.length < 6) {
       showToast("Kata sandi minimal 6 karakter.");
       return;
@@ -477,8 +520,14 @@ export default function SuperadminUsersPage() {
           cache.overrides[newStaffItem.id] = newStaffItem;
           cache.overrides[newStaffItem.email.toLowerCase()] = newStaffItem;
           cache.overrides[newStaffItem.nip] = newStaffItem;
+          saveAdminPassword(emailVal, passwordVal);
+          saveAdminPassword(finalId, passwordVal);
+          saveAdminPassword(finalNip, passwordVal);
           if (createdBackendId) {
             cache.overrides[String(createdBackendId)] = newStaffItem;
+            saveAdminPassword(String(createdBackendId), passwordVal);
+            saveAdminPassword(`ADM-${String(createdBackendId).padStart(3, "0")}`, passwordVal);
+            saveAdminPassword(`SPR-${String(createdBackendId).padStart(3, "0")}`, passwordVal);
           }
 
           localStorage.setItem(STORAGE_KEY_STAFF_CREATED, JSON.stringify(cache.created));
@@ -490,7 +539,7 @@ export default function SuperadminUsersPage() {
 
       // 4. Update state dan tampilkan notifikasi sukses beserta kredensial
       setStaffList((prev) => [newStaffItem, ...prev]);
-      showToast(`Akun ${displayRole} ${newStaffItem.name} berhasil dibuat! Kata sandi: ${passwordVal}`);
+      showToast(`Akun ${displayRole} ${newStaffItem.name} berhasil dibuat dengan kata sandi yang Anda tentukan!`);
       setIsAddModalOpen(false);
       setNewStaffForm({
         name: "",
@@ -498,7 +547,7 @@ export default function SuperadminUsersPage() {
         phone: "+62 8",
         role: "admin",
         division: "Tax Service Core",
-        initialPassword: "Admin" + Math.floor(100 + Math.random() * 900) + "!",
+        initialPassword: "",
         twoFactorEnabled: true,
       });
     } catch (err: unknown) {
@@ -544,9 +593,13 @@ export default function SuperadminUsersPage() {
         cache.overrides[updatedStaff.id] = updatedStaff;
         cache.overrides[updatedStaff.email.toLowerCase()] = updatedStaff;
         cache.overrides[updatedStaff.nip] = updatedStaff;
+        saveAdminPassword(updatedStaff.email, finalPassword);
+        saveAdminPassword(updatedStaff.id, finalPassword);
+        saveAdminPassword(updatedStaff.nip, finalPassword);
         const rawId = updatedStaff.id.replace(/\D/g, "");
         if (rawId) {
           cache.overrides[rawId] = updatedStaff;
+          saveAdminPassword(rawId, finalPassword);
         }
 
         // Also update inside created list if it was locally created
@@ -1127,17 +1180,35 @@ export default function SuperadminUsersPage() {
 
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-primary">
-                    Kata Sandi Sementara
+                    Kata Sandi Akun <span className="text-error">*</span>
                   </Label>
-                  <Input
-                    type="text"
-                    required
-                    value={newStaffForm.initialPassword}
-                    onChange={(e) =>
-                      setNewStaffForm((prev) => ({ ...prev, initialPassword: e.target.value }))
-                    }
-                    className="text-xs h-9 bg-surface border-primary-light font-mono"
-                  />
+                  <div className="relative">
+                    <Input
+                      type={showAddPassword ? "text" : "password"}
+                      required
+                      placeholder="Masukkan kata sandi (min. 6 karakter)"
+                      value={newStaffForm.initialPassword}
+                      onChange={(e) =>
+                        setNewStaffForm((prev) => ({ ...prev, initialPassword: e.target.value }))
+                      }
+                      className="text-xs h-9 bg-white border-primary-light pr-9 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPassword(!showAddPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1 cursor-pointer"
+                      aria-label="Lihat kata sandi"
+                    >
+                      {showAddPassword ? (
+                        <EyeSlashIcon className="text-xs" />
+                      ) : (
+                        <EyeIcon className="text-xs" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-text-muted block">
+                    Ketik kata sandi resmi yang Anda tentukan untuk akun staf ini.
+                  </span>
                 </div>
               </div>
 
@@ -1504,14 +1575,25 @@ export default function SuperadminUsersPage() {
                 </div>
               </div>
 
-              {selectedStaffForDetail.password && (
-                <div className="pt-2 border-t border-primary-light flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi (Terakhir Diatur)</span>
-                    <div className="font-mono text-primary font-bold text-xs mt-0.5">{selectedStaffForDetail.password}</div>
+              {(() => {
+                const savedPasswords = getSavedAdminPasswords();
+                const displayPwd =
+                  savedPasswords[selectedStaffForDetail.email?.toLowerCase().trim()] ||
+                  savedPasswords[selectedStaffForDetail.id?.toLowerCase()] ||
+                  savedPasswords[selectedStaffForDetail.nip?.toLowerCase()] ||
+                  selectedStaffForDetail.password;
+
+                if (!displayPwd) return null;
+
+                return (
+                  <div className="pt-2 border-t border-primary-light flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi (Terakhir Diatur)</span>
+                      <div className="font-mono text-primary font-bold text-xs mt-0.5">{displayPwd}</div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             <div className="pt-2 border-t border-primary-light flex items-center justify-end gap-2">
