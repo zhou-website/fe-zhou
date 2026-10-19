@@ -32,7 +32,6 @@ import {
   DocumentIcon,
   LocationIcon,
   ClockIcon,
-  BriefcaseIcon,
 } from "@/components/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/context/LanguageContext";
@@ -173,7 +172,7 @@ export function CareerSection() {
     setSelectedJobDetail(job);
   };
 
-  const handleOpenApplyModal = (job: JobPosition | null) => {
+  const handleOpenApplyModal = (job: JobPosition) => {
     setSelectedJobDetail(null);
     setSelectedJobApply(job);
     setFormSubmitted(false);
@@ -226,8 +225,8 @@ export function CareerSection() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          job_id: String(selectedJobApply?.id || numId),
-          position_title: selectedJobApply?.title || "Database Talenta",
+          job_id: String(selectedJobApply?.backendId || selectedJobApply?.id || numId),
+          position_title: selectedJobApply?.title || "Posisi Karir",
           full_name: applicantName.trim(),
           email: cleanEmail,
           phone: applicantPhone.trim(),
@@ -287,11 +286,11 @@ export function CareerSection() {
         status: "Baru Masuk",
         applied_at: new Date().toISOString(),
         registration_code: regCode,
-        cover_letter: selectedJobApply ? `Melamar posisi ${selectedJobApply.title}` : "Pendaftaran Database Talenta",
+        cover_letter: selectedJobApply ? `Melamar posisi ${selectedJobApply.title}` : "Lamaran Posisi Karir",
         job: {
-          position_code: selectedJobApply?.id || "TALENT",
-          position_title: selectedJobApply?.title || "Database Talenta",
-          department: selectedJobApply?.department || "Umum",
+          position_code: selectedJobApply?.id || "KARIR",
+          position_title: selectedJobApply?.title || "Posisi Karir",
+          department: selectedJobApply?.department || "Tax Service Core",
         },
       });
 
@@ -383,10 +382,6 @@ export function CareerSection() {
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
               <Button variant="outline" size="sm" asChild className="text-xs font-semibold hover:border-primary h-9 px-4">
                 <Link href="/kontak">Hubungi Sekretariat</Link>
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => handleOpenApplyModal(null)} className="text-xs font-semibold h-9 px-4">
-                <BriefcaseIcon className="text-xs mr-1.5" />
-                <span>Daftar Database Talenta</span>
               </Button>
             </div>
           </div>
@@ -592,14 +587,14 @@ export function CareerSection() {
               <DialogHeader className="space-y-2 border-b border-primary-light pb-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="primary" size="sm">
-                    {selectedJobApply?.department || "Database Talenta"}
+                    {selectedJobApply?.department || "Karir"}
                   </Badge>
                   {selectedJobApply?.location && (
                     <span className="text-xs text-text-secondary">{selectedJobApply.location}</span>
                   )}
                 </div>
                 <DialogTitle className="text-lg sm:text-xl font-bold text-primary">
-                  {selectedJobApply ? `Lamar: ${selectedJobApply.title}` : "Pendaftaran Database Talenta"}
+                  {selectedJobApply ? `Lamar: ${selectedJobApply.title}` : "Lamar Posisi Karir"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-text-secondary">
                   Lengkapi formulir di bawah ini dengan data asli untuk ditelaah oleh tim HR Zhou Consulting.

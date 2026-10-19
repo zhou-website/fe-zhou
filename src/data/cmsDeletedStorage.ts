@@ -180,13 +180,20 @@ export function isDummyCmsItem(item?: {
     return true;
   }
 
-  // Lowongan karir dummy dari seed backend
+  // Lowongan karir dummy dari seed backend & Database Talenta yang sudah dihapus
   if (
     title.includes("junior accounting staff") ||
     title.includes("senior tax consultant") ||
     title.includes("junior tax auditor") ||
+    title.includes("database talenta") ||
+    title.includes("talent-pool") ||
+    title.includes("talent pool") ||
+    title.includes("sak ep / psak") ||
+    title.includes("penyusunan laporan keuangan sak ep") ||
     code === "job-acc-jr-01" ||
-    code === "job-tax-sr-01"
+    code === "job-tax-sr-01" ||
+    code.includes("talent") ||
+    strId.includes("talent")
   ) {
     return true;
   }

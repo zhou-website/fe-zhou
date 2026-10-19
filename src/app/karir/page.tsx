@@ -564,7 +564,7 @@ export default function CareerPage() {
         registration_code: code,
         job: {
           position_code: String(targetJob?.id || targetPositionKey),
-          position_title: targetJob?.title || (targetPositionKey === "general-talent-pool" ? "Pendaftaran Database Talenta Terbuka" : "Posisi Karir"),
+          position_title: targetJob?.title || "Posisi Karir",
           department: targetJob?.department || "Tax Service Core",
         },
       });
@@ -921,7 +921,7 @@ export default function CareerPage() {
                       </div>
                     )}
 
-                    {/* Tampilan Posisi yang Dilamar: Teks Informatif Otomatis vs Dropdown Database Talenta */}
+                    {/* Tampilan Posisi yang Dilamar: Detail Posisi Terpilih vs Dropdown Pemilihan Posisi */}
                     {selectedJobToApply ? (
                       <div className="space-y-1.5">
                         <Label className="text-xs font-bold text-primary block">
@@ -968,10 +968,10 @@ export default function CareerPage() {
                         )}
                       </div>
                     ) : (
-                      /* Alur Pendaftaran Database Talenta Terbuka / Lamaran Umum */
+                      /* Alur Pemilihan Posisi Karir yang Sedang Dibuka */
                       <div className="space-y-1.5">
                         <Label htmlFor="modal-posisi-dilamar" className="text-xs font-bold text-primary">
-                          Posisi yang Diminati / Jalur Lamaran <span className="text-error">*</span>
+                          Posisi yang Diminati <span className="text-error">*</span>
                         </Label>
                         <Select
                           id="modal-posisi-dilamar"
@@ -979,6 +979,8 @@ export default function CareerPage() {
                           onChange={(e) => {
                             const posId = e.target.value;
                             setSelectedPositionId(posId);
+                            const found = publishedJobs.find((j) => j.id === posId);
+                            if (found) setSelectedJobToApply(found);
                             if (fieldErrors.position) {
                               setFieldErrors((prev) => ({ ...prev, position: undefined }));
                             }
@@ -987,18 +989,14 @@ export default function CareerPage() {
                             fieldErrors.position ? "border-error focus-visible:ring-error" : "border-primary-light focus-visible:ring-primary"
                           }`}
                         >
-                          <option value="general-talent-pool">
-                            Pendaftaran Database Talenta Terbuka (Umum)
+                          <option value="" disabled>
+                            -- Pilih Posisi Lowongan --
                           </option>
-                          {publishedJobs.length > 0 && (
-                            <optgroup label="Posisi Lowongan yang Sedang Dibuka">
-                              {publishedJobs.map((job) => (
-                                <option key={job.id} value={job.id}>
-                                  {job.title} ({job.department})
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
+                          {publishedJobs.map((job) => (
+                            <option key={job.id} value={job.id}>
+                              {job.title} ({job.department})
+                            </option>
+                          ))}
                         </Select>
                         {fieldErrors.position && (
                           <p className="text-xs text-error font-medium flex items-center gap-1 mt-1">
