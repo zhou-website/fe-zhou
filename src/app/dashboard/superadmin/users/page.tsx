@@ -1191,16 +1191,8 @@ export default function SuperadminUsersPage() {
 
               <div className="pt-2 border-t border-primary-light flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-text-secondary">Keamanan Akun &amp; Sandi</span>
-                  <div className="font-mono text-primary font-bold text-xs mt-0.5 flex items-center gap-2">
-                    <span>••••••••••••</span>
-                    <Badge variant="success" size="sm" className="text-[9px] py-0 px-1.5 font-normal">
-                      Tersinkron di Server Live
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] text-text-muted mt-0.5">
-                    Terenkripsi aman di database server backend (Hash bcrypt).
-                  </p>
+                  <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi Akun</span>
+                  <div className="font-mono text-primary font-bold text-xs mt-0.5">••••••••••••</div>
                 </div>
               </div>
             </div>
