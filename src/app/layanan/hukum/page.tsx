@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface LegalModuleItem {
   id: string;
@@ -139,9 +140,60 @@ export default function KonsultasiHukumPage() {
       }
     };
 
-    syncModules();
+    let isMounted = true;
+
+    // 1. Ambil langsung dari live endpoint backend (zero-cache)
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const lawFromApi = res.data.filter((item: PublicServiceItem) => {
+            const cat = (item.category || "").toLowerCase();
+            const code = (item.service_code || "").toLowerCase();
+            const name = (item.service_name || "").toLowerCase();
+            return (
+              (cat.includes("hukum") || cat.includes("legal") || code.includes("law") || code.includes("legal") || name.includes("hukum") || name.includes("legal")) &&
+              item.id !== 1872 &&
+              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+            );
+          });
+
+          if (lawFromApi.length > 0) {
+            setModules(
+              lawFromApi.map((c: PublicServiceItem) => {
+                const defaultItem = DEFAULT_LEGAL_MODULES.find(
+                  (m) =>
+                    m.code === c.service_code ||
+                    m.title.toLowerCase() === c.service_name.toLowerCase()
+                );
+                return {
+                  id: `LAW-${c.id}`,
+                  code: c.service_code || defaultItem?.code || `LAW-${c.id}`,
+                  title: c.service_name,
+                  badge: c.category?.toUpperCase() || defaultItem?.badge || "LAW SERVICES",
+                  subtitle: c.description || defaultItem?.subtitle || DEFAULT_LEGAL_MODULES[0].subtitle,
+                  scopes: c.features && c.features.length > 0 ? c.features : defaultItem?.scopes || DEFAULT_LEGAL_MODULES[0].scopes,
+                  deliverable: defaultItem?.deliverable || DEFAULT_LEGAL_MODULES[0].deliverable,
+                  topicParam: defaultItem?.topicParam || "hukum",
+                  waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+                };
+              })
+            );
+            return;
+          }
+        }
+        syncModules();
+      })
+      .catch(() => {
+        syncModules();
+      });
+
     window.addEventListener(SERVICES_EVENT, syncModules);
-    return () => window.removeEventListener(SERVICES_EVENT, syncModules);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SERVICES_EVENT, syncModules);
+    };
   }, []);
 
   return (

@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface BusinessModuleItem {
   id: string;
@@ -42,7 +43,7 @@ const DEFAULT_BUSINESS_MODULE: BusinessModuleItem = {
   subtitle: "Konsultasi restrukturisasi bisnis, perencanaan keuangan strategis, dan manajemen arus kas perusahaan.",
   scopes: [
     "Layanan penasihat keuangan dan bisnis strategis untuk membantu eksekutif perusahaan mengidentifikasi peluang pertumbuhan, melakukan efisiensi modal, serta mengelola risiko keuangan. Kami memastikan performa bisnis Anda berjalan optimal dan berkelanjutan."
-],
+  ],
   deliverable: "Laporan Studi Kelayakan Bisnis Resmi, Model Finansial Excel Dinamis, & Rekomendasi Solvabilitas.",
   topicParam: "studi-kelayakan",
   waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Studi Kelayakan Bisnis (Feasibility Study) dan rencana investasi.",
@@ -53,6 +54,8 @@ export default function KonsultasiBisnisPage() {
   const [modules, setModules] = useState<BusinessModuleItem[]>([DEFAULT_BUSINESS_MODULE]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const syncModules = () => {
       const stored = getStoredServices();
       const bizItems = stored.filter(
@@ -97,9 +100,50 @@ export default function KonsultasiBisnisPage() {
       }
     };
 
-    syncModules();
+    // 1. Ambil langsung dari live endpoint backend (zero-cache)
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const bizFromApi = res.data.filter((item: PublicServiceItem) => {
+            const cat = (item.category || "").toLowerCase();
+            const code = (item.service_code || "").toLowerCase();
+            const name = (item.service_name || "").toLowerCase();
+            return (
+              (cat.includes("bisnis") || cat.includes("finan") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial")) &&
+              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+            );
+          });
+
+          if (bizFromApi.length > 0) {
+            setModules(
+              bizFromApi.map((c: PublicServiceItem) => ({
+                id: `FIN-${c.id}`,
+                code: c.service_code || `FIN-${c.id}`,
+                title: c.service_name,
+                badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
+                subtitle: c.description || DEFAULT_BUSINESS_MODULE.subtitle,
+                scopes: c.features && c.features.length > 0 ? c.features : DEFAULT_BUSINESS_MODULE.scopes,
+                deliverable: DEFAULT_BUSINESS_MODULE.deliverable,
+                topicParam: "studi-kelayakan",
+                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+              }))
+            );
+            return;
+          }
+        }
+        syncModules();
+      })
+      .catch(() => {
+        syncModules();
+      });
+
     window.addEventListener(SERVICES_EVENT, syncModules);
-    return () => window.removeEventListener(SERVICES_EVENT, syncModules);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SERVICES_EVENT, syncModules);
+    };
   }, []);
 
   return (

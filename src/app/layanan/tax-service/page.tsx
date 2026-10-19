@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface TaxModuleItem {
   id: string;
@@ -191,9 +192,58 @@ export default function TaxServicePage() {
       }
     };
 
-    syncModules();
+    let isMounted = true;
+
+    // 1. Ambil langsung dari live endpoint backend (zero-cache)
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const taxFromApi = res.data.filter((item: PublicServiceItem) => {
+            const cat = (item.category || "").toLowerCase();
+            const code = (item.service_code || "").toLowerCase();
+            return (
+              (cat.includes("tax") || cat.includes("pajak") || code.includes("tax")) &&
+              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+            );
+          });
+
+          if (taxFromApi.length > 0) {
+            setModules(
+              taxFromApi.map((c: PublicServiceItem) => {
+                const defaultItem = TAX_SERVICE_MODULES.find(
+                  (m) =>
+                    m.code === c.service_code ||
+                    m.title.toLowerCase() === c.service_name.toLowerCase()
+                );
+                return {
+                  id: `TAX-${c.id}`,
+                  code: c.service_code || defaultItem?.code || `TAX-${c.id}`,
+                  title: c.service_name,
+                  badge: c.category?.toUpperCase() || defaultItem?.badge || "TAX SERVICES",
+                  subtitle: c.description || defaultItem?.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
+                  scopes: c.features && c.features.length > 0 ? c.features : defaultItem?.scopes || TAX_SERVICE_MODULES[0].scopes,
+                  deliverable: defaultItem?.deliverable || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
+                  topicParam: defaultItem?.topicParam || "tax-service",
+                  waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+                };
+              })
+            );
+            return;
+          }
+        }
+        syncModules();
+      })
+      .catch(() => {
+        syncModules();
+      });
+
     window.addEventListener(SERVICES_EVENT, syncModules);
-    return () => window.removeEventListener(SERVICES_EVENT, syncModules);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SERVICES_EVENT, syncModules);
+    };
   }, []);
 
   return (

@@ -121,6 +121,9 @@ export async function apiFetch<T = unknown>(
 
   const reqHeaders: Record<string, string> = {
     Accept: "application/json",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
     ...(headers as Record<string, string>),
   };
 
@@ -790,6 +793,8 @@ export interface PublicServiceItem {
   service_name: string;
   category: string;
   description?: string;
+  card_explanation?: string;
+  features?: string[];
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;

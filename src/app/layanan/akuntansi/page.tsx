@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface AccountingModuleItem {
   id: string;
@@ -42,7 +43,7 @@ const DEFAULT_ACCOUNTING_MODULE: AccountingModuleItem = {
   subtitle: "Penyusunan laporan posisi keuangan (neraca), laba rugi, perubahan ekuitas, dan arus kas standar resmi perbankan & audit.",
   scopes: [
     "Layanan pengelolaan akuntansi berbasis data yang akurat guna menghasilkan laporan keuangan bulanan dan tahunan yang kredibel. Kami memastikan seluruh pencatatan bisnis Anda rapi, patuh regulasi, serta siap digunakan untuk kebutuhan internal maupun eksternal (seperti perbankan dan audit)."
-],
+  ],
   deliverable: "Bundel Laporan Keuangan Lengkap (Audit-ready / Bank-ready) beserta CALK resmi.",
   topicParam: "laporan-keuangan",
   waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Penyusunan Laporan Keuangan & Pembukuan.",
@@ -53,6 +54,8 @@ export default function AccountingServicePage() {
   const [modules, setModules] = useState<AccountingModuleItem[]>([DEFAULT_ACCOUNTING_MODULE]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const syncModules = () => {
       const stored = getStoredServices();
       const accItems = stored.filter(
@@ -97,9 +100,50 @@ export default function AccountingServicePage() {
       }
     };
 
-    syncModules();
+    // 1. Ambil langsung dari live endpoint backend (zero-cache)
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const accFromApi = res.data.filter((item: PublicServiceItem) => {
+            const cat = (item.category || "").toLowerCase();
+            const code = (item.service_code || "").toLowerCase();
+            const name = (item.service_name || "").toLowerCase();
+            return (
+              (cat.includes("akuntansi") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan")) &&
+              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+            );
+          });
+
+          if (accFromApi.length > 0) {
+            setModules(
+              accFromApi.map((c: PublicServiceItem) => ({
+                id: `SVC-${c.id}`,
+                code: c.service_code || `SVC-${c.id}`,
+                title: c.service_name,
+                badge: c.category?.toUpperCase() || "ACCOUNTING SERVICES",
+                subtitle: c.description || DEFAULT_ACCOUNTING_MODULE.subtitle,
+                scopes: c.features && c.features.length > 0 ? c.features : DEFAULT_ACCOUNTING_MODULE.scopes,
+                deliverable: DEFAULT_ACCOUNTING_MODULE.deliverable,
+                topicParam: "laporan-keuangan",
+                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+              }))
+            );
+            return;
+          }
+        }
+        syncModules();
+      })
+      .catch(() => {
+        syncModules();
+      });
+
     window.addEventListener(SERVICES_EVENT, syncModules);
-    return () => window.removeEventListener(SERVICES_EVENT, syncModules);
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SERVICES_EVENT, syncModules);
+    };
   }, []);
 
   return (
