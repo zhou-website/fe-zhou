@@ -380,7 +380,7 @@ export const clientApi = {
       if (directRes.success && directRes.data) {
         return directRes;
       }
-    } catch {}
+    } catch { }
 
     // 2. Official backend escalation endpoint for creating client consultations
     return apiFetch<ConsultationItem>("/api/v1/client/chatbot/escalate", {
@@ -1162,22 +1162,17 @@ export const superadminApi = {
       ...payload,
       ...(payload.role
         ? {
-            role:
-              payload.role.toUpperCase() === "SUPERADMIN"
-                ? "SUPERADMIN"
-                : "ADMIN",
-          }
+          role:
+            payload.role.toUpperCase() === "SUPERADMIN"
+              ? "SUPERADMIN"
+              : "ADMIN",
+        }
         : {}),
     };
     return apiFetch<AdminUserItem>(`/api/v1/superadmin/admins/${id}`, {
       method: "PUT",
       body: JSON.stringify(formattedPayload),
-    }).catch(() =>
-      apiFetch<AdminUserItem>(`/api/v1/superadmin/admins/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(formattedPayload),
-      })
-    );
+    });
   },
 
   deleteAdmin: (id: number | string) =>
@@ -1190,16 +1185,16 @@ export const superadminApi = {
   exportAuditLogs: () =>
     apiFetch<
       | Array<{
-          id?: number;
-          timestamp?: string;
-          admin?: string;
-          klien?: string;
-          tiket?: string;
-          status_sebelum?: string;
-          status_sesudah?: string;
-          file?: string;
-          deskripsi?: string;
-        }>
+        id?: number;
+        timestamp?: string;
+        admin?: string;
+        klien?: string;
+        tiket?: string;
+        status_sebelum?: string;
+        status_sesudah?: string;
+        file?: string;
+        deskripsi?: string;
+      }>
       | { export_url: string }
     >("/api/v1/superadmin/audit-logs/export"),
 };
