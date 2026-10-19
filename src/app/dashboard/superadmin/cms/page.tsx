@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -482,6 +482,8 @@ function AdminCMSPageContent() {
     status: "Published" as "Published" | "Draft",
   });
 
+  const isDeletingRef = useRef(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -869,7 +871,15 @@ function AdminCMSPageContent() {
         });
       }
 
-      setCmsItems(items);
+      // Pastikan seluruh item yang pernah dihapus superadmin disaring secara ketat sebelum render
+      const finalizedItems = items.filter((item) => {
+        const rawObj = (item.raw || {}) as Record<string, unknown>;
+        const rId = rawObj.id !== undefined ? String(rawObj.id) : undefined;
+        const rCode = (rawObj.code || rawObj.service_code || rawObj.position_code || rawObj.docNumber) as string | undefined;
+        return !isCmsItemDeleted(item.id, item.title, rId, rCode);
+      });
+
+      setCmsItems(finalizedItems);
     } catch (err) {
       console.warn("Gagal sinkronisasi CMS dengan backend:", err);
     } finally {
@@ -882,6 +892,8 @@ function AdminCMSPageContent() {
     syncKmkRatesFromDjp().catch((err) => console.warn("syncKmkRatesFromDjp on CMS mount:", err));
 
     const handleStorageUpdate = () => {
+      // Cegah race condition saat proses penghapusan sedang berlangsung
+      if (isDeletingRef.current) return;
       loadAllCMS();
     };
 
@@ -914,6 +926,8 @@ function AdminCMSPageContent() {
       if (!confirmDelete) return;
     }
 
+    isDeletingRef.current = true;
+
     try {
       const rawObj = (item.raw || {}) as Record<string, unknown>;
       const rawId = rawObj.id !== undefined ? String(rawObj.id) : "";
@@ -929,16 +943,30 @@ function AdminCMSPageContent() {
         category: item.category,
       });
 
-      // 2. Jalankan pembersihan di modul spesifik
+      // 2. Langsung perbarui state lokal UI seketika (zero flicker & zero delay)
+      setCmsItems((prev) =>
+        prev.filter((i) => {
+          if (i.id === item.id) return false;
+          if (item.numericId && i.numericId === item.numericId && i.section === item.section) return false;
+          const rObj = (i.raw || {}) as Record<string, unknown>;
+          const rId = rObj.id !== undefined ? String(rObj.id) : undefined;
+          const rCode = (rObj.code || rObj.service_code || rObj.position_code || rObj.docNumber) as string | undefined;
+          return !isCmsItemDeleted(i.id, i.title, rId, rCode);
+        })
+      );
+
+      // 3. Jalankan backend DELETE API & bersihkan dari local storage spesifik
       if (item.section === "edukasi") {
         if ((rawObj as Record<string, unknown>)?.isDjpLink) {
           deleteStoredBelajarPajakLink(((rawObj as Record<string, unknown>)?.id as string) || item.id);
           deleteStoredBelajarPajakLink(item.title);
         } else {
-          try {
-            await adminCmsApi.deleteEducation(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend education delete fallback:", apiErr);
+          if (item.numericId && item.numericId < 9000) {
+            try {
+              await adminCmsApi.deleteEducation(item.numericId);
+            } catch (apiErr) {
+              console.warn("Backend education delete fallback:", apiErr);
+            }
           }
           deleteZhouArticle(item.id);
           deleteZhouArticle(item.title);
@@ -947,10 +975,12 @@ function AdminCMSPageContent() {
           if (rawId) deleteZhouArticle(rawId);
         }
       } else if (item.section === "services") {
-        try {
-          await adminCmsApi.deleteService(item.numericId);
-        } catch (apiErr) {
-          console.warn("Backend service delete fallback:", apiErr);
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            await adminCmsApi.deleteService(item.numericId);
+          } catch (apiErr) {
+            console.warn("Backend service delete fallback:", apiErr);
+          }
         }
         deleteStoredService(item.id);
         deleteStoredService(item.title);
@@ -958,55 +988,55 @@ function AdminCMSPageContent() {
         if (rawId) deleteStoredService(rawId);
         if (rawCode) deleteStoredService(rawCode);
       } else if (item.section === "regulasi") {
-        try {
-          await adminCmsApi.deleteRegulation(item.numericId);
-        } catch (apiErr) {
-          console.warn("Backend regulation delete fallback:", apiErr);
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            await adminCmsApi.deleteRegulation(item.numericId);
+          } catch (apiErr) {
+            console.warn("Backend regulation delete fallback:", apiErr);
+          }
         }
         deleteRegulation(item.id);
         deleteRegulation(item.title);
         deleteRegulation(`REG-${item.numericId}`);
         if (rawId) deleteRegulation(rawId);
       } else if (item.section === "kurs") {
-        try {
-          await adminCmsApi.deleteTaxRate(item.numericId);
-        } catch (apiErr) {
-          console.warn("Backend tax rate delete fallback:", apiErr);
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            await adminCmsApi.deleteTaxRate(item.numericId);
+          } catch (apiErr) {
+            console.warn("Backend tax rate delete fallback:", apiErr);
+          }
         }
       } else if (item.section === "karir") {
-        try {
-          await adminCmsApi.deleteCareer(item.numericId);
-        } catch (apiErr) {
-          console.warn("Backend career delete fallback:", apiErr);
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            await adminCmsApi.deleteCareer(item.numericId);
+          } catch (apiErr) {
+            console.warn("Backend career delete fallback:", apiErr);
+          }
         }
         deleteStoredCareerPosition(item.id);
         deleteStoredCareerPosition(item.title);
         deleteStoredCareerPosition(`CAR-${item.numericId}`);
         if (rawId) deleteStoredCareerPosition(rawId);
       } else if (item.section === "faqs") {
-        try {
-          await adminCmsApi.deleteFaq(item.numericId);
-        } catch (apiErr) {
-          console.warn("Backend faq delete fallback:", apiErr);
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            await adminCmsApi.deleteFaq(item.numericId);
+          } catch (apiErr) {
+            console.warn("Backend faq delete fallback:", apiErr);
+          }
         }
       } else if (item.section === "kontak") {
         // Profil & kontak ditandai terhapus via tombstone
       }
 
-      // 3. Langsung perbarui state lokal agar seketika hilang dari UI
-      setCmsItems((prev) =>
-        prev.filter((i) => {
-          if (i.id === item.id) return false;
-          const rObj = (i.raw || {}) as Record<string, unknown>;
-          const rId = rObj.id !== undefined ? String(rObj.id) : undefined;
-          const rCode = (rObj.code || rObj.service_code || rObj.position_code || rObj.docNumber) as string | undefined;
-          return !isCmsItemDeleted(i.id, i.title, rId, rCode);
-        })
-      );
       showToast(`Konten "${item.title.slice(0, 30)}..." berhasil dihapus.`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus konten";
       showToast(msg);
+    } finally {
+      isDeletingRef.current = false;
     }
   };
 

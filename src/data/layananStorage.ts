@@ -517,26 +517,31 @@ export function getStoredServices(): StoredServiceItem[] {
   }
 
   try {
+    const MIGRATION_KEY = "zhou_services_v4_migrated";
     const raw = localStorage.getItem(SERVICES_STORAGE_KEY) || localStorage.getItem("zhou_services_data_v1");
     let currentServices: StoredServiceItem[] = raw ? JSON.parse(raw) : [];
 
-    // Jika belum ada di localStorage atau belum memiliki layanan lengkap (termasuk 6 tax services dan penghapusan PDP)
-    if (!Array.isArray(currentServices) || currentServices.length < 12 || !currentServices.some((s) => s.code === "LEGAL_TAX")) {
+    // Hanya inisialisasi default jika belum pernah dimigrasikan atau storage benar-benar kosong
+    const isMigrated = localStorage.getItem(MIGRATION_KEY);
+    if (!isMigrated || !Array.isArray(currentServices) || currentServices.length === 0) {
       const mergedMap = new Map<string, StoredServiceItem>();
 
-      // Isi dengan DEFAULT_SERVICES terbaru
+      // Isi dengan DEFAULT_SERVICES terbaru (kecualikan yang sudah pernah dihapus superadmin)
       DEFAULT_SERVICES.forEach((def) => {
-        mergedMap.set(def.id, def);
-        if (def.code) mergedMap.set(def.code, def);
+        if (!isCmsItemDeleted(def.id, def.name, undefined, def.code)) {
+          mergedMap.set(def.id, def);
+          if (def.code) mergedMap.set(def.code, def);
+        }
       });
 
       if (Array.isArray(currentServices)) {
         currentServices.forEach((old) => {
-          // Abaikan LAW-PDP (Kepatuhan UU Perlindungan) yang telah dihapus
+          // Abaikan LAW-PDP (Kepatuhan UU Perlindungan) yang telah dihapus & yang tercatat di tombstone
           if (
             old.id === "kepatuhan-pdp" ||
             old.code === "LAW-PDP" ||
-            (old.name || "").toLowerCase().includes("perlindungan data pribadi")
+            (old.name || "").toLowerCase().includes("perlindungan data pribadi") ||
+            isCmsItemDeleted(old.id, old.name, undefined, old.code)
           ) {
             return;
           }
@@ -557,6 +562,7 @@ export function getStoredServices(): StoredServiceItem[] {
       const seenIds = new Set<string>();
 
       DEFAULT_SERVICES.forEach((def) => {
+        if (isCmsItemDeleted(def.id, def.name, undefined, def.code)) return;
         const item = mergedMap.get(def.id) || (def.code ? mergedMap.get(def.code) : undefined) || def;
         if (!seenIds.has(item.id)) {
           seenIds.add(item.id);
@@ -565,12 +571,14 @@ export function getStoredServices(): StoredServiceItem[] {
       });
 
       mergedMap.forEach((item) => {
+        if (isCmsItemDeleted(item.id, item.name, undefined, item.code)) return;
         if (!seenIds.has(item.id)) {
           seenIds.add(item.id);
           uniqueList.push(item);
         }
       });
 
+      localStorage.setItem(MIGRATION_KEY, "true");
       localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(uniqueList));
       return uniqueList;
     }
@@ -584,7 +592,7 @@ export function getStoredServices(): StoredServiceItem[] {
     );
   } catch (error) {
     console.error("Gagal membaca zhou_services_data dari localStorage:", error);
-    return DEFAULT_SERVICES;
+    return DEFAULT_SERVICES.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
   }
 }
 
@@ -755,10 +763,13 @@ export function deleteStoredService(idOrTitle: string): boolean {
 
   saveStoredServices(filtered);
 
-  // Sambungkan penghapusan ke Backend API
-  adminCmsApi.deleteService(idOrTitle).catch((err) => {
-    console.warn("adminCmsApi.deleteService fallback:", err);
-  });
+  // Sambungkan penghapusan ke Backend API jika memiliki ID numerik backend yang valid
+  const numId = parseInt(idOrTitle.replace(/\D/g, ""), 10);
+  if (!isNaN(numId) && numId > 0) {
+    adminCmsApi.deleteService(numId).catch((err) => {
+      console.warn("adminCmsApi.deleteService fallback:", err);
+    });
+  }
 
   return true;
 }
