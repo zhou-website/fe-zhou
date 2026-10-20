@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,13 +83,24 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
           {/* Col 1: Brand, Tagline & Official Contact (5 cols) */}
           <div className="lg:col-span-5 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-primary font-bold text-xl shadow-sm">
-                Z
+            <div className="flex items-center gap-3.5">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden shadow-md border border-white/20 bg-[#0B1533] shrink-0">
+                <Image
+                  src="/images/zhou-logo.jpg"
+                  alt="Zhou Consulting Logo"
+                  width={48}
+                  height={48}
+                  className="object-cover w-full h-full"
+                />
               </div>
-              <span className="text-lg font-bold tracking-tight text-white leading-none">
-                ZHOU CONSULTING
-              </span>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold tracking-tight text-white leading-tight font-sans">
+                  ZHOU CONSULTING
+                </span>
+                <span className="text-[10px] font-medium tracking-wider text-blue-200/80 uppercase">
+                  Tax and Accounting Services
+                </span>
+              </div>
             </div>
 
             {/* Tagline Layanan */}
@@ -262,13 +274,8 @@ export function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-billing")} className="hover:text-white transition-colors">
-                    e-Billing &amp; VSWP
-                  </Link>
-                </li>
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
-                    Pelaporan SPT
+                  <Link href={getAuthHref("/layanan/tax-service#kesiapan-coretax")} className="hover:text-white transition-colors">
+                    Mitigasi Pajak &amp; SP2DK
                   </Link>
                 </li>
               </ul>

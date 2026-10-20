@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,15 +94,27 @@ export function Navbar() {
         {/* Brand Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 group"
+          className="flex items-center gap-3 group"
           onClick={closeAllMenus}
         >
-          <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-md bg-primary text-white font-bold text-base sm:text-lg tracking-wider shadow-sm group-hover:bg-primary-dark transition-colors">
-            Z
+          <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-primary/20 bg-[#0B1533] group-hover:scale-105 transition-all shrink-0">
+            <Image
+              src="/images/zhou-logo.jpg"
+              alt="Zhou Consulting Logo"
+              width={44}
+              height={44}
+              className="object-cover w-full h-full"
+              priority
+            />
           </div>
-          <span className="text-base sm:text-lg font-bold tracking-tight text-primary group-hover:text-primary-dark transition-colors">
-            ZHOU CONSULTING
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-base sm:text-lg font-bold tracking-tight text-primary group-hover:text-primary-dark transition-colors leading-tight font-sans">
+              ZHOU CONSULTING
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider text-text-muted uppercase">
+              Tax & Accounting Services
+            </span>
+          </div>
         </Link>
 
         {/* Desktop Navigation Links */}

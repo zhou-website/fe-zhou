@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface TaxModuleItem {
@@ -85,38 +86,6 @@ const TAX_SERVICE_MODULES: TaxModuleItem[] = [
     waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai pengelolaan bukti potong e-Bupot Unifikasi.",
   },
   {
-    id: "e-billing",
-    code: "TAX-EBL",
-    title: "e-Billing & VSWP",
-    badge: "KODE BILLING & PENYETORAN",
-    subtitle: "Penerbitan kode billing setoran pajak tepat waktu dan validasi konfirmasi status wajib pajak.",
-    scopes: [
-      "Pembuatan kode ID Billing MPN G3 akurat sebelum tanggal jatuh tempo",
-      "Verifikasi Kode Akun Pajak (KAP) & Kode Jenis Setoran (KJS) sesuai objek",
-      "Validasi Status Wajib Pajak (VSWP / KSWP) untuk kepatuhan perizinan berusaha",
-      "Pengecekan Nomor Transaksi Penerimaan Negara (NTPN) bank persepsi",
-    ],
-    deliverable: "Berkas ID Billing aktif, konfirmasi NTPN perbankan, & arsip validasi VSWP.",
-    topicParam: "e-billing",
-    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi perihal pembuatan e-Billing dan validasi status pajak (VSWP).",
-  },
-  {
-    id: "pelaporan-spt",
-    code: "TAX-SPT",
-    title: "Pelaporan SPT (BPE DJP)",
-    badge: "PELAPORAN & BPE RESMI",
-    subtitle: "Penelaahan ekualisasi fiskal, verifikasi lampiran, dan penyampaian SPT resmi hingga terbit BPE.",
-    scopes: [
-      "Ekualisasi peredaran usaha vs DPP PPN dan peredaran bruto SPT Tahunan Badan",
-      "Verifikasi lampiran khusus (daftar penyusutan, bukti potong, kredit pajak PPh 22/23/25)",
-      "Pengisian SPT Masa PPh/PPN dan SPT Tahunan Badan 1771 secara akurat",
-      "Penerbitan dan pengarsipan Bukti Penerimaan Elektronik (BPE) resmi DJP",
-    ],
-    deliverable: "Bukti Penerimaan Elektronik (BPE) resmi Kementerian Keuangan & Kertas Kerja Ekualisasi.",
-    topicParam: "pelaporan-spt",
-    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi perihal penyusunan dan pelaporan SPT resmi DJP.",
-  },
-  {
     id: "kesiapan-coretax",
     code: "SRV-TAX-CTX",
     title: "Layanan Mitigasi Pajak",
@@ -124,7 +93,7 @@ const TAX_SERVICE_MODULES: TaxModuleItem[] = [
     subtitle: "Penyelesaian SP2DK yang Tepat dan Akurat.",
     scopes: [
       "Kami mendampingi Anda dalam menghadapi Fase Pengawasan Awal dari Kantor Pelayanan Pajak (KPP). Tim kami membantu menyusun tanggapan resmi, melakukan rekonsiliasi data, serta mendampingi proses konseling atas Surat Permintaan Penjelasan atas Data dan/atau Keterangan (SP2DK) guna menyelesaikan ketidaksesuaian data secara persuasif sebelum masuk ke ranah pemeriksaan."
-],
+    ],
     deliverable: "Laporan Kesiapan Coretax, Berita Acara Pendampingan, & Draf Resmi Tanggapan SP2DK.",
     topicParam: "coretax",
     waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Layanan Mitigasi Pajak dan respon surat SP2DK.",
@@ -142,56 +111,98 @@ export default function TaxServicePage() {
         (s) =>
           (s.categoryKey?.toLowerCase() === "tax-service" || s.categoryKey?.toLowerCase() === "tax") &&
           s.status === "Published" &&
+          s.id !== "e-billing" &&
+          s.id !== "SRV-TAX-EBL" &&
+          s.id !== "pelaporan-spt" &&
+          s.id !== "SRV-TAX-SPT" &&
+          s.code !== "TAX-EBL" &&
+          s.code !== "SRV-TAX-EBL" &&
+          s.code !== "TAX-SPT" &&
+          s.code !== "SRV-TAX-SPT" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      // Pastikan seluruh 6 Modul Utama Tax Services selalu ada dan terupdate
-      const baseMerged = TAX_SERVICE_MODULES.map((base) => {
-        const storedItem = taxStored.find(
-          (c) =>
-            c.id === base.id ||
-            c.code === base.code ||
-            (c.name && c.name.toLowerCase() === base.title.toLowerCase())
-        );
+      // 1. Modul Dasar (Core Modules)
+      // Hanya tampilkan jika TIDAK dihapus di CMS dan TIDAK berstatus Draft
+      const baseMerged = TAX_SERVICE_MODULES
+        .filter((base) => {
+          if (isCmsItemDeleted(base.id, base.title, undefined, base.code)) return false;
+          if (base.code && isCmsItemDeleted(base.code)) return false;
+          if (base.id && isCmsItemDeleted(base.id)) return false;
+          const status = getCmsItemStatus(base.id, base.title, "Published", [base.code]);
+          if (status === "Draft") return false;
+          return true;
+        })
+        .map((base) => {
+          const storedItem = taxStored.find(
+            (c) =>
+              c.id === base.id ||
+              c.code === base.code ||
+              (c.code && base.id && c.code.toLowerCase().includes(base.id.toLowerCase())) ||
+              (base.code && c.id && base.code.toLowerCase() === c.id.toLowerCase()) ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const apiItem = apiItems?.find(
-          (a) =>
-            (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
-            (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
-        );
+          // Cek apakah item di storage diatur menjadi Draft
+          const rawStored = stored.find(
+            (c) =>
+              c.id === base.id ||
+              c.code === base.code ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          );
+          if (rawStored && rawStored.status === "Draft") {
+            return null;
+          }
 
-        const rawScopes =
-          (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
-          (storedItem?.pillars && storedItem.pillars.length > 0
-            ? storedItem.pillars.map((p) => p.title || p.description)
-            : undefined) ||
-          (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
-          base.scopes;
+          const apiItem = apiItems?.find(
+            (a) =>
+              (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+              (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const rawDeliverable =
-          (storedItem?.deliverable && storedItem.deliverable.trim()) ||
-          (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
-          base.deliverable;
+          const rawScopes =
+            (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
+            (storedItem?.pillars && storedItem.pillars.length > 0
+              ? storedItem.pillars.map((p) => p.title || p.description)
+              : undefined) ||
+            (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
+            base.scopes;
 
-        return {
-          id: base.id,
-          code: base.code,
-          title: storedItem?.name || apiItem?.service_name || base.title,
-          badge: storedItem?.badge || base.badge,
-          subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
-          scopes: rawScopes,
-          deliverable: rawDeliverable,
-          topicParam: storedItem?.topicParam || base.topicParam,
-          waTemplate:
-            storedItem?.waTemplate ||
-            base.waTemplate ||
-            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
-        };
-      });
+          const rawDeliverable =
+            (storedItem?.deliverable && storedItem.deliverable.trim()) ||
+            (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
+            base.deliverable;
+
+          return {
+            id: base.id,
+            code: storedItem?.code || base.code,
+            title: storedItem?.name || apiItem?.service_name || base.title,
+            badge: storedItem?.badge || base.badge,
+            subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
+            scopes: rawScopes,
+            deliverable: rawDeliverable,
+            topicParam: storedItem?.topicParam || base.topicParam,
+            waTemplate:
+              storedItem?.waTemplate ||
+              base.waTemplate ||
+              `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${storedItem?.name || base.title}.`,
+          };
+        })
+        .filter((b): b is TaxModuleItem => b !== null);
 
       // Tambahkan layanan tambahan kustom jika ditambahkan oleh admin/superadmin
       const extraStored = taxStored.filter(
         (c) =>
+          c.id !== "e-billing" &&
+          c.id !== "SRV-TAX-EBL" &&
+          c.id !== "pelaporan-spt" &&
+          c.id !== "SRV-TAX-SPT" &&
+          c.code !== "TAX-EBL" &&
+          c.code !== "SRV-TAX-EBL" &&
+          c.code !== "TAX-SPT" &&
+          c.code !== "SRV-TAX-SPT" &&
+          getCmsItemStatus(c.id, c.name, c.status || "Published", [c.code]) !== "Draft" &&
+          !isCmsItemDeleted(c.id, c.name, undefined, c.code) &&
           !TAX_SERVICE_MODULES.some(
             (base) =>
               base.id === c.id ||
@@ -200,7 +211,7 @@ export default function TaxServicePage() {
           )
       );
 
-      const extraMapped = extraStored.map((c) => {
+      const extraMapped: TaxModuleItem[] = extraStored.map((c) => {
         const rawScopes =
           (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
           (c.pillars && c.pillars.length > 0
@@ -230,7 +241,7 @@ export default function TaxServicePage() {
 
     let isMounted = true;
 
-    // Inisialisasi awal 6 modul tax services
+    // Inisialisasi awal 4 modul tax services
     syncModules();
 
     // 1. Ambil data dari live endpoint backend (zero-cache) untuk sinkronisasi atribut terbaru
@@ -245,6 +256,10 @@ export default function TaxServicePage() {
             const name = (item.service_name || "").toLowerCase();
             return (
               (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
+              code !== "tax-ebl" &&
+              code !== "srv-tax-ebl" &&
+              code !== "tax-spt" &&
+              code !== "srv-tax-spt" &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
@@ -256,10 +271,15 @@ export default function TaxServicePage() {
         syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, () => syncModules());
+    const handleUpdate = () => syncModules();
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleUpdate);
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, () => syncModules());
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleUpdate);
     };
   }, []);
 
@@ -268,7 +288,7 @@ export default function TaxServicePage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* 6 Core Tax Services Cards Grid */}
+        {/* Core Tax Services Cards Grid */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center md:text-left max-w-2xl">
@@ -280,7 +300,12 @@ export default function TaxServicePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {modules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-text-secondary text-sm">
+                Belum ada layanan perpajakan yang dipublikasikan saat ini.
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${modules.length === 1 ? "max-w-xl mx-auto" : "md:grid-cols-2"} gap-6`}>
               {modules.map((item) => (
                 <Card
                   key={item.id}
@@ -329,6 +354,7 @@ export default function TaxServicePage() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </main>

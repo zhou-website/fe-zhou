@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface AccountingModuleItem {
@@ -56,23 +57,45 @@ export default function AccountingServicePage() {
   useEffect(() => {
     let isMounted = true;
 
-    const syncModules = () => {
+    const syncModules = (apiItems?: PublicServiceItem[]) => {
       const stored = getStoredServices();
       const accItems = stored.filter(
         (s) =>
           s.categoryKey?.toLowerCase() === "akuntansi" &&
           s.status === "Published" &&
+          getCmsItemStatus(s.id, s.name, s.status || "Published", [s.code]) !== "Draft" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
+
+      const isDefaultDeleted =
+        isCmsItemDeleted(
+          DEFAULT_ACCOUNTING_MODULE.id,
+          DEFAULT_ACCOUNTING_MODULE.title,
+          undefined,
+          DEFAULT_ACCOUNTING_MODULE.code
+        ) ||
+        getCmsItemStatus(
+          DEFAULT_ACCOUNTING_MODULE.id,
+          DEFAULT_ACCOUNTING_MODULE.title,
+          "Published",
+          [DEFAULT_ACCOUNTING_MODULE.code]
+        ) === "Draft";
 
       if (accItems.length > 0) {
         setModules(
           accItems.map((c) => {
+            const apiItem = apiItems?.find(
+              (a) =>
+                (a.service_code && a.service_code.toLowerCase() === (c.code || c.id).toLowerCase()) ||
+                (a.service_name && a.service_name.toLowerCase() === c.name.toLowerCase())
+            );
+
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
                 ? c.pillars.map((p) => p.title || p.description)
                 : undefined) ||
+              (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
               DEFAULT_ACCOUNTING_MODULE.scopes;
 
             const rawDeliverable =
@@ -83,9 +106,9 @@ export default function AccountingServicePage() {
             return {
               id: c.id,
               code: c.code || c.id,
-              title: c.name,
-              badge: c.badge || "ACCOUNTING SERVICES",
-              subtitle: c.subtitle || DEFAULT_ACCOUNTING_MODULE.subtitle,
+              title: c.name || apiItem?.service_name || DEFAULT_ACCOUNTING_MODULE.title,
+              badge: c.badge || DEFAULT_ACCOUNTING_MODULE.badge,
+              subtitle: c.subtitle || apiItem?.description || DEFAULT_ACCOUNTING_MODULE.subtitle,
               scopes: rawScopes,
               deliverable: rawDeliverable,
               topicParam: c.topicParam || "laporan-keuangan",
@@ -95,10 +118,14 @@ export default function AccountingServicePage() {
             };
           })
         );
-      } else {
+      } else if (!isDefaultDeleted) {
         setModules([DEFAULT_ACCOUNTING_MODULE]);
+      } else {
+        setModules([]);
       }
     };
+
+    syncModules();
 
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi
@@ -116,33 +143,22 @@ export default function AccountingServicePage() {
             );
           });
 
-          if (accFromApi.length > 0) {
-            setModules(
-              accFromApi.map((c: PublicServiceItem) => ({
-                id: `SVC-${c.id}`,
-                code: c.service_code || `SVC-${c.id}`,
-                title: c.service_name,
-                badge: c.category?.toUpperCase() || "ACCOUNTING SERVICES",
-                subtitle: c.description || DEFAULT_ACCOUNTING_MODULE.subtitle,
-                scopes: c.features && c.features.length > 0 ? c.features : DEFAULT_ACCOUNTING_MODULE.scopes,
-                deliverable: DEFAULT_ACCOUNTING_MODULE.deliverable,
-                topicParam: "laporan-keuangan",
-                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-              }))
-            );
-            return;
-          }
+          syncModules(accFromApi);
         }
-        syncModules();
       })
       .catch(() => {
         syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, syncModules);
+    const handleUpdate = () => syncModules();
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleUpdate);
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, syncModules);
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleUpdate);
     };
   }, []);
 
@@ -151,7 +167,7 @@ export default function AccountingServicePage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Core Accounting Services Card (1 Grid) */}
+        {/* Core Accounting Services Card */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center max-w-2xl mx-auto">
@@ -163,7 +179,12 @@ export default function AccountingServicePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 max-w-2xl mx-auto gap-6">
+            {modules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-text-secondary text-sm max-w-xl mx-auto">
+                Belum ada layanan akuntansi yang dipublikasikan saat ini.
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${modules.length === 1 ? "max-w-xl mx-auto" : "md:grid-cols-2"} gap-6`}>
               {modules.map((item) => (
                 <Card
                   key={item.id}
@@ -212,6 +233,7 @@ export default function AccountingServicePage() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </main>

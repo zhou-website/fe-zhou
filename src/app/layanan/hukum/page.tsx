@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface LegalModuleItem {
@@ -119,53 +120,79 @@ export default function KonsultasiHukumPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      // Pastikan seluruh 4 Modul Utama Law Services selalu ada dan terupdate
-      const baseMerged = DEFAULT_LEGAL_MODULES.map((base) => {
-        const storedItem = lawItems.find(
-          (c) =>
-            c.id === base.id ||
-            c.code === base.code ||
-            (c.name && c.name.toLowerCase() === base.title.toLowerCase())
-        );
+      // 1. Modul Dasar (Core Modules)
+      // Hanya tampilkan jika TIDAK dihapus di CMS dan TIDAK diset ke Draft
+      const baseMerged = DEFAULT_LEGAL_MODULES
+        .filter((base) => {
+          if (isCmsItemDeleted(base.id, base.title, undefined, base.code)) return false;
+          if (base.code && isCmsItemDeleted(base.code)) return false;
+          if (base.id && isCmsItemDeleted(base.id)) return false;
+          const status = getCmsItemStatus(base.id, base.title, "Published", [base.code]);
+          if (status === "Draft") return false;
+          return true;
+        })
+        .map((base) => {
+          const storedItem = lawItems.find(
+            (c) =>
+              c.id === base.id ||
+              c.code === base.code ||
+              (c.code && base.id && c.code.toLowerCase().includes(base.id.toLowerCase())) ||
+              (base.code && c.id && base.code.toLowerCase() === c.id.toLowerCase()) ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const apiItem = apiItems?.find(
-          (a) =>
-            (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
-            (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
-        );
+          // Cek apakah item di storage diatur menjadi Draft
+          const rawStored = stored.find(
+            (c) =>
+              c.id === base.id ||
+              c.code === base.code ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          );
+          if (rawStored && rawStored.status === "Draft") {
+            return null;
+          }
 
-        const rawScopes =
-          (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
-          (storedItem?.pillars && storedItem.pillars.length > 0
-            ? storedItem.pillars.map((p) => p.title || p.description)
-            : undefined) ||
-          (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
-          base.scopes;
+          const apiItem = apiItems?.find(
+            (a) =>
+              (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+              (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const rawDeliverable =
-          (storedItem?.deliverable && storedItem.deliverable.trim()) ||
-          (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
-          base.deliverable;
+          const rawScopes =
+            (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
+            (storedItem?.pillars && storedItem.pillars.length > 0
+              ? storedItem.pillars.map((p) => p.title || p.description)
+              : undefined) ||
+            (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
+            base.scopes;
 
-        return {
-          id: base.id,
-          code: base.code,
-          title: storedItem?.name || apiItem?.service_name || base.title,
-          badge: storedItem?.badge || base.badge,
-          subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
-          scopes: rawScopes,
-          deliverable: rawDeliverable,
-          topicParam: storedItem?.topicParam || base.topicParam,
-          waTemplate:
-            storedItem?.waTemplate ||
-            base.waTemplate ||
-            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
-        };
-      });
+          const rawDeliverable =
+            (storedItem?.deliverable && storedItem.deliverable.trim()) ||
+            (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
+            base.deliverable;
+
+          return {
+            id: base.id,
+            code: storedItem?.code || base.code,
+            title: storedItem?.name || apiItem?.service_name || base.title,
+            badge: storedItem?.badge || base.badge,
+            subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
+            scopes: rawScopes,
+            deliverable: rawDeliverable,
+            topicParam: storedItem?.topicParam || base.topicParam,
+            waTemplate:
+              storedItem?.waTemplate ||
+              base.waTemplate ||
+              `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${storedItem?.name || base.title}.`,
+          };
+        })
+        .filter((b): b is LegalModuleItem => b !== null);
 
       // Tambahkan modul kustom ekstra jika ada
       const extraStored = lawItems.filter(
         (c) =>
+          getCmsItemStatus(c.id, c.name, c.status || "Published", [c.code]) !== "Draft" &&
+          !isCmsItemDeleted(c.id, c.name, undefined, c.code) &&
           !DEFAULT_LEGAL_MODULES.some(
             (base) =>
               base.id === c.id ||
@@ -174,7 +201,7 @@ export default function KonsultasiHukumPage() {
           )
       );
 
-      const extraMapped = extraStored.map((c) => {
+      const extraMapped: LegalModuleItem[] = extraStored.map((c) => {
         const rawScopes =
           (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
           (c.pillars && c.pillars.length > 0
@@ -231,10 +258,15 @@ export default function KonsultasiHukumPage() {
         syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, () => syncModules());
+    const handleUpdate = () => syncModules();
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleUpdate);
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, () => syncModules());
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleUpdate);
     };
   }, []);
 
@@ -243,7 +275,7 @@ export default function KonsultasiHukumPage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Core Legal Services Cards Grid (4 Grid) */}
+        {/* Core Legal Services Cards Grid */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center md:text-left max-w-2xl">
@@ -255,7 +287,12 @@ export default function KonsultasiHukumPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {modules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-text-secondary text-sm">
+                Belum ada layanan hukum yang dipublikasikan saat ini.
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${modules.length === 1 ? "max-w-xl mx-auto" : "md:grid-cols-2"} gap-6`}>
               {modules.map((item) => (
                 <Card
                   key={item.id}
@@ -304,6 +341,7 @@ export default function KonsultasiHukumPage() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </main>

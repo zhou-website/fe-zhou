@@ -206,100 +206,6 @@ export const DEFAULT_SERVICES: StoredServiceItem[] = [
     "lastUpdated": "Oktober 2026"
   },
   {
-    "id": "SRV-TAX-EBL",
-    "code": "SRV-TAX-EBL",
-    "categoryKey": "tax-service",
-    "name": "e-Billing",
-    "subtitle": "Penerbitan kode billing setoran pajak tepat waktu dan validasi konfirmasi status wajib pajak.",
-    "badge": "TAX SERVICES",
-    "route": "/layanan/tax-service",
-    "scopes": [
-      "Pembuatan kode ID Billing MPN G3 akurat sebelum tanggal jatuh tempo",
-      "Verifikasi Kode Akun Pajak (KAP) & Kode Jenis Setoran (KJS) sesuai objek",
-      "Validasi Status Wajib Pajak (VSWP / KSWP) untuk kepatuhan perizinan berusaha",
-      "Pengecekan Nomor Transaksi Penerimaan Negara (NTPN) bank persepsi"
-    ],
-    "deliverable": "Berkas ID Billing aktif, konfirmasi NTPN perbankan, & arsip validasi VSWP.",
-    "pillars": [
-      {
-        "title": "Pembuatan kode ID Billing MPN G3 akurat sebelum tanggal jatuh tempo",
-        "description": "Pembuatan kode ID Billing MPN G3 akurat sebelum tanggal jatuh tempo"
-      },
-      {
-        "title": "Verifikasi Kode Akun Pajak (KAP) & Kode Jenis Setoran (KJS) sesuai objek",
-        "description": "Verifikasi Kode Akun Pajak (KAP) & Kode Jenis Setoran (KJS) sesuai objek"
-      },
-      {
-        "title": "Validasi Status Wajib Pajak (VSWP / KSWP) untuk kepatuhan perizinan berusaha",
-        "description": "Validasi Status Wajib Pajak (VSWP / KSWP) untuk kepatuhan perizinan berusaha"
-      },
-      {
-        "title": "Pengecekan Nomor Transaksi Penerimaan Negara (NTPN) bank persepsi",
-        "description": "Pengecekan Nomor Transaksi Penerimaan Negara (NTPN) bank persepsi"
-      }
-    ],
-    "workflow": [
-      "Validasi KAP & KJS",
-      "Generate Kode Billing",
-      "Penyetoran Kas Negara",
-      "Konfirmasi NTPN"
-    ],
-    "deliverables": [
-      "Berkas ID Billing aktif, konfirmasi NTPN perbankan, & arsip validasi VSWP."
-    ],
-    "topicParam": "e-billing",
-    "waTemplate": "Halo Zhou Consulting, saya ingin konsultasi perihal pembuatan e-Billing dan validasi status pajak (VSWP).",
-    "status": "Published",
-    "lastUpdated": "19 Okt 2026"
-  },
-  {
-    "id": "SRV-TAX-SPT",
-    "code": "SRV-TAX-SPT",
-    "categoryKey": "tax-service",
-    "name": "Pelaporan SPT",
-    "subtitle": "Penelaahan ekualisasi fiskal, verifikasi lampiran, dan penyampaian SPT resmi hingga terbit BPE.",
-    "badge": "TAX SERVICES",
-    "route": "/layanan/tax-service",
-    "scopes": [
-      "Ekualisasi peredaran usaha vs DPP PPN dan peredaran bruto SPT Tahunan Badan",
-      "Verifikasi lampiran khusus (daftar penyusutan, bukti potong, kredit pajak PPh 22/23/25)",
-      "Pengisian SPT Masa PPh/PPN dan SPT Tahunan Badan 1771 secara akurat",
-      "Penerbitan dan pengarsipan Bukti Penerimaan Elektronik (BPE) resmi DJP"
-    ],
-    "deliverable": "Bukti Penerimaan Elektronik (BPE) resmi Kementerian Keuangan & Kertas Kerja Ekualisasi.",
-    "pillars": [
-      {
-        "title": "Ekualisasi peredaran usaha vs DPP PPN dan peredaran bruto SPT Tahunan Badan",
-        "description": "Ekualisasi peredaran usaha vs DPP PPN dan peredaran bruto SPT Tahunan Badan"
-      },
-      {
-        "title": "Verifikasi lampiran khusus (daftar penyusutan, bukti potong, kredit pajak PPh 22/23/25)",
-        "description": "Verifikasi lampiran khusus (daftar penyusutan, bukti potong, kredit pajak PPh 22/23/25)"
-      },
-      {
-        "title": "Pengisian SPT Masa PPh/PPN dan SPT Tahunan Badan 1771 secara akurat",
-        "description": "Pengisian SPT Masa PPh/PPN dan SPT Tahunan Badan 1771 secara akurat"
-      },
-      {
-        "title": "Penerbitan dan pengarsipan Bukti Penerimaan Elektronik (BPE) resmi DJP",
-        "description": "Penerbitan dan pengarsipan Bukti Penerimaan Elektronik (BPE) resmi DJP"
-      }
-    ],
-    "workflow": [
-      "Rekonsiliasi Fiskal",
-      "Verifikasi Kredit Pajak",
-      "Finalisasi Form 1771",
-      "Submit BPE"
-    ],
-    "deliverables": [
-      "Bukti Penerimaan Elektronik (BPE) resmi Kementerian Keuangan & Kertas Kerja Ekualisasi."
-    ],
-    "topicParam": "pelaporan-spt",
-    "waTemplate": "Halo Zhou Consulting, saya ingin konsultasi perihal penyusunan dan pelaporan SPT resmi DJP.",
-    "status": "Published",
-    "lastUpdated": "19 Okt 2026"
-  },
-  {
     "id": "SRV-TAX-CTX",
     "code": "SRV-TAX-CTX",
     "categoryKey": "tax-service",
@@ -517,7 +423,7 @@ export function getStoredServices(): StoredServiceItem[] {
   }
 
   try {
-    const MIGRATION_KEY = "zhou_services_v4_migrated";
+    const MIGRATION_KEY = "zhou_services_v5_migrated";
     const raw = localStorage.getItem(SERVICES_STORAGE_KEY) || localStorage.getItem("zhou_services_data_v1");
     let currentServices: StoredServiceItem[] = raw ? JSON.parse(raw) : [];
 
@@ -536,10 +442,18 @@ export function getStoredServices(): StoredServiceItem[] {
 
       if (Array.isArray(currentServices)) {
         currentServices.forEach((old) => {
-          // Abaikan LAW-PDP (Kepatuhan UU Perlindungan) yang telah dihapus & yang tercatat di tombstone
+          // Abaikan LAW-PDP dan tax e-Billing/Pelaporan SPT yang telah dihapus & yang tercatat di tombstone
           if (
             old.id === "kepatuhan-pdp" ||
             old.code === "LAW-PDP" ||
+            old.id === "e-billing" ||
+            old.id === "SRV-TAX-EBL" ||
+            old.id === "pelaporan-spt" ||
+            old.id === "SRV-TAX-SPT" ||
+            old.code === "TAX-EBL" ||
+            old.code === "SRV-TAX-EBL" ||
+            old.code === "TAX-SPT" ||
+            old.code === "SRV-TAX-SPT" ||
             (old.name || "").toLowerCase().includes("perlindungan data pribadi") ||
             isCmsItemDeleted(old.id, old.name, undefined, old.code)
           ) {
@@ -587,6 +501,14 @@ export function getStoredServices(): StoredServiceItem[] {
       (s) =>
         s.id !== "kepatuhan-pdp" &&
         s.code !== "LAW-PDP" &&
+        s.id !== "e-billing" &&
+        s.id !== "SRV-TAX-EBL" &&
+        s.id !== "pelaporan-spt" &&
+        s.id !== "SRV-TAX-SPT" &&
+        s.code !== "TAX-EBL" &&
+        s.code !== "SRV-TAX-EBL" &&
+        s.code !== "TAX-SPT" &&
+        s.code !== "SRV-TAX-SPT" &&
         !(s.name || "").toLowerCase().includes("perlindungan data pribadi") &&
         !isCmsItemDeleted(s.id, s.name, undefined, s.code)
     );
@@ -718,19 +640,25 @@ export function updateStoredService(
 
     return updatedItem;
   } else {
-    // Upsert: backend item not in localStorage, create it
+    // Upsert: hanya jika benar-benar pembaruan item utuh (memiliki nama & deskripsi) dan bukan item terhapus/dummy
+    if (!updates.name || !updates.subtitle || isCmsItemDeleted(id, updates.name, undefined, updates.code)) {
+      return null;
+    }
+
     const upserted: StoredServiceItem = {
       id,
-      code: (updates as StoredServiceItem).code,
-      categoryKey: (updates as StoredServiceItem).categoryKey || "tax-service",
-      name: (updates as StoredServiceItem).name || id,
-      subtitle: (updates as StoredServiceItem).subtitle || "",
-      badge: (updates as StoredServiceItem).badge || "LAYANAN",
-      route: (updates as StoredServiceItem).route || "/layanan",
-      pillars: (updates as StoredServiceItem).pillars || [],
-      workflow: (updates as StoredServiceItem).workflow || [],
-      deliverables: (updates as StoredServiceItem).deliverables || [],
-      status: (updates as StoredServiceItem).status || "Published",
+      code: updates.code,
+      categoryKey: updates.categoryKey || "tax-service",
+      name: updates.name,
+      subtitle: updates.subtitle,
+      badge: updates.badge || "LAYANAN",
+      route: updates.route || "/layanan",
+      pillars: updates.pillars || (updates.scopes ? updates.scopes.map((sc) => ({ title: sc, description: sc })) : []),
+      workflow: updates.workflow || ["Konsultasi Kebutuhan Awal", "Analisis & Telaah Regulasi", "Eksekusi Layanan", "Penyampaian Laporan Final"],
+      deliverables: updates.deliverables || (updates.deliverable ? [updates.deliverable] : ["Laporan Hasil Kerja Resmi"]),
+      deliverable: updates.deliverable,
+      scopes: updates.scopes,
+      status: updates.status || "Published",
       lastUpdated: today,
       ...updates,
     };
@@ -765,7 +693,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
 
   // Sambungkan penghapusan ke Backend API jika memiliki ID numerik backend yang valid
   const numId = parseInt(idOrTitle.replace(/\D/g, ""), 10);
-  if (!isNaN(numId) && numId > 0) {
+  if (!isNaN(numId) && numId > 0 && numId < 1000) {
     adminCmsApi.deleteService(numId).catch((err) => {
       console.warn("adminCmsApi.deleteService fallback:", err);
     });
@@ -773,6 +701,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
 
   return true;
 }
+
 
 /**
  * Reset data layanan ke default (kosong)

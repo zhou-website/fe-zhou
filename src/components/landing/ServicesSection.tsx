@@ -21,6 +21,7 @@ import {
 } from "@/data/layananStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 
 export function ServicesSection() {
   const [services, setServices] = useState<StoredServiceItem[]>(DEFAULT_SERVICES);
@@ -125,20 +126,47 @@ export function ServicesSection() {
         console.warn("publicApi.getServices in ServicesSection:", err);
       });
 
+    window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleStorageUpdate);
+
     return () => {
       isMounted = false;
       window.removeEventListener(SERVICES_EVENT, handleStorageUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleStorageUpdate);
     };
   }, []);
 
-  // Pastikan 4 layanan utama Zhou Consulting selalu lengkap
+  // Pastikan layanan utama Zhou Consulting disaring berdasarkan publikasi & status hapus
   const coreCategoryKeys = ["akuntansi", "bisnis", "tax-service", "hukum"];
-  const displayServices = coreCategoryKeys.map((key) => {
-    const found = services.find(
-      (s) => s.categoryKey?.toLowerCase() === key && s.status === "Published"
-    );
-    return found || DEFAULT_SERVICES.find((d) => d.categoryKey === key)!;
-  });
+  const displayServices = coreCategoryKeys
+    .map((key) => {
+      const found = services.find((s) => s.categoryKey?.toLowerCase() === key);
+      const def = DEFAULT_SERVICES.find((d) => d.categoryKey === key);
+      const activeItem = found || def;
+      if (!activeItem) return null;
+
+      if (isCmsItemDeleted(activeItem.id, activeItem.name, undefined, activeItem.code)) {
+        return null;
+      }
+      if (def && isCmsItemDeleted(def.id, def.name, undefined, def.code)) {
+        return null;
+      }
+
+      const status = getCmsItemStatus(
+        activeItem.id,
+        activeItem.name,
+        activeItem.status || "Published",
+        [activeItem.code, def?.id, def?.code]
+      );
+      if (status === "Draft") {
+        return null;
+      }
+
+      return activeItem;
+    })
+    .filter((s): s is StoredServiceItem => s !== null);
 
   return (
     <section
