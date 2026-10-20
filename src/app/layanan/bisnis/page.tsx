@@ -53,19 +53,7 @@ export default function KonsultasiBisnisPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      const isDefaultDeleted =
-        isCmsItemDeleted(
-          DEFAULT_BUSINESS_MODULE.id,
-          DEFAULT_BUSINESS_MODULE.title,
-          undefined,
-          DEFAULT_BUSINESS_MODULE.code
-        ) ||
-        getCmsItemStatus(
-          DEFAULT_BUSINESS_MODULE.id,
-          DEFAULT_BUSINESS_MODULE.title,
-          "Published",
-          [DEFAULT_BUSINESS_MODULE.code]
-        ) === "Draft";
+
 
       if (bizItems.length > 0) {
         setModules(

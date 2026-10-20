@@ -110,13 +110,14 @@ export function removeAuthToken(): void {
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
   skipAuth?: boolean;
+  retries?: number;
 }
 
 export async function apiFetch<T = unknown>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<ApiResponse<T>> {
-  const { params, skipAuth = false, headers = {}, ...rest } = options;
+  const { params, skipAuth = false, headers = {}, retries, ...rest } = options;
 
   const baseUrl = getApiBaseUrl();
   let url = `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
@@ -152,40 +153,54 @@ export async function apiFetch<T = unknown>(
     }
   }
 
-  try {
-    const response = await fetch(url, {
-      cache: "no-store",
-      ...rest,
-      headers: reqHeaders,
-    });
+  // Tentukan jumlah retry (default 2 kali untuk request GET yang aman/idempotent)
+  const isGetMethod = !rest.method || rest.method.toUpperCase() === "GET";
+  const maxRetries = retries !== undefined ? retries : (isGetMethod ? 2 : 0);
 
-    const isJson = response.headers.get("content-type")?.includes("application/json");
-    const data = isJson ? await response.json() : null;
+  let attempt = 0;
+  while (true) {
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        ...rest,
+        headers: reqHeaders,
+      });
 
-    if (!response.ok) {
+      const isJson = response.headers.get("content-type")?.includes("application/json");
+      const data = isJson ? await response.json() : null;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: data?.message || data?.error || `Permintaan gagal dengan status ${response.status}`,
+          error: data?.error || response.statusText,
+          errors: data?.errors,
+          data: data?.data,
+        };
+      }
+
+      return (
+        data || {
+          success: true,
+          message: "Operasi berhasil",
+        }
+      );
+    } catch (err: unknown) {
+      attempt++;
+      if (attempt <= maxRetries) {
+        // Tunggu sebentar (backoff) jika jaringan sempat putus atau berubah (ERR_NETWORK_CHANGED)
+        await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+        continue;
+      }
+
+      const message = err instanceof Error ? err.message : "Gagal terhubung ke server backend";
+      console.error(`API Error on [${url}] after ${attempt} attempt(s):`, err);
       return {
         success: false,
-        message: data?.message || data?.error || `Permintaan gagal dengan status ${response.status}`,
-        error: data?.error || response.statusText,
-        errors: data?.errors,
-        data: data?.data,
+        message,
+        error: "NETWORK_ERROR",
       };
     }
-
-    return (
-      data || {
-        success: true,
-        message: "Operasi berhasil",
-      }
-    );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Gagal terhubung ke server backend";
-    console.error(`API Error on [${url}]:`, err);
-    return {
-      success: false,
-      message,
-      error: "NETWORK_ERROR",
-    };
   }
 }
 

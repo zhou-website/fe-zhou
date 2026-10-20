@@ -53,19 +53,7 @@ export default function AccountingServicePage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      const isDefaultDeleted =
-        isCmsItemDeleted(
-          DEFAULT_ACCOUNTING_MODULE.id,
-          DEFAULT_ACCOUNTING_MODULE.title,
-          undefined,
-          DEFAULT_ACCOUNTING_MODULE.code
-        ) ||
-        getCmsItemStatus(
-          DEFAULT_ACCOUNTING_MODULE.id,
-          DEFAULT_ACCOUNTING_MODULE.title,
-          "Published",
-          [DEFAULT_ACCOUNTING_MODULE.code]
-        ) === "Draft";
+
 
       if (accItems.length > 0) {
         setModules(
