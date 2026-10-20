@@ -1148,6 +1148,11 @@ export const superadminApi = {
       method: "POST",
     }),
 
+  reactivateAdmin: (id: number | string) =>
+    apiFetch(`/api/v1/superadmin/admins/${id}/reactivate`, {
+      method: "POST",
+    }),
+
   updateAdmin: (
     id: number | string,
     payload: {

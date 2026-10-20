@@ -33,34 +33,25 @@ export interface StaffAdmin {
   status: "Aktif" | "Nonaktif";
   twoFactorEnabled: boolean;
   joinDate: string;
-  password?: string;
 }
 
 const cleanAdminName = (rawName: string) => {
   return (rawName || "").replace(/\s*\(Updated\)/gi, "").trim();
 };
 
-const STORAGE_KEY_PASSWORDS = "zhou_admin_saved_passwords_v4";
+// Regex validasi password yang konsisten dengan Backend (min 8 char, 1 huruf kapital, 1 angka)
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[A-Z])(?=.*\d)/;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_ERROR_MSG = "Kata sandi minimal 8 karakter, wajib mengandung 1 huruf kapital dan 1 angka.";
 
-const getStoredPasswords = (): Record<string, string> => {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_PASSWORDS);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
+const validatePassword = (password: string): string | null => {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return PASSWORD_ERROR_MSG;
   }
-};
-
-const setStoredPassword = (keys: (string | number | undefined | null)[], pass: string) => {
-  if (typeof window === "undefined" || !pass) return;
-  try {
-    const map = getStoredPasswords();
-    keys.forEach((k) => {
-      if (k) map[String(k).toLowerCase().trim()] = pass;
-    });
-    localStorage.setItem(STORAGE_KEY_PASSWORDS, JSON.stringify(map));
-  } catch {}
+  if (!PASSWORD_COMPLEXITY_REGEX.test(password)) {
+    return PASSWORD_ERROR_MSG;
+  }
+  return null;
 };
 
 export default function SuperadminUsersPage() {
@@ -77,9 +68,11 @@ export default function SuperadminUsersPage() {
   const [editingStaff, setEditingStaff] = useState<StaffAdmin | null>(null);
   const [deletingStaff, setDeletingStaff] = useState<StaffAdmin | null>(null);
 
+  // Modal "Kredensial Sekali Lihat" setelah pembuatan akun berhasil
+  const [createdCredentials, setCreatedCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [credentialsCopied, setCredentialsCopied] = useState(false);
+
   // Password visibility states
-  const [showDetailPassword, setShowDetailPassword] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [newStaffPassword, setNewStaffPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
@@ -88,15 +81,8 @@ export default function SuperadminUsersPage() {
     if (editingStaff) {
       setNewStaffPassword("");
       setShowNewPassword(false);
-      setShowCurrentPassword(false);
     }
   }, [editingStaff?.id]);
-
-  useEffect(() => {
-    if (selectedStaffForDetail) {
-      setShowDetailPassword(false);
-    }
-  }, [selectedStaffForDetail?.id]);
 
   // Add Form State
   const [newStaffForm, setNewStaffForm] = useState({
@@ -112,7 +98,7 @@ export default function SuperadminUsersPage() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Bersihkan hanya cache lama usang yang bukan password tersimpan
+  // Bersihkan semua cache lama usang termasuk penyimpanan password yang sudah tidak digunakan
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
@@ -122,6 +108,8 @@ export default function SuperadminUsersPage() {
         localStorage.removeItem("zhou_staff_admin_created");
         localStorage.removeItem("zhou_staff_admin_deleted");
         localStorage.removeItem("zhou_staff_admin_overrides");
+        // Hapus cache password lama yang menyebabkan ilusi fallback password
+        localStorage.removeItem("zhou_admin_saved_passwords_v4");
       } catch {}
     }
   }, []);
@@ -130,18 +118,12 @@ export default function SuperadminUsersPage() {
   const loadStaff = async () => {
     setIsLoading(true);
     try {
-      const [adminsRes, consultRes, pwdRes] = await Promise.all([
+      const [adminsRes, consultRes] = await Promise.all([
         superadminApi.getAdmins(),
         adminApi.getConsultations().catch(() => ({ data: [] as ConsultationItem[] })),
-        fetch("/api/superadmin/passwords")
-          .then((r) => r.json())
-          .catch(() => ({ passwords: {} })),
       ]);
 
       const consultations = Array.isArray(consultRes?.data) ? consultRes.data : [];
-      const localPwdMap = getStoredPasswords();
-      const serverPwdMap = (pwdRes?.passwords || {}) as Record<string, string>;
-      const pwdMap: Record<string, string> = { ...serverPwdMap, ...localPwdMap };
 
       if (adminsRes?.data && Array.isArray(adminsRes.data)) {
         const validAdmins = adminsRes.data;
@@ -149,7 +131,6 @@ export default function SuperadminUsersPage() {
           const admEmail = (adm.email || "").toLowerCase().trim();
           const admName = (adm.name || "").toLowerCase().trim();
           const staffNip = (adm.role === "SUPERADMIN" ? "SPR-" : "ADM-") + String(adm.id).padStart(3, "0");
-          const rawId = String(adm.id);
 
           const assignedCount = consultations.filter((c) => {
             const cAssignedId = c.assigned_to;
@@ -163,25 +144,6 @@ export default function SuperadminUsersPage() {
             if (admName && cName && (cName.includes(admName) || admName.includes(cName))) return true;
             return false;
           }).length;
-
-          // Ambil kata sandi yang telah diinputkan oleh superadmin
-          const savedPwd =
-            localPwdMap[admEmail] ||
-            localPwdMap[staffNip.toLowerCase()] ||
-            localPwdMap[rawId] ||
-            localPwdMap[`stf-be-${rawId}`] ||
-            pwdMap[admEmail] ||
-            pwdMap[staffNip.toLowerCase()] ||
-            pwdMap[rawId] ||
-            pwdMap[`stf-be-${rawId}`];
-
-          // Gunakan password yang pernah diinputkan, atau default awal jika belum pernah diset
-          const finalStaffPassword =
-            savedPwd ||
-            (adm.role === "SUPERADMIN" ? "SuperAdmin123!" : "Admin123!");
-
-          // Kunci ke local storage agar tidak berubah secara otomatis saat refresh
-          setStoredPassword([admEmail, staffNip, rawId, `stf-be-${rawId}`], finalStaffPassword);
 
           return {
             id: `STF-BE-${adm.id}`,
@@ -199,7 +161,6 @@ export default function SuperadminUsersPage() {
               month: "short",
               year: "numeric",
             }),
-            password: finalStaffPassword,
           };
         });
 
@@ -253,8 +214,9 @@ export default function SuperadminUsersPage() {
       showToast("Kata sandi akun wajib diisi oleh Superadmin.");
       return;
     }
-    if (passwordVal.length < 6) {
-      showToast("Kata sandi minimal 6 karakter.");
+    const pwdError = validatePassword(passwordVal);
+    if (pwdError) {
+      showToast(pwdError);
       return;
     }
 
@@ -303,26 +265,16 @@ export default function SuperadminUsersPage() {
         }),
       };
 
-      // Simpan password persisten yang DIINPUT oleh user
-      setStoredPassword(
-        [emailVal, finalNip, createdBackendId, finalId, `stf-be-${createdBackendId}`],
-        passwordVal
-      );
-
-      // Simpan password ke endpoint sinkronisasi superadmin
-      await fetch("/api/superadmin/passwords", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: emailVal,
-          nip: finalNip,
-          id: createdBackendId,
-          password: passwordVal,
-        }),
-      }).catch(() => {});
-
       await loadStaff();
-      showToast(`Akun ${displayRole} ${newStaffForm.name.trim()} berhasil dibuat!`);
+
+      // Tampilkan modal Kredensial Sekali Lihat agar Superadmin bisa salin & serahkan ke staf
+      setCreatedCredentials({
+        name: newStaffForm.name.trim(),
+        email: emailVal,
+        password: passwordVal,
+      });
+      setCredentialsCopied(false);
+
       setIsAddModalOpen(false);
       setNewStaffForm({
         name: "",
@@ -356,9 +308,12 @@ export default function SuperadminUsersPage() {
     }
 
     const trimmedNewPass = newStaffPassword.trim();
-    if (trimmedNewPass && trimmedNewPass.length < 6) {
-      showToast("Kata sandi baru minimal 6 karakter.");
-      return;
+    if (trimmedNewPass) {
+      const pwdError = validatePassword(trimmedNewPass);
+      if (pwdError) {
+        showToast(pwdError);
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -389,22 +344,7 @@ export default function SuperadminUsersPage() {
         }
       }
 
-      if (trimmedNewPass) {
-        setStoredPassword(
-          [editingStaff.email, editingStaff.nip, numericId, editingStaff.id, `stf-be-${numericId}`],
-          trimmedNewPass
-        );
-        await fetch("/api/superadmin/passwords", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: editingStaff.email,
-            nip: editingStaff.nip,
-            id: numericId,
-            password: trimmedNewPass,
-          }),
-        }).catch(() => {});
-      }
+      // Password sudah dikirim ke backend via updateAdmin di atas — tidak perlu disimpan ke localStorage
 
       await loadStaff();
 
@@ -416,7 +356,6 @@ export default function SuperadminUsersPage() {
       setEditingStaff(null);
       setNewStaffPassword("");
       setShowNewPassword(false);
-      setShowCurrentPassword(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal memperbarui akun staf di server.";
       showToast(msg);
@@ -431,9 +370,17 @@ export default function SuperadminUsersPage() {
 
     try {
       const rawId = parseInt(staffId.replace(/\D/g, ""), 10) || staffId;
-      await superadminApi.deactivateAdmin(rawId);
-      await loadStaff();
-      showToast("Status akun berhasil diperbarui di sistem.");
+      if (currentStaff.status === "Nonaktif") {
+        // Aktifkan kembali akun yang sedang nonaktif
+        await superadminApi.reactivateAdmin(rawId);
+        await loadStaff();
+        showToast(`Akun ${currentStaff.name} berhasil diaktifkan kembali.`);
+      } else {
+        // Nonaktifkan akun yang sedang aktif
+        await superadminApi.deactivateAdmin(rawId);
+        await loadStaff();
+        showToast(`Akun ${currentStaff.name} berhasil dinonaktifkan.`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Gagal mengubah status akun di server.";
       showToast(msg);
@@ -925,7 +872,7 @@ export default function SuperadminUsersPage() {
                     <Input
                       type={showAddPassword ? "text" : "password"}
                       required
-                      placeholder="Masukkan kata sandi (min. 6 karakter)"
+                      placeholder="Min. 8 karakter, 1 huruf kapital, 1 angka"
                       value={newStaffForm.initialPassword}
                       onChange={(e) =>
                         setNewStaffForm((prev) => ({ ...prev, initialPassword: e.target.value }))
@@ -946,7 +893,7 @@ export default function SuperadminUsersPage() {
                     </button>
                   </div>
                   <span className="text-[10px] text-text-muted block">
-                    Ketik kata sandi resmi yang Anda tentukan untuk akun staf ini.
+                    Minimal 8 karakter, wajib mengandung 1 huruf kapital dan 1 angka.
                   </span>
                 </div>
               </div>
@@ -1078,28 +1025,8 @@ export default function SuperadminUsersPage() {
                 )}
               </div>
 
-              {/* Form Kredensial: Lihat Kata Sandi Saat Ini & Ubah Kata Sandi Baru */}
+              {/* Form Kredensial: Ubah Kata Sandi Baru */}
               <div className="p-3 bg-surface rounded-xl border border-primary-light space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-primary">Kata Sandi Saat Ini</Label>
-                  <div className="relative">
-                    <Input
-                      type={showCurrentPassword ? "text" : "password"}
-                      readOnly
-                      value={editingStaff.password || (editingStaff.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!")}
-                      className="text-xs h-9 bg-white border-primary-light pr-9 font-mono text-primary select-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary p-1 cursor-pointer"
-                      aria-label="Lihat kata sandi saat ini"
-                    >
-                      {showCurrentPassword ? <EyeSlashIcon className="text-xs" /> : <EyeIcon className="text-xs" />}
-                    </button>
-                  </div>
-                </div>
-
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-semibold text-primary">
@@ -1114,7 +1041,7 @@ export default function SuperadminUsersPage() {
                       type={showNewPassword ? "text" : "password"}
                       value={newStaffPassword}
                       onChange={(e) => setNewStaffPassword(e.target.value)}
-                      placeholder="Masukkan kata sandi baru (minimal 6 karakter)..."
+                      placeholder="Min. 8 karakter, 1 huruf kapital, 1 angka"
                       className="text-xs h-9 bg-white border-primary-light pr-9 font-mono"
                     />
                     <button
@@ -1131,7 +1058,7 @@ export default function SuperadminUsersPage() {
                     </button>
                   </div>
                   <span className="text-[10px] text-text-muted block">
-                    Ketik sandi baru jika ingin mengubah kata sandi akun staf ini.
+                    Minimal 8 karakter, wajib mengandung 1 huruf kapital dan 1 angka.
                   </span>
                 </div>
               </div>
@@ -1316,43 +1243,133 @@ export default function SuperadminUsersPage() {
               <div className="pt-2 border-t border-primary-light flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi Akun</span>
-                  <div className="font-mono text-primary font-bold text-xs mt-0.5 flex items-center gap-2">
-                    <span>
-                      {showDetailPassword
-                        ? (selectedStaffForDetail.password || (selectedStaffForDetail.role.toLowerCase().includes("superadmin") ? "SuperAdmin123!" : "Admin123!"))
-                        : "••••••••••••"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowDetailPassword(!showDetailPassword)}
-                      className="text-text-muted hover:text-primary p-0.5 transition-colors cursor-pointer"
-                      aria-label="Lihat kata sandi"
-                    >
-                      {showDetailPassword ? <EyeSlashIcon className="text-xs" /> : <EyeIcon className="text-xs" />}
-                    </button>
+                  <div className="font-mono text-text-muted text-xs mt-0.5 flex items-center gap-2">
+                    <LockIcon className="text-xs" />
+                    <span className="text-[11px] italic">Kata sandi dikelola oleh server (tidak ditampilkan demi keamanan)</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-primary-light flex items-center justify-end gap-2">
+            <div className="pt-2 border-t border-primary-light flex items-center justify-between">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setEditingStaff(selectedStaffForDetail);
+                  handleToggleStatus(selectedStaffForDetail.id);
                   setSelectedStaffForDetail(null);
                 }}
-                className="text-xs h-9 px-4 border-primary-light text-primary font-medium hover:bg-surface inline-flex items-center gap-1.5"
+                className={`text-xs h-9 px-4 font-medium inline-flex items-center gap-1.5 ${
+                  selectedStaffForDetail.status === "Aktif"
+                    ? "border-amber-300 text-amber-700 hover:bg-amber-50"
+                    : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                }`}
               >
-                <EditIcon className="text-xs" />
-                Ubah Profil &amp; Sandi
+                {selectedStaffForDetail.status === "Aktif" ? "Nonaktifkan Akun" : "Aktifkan Kembali"}
               </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingStaff(selectedStaffForDetail);
+                    setSelectedStaffForDetail(null);
+                  }}
+                  className="text-xs h-9 px-4 border-primary-light text-primary font-medium hover:bg-surface inline-flex items-center gap-1.5"
+                >
+                  <EditIcon className="text-xs" />
+                  Ubah Profil &amp; Sandi
+                </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setSelectedStaffForDetail(null)}
                 className="text-xs h-9 px-4"
+              >
+                Tutup
+              </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: KREDENSIAL SEKALI LIHAT — ditampilkan setelah pembuatan akun berhasil */}
+      {createdCredentials && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary-dark/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-primary-light max-w-md w-full p-6 space-y-4 relative">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 text-base">
+                <CheckCircleIcon />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-primary">Akun Berhasil Dibuat!</h3>
+                <span className="text-xs text-text-muted">
+                  Kredensial staf baru — <strong>salin sekarang</strong>, tidak dapat ditampilkan ulang.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 text-amber-800 font-bold">
+                <LockIcon className="text-xs" />
+                <span>Peringatan Keamanan</span>
+              </div>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                Kata sandi ini hanya ditampilkan <strong>satu kali</strong>. Setelah modal ini ditutup, kata sandi tidak dapat diakses kembali dari antarmuka. Pastikan Anda menyalin dan menyerahkannya ke staf terkait.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-surface border border-primary-light space-y-3 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-text-secondary">Nama Staf</span>
+                <div className="font-semibold text-primary mt-0.5">{createdCredentials.name}</div>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-text-secondary">Email Login</span>
+                <div className="font-mono text-primary mt-0.5">{createdCredentials.email}</div>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-text-secondary">Kata Sandi</span>
+                <div className="font-mono text-primary font-bold mt-0.5 text-sm tracking-wide">{createdCredentials.password}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-primary-light">
+              <Button
+                type="button"
+                variant={credentialsCopied ? "outline" : "primary"}
+                size="sm"
+                className={`text-xs h-9 px-4 font-semibold inline-flex items-center gap-1.5 ${credentialsCopied ? "border-emerald-300 text-emerald-700" : ""}`}
+                onClick={async () => {
+                  try {
+                    const text = `Kredensial Akun Staf Baru\nNama: ${createdCredentials.name}\nEmail: ${createdCredentials.email}\nKata Sandi: ${createdCredentials.password}`;
+                    await navigator.clipboard.writeText(text);
+                    setCredentialsCopied(true);
+                    showToast("Kredensial berhasil disalin ke clipboard.");
+                  } catch {
+                    showToast("Gagal menyalin ke clipboard. Silakan salin secara manual.");
+                  }
+                }}
+              >
+                {credentialsCopied ? (
+                  <>
+                    <CheckCircleIcon className="text-xs" />
+                    Tersalin!
+                  </>
+                ) : (
+                  "Salin Kredensial"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-9 px-4 border-primary-light"
+                onClick={() => {
+                  setCreatedCredentials(null);
+                  showToast("Akun staf berhasil diterbitkan. Pastikan kredensial telah diserahkan ke staf.");
+                }}
               >
                 Tutup
               </Button>

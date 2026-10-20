@@ -218,16 +218,16 @@ function LoginFormContent() {
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div className="space-y-1.5">
               <Label htmlFor="auth-email" className="font-semibold text-primary">
-                Alamat Email Korporat / ID Pengguna
+                Alamat Email Resmi
               </Label>
               <div className="relative">
                 <Input
                   id="auth-email"
-                  type="email"
+                  type="text"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@perusahaan.com"
+                  placeholder="Masukkan alamat email resmi Anda"
                   required
                   className="pl-9 h-10 bg-surface border-primary-light focus:bg-white text-xs"
                 />
