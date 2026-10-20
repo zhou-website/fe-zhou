@@ -68,9 +68,7 @@ interface AdminUser {
   taskCount: number;
 }
 
-const AUDIT_CLEARED_TIMESTAMP_KEY = "zhou_audit_logs_cleared_timestamp_v2";
-const AUDIT_CLEARED_IDS_KEY = "zhou_audit_logs_cleared_ids_v2";
-const AUDIT_LOCAL_STORAGE_KEY = "zhou_audit_logs_local_v2";
+
 
 export default function SuperadminAuditPage() {
   // Export Menu State
@@ -306,31 +304,31 @@ export default function SuperadminAuditPage() {
     };
   };
 
-  // Handler untuk membersihkan log audit secara permanen di browser
-  const handleClearAuditLogs = () => {
+  // Handler untuk membersihkan log audit secara permanen di database backend
+  const handleClearAuditLogs = async () => {
     if (
       confirm(
-        "Apakah Anda yakin ingin membersihkan seluruh tampilan log audit saat ini? Tindakan ini bersifat permanen pada tampilan lokal."
+        "Apakah Anda yakin ingin membersihkan seluruh rekam jejak log audit di server database? Tindakan ini bersifat permanen."
       )
     ) {
-      const now = Date.now();
-      if (typeof window !== "undefined") {
-        localStorage.setItem(AUDIT_CLEARED_TIMESTAMP_KEY, String(now));
-        let storedIds: string[] = [];
-        try {
-          storedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
-        } catch {}
-        const currentIds = auditLogs.map((l) => l.id.replace("LOG-", ""));
-        const mergedIds = Array.from(new Set([...storedIds, ...currentIds]));
-        localStorage.setItem(AUDIT_CLEARED_IDS_KEY, JSON.stringify(mergedIds));
-        localStorage.removeItem(AUDIT_LOCAL_STORAGE_KEY);
+      try {
+        setIsLoading(true);
+        const res = await superadminApi.clearAuditLogs();
+        if (res.success) {
+          setAuditLogs([]);
+          showToast("Seluruh data log audit berhasil dibersihkan dari server database.");
+        } else {
+          showToast("Gagal membersihkan log audit: " + (res.message || "Kesalahan server"));
+        }
+      } catch (err) {
+        showToast("Terjadi kesalahan saat menghubungi server");
+      } finally {
+        setIsLoading(false);
       }
-      setAuditLogs([]);
-      showToast("Seluruh data log audit berhasil dibersihkan.");
     }
   };
 
-  // Load audit logs dari Backend API & Local Activity Cache
+  // Load audit logs dari Backend API Database
   const loadAuditLogs = async () => {
     setIsLoading(true);
     try {
@@ -350,49 +348,15 @@ export default function SuperadminAuditPage() {
         });
       }
 
-      let clearedTimestamp = 0;
-      let clearedIds: string[] = [];
-      let localLogs: AuditLog[] = [];
-
-      if (typeof window !== "undefined") {
-        const storedTs = localStorage.getItem(AUDIT_CLEARED_TIMESTAMP_KEY);
-        clearedTimestamp = storedTs ? parseInt(storedTs, 10) || 0 : 0;
-        try {
-          clearedIds = JSON.parse(localStorage.getItem(AUDIT_CLEARED_IDS_KEY) || "[]");
-          const rawLocal = localStorage.getItem(AUDIT_LOCAL_STORAGE_KEY);
-          if (rawLocal) {
-            localLogs = JSON.parse(rawLocal);
-          }
-        } catch {}
-      }
-
       let backendLogs: AuditLog[] = [];
       if (res?.data && Array.isArray(res.data)) {
-        const validRaw = res.data.filter((l: AuditLogItem) => {
-          if (isDummyAuditLog(l)) return false;
-          if (clearedIds.includes(`LOG-${l.id}`) || clearedIds.includes(String(l.id))) return false;
-          if (clearedTimestamp > 0) {
-            const logTime = parseLogTime(l.created_at);
-            if (logTime > 0 && logTime <= clearedTimestamp) return false;
-          }
-          return true;
-        });
-
+        const validRaw = res.data.filter((l: AuditLogItem) => !isDummyAuditLog(l));
         backendLogs = validRaw.map((item) => classifyAuditLog(item, adminMap));
       }
 
-      // Gabungkan log backend dengan log aktivitas sistem
-      const combined = [...localLogs, ...backendLogs].filter((l) => {
-        if (clearedIds.includes(l.id) || clearedIds.includes(l.id.replace("LOG-", ""))) return false;
-        if (clearedTimestamp > 0 && l.rawTimestamp > 0 && l.rawTimestamp <= clearedTimestamp) {
-          return false;
-        }
-        return true;
-      });
-
       // Urutkan dari yang paling baru
-      combined.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-      setAuditLogs(combined);
+      backendLogs.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      setAuditLogs(backendLogs);
     } catch (err) {
       console.warn("Gagal memuat log audit dari backend:", err);
     } finally {

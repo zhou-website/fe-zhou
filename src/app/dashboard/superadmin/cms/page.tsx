@@ -146,15 +146,7 @@ interface KursRateInput {
   flag: string;
 }
 
-const INITIAL_BATCH_KURS: KursRateInput[] = [
-  { currency: "USD", name: "Dolar Amerika Serikat", rate: "15.890,00", flag: "" },
-  { currency: "EUR", name: "Euro", rate: "17.250,50", flag: "" },
-  { currency: "SGD", name: "Dolar Singapura", rate: "11.890,00", flag: "" },
-  { currency: "JPY", name: "Yen Jepang (100)", rate: "10.450,00", flag: "" },
-  { currency: "GBP", name: "Poundsterling Inggris", rate: "20.120,00", flag: "" },
-  { currency: "AUD", name: "Dolar Australia", rate: "10.340,00", flag: "" },
-  { currency: "CNY", name: "Yuan Tiongkok", rate: "2.190,00", flag: "" },
-];
+const INITIAL_BATCH_KURS: KursRateInput[] = [];
 
 function AdminCMSPageContent() {
   const searchParams = useSearchParams();
@@ -1376,6 +1368,8 @@ function AdminCMSPageContent() {
                 service_name: serviceForm.service_name,
                 category: catKey,
                 description: serviceForm.description,
+                card_explanation: serviceForm.description,
+                features: parsedScopes,
                 is_active: serviceForm.is_active,
               });
             } catch (apiErr) {
@@ -1445,6 +1439,8 @@ function AdminCMSPageContent() {
               service_name: serviceForm.service_name,
               category: catKey,
               description: serviceForm.description,
+              card_explanation: serviceForm.description,
+              features: parsedScopes,
               is_active: serviceForm.is_active,
             });
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
@@ -2145,7 +2141,7 @@ function AdminCMSPageContent() {
           s.name.trim().toLowerCase() === item.title.trim().toLowerCase()
       );
       if (match) {
-        scopesList = match.scopes || match.pillars?.map((p) => p.title || p.description || "").filter(Boolean) || [];
+        scopesList = match.scopes || match.pillars?.map((p: any) => p.title || p.description || "").filter(Boolean) || [];
       }
     }
 

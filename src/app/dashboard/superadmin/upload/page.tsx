@@ -98,27 +98,45 @@ export default function AdminUploadBillingPage() {
       if (docRes.status === "fulfilled" && docRes.value.success && Array.isArray(docRes.value.data)) {
         backendDocs = docRes.value.data
           .filter((d: ClientDocumentItem) => !isDummyDocument(d))
-          .map((d: ClientDocumentItem, idx: number) => ({
-            id: `REP-BE-${d.id}`,
-            ticketId: `TK-2026-0${d.project_id || (idx + 10)}`,
-            clientName: "Klien Terdaftar",
-            clientNpwp: "-",
-            fileName: d.file_name,
-            fileSize: d.file_size || "1.5 MB",
-            fileType: d.file_type === "XLSX" ? "XLSX" : "PDF",
-            category: "Tax Service Core",
-            invoiceNumber: `INV-2026-0${d.id}`,
-            amount: "-",
-            billingStatus: "Lunas",
-            uploadDate: new Date(d.created_at).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            }),
-            consultant: "Staf Konsultan",
-            sha256: `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
-            downloadUrl: d.file_path,
-          }));
+          .map((d: ClientDocumentItem, idx: number) => {
+            const project = (d as unknown as { project?: { project_code?: string; title?: string; client?: { name?: string; company_name?: string } } }).project;
+            const uploader = (d as unknown as { uploader?: { name?: string } }).uploader;
+            const clientName = project?.client?.company_name || project?.client?.name || "Klien Terdaftar";
+            const ticketCode = project?.project_code || `TK-2026-0${d.project_id || (idx + 10)}`;
+            const consultant = uploader?.name || "Staf Konsultan";
+            const downloadUrl = (d as unknown as { download_url?: string }).download_url || d.file_path;
+
+            const rawCat = (project?.title || "").toLowerCase();
+            const category: ReportItem["category"] = rawCat.includes("akuntansi")
+              ? "Accounting Service"
+              : rawCat.includes("bisnis") || rawCat.includes("financial")
+              ? "Business Financial Consulting"
+              : rawCat.includes("legal") || rawCat.includes("hukum")
+              ? "Legal"
+              : "Tax Service Core";
+
+            return {
+              id: `REP-BE-${d.id}`,
+              ticketId: ticketCode,
+              clientName,
+              clientNpwp: "-",
+              fileName: d.file_name,
+              fileSize: d.file_size || "1.5 MB",
+              fileType: d.file_type === "XLSX" ? "XLSX" : "PDF",
+              category,
+              invoiceNumber: `INV-2026-0${d.id}`,
+              amount: "-",
+              billingStatus: "Lunas",
+              uploadDate: new Date(d.created_at).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              }),
+              consultant,
+              sha256: d.sha_hash || `sha256-${d.id}-${d.file_name.slice(0, 10)}`,
+              downloadUrl,
+            };
+          });
       }
 
       if (consultRes.status === "fulfilled" && consultRes.value.success && Array.isArray(consultRes.value.data)) {
@@ -230,44 +248,29 @@ export default function AdminUploadBillingPage() {
       }
     }
 
-    if (report) {
-      const pdfBlob = generateDocumentPdfBlob({
-        title: "LAPORAN FINAL DELIVERABLE PERIKATAN",
-        category: report.category,
-        clientName: report.clientName,
-        ticketId: report.ticketId,
-        date: report.uploadDate,
-        sections: [
-          {
-            title: "INFORMASI PENUGASAN & FAKTUR",
-            paragraphs: [
-              `Nomor Invoice: ${report.invoiceNumber}`,
-              `Nilai Tagihan: ${report.amount} (${report.billingStatus})`,
-              `Konsultan PIC: ${report.consultant}`,
-              `Nama Berkas: ${report.fileName}`,
-            ],
-          },
-          {
-            title: "VERIFIKASI INTEGRITAS SHA-256",
-            paragraphs: [
-              `Checksum: ${report.sha256}`,
-              "Dokumen telah melalui verifikasi penugasan dan diterbitkan secara resmi melalui sistem billing Zhou Consulting.",
-            ],
-          },
-        ],
-      });
-      downloadBlob(pdfBlob, fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
-      showToast(`Berkas deliverable "${fileName}" berhasil diunduh (PDF Valid).`);
-      return;
-    }
-
-    showToast(`Berkas "${fileName}" belum tersedia pada penyimpanan server.`);
+    showToast(`Berkas "${fileName}" belum tersedia pada repositori server.`);
   };
 
-  const handleDeleteDocument = (id: string, fileName: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus berkas "${fileName}"? Berkas ini akan dihapus dari vault dokumen klien.`)) {
+  const handleDeleteDocument = async (id: string, fileName: string) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus berkas "${fileName}"? Berkas ini akan dihapus secara permanen dari server.`)) {
+      const rawId = parseInt(id.replace(/\D/g, ""), 10);
+      if (rawId) {
+        try {
+          const res = await adminApi.deleteDocument(rawId);
+          if (res.success) {
+            showToast(`Berkas "${fileName}" berhasil dihapus dari repositori server.`);
+            await loadBackendDocuments();
+            return;
+          } else {
+            showToast(res.message || "Gagal menghapus berkas dari server.");
+          }
+        } catch (err) {
+          console.error("Gagal menghapus berkas:", err);
+          showToast("Terjadi kendala saat menghubungi server.");
+        }
+      }
       setReports((prev) => prev.filter((r) => r.id !== id && r.fileName !== fileName));
-      showToast(`Berkas "${fileName}" berhasil dihapus.`);
+      showToast(`Berkas "${fileName}" dihapus.`);
     }
   };
 

@@ -1,14 +1,20 @@
 "use client";
 
-import { ZHOU_ARTICLES, ZhouArticle } from "./edukasiData";
+import { ZHOU_ARTICLES, ZhouArticle, BelajarPajakLink, BELAJAR_PAJAK_LINKS } from "./edukasiData";
 import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
 
 export const ZHOU_ARTICLES_STORAGE_KEY = "zhou_articles_data_v2";
 export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
 
+export const GOV_LINKS_STORAGE_KEY = "zhou_gov_links_data_v2";
+export const GOV_LINKS_EVENT = "zhou_gov_links_updated";
+
+// In-memory runtime cache, tidak lagi menggunakan localStorage
+let memoryZhouArticles: ZhouArticle[] = [];
+let memoryBelajarPajakLinks: BelajarPajakLink[] = [...BELAJAR_PAJAK_LINKS];
+
 /**
  * Ekstraksi gambar sampul dan pembersihan teks body materi edukasi.
- * Mendukung tag metadata database `<!--ZHOU_IMAGE:...-->`, markdown image, dan image file path.
  */
 export function extractEducationImageAndBody(
   rawBody?: string,
@@ -21,7 +27,6 @@ export function extractEducationImageAndBody(
   let image: string | undefined = explicitImage;
   let cleanBody = rawBody || "";
 
-  // 1. Ekstrak dari metadata tag <!--ZHOU_IMAGE:...--> yang tersimpan di kolom body DB
   const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
   if (tagMatch) {
     if (!image) {
@@ -30,7 +35,6 @@ export function extractEducationImageAndBody(
     cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
   }
 
-  // 2. Ekstrak dari markdown image di awal teks body: ![...](...)
   const mdMatch = cleanBody.match(/^!\[.*?\]\((.*?)\)\r?\n?/);
   if (mdMatch) {
     if (!image) {
@@ -39,13 +43,9 @@ export function extractEducationImageAndBody(
     cleanBody = cleanBody.replace(/^!\[.*?\]\(.*?\)\r?\n?/, "").trim();
   }
 
-  // 3. Fallback jika filePath adalah image URL atau Base64 Data URL
   if (!image && filePath) {
-    const isImg =
-      /\.(jpg|jpeg|png|webp|svg|gif)($|\?)/i.test(filePath) ||
-      filePath.startsWith("data:image/") ||
-      filePath.startsWith("http");
-    if (isImg) {
+    const lower = filePath.toLowerCase();
+    if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".webp") || lower.endsWith(".gif")) {
       image = filePath;
     }
   }
@@ -54,7 +54,7 @@ export function extractEducationImageAndBody(
 }
 
 /**
- * Menyematkan gambar sampul ke dalam kolom body agar tersimpan 100% di database backend
+ * Menyematkan gambar sampul ke dalam kolom body
  */
 export function formatEducationBodyWithImage(body: string, image?: string): string {
   const clean = body.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
@@ -64,7 +64,6 @@ export function formatEducationBodyWithImage(body: string, image?: string): stri
 
 /**
  * Kompresi dan resize gambar di browser client via HTML5 Canvas
- * Mengubah foto 2MB-10MB menjadi ~60-120KB JPEG berkualitas tajam agar muat di kolom TEXT database & request body.
  */
 export function compressImageFile(
   file: File,
@@ -111,43 +110,24 @@ export function compressImageFile(
 }
 
 /**
- * Mendapatkan daftar artikel/modul edukasi Zhou Consulting.
- * Jika tersedia di localStorage, gunakan data tersebut. Jika belum, gunakan data default (kosong).
+ * Mendapatkan daftar artikel/modul edukasi (in-memory)
  */
 export function getStoredZhouArticles(): ZhouArticle[] {
-  if (typeof window === "undefined") {
-    return ZHOU_ARTICLES;
-  }
-
-  try {
-    const raw = localStorage.getItem(ZHOU_ARTICLES_STORAGE_KEY);
-    const baseList: ZhouArticle[] = raw ? JSON.parse(raw) : ZHOU_ARTICLES;
-    if (Array.isArray(baseList)) {
-      return baseList
-        .filter((item) => !isCmsItemDeleted(item.id, item.title))
-        .map((item, idx) => ({
-          ...item,
-          isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
-        }));
-    }
-    return ZHOU_ARTICLES.filter((item) => !isCmsItemDeleted(item.id, item.title));
-  } catch (error) {
-    console.error("Gagal membaca zhou_articles_data dari localStorage:", error);
-    return ZHOU_ARTICLES.filter((item) => !isCmsItemDeleted(item.id, item.title));
-  }
+  return memoryZhouArticles
+    .filter((item) => !isCmsItemDeleted(item.id, item.title))
+    .map((item, idx) => ({
+      ...item,
+      isFeatured: item.isFeatured !== undefined ? item.isFeatured : idx < 3,
+    }));
 }
 
 /**
- * Menyimpan daftar artikel/modul ke localStorage dan mentrigger event pembaruan
+ * Menyimpan daftar artikel/modul ke in-memory dan mentrigger event pembaruan
  */
 export function saveStoredZhouArticles(articles: ZhouArticle[]): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.setItem(ZHOU_ARTICLES_STORAGE_KEY, JSON.stringify(articles));
+  memoryZhouArticles = articles;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(ZHOU_ARTICLES_EVENT, { detail: articles }));
-  } catch (error) {
-    console.error("Gagal menyimpan zhou_articles_data ke localStorage:", error);
   }
 }
 
@@ -179,9 +159,7 @@ export function addZhouArticle(
 }
 
 /**
- * Memperbarui modul / materi yang ada (UPDATE).
- * Jika ID tidak ditemukan di local storage, upsert (tambahkan sebagai baru) agar edit artikel
- * dari backend juga tersimpan secara lokal dan tidak hilang saat reload.
+ * Memperbarui modul / materi yang ada (UPDATE)
  */
 export function updateZhouArticle(
   id: string,
@@ -191,7 +169,6 @@ export function updateZhouArticle(
   const existingIndex = current.findIndex((item) => item.id === id);
 
   if (existingIndex !== -1) {
-    // Normal update
     const updated = current.map((item) => {
       if (item.id === id) {
         return { ...item, ...changes };
@@ -201,7 +178,6 @@ export function updateZhouArticle(
     saveStoredZhouArticles(updated);
     return updated;
   } else {
-    // Upsert: item dari backend tidak ada di localStorage, buat entri baru
     const upserted: ZhouArticle = {
       id,
       title: changes.title || id,
@@ -223,7 +199,6 @@ export function updateZhouArticle(
     return updated;
   }
 }
-
 
 /**
  * Menghapus modul / materi (DELETE)
@@ -269,7 +244,7 @@ export function toggleArticleStatus(id: string): ZhouArticle[] {
 }
 
 /**
- * Mengubah status Unggulan Carousel (isFeatured: true <-> false)
+ * Mengubah status Unggulan Carousel
  */
 export function toggleArticleFeatured(id: string): ZhouArticle[] {
   const current = getStoredZhouArticles();
@@ -289,42 +264,21 @@ export function toggleArticleFeatured(id: string): ZhouArticle[] {
  * Mengembalikan artikel ke data default awal
  */
 export function resetZhouArticlesToDefault(): ZhouArticle[] {
+  memoryZhouArticles = [...ZHOU_ARTICLES];
   if (typeof window !== "undefined") {
-    localStorage.removeItem(ZHOU_ARTICLES_STORAGE_KEY);
-    localStorage.setItem(ZHOU_ARTICLES_STORAGE_KEY, JSON.stringify(ZHOU_ARTICLES));
     window.dispatchEvent(new CustomEvent(ZHOU_ARTICLES_EVENT, { detail: ZHOU_ARTICLES }));
   }
   return ZHOU_ARTICLES;
 }
 
-export const GOV_LINKS_STORAGE_KEY = "zhou_gov_links_data_v2";
-export const GOV_LINKS_EVENT = "zhou_gov_links_updated";
-
-import { BelajarPajakLink, BELAJAR_PAJAK_LINKS } from "./edukasiData";
-
 export function getStoredBelajarPajakLinks(): BelajarPajakLink[] {
-  if (typeof window === "undefined") {
-    return BELAJAR_PAJAK_LINKS;
-  }
-  try {
-    const raw = localStorage.getItem(GOV_LINKS_STORAGE_KEY);
-    const source: BelajarPajakLink[] = raw ? JSON.parse(raw) : BELAJAR_PAJAK_LINKS;
-    if (Array.isArray(source)) {
-      return source.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
-    }
-    return BELAJAR_PAJAK_LINKS.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
-  } catch {
-    return BELAJAR_PAJAK_LINKS.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
-  }
+  return memoryBelajarPajakLinks.filter((l) => !isCmsItemDeleted(l.id, l.title, undefined, l.url));
 }
 
 export function saveStoredBelajarPajakLinks(links: BelajarPajakLink[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(GOV_LINKS_STORAGE_KEY, JSON.stringify(links));
+  memoryBelajarPajakLinks = links;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(GOV_LINKS_EVENT, { detail: links }));
-  } catch (error) {
-    console.error("Gagal menyimpan zhou_gov_links:", error);
   }
 }
 
@@ -361,22 +315,15 @@ export function deleteStoredBelajarPajakLink(id: string): BelajarPajakLink[] {
 }
 
 export function clearAllStoredZhouArticles(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(ZHOU_ARTICLES_STORAGE_KEY);
+  memoryZhouArticles = [];
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(ZHOU_ARTICLES_EVENT, { detail: [] }));
-  } catch (err) {
-    console.error("Gagal membersihkan data artikel edukasi:", err);
   }
 }
 
 export function clearAllStoredBelajarPajakLinks(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(GOV_LINKS_STORAGE_KEY);
+  memoryBelajarPajakLinks = [];
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(GOV_LINKS_EVENT, { detail: [] }));
-  } catch (err) {
-    console.error("Gagal membersihkan data tautan belajar pajak:", err);
   }
 }
-

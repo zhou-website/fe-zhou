@@ -94,11 +94,9 @@ export function RegulationsSection() {
               };
             });
 
-          setRegulations((prev) => {
-            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
-            return [...apiRegs, ...localOnly];
-          });
+          setRegulations(apiRegs);
+        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+          setRegulations([]);
         }
       })
       .catch((err) => {

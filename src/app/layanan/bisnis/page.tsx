@@ -36,23 +36,9 @@ interface BusinessModuleItem {
   waTemplate: string;
 }
 
-const DEFAULT_BUSINESS_MODULE: BusinessModuleItem = {
-  id: "FIN_CONS",
-  code: "FIN_CONS",
-  title: "Konsultasi Bisnis & Strategi Finansial",
-  badge: "BUSINESS & FINANCIAL",
-  subtitle: "Konsultasi restrukturisasi bisnis, perencanaan keuangan strategis, dan manajemen arus kas perusahaan.",
-  scopes: [
-    "Layanan penasihat keuangan dan bisnis strategis untuk membantu eksekutif perusahaan mengidentifikasi peluang pertumbuhan, melakukan efisiensi modal, serta mengelola risiko keuangan. Kami memastikan performa bisnis Anda berjalan optimal dan berkelanjutan."
-  ],
-  deliverable: "Laporan Studi Kelayakan Bisnis Resmi, Model Finansial Excel Dinamis, & Rekomendasi Solvabilitas.",
-  topicParam: "studi-kelayakan",
-  waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Studi Kelayakan Bisnis (Feasibility Study) dan rencana investasi.",
-};
-
 export default function KonsultasiBisnisPage() {
   const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
-  const [modules, setModules] = useState<BusinessModuleItem[]>([DEFAULT_BUSINESS_MODULE]);
+  const [modules, setModules] = useState<BusinessModuleItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,25 +47,13 @@ export default function KonsultasiBisnisPage() {
       const stored = getStoredServices();
       const bizItems = stored.filter(
         (s) =>
-          (s.categoryKey?.toLowerCase() === "bisnis" || s.categoryKey?.toLowerCase() === "fin") &&
+          (s.categoryKey?.toLowerCase() === "bisnis" || s.categoryKey?.toLowerCase() === "fin" || s.categoryKey?.toLowerCase() === "consulting") &&
           s.status === "Published" &&
           getCmsItemStatus(s.id, s.name, s.status || "Published", [s.code]) !== "Draft" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      const isDefaultDeleted =
-        isCmsItemDeleted(
-          DEFAULT_BUSINESS_MODULE.id,
-          DEFAULT_BUSINESS_MODULE.title,
-          undefined,
-          DEFAULT_BUSINESS_MODULE.code
-        ) ||
-        getCmsItemStatus(
-          DEFAULT_BUSINESS_MODULE.id,
-          DEFAULT_BUSINESS_MODULE.title,
-          "Published",
-          [DEFAULT_BUSINESS_MODULE.code]
-        ) === "Draft";
+
 
       if (bizItems.length > 0) {
         setModules(
@@ -93,22 +67,23 @@ export default function KonsultasiBisnisPage() {
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p) => p.title || p.description)
-                : undefined) ||
-              (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
-              DEFAULT_BUSINESS_MODULE.scopes;
+                ? c.pillars.map((p: any) => p.title || p.description)
+                : undefined) || [
+                "Konsultasi perencanaan keuangan dan strategi bisnis",
+                "Evaluasi kinerja dan manajemen risiko korporasi",
+              ];
 
             const rawDeliverable =
               (c.deliverable && c.deliverable.trim()) ||
               (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
-              DEFAULT_BUSINESS_MODULE.deliverable;
+              "Laporan Analisis Bisnis & Finansial";
 
             return {
               id: c.id,
               code: c.code || c.id,
-              title: c.name || apiItem?.service_name || DEFAULT_BUSINESS_MODULE.title,
-              badge: c.badge || DEFAULT_BUSINESS_MODULE.badge,
-              subtitle: c.subtitle || apiItem?.description || DEFAULT_BUSINESS_MODULE.subtitle,
+              title: c.name,
+              badge: c.badge || "BUSINESS & FINANCIAL",
+              subtitle: c.subtitle || "Konsultasi bisnis dan strategi finansial korporasi",
               scopes: rawScopes,
               deliverable: rawDeliverable,
               topicParam: c.topicParam || "studi-kelayakan",
@@ -118,8 +93,6 @@ export default function KonsultasiBisnisPage() {
             };
           })
         );
-      } else if (!isDefaultDeleted) {
-        setModules([DEFAULT_BUSINESS_MODULE]);
       } else {
         setModules([]);
       }
@@ -138,12 +111,30 @@ export default function KonsultasiBisnisPage() {
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
-              (cat.includes("bisnis") || cat.includes("finan") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial")) &&
+              (cat.includes("bisnis") || cat.includes("finan") || cat.includes("consulting") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
 
-          syncModules(bizFromApi);
+          if (bizFromApi.length > 0) {
+            setModules(
+              bizFromApi.map((c: PublicServiceItem) => ({
+                id: `FIN-${c.id}`,
+                code: c.service_code || `FIN-${c.id}`,
+                title: c.service_name,
+                badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
+                subtitle: c.description || "Konsultasi restrukturisasi bisnis dan manajemen arus kas perusahaan",
+                scopes: c.features && c.features.length > 0 ? c.features : [
+                  "Konsultasi perencanaan keuangan dan strategi bisnis",
+                  "Evaluasi kinerja dan manajemen risiko korporasi",
+                ],
+                deliverable: "Laporan Studi Kelayakan Bisnis & Analisis Finansial",
+                topicParam: "studi-kelayakan",
+                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+              }))
+            );
+            return;
+          }
         }
       })
       .catch(() => {

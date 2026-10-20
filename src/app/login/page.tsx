@@ -75,7 +75,6 @@ function LoginFormContent() {
           const role = res.data.user
             ? normalizeRole(res.data.user.role, res.data.user.email)
             : "user";
-          localStorage.setItem("token", res.data.token);
           setAuthToken(res.data.token, role);
 
           if (res.data.user) {

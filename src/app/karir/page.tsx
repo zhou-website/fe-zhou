@@ -80,7 +80,7 @@ export default function CareerPage() {
   const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
   const [selectedJobToApply, setSelectedJobToApply] = useState<JobPosition | null>(null);
 
-  // Sync Career Settings with localStorage on mount & events + fetch Backend Careers
+  // Sync Career Settings with Backend API Database on mount & events + fetch Backend Careers
   useEffect(() => {
     let isMounted = true;
     const currentSettings = getStoredCareerSettings();
@@ -88,6 +88,22 @@ export default function CareerPage() {
     if (currentSettings.positions && currentSettings.positions.length > 0) {
       setJobsList(currentSettings.positions);
     }
+
+    // Ambil pengaturan status karir dari database server
+    publicApi
+      .getCareerSettings()
+      .then((sRes) => {
+        if (!isMounted || !sRes?.data) return;
+        const cData = sRes.data;
+        setCareerSettings((prev) => ({
+          ...prev,
+          isOpen: cData.isOpen,
+          closedTitle: cData.closedTitle,
+          closedMessage: cData.closedMessage,
+          closedPeriodNote: cData.closedPeriodNote,
+        }));
+      })
+      .catch(() => {});
 
     // Fetch live careers from Backend API
     publicApi
@@ -429,34 +445,34 @@ export default function CareerPage() {
     setIsSubmitting(true);
 
     try {
-      // 5. Validasi Server-Side melalui Route Handler Next.js & Backend
+      // 5. Validasi Server-Side melalui Route Handler Next.js & Backend dengan Berkas Fisik Asli
+      const formData = new FormData();
+      formData.append("job_id", String(numJobId));
+      formData.append("position_title", targetJob?.title || "Pendaftaran Karir");
+      formData.append("applicant_name", fullName.trim());
+      formData.append("name", fullName.trim());
+      formData.append("applicant_email", cleanEmail);
+      formData.append("email", cleanEmail);
+      formData.append("applicant_phone", phone.trim());
+      formData.append("phone", phone.trim());
+      if (education.trim()) formData.append("education", education.trim());
+      if (linkedin.trim()) formData.append("linkedin", linkedin.trim());
+      if (coverLetter.trim()) formData.append("cover_letter", coverLetter.trim());
+      formData.append("agree_terms", String(agreeTerms));
+      if (uploadedFile) {
+        formData.append("file", uploadedFile);
+        formData.append("cv", uploadedFile);
+        formData.append("resume", uploadedFile);
+      }
+
       const serverValidationPromise = fetch("/api/karir/apply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          job_id: numJobId,
-          position_title: targetJob?.title || "Pendaftaran Karir",
-          applicant_name: fullName.trim(),
-          applicant_email: cleanEmail,
-          applicant_phone: phone.trim(),
-          education: education.trim(),
-          linkedin: linkedin.trim(),
-          cover_letter: coverLetter.trim(),
-          agree_terms: agreeTerms,
-          cv_file_name: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
-          cv_file_size: uploadedFile ? uploadedFile.size : 0,
-          cv_mime_type: uploadedFile ? uploadedFile.type : "application/pdf",
-        }),
+        body: formData,
       })
         .then((r) => r.json().catch(() => null))
         .catch(() => null);
 
-      const remoteApiPromise = publicApi.applyCareer(numJobId, {
-        applicant_name: fullName.trim(),
-        applicant_email: cleanEmail,
-        applicant_phone: phone.trim(),
-        cv_file_path: uploadedFile ? uploadedFile.name : "cv-pelamar.pdf",
-      });
+      const remoteApiPromise = publicApi.applyCareer(numJobId, formData);
 
       const [serverRes, res] = await Promise.all([serverValidationPromise, remoteApiPromise]);
 

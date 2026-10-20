@@ -416,6 +416,17 @@ function AdminTugasSayaContent() {
 
         showToast(`Dokumen deliverable "${detailSendFile.name}" berhasil dikirimkan ke Klien.`);
       } else if (detailDocNotes.trim()) {
+        const rawId = parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.numericId;
+        if (rawId) {
+          try {
+            await adminApi.updateConsultation(rawId, {
+              description: detailDocNotes.trim(),
+            });
+          } catch (apiErr) {
+            console.warn("Backend consultation notes update:", apiErr);
+          }
+        }
+
         const updateRes = updateStoredClientTicketProgress(
           selectedTicket.id,
           { notes: detailDocNotes.trim() },

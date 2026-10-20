@@ -133,54 +133,7 @@ export async function POST(req: NextRequest) {
     // Daftarkan kunci atomic di server registry
     serverAppliedApplications.add(lockKey);
 
-    // 4. Integrasi dengan Backend Remote jika tersedia
-    const rawBackendUrl = process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162";
-    const backendBaseUrl = rawBackendUrl
-      .trim()
-      .replace(/\/+$/, "")
-      .replace(/\/docs\/?$/i, "")
-      .replace(/\/api\/?$/i, "")
-      .replace(/https:\/\/43\.173\.2\.162\.sslip\.io/i, "http://43.173.2.162");
-    const numericJobId = parseInt(normalizedJobId.replace(/\D/g, ""), 10) || 1;
-
-    try {
-      const backendRes = await fetch(`${backendBaseUrl}/api/v1/public/careers/${numericJobId}/apply`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          job_id: normalizedJobId,
-          applicant_name: fullName.trim(),
-          applicant_email: normalizedEmail,
-          applicant_phone: phone.trim(),
-          education: education.trim() || undefined,
-          linkedin: linkedin.trim() || undefined,
-          cover_letter: coverLetter.trim() || undefined,
-          cv_file_path: cvFileName,
-        }),
-      });
-
-      if (!backendRes.ok) {
-        const backendJson = await backendRes.json().catch(() => null);
-        const errText = (backendJson?.message || "").toLowerCase();
-        if (backendRes.status === 409 || errText.includes("already") || errText.includes("sudah") || errText.includes("duplicate")) {
-          return NextResponse.json(
-            {
-              success: false,
-              message: "Email ini sudah digunakan untuk melamar posisi ini. Silakan periksa kembali data lamaran Anda.",
-              duplicate: true,
-            },
-            { status: 409 }
-          );
-        }
-      }
-    } catch {
-      // Graceful fallback jika server remote offline / sandbox mode
-    }
-
-    // 5. Generate Registration Code Resmi
+    // 4. Generate Registration Code Resmi
     const registrationCode = `ZHOU-REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // 6. Kirim email konfirmasi otomatis kepada pelamar (asinkron aman setelah data lamaran tersimpan)
