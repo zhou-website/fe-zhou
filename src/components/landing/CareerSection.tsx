@@ -65,6 +65,7 @@ export function CareerSection() {
   const [applicantEmail, setApplicantEmail] = useState<string>("");
   const [applicantPhone, setApplicantPhone] = useState<string>("");
   const [fileName, setFileName] = useState<string>("");
+  const [uploadedCvFile, setUploadedCvFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [applyError, setApplyError] = useState<string>("");
@@ -156,15 +157,18 @@ export function CareerSection() {
       if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
         setFileError("Format CV harus PDF.");
         setFileName("");
+        setUploadedCvFile(null);
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
         setFileError("Ukuran CV melebihi batas 5 MB.");
         setFileName("");
+        setUploadedCvFile(null);
         return;
       }
       setFileError("");
       setFileName(file.name);
+      setUploadedCvFile(file);
     }
   };
 
@@ -180,6 +184,7 @@ export function CareerSection() {
     setApplicantEmail("");
     setApplicantPhone("");
     setFileName("");
+    setUploadedCvFile(null);
     setFileError("");
     setApplyError("");
   };
@@ -191,6 +196,7 @@ export function CareerSection() {
     setApplicantEmail("");
     setApplicantPhone("");
     setFileName("");
+    setUploadedCvFile(null);
     setFileError("");
     setApplyError("");
   };
@@ -220,20 +226,28 @@ export function CareerSection() {
     setApplyError("");
 
     try {
+      const formData = new FormData();
+      formData.append("job_id", String(selectedJobApply?.backendId || selectedJobApply?.id || numId));
+      formData.append("position_title", selectedJobApply?.title || "Posisi Karir");
+      formData.append("full_name", applicantName.trim());
+      formData.append("name", applicantName.trim());
+      formData.append("applicant_name", applicantName.trim());
+      formData.append("email", cleanEmail);
+      formData.append("applicant_email", cleanEmail);
+      formData.append("phone", applicantPhone.trim());
+      formData.append("applicant_phone", applicantPhone.trim());
+      formData.append("education", "S1 / D4 / Pengalaman Profesional");
+      formData.append("agree_terms", "true");
+      if (uploadedCvFile) {
+        formData.append("file", uploadedCvFile);
+        formData.append("cv", uploadedCvFile);
+        formData.append("resume", uploadedCvFile);
+      }
+
       // 1. Panggil server apply route untuk validasi duplikasi & pengiriman email konfirmasi
       const serverRes = await fetch("/api/karir/apply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          job_id: String(selectedJobApply?.backendId || selectedJobApply?.id || numId),
-          position_title: selectedJobApply?.title || "Posisi Karir",
-          full_name: applicantName.trim(),
-          email: cleanEmail,
-          phone: applicantPhone.trim(),
-          education: "S1 / D4 / Pengalaman Profesional",
-          agree_terms: true,
-          cv_file_name: fileName || "cv_applicant.pdf",
-        }),
+        body: formData,
       })
         .then((r) => r.json())
         .catch(() => null);
@@ -245,13 +259,8 @@ export function CareerSection() {
         }
       }
 
-      // 2. Simpan ke backend remote jika aktif
-      const res = await publicApi.applyCareer(numId, {
-        applicant_name: applicantName.trim(),
-        applicant_email: cleanEmail,
-        applicant_phone: applicantPhone.trim(),
-        cv_file_path: fileName || "cv_applicant.pdf",
-      });
+      // 2. Simpan ke backend remote dengan berkas CV fisik asli
+      const res = await publicApi.applyCareer(numId, formData);
 
       if (!res.success && res.error !== "NETWORK_ERROR") {
         const errorText = (res.message || res.error || "").toLowerCase();

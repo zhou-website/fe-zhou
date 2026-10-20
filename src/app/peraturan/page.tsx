@@ -53,7 +53,7 @@ export default function PeraturanPage() {
 
   const itemsPerPage = 5;
 
-  // Load from localStorage or defaults and listen to updates from Admin CRUD & KMK
+  // Load from Backend API & state and listen to updates from Admin CRUD & KMK
   useEffect(() => {
     let isMounted = true;
     const legalMeta = getStoredRegulationLegalMeta();
@@ -121,15 +121,13 @@ export default function PeraturanPage() {
                 legalStatus: meta.status,
                 replacementRef: meta.replacementRef,
                 status: pubStatus as RegulationStatus,
-                downloadUrl: item.file_path || "#",
+                downloadUrl: item.download_url || item.file_url || item.file_path || "#",
               };
             });
 
-          setRegulations((prev) => {
-            const titles = new Set(apiRegs.map((r) => r.docNumber.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.docNumber.toLowerCase()));
-            return [...apiRegs, ...localOnly];
-          });
+          setRegulations(apiRegs);
+        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+          setRegulations([]);
         }
       })
       .catch((err) => {
@@ -201,7 +199,7 @@ export default function PeraturanPage() {
     const counts: Record<string, number> = {
       Semua: published.length,
     };
-    REGULATION_CATEGORIES.forEach((cat) => {
+    REGULATION_CATEGORIES.forEach((cat: string) => {
       if (cat !== "Semua") {
         counts[cat] = published.filter((r) => r.category === cat).length;
       }
@@ -511,7 +509,7 @@ export default function PeraturanPage() {
 
                 {/* Category Pills directly above table */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pt-2.5 border-t border-primary-light/60 pb-1 text-xs">
-                  {REGULATION_CATEGORIES.map((cat) => (
+                  {REGULATION_CATEGORIES.map((cat: string) => (
                     <button
                       key={cat}
                       type="button"

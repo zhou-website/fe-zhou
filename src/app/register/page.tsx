@@ -133,7 +133,6 @@ function RegisterFormContent() {
 
         if (res.success && res.data?.token) {
           // Simpan token JWT dari response backend
-          localStorage.setItem("token", res.data.token);
           setAuthToken(res.data.token);
 
           if (res.data.user) {

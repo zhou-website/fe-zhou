@@ -23,43 +23,7 @@ export interface FAQItem {
   answer: string;
 }
 
-export const DEFAULT_FAQ_LIST: FAQItem[] = [
-  {
-    id: "faq-1",
-    category: "Layanan Perpajakan",
-    question: "Apa saja cakupan layanan konsultasi perpajakan di Zhou Consulting?",
-    answer:
-      "Layanan Konsultasi Perpajakan Zhou Consulting mencakup Tax Compliance (SPT Masa & Tahunan), pendampingan integrasi Coretax DJP 2026, Tax Advisory & Planning, penanganan sengketa & tanggapan SP2DK, asistensi pemeriksaan pajak, serta konsultasi transfer pricing dan kepatuhan perpajakan korporasi.",
-  },
-  {
-    id: "faq-2",
-    category: "Prosedur & Validasi",
-    question: "Bagaimana prosedur penelaahan dan validasi dokumen perpajakan?",
-    answer:
-      "Dokumen klien dianalisis melalui 3 tahap telaah: verifikasi kelengkapan berkas oleh tim analis, review kepatuhan regulasi oleh Konsultan Berizin BKP, dan pengesahan akhir oleh Lead Partner. Seluruh berkas dilindungi enkripsi SHA-256 dan pakta kerahasiaan NDA.",
-  },
-  {
-    id: "faq-3",
-    category: "Konsultasi & Monitoring",
-    question: "Bagaimana cara memantau progres status proyek atau konsultasi yang sedang berjalan?",
-    answer:
-      "Anda dapat memantau alur pengerjaan secara real-time melalui menu Layanan Konsultasi atau portal klien. Setiap lembar kerja menampilkan tahapan milestone, persentase progres, catatan konsultan lead, dan estimasi waktu penyelesaian.",
-  },
-  {
-    id: "faq-4",
-    category: "Layanan & Pendaftaran",
-    question: "Bagaimana mekanisme tanda tangan elektronik (e-Sign) laporan resmi?",
-    answer:
-      "Laporan dan kertas kerja final ditandatangani secara digital menggunakan Sertifikat Elektronik resmi berstandar kriptografi terakreditasi BSrE/Kominfo. Berkas luaran tersimpan secara permanen dan aman di Secured Vault Dokumen Pajak akun Anda.",
-  },
-  {
-    id: "faq-5",
-    category: "Kepatuhan SPT & Coretax",
-    question: "Bagaimana cara mengajukan tiket konsultasi atau permohonan baru?",
-    answer:
-      "Anda dapat mengajukan permohonan konsultasi baru langsung melalui formulir Reservasi Konsultasi di website kami. Tim konsultan kami akan meninjau kebutuhan penugasan dan segera mengonfirmasi jadwal serta dokumen pendukung yang diperlukan.",
-  },
-];
+export const DEFAULT_FAQ_LIST: FAQItem[] = [];
 
 export interface ChatExchange {
   id: string;
@@ -81,7 +45,7 @@ export function ChatbotWidget({
   whatsappNumber,
   className = "",
 }: ChatbotWidgetProps) {
-  const [faqs, setFaqs] = useState<FAQItem[]>(DEFAULT_FAQ_LIST);
+  const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatExchange[]>([]);
   const [selectedFaqId, setSelectedFaqId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -91,7 +55,7 @@ export function ChatbotWidget({
     whatsappNumber || process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
   const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6285121286086";
 
-  // Sync FAQ tree from backend if available, fallback safely without error
+  // Sync FAQ tree from backend
   useEffect(() => {
     let isMounted = true;
     async function loadFaqs() {
@@ -120,8 +84,8 @@ export function ChatbotWidget({
           );
           setFaqs(mapped);
         }
-      } catch {
-        // Fallback gracefully to DEFAULT_FAQ_LIST without breaking public flow
+      } catch (err) {
+        console.warn("Gagal memuat pohon keputusan chatbot:", err);
       }
     }
 

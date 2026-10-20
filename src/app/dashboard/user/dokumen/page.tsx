@@ -215,7 +215,7 @@ export default function ClientDocumentVaultPage() {
       const mergedList: VaultDocument[] = [];
       const seenNames = new Set<string>();
 
-      [...ticketDocs, ...convertedLocal, ...backendDocs].forEach((doc) => {
+      [...backendDocs, ...ticketDocs, ...convertedLocal].forEach((doc) => {
         const key = doc.name.toLowerCase().trim();
         if (!seenNames.has(key)) {
           seenNames.add(key);

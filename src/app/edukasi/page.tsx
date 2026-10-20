@@ -353,7 +353,7 @@ function EducationPortalContent() {
   const [activeArticleModal, setActiveArticleModal] = useState<ZhouArticle | null>(null);
   const [downloadSuccessModal, setDownloadSuccessModal] = useState<string | null>(null);
 
-  // Load articles from localStorage on mount and listen to updates
+  // Load articles from Backend API & state on mount and listen to updates
   useEffect(() => {
     let isMounted = true;
     setArticlesList(getStoredZhouArticles());
@@ -402,29 +402,20 @@ function EducationPortalContent() {
               content: [cleanBody],
               status: getCmsItemStatus(`be-${item.id}`, item.title, "Published", [item.id]) === "Draft" ? "Draft" : "Published",
               image: image,
+              attachment: (item.download_url || item.file_url || item.file_path)
+                ? {
+                    name: `${item.title.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 40)}.pdf`,
+                    type: "PDF",
+                    size: "1.5 MB",
+                    url: item.download_url || item.file_url || item.file_path,
+                  }
+                : undefined,
             };
           });
 
-          setArticlesList((prev) => {
-            const localMap = new Map(
-              prev.map((p) => [p.title.toLowerCase().trim(), p])
-            );
-            const mergedApi: ZhouArticle[] = apiArticles.map((apiItem) => {
-              const localMatch = localMap.get(apiItem.title.toLowerCase().trim());
-              return {
-                ...apiItem,
-                image: apiItem.image || localMatch?.image || undefined,
-                attachment: apiItem.attachment || localMatch?.attachment || undefined,
-              };
-            });
-            const apiTitles = new Set(
-              apiArticles.map((a) => a.title.toLowerCase().trim())
-            );
-            const localOnly = prev.filter(
-              (p) => !apiTitles.has(p.title.toLowerCase().trim())
-            );
-            return [...mergedApi, ...localOnly];
-          });
+          setArticlesList(apiArticles);
+        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+          setArticlesList([]);
         }
       })
       .catch((err) => {
@@ -448,7 +439,7 @@ function EducationPortalContent() {
 
   // Filtered Zhou Articles
   const filteredArticles = useMemo(() => {
-    const source = articlesList.length > 0 ? articlesList : ZHOU_ARTICLES;
+    const source = articlesList;
     return source.filter((item) => {
       // Sembunyikan artikel berstatus Draft dari website publik
       if (item.status && item.status !== "Published") return false;
@@ -465,7 +456,7 @@ function EducationPortalContent() {
 
   // Featured articles list for carousel (managed by Admin)
   const featuredArticles = useMemo(() => {
-    const source = articlesList.length > 0 ? articlesList : ZHOU_ARTICLES;
+    const source = articlesList;
     const published = source.filter((a) => !a.status || a.status === "Published");
     const featured = published.filter((a) => a.isFeatured !== false);
     return featured.length > 0 ? featured : published.slice(0, 3);

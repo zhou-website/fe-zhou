@@ -115,8 +115,7 @@ export function ServicesSection() {
             };
           });
 
-          // Merge backend items with updated 4 core services
-          if (apiServices.length >= 4) {
+          if (apiServices.length > 0) {
             setServices(apiServices);
           }
         }
@@ -131,14 +130,9 @@ export function ServicesSection() {
     };
   }, []);
 
-  // Pastikan 4 layanan utama Zhou Consulting selalu lengkap
-  const coreCategoryKeys = ["akuntansi", "bisnis", "tax-service", "hukum"];
-  const displayServices = coreCategoryKeys.map((key) => {
-    const found = services.find(
-      (s) => s.categoryKey?.toLowerCase() === key && s.status === "Published"
-    );
-    return found || DEFAULT_SERVICES.find((d) => d.categoryKey === key)!;
-  });
+  const displayServices = services.filter(
+    (s) => s && s.name && s.status !== "Draft" && s.status !== "Archived"
+  );
 
   return (
     <section
@@ -159,55 +153,63 @@ export function ServicesSection() {
         </div>
 
         {/* 4 Core Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayServices.slice(0, 4).map((service) => (
-            <Card
-              key={service.id || service.route}
-              className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-2xl bg-white border-primary-light p-5 space-y-5"
-            >
-              <div className="space-y-3">
-                <CardHeader className="p-0 space-y-2">
-                  <Link
-                    href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}
-                    className="hover:underline"
+        {displayServices.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-64 rounded-2xl bg-slate-100/80 animate-pulse border border-slate-200/60 p-5 flex flex-col justify-between" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {displayServices.slice(0, 4).map((service) => (
+              <Card
+                key={service.id || service.route}
+                className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-2xl bg-white border-primary-light p-5 space-y-5"
+              >
+                <div className="space-y-3">
+                  <CardHeader className="p-0 space-y-2">
+                    <Link
+                      href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}
+                      className="hover:underline"
+                    >
+                      <CardTitle className="text-base font-bold text-primary leading-snug">
+                        {service.name}
+                      </CardTitle>
+                    </Link>
+                    <CardDescription className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                      {service.subtitle}
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent className="p-0 pt-2 space-y-2 text-xs text-text-primary">
+                    {service.pillars?.slice(0, 3).map((pillar: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <CheckCircleIcon className="text-emerald-600 text-xs shrink-0 mt-0.5" />
+                        <span className="line-clamp-1 text-[11px] font-medium text-text-secondary">
+                          {pillar.title}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </div>
+
+                <CardFooter className="p-0 pt-4 border-t border-primary-light/80">
+                  <a
+                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                      `Halo Zhou Consulting, saya ingin konsultasi mengenai ${service.name}.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-[#060D22] hover:bg-[#111e42] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                   >
-                    <CardTitle className="text-base font-bold text-primary leading-snug">
-                      {service.name}
-                    </CardTitle>
-                  </Link>
-                  <CardDescription className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                    {service.subtitle}
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="p-0 pt-2 space-y-2 text-xs text-text-primary">
-                  {service.pillars?.slice(0, 3).map((pillar, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <CheckCircleIcon className="text-emerald-600 text-xs shrink-0 mt-0.5" />
-                      <span className="line-clamp-1 text-[11px] font-medium text-text-secondary">
-                        {pillar.title}
-                      </span>
-                    </div>
-                  ))}
-                </CardContent>
-              </div>
-
-              <CardFooter className="p-0 pt-4 border-t border-primary-light/80">
-                <a
-                  href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                    `Halo Zhou Consulting, saya ingin konsultasi mengenai ${service.name}.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-[#060D22] hover:bg-[#111e42] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-                >
-                  <WhatsappIcon className="text-xs text-emerald-400" />
-                  <span>Konsultasi</span>
-                </a>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                    <WhatsappIcon className="text-xs text-emerald-400" />
+                    <span>Konsultasi</span>
+                  </a>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
 
       </div>
     </section>

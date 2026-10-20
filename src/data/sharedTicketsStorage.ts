@@ -1,4 +1,4 @@
-import { ConsultationItem } from "@/lib/api";
+import { ConsultationItem, adminApi } from "@/lib/api";
 import { savePersistentFileBlob, getPersistentFileBlob } from "@/lib/fileStorageDB";
 
 export type ConsultationStatus =
@@ -130,96 +130,7 @@ export const STAFF_UPDATED_EVENT = "zhou_staff_updated";
 /**
  * Daftar default tim Admin/PIC Zhou Consulting dengan pemetaan divisi layanan
  */
-export const DEFAULT_STAFF_ADMINS: StaffAdminProfile[] = [
-  {
-    id: "ADM-001",
-    numericId: 1,
-    name: "Super Administrator Zhou",
-    email: "superadmin@zhouconsulting.com",
-    nip: "SPR-001",
-    phone: "+6281234567890",
-    role: "superadmin",
-    divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
-    isActive: true,
-  },
-  {
-    id: "ADM-002",
-    numericId: 2,
-    name: "Konsultan Senior Zhou",
-    email: "admin@zhouconsulting.com",
-    nip: "ADM-002",
-    phone: "+6281234567899",
-    role: "admin",
-    divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
-    isActive: true,
-  },
-  {
-    id: "ADM-005",
-    numericId: 5,
-    name: "Muhammad Dekhsa Afnan",
-    email: "dekhsafnan@gmail.com",
-    nip: "SPR-005",
-    phone: "+62 81210619043",
-    role: "superadmin",
-    divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
-    isActive: true,
-  },
-  {
-    id: "ADM-023",
-    numericId: 23,
-    name: "Ana, S.E",
-    email: "ana@zhouconsulting",
-    nip: "ADM-023",
-    phone: "+62 812-9876-1202",
-    role: "admin",
-    divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
-    isActive: true,
-  },
-  {
-    id: "ADM-024",
-    numericId: 24,
-    name: "Admin2",
-    email: "admin2@zhouconsulting",
-    nip: "ADM-024",
-    phone: "+62 812-9876-1201",
-    role: "admin",
-    divisions: ["Tax Service Core", "Accounting Service", "Legal Compliance"],
-    isActive: true,
-  },
-  {
-    id: "STF-BE-32",
-    numericId: 32,
-    name: "Tasya",
-    email: "tasya123@gmail.com",
-    nip: "ADM-032",
-    phone: "+62 81536749946",
-    role: "admin",
-    divisions: ["Tax Service Core"],
-    isActive: true,
-  },
-  {
-    id: "STF-BE-33",
-    numericId: 33,
-    name: "Anna",
-    email: "Anna123@gmail.com",
-    nip: "SPR-033",
-    phone: "+62 82914658836",
-    role: "superadmin",
-    divisions: ["IT & Operasional"],
-    isActive: true,
-  },
-  {
-    id: "STF-BE-26",
-    numericId: 26,
-    name: "Lydian,S.AK",
-    email: "lydia123@gmail.com",
-    nip: "ADM-026",
-    phone: "+62 81532638856",
-    role: "admin",
-    divisions: ["Accounting Service", "Tax Service Core"],
-    isActive: true,
-  },
-];
+export const DEFAULT_STAFF_ADMINS: StaffAdminProfile[] = [];
 
 /**
  * Normalisasi status lama menjadi alur status resmi
@@ -238,32 +149,22 @@ export function normalizeConsultationStatus(rawStatus?: string, assignedName?: s
   return assignedName ? "Ditugaskan" : "Menunggu Penugasan";
 }
 
+let memoryStaffAdmins: StaffAdminProfile[] = [];
+
 /**
- * Membaca daftar staff admin dan divisi spesialisasi
+ * Membaca daftar staff admin dan divisi spesialisasi (in-memory)
  */
 export function getStoredStaffAdmins(): StaffAdminProfile[] {
-  if (typeof window === "undefined") return DEFAULT_STAFF_ADMINS;
-  try {
-    const raw = localStorage.getItem(STAFF_ADMINS_STORAGE_KEY);
-    if (!raw) return DEFAULT_STAFF_ADMINS;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_STAFF_ADMINS;
-  } catch (err) {
-    console.error("Gagal membaca zhou_staff_admins_roster:", err);
-    return DEFAULT_STAFF_ADMINS;
-  }
+  return [...memoryStaffAdmins];
 }
 
 /**
- * Menyimpan pembaruan staff admin
+ * Menyimpan pembaruan staff admin (in-memory)
  */
 export function saveStoredStaffAdmins(staff: StaffAdminProfile[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STAFF_ADMINS_STORAGE_KEY, JSON.stringify(staff));
+  memoryStaffAdmins = staff;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(STAFF_UPDATED_EVENT));
-  } catch (err) {
-    console.error("Gagal menyimpan zhou_staff_admins_roster:", err);
   }
 }
 
@@ -483,79 +384,75 @@ export function getDisplayPicName(ticket?: {
 /**
  * Membaca tiket kustom / booking yang dibuat pengguna
  */
-export function getStoredClientTickets(): ClientTicket[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(TICKETS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+let memoryTickets: ClientTicket[] = [];
 
-    // Normalisasi data migrasi tiket dan bersihkan tiket dummy / terhapus
-    return parsed
+/**
+ * Membaca tiket kustom / booking yang dibuat pengguna (in-memory)
+ */
+export function getStoredClientTickets(): ClientTicket[] {
+  try {
+    return memoryTickets
       .filter((t) => !isDummyTicketRecord(t) && !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)))
       .map((t) => {
-      const normalizedStatus = normalizeConsultationStatus(t.status, t.assignedAdminName || (t.consultant && !t.consultant.includes("Menunggu") ? t.consultant : undefined));
-      
-      // Hitung progres dari milestones secara dinamis dan presisi
-      const safeMilestones: Milestone[] | undefined = t.milestones;
-      let safeProgress = typeof t.progress === "number" ? t.progress : 35;
+        const normalizedStatus = normalizeConsultationStatus(
+          t.status,
+          t.assignedAdminName || (t.consultant && !t.consultant.includes("Menunggu") ? t.consultant : undefined)
+        );
 
-      if (Array.isArray(safeMilestones) && safeMilestones.length > 0) {
-        const completedCount = safeMilestones.filter((m: Milestone) => m.status === "completed").length;
-        safeProgress = Math.round((completedCount / safeMilestones.length) * 100);
-      }
+        const safeMilestones: Milestone[] | undefined = t.milestones;
+        let safeProgress = typeof t.progress === "number" ? t.progress : 35;
 
-      let finalStatus = normalizedStatus;
-      if (safeProgress === 100) {
-        finalStatus = "Selesai";
-      } else if (safeProgress > 0) {
-        finalStatus = "Dalam Proses";
-      } else if (finalStatus === "Selesai" && safeProgress < 100) {
-        finalStatus = "Dalam Proses";
-      }
+        if (Array.isArray(safeMilestones) && safeMilestones.length > 0) {
+          const completedCount = safeMilestones.filter((m: Milestone) => m.status === "completed").length;
+          safeProgress = Math.round((completedCount / safeMilestones.length) * 100);
+        }
 
-      const safeCategory =
-        t.category && String(t.category).trim() !== ""
-          ? String(t.category).trim()
-          : "Tax Service Core";
+        let finalStatus = normalizedStatus;
+        if (safeProgress === 100) {
+          finalStatus = "Selesai";
+        } else if (safeProgress > 0) {
+          finalStatus = "Dalam Proses";
+        } else if (finalStatus === "Selesai" && safeProgress < 100) {
+          finalStatus = "Dalam Proses";
+        }
 
-      return {
-        ...t,
-        category: safeCategory,
-        createdAt: formatConsultationDate(t.createdAt),
-        status: finalStatus,
-        progress: safeProgress,
-        milestones: safeMilestones,
-        consultant:
-          t.assignedAdminName && getDisplayPicName({ assignedAdminName: t.assignedAdminName }) !== "Menunggu PIC"
-            ? t.assignedAdminName
-            : t.consultant && getDisplayPicName({ consultant: t.consultant, status: t.status }) !== "Menunggu PIC"
-            ? t.consultant
-            : "Menunggu PIC",
-        clientDocuments: t.clientDocuments || [],
-        priority: t.priority || "Normal",
-        isArchived: Boolean(t.isArchived || isTicketArchived(t.id)),
-        archivedAt: t.archivedAt,
-      };
-    });
+        const safeCategory =
+          t.category && String(t.category).trim() !== ""
+            ? String(t.category).trim()
+            : "Tax Service Core";
+
+        return {
+          ...t,
+          category: safeCategory,
+          createdAt: formatConsultationDate(t.createdAt),
+          status: finalStatus,
+          progress: safeProgress,
+          milestones: safeMilestones,
+          consultant:
+            t.assignedAdminName && getDisplayPicName({ assignedAdminName: t.assignedAdminName }) !== "Menunggu PIC"
+              ? t.assignedAdminName
+              : t.consultant && getDisplayPicName({ consultant: t.consultant, status: t.status }) !== "Menunggu PIC"
+              ? t.consultant
+              : "Menunggu PIC",
+          clientDocuments: t.clientDocuments || [],
+          priority: t.priority || "Normal",
+          isArchived: Boolean(t.isArchived || isTicketArchived(t.id)),
+          archivedAt: t.archivedAt,
+        };
+      });
   } catch (err) {
-    console.error("Gagal membaca zhou_client_custom_tickets:", err);
+    console.error("Gagal membaca tiket klien in-memory:", err);
     return [];
   }
 }
 
 /**
- * Menyimpan tiket dan mentrigger event agar dashboard admin dan user langsung tersinkron
+ * Menyimpan tiket ke in-memory dan mentrigger event agar dashboard admin dan user langsung tersinkron
  */
 export function saveStoredClientTickets(tickets: ClientTicket[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(tickets));
+  memoryTickets = tickets;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(TICKETS_UPDATED_EVENT));
-    window.dispatchEvent(new StorageEvent("storage", { key: TICKETS_STORAGE_KEY }));
-  } catch (err) {
-    console.error("Gagal menyimpan zhou_client_custom_tickets:", err);
   }
 }
 
@@ -655,25 +552,25 @@ export function mergeTicketsWithLocalOverrides(
         }
       });
 
-      // Priority: Editan lokal menimpa data mentah backend
+      // Priority: Data live backend didahulukan sebagai Single Source of Truth
       merged[existingIdx] = {
-        ...bt,
         ...lt,
+        ...bt,
         id: bt.id || lt.id,
         numericId: bt.numericId || lt.numericId,
         deliverables: combinedDeliverables,
         clientDocuments: combinedClientDocs,
         correspondences: combinedCorrespondences,
-        milestones: (lt.milestones && lt.milestones.length > 0) ? lt.milestones : bt.milestones,
-        status: lt.status || bt.status,
-        progress: lt.progress !== undefined ? lt.progress : bt.progress,
-        consultant: (lt.consultant && !lt.consultant.includes("Menunggu"))
-          ? lt.consultant
-          : (bt.consultant || lt.consultant),
-        assignedAdminName: lt.assignedAdminName || bt.assignedAdminName,
-        assignedAdminEmail: lt.assignedAdminEmail || bt.assignedAdminEmail,
-        assignedAdminId: lt.assignedAdminId || bt.assignedAdminId,
-        isArchived: Boolean(lt.isArchived ?? bt.isArchived),
+        milestones: (bt.milestones && bt.milestones.length > 0) ? bt.milestones : lt.milestones,
+        status: bt.status || lt.status,
+        progress: bt.progress !== undefined ? bt.progress : lt.progress,
+        consultant: (bt.consultant && !bt.consultant.includes("Menunggu"))
+          ? bt.consultant
+          : (lt.consultant || bt.consultant),
+        assignedAdminName: bt.assignedAdminName || lt.assignedAdminName,
+        assignedAdminEmail: bt.assignedAdminEmail || lt.assignedAdminEmail,
+        assignedAdminId: bt.assignedAdminId || lt.assignedAdminId,
+        isArchived: Boolean(bt.isArchived ?? lt.isArchived),
       };
     } else {
       merged.unshift(lt);
@@ -1482,37 +1379,24 @@ export function convertTicketToConsultationItem(ticket: ClientTicket): Consultat
   };
 }
 
+let memoryDocuments: AdminUploadedDocument[] = [];
+
 /**
- * Membaca dokumen yang diunggah Admin untuk klien
+ * Membaca dokumen yang diunggah Admin untuk klien (in-memory)
  */
 export function getStoredDocuments(): AdminUploadedDocument[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (d) => !isDummyDocumentRecord(d) && (!d.ticketId || !isTicketDeleted(d.ticketId))
-        )
-      : [];
-  } catch (err) {
-    console.error("Gagal membaca zhou_shared_documents:", err);
-    return [];
-  }
+  return memoryDocuments.filter(
+    (d) => !isDummyDocumentRecord(d) && (!d.ticketId || !isTicketDeleted(d.ticketId))
+  );
 }
 
 /**
- * Menyimpan daftar dokumen dan mentrigger event sinkronisasi ke user vault
+ * Menyimpan daftar dokumen dan mentrigger event sinkronisasi ke user vault (in-memory)
  */
 export function saveStoredDocuments(docs: AdminUploadedDocument[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(docs));
+  memoryDocuments = docs;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
-    window.dispatchEvent(new StorageEvent("storage", { key: DOCUMENTS_STORAGE_KEY }));
-  } catch (err) {
-    console.error("Gagal menyimpan zhou_shared_documents:", err);
   }
 }
 
@@ -1686,26 +1570,20 @@ export function clearAllStoredDocuments(): void {
 
 export const DELETED_TICKETS_KEY = "zhou_deleted_client_tickets";
 
+let memoryDeletedTickets: string[] = [];
+
 export function getDeletedTicketIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(DELETED_TICKETS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return [...memoryDeletedTickets];
 }
 
 export function isTicketDeleted(ticketId?: string | number | null): boolean {
   if (ticketId === undefined || ticketId === null || ticketId === "") return false;
-  if (typeof window === "undefined") return false;
-  const ids = getDeletedTicketIds();
-  if (ids.length === 0) return false;
+  if (memoryDeletedTickets.length === 0) return false;
 
   const searchStr = String(ticketId).toLowerCase().trim();
   const numericOnly = String(ticketId).replace(/\D/g, "");
 
-  return ids.some((id) => {
+  return memoryDeletedTickets.some((id) => {
     const cleanId = String(id).toLowerCase().trim();
     if (cleanId === searchStr) return true;
     if (numericOnly && cleanId === numericOnly) return true;
@@ -1719,15 +1597,20 @@ export function isTicketDeleted(ticketId?: string | number | null): boolean {
  * Menghapus satu tiket konsultasi berdasarkan ID / numericId
  */
 export function deleteStoredClientTicket(ticketId: string | number): void {
-  if (typeof window === "undefined" || !ticketId) return;
+  if (!ticketId) return;
   const rawStr = String(ticketId).toLowerCase().trim();
   const numStr = String(ticketId).replace(/\D/g, "");
   const toAdd = [rawStr, numStr].filter(Boolean);
-  try {
-    const deleted = getDeletedTicketIds();
-    const updated = Array.from(new Set([...deleted, ...toAdd]));
-    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(updated));
-  } catch {}
+  memoryDeletedTickets = Array.from(new Set([...memoryDeletedTickets, ...toAdd]));
+
+  // Hapus fisik dan rekod di server database backend jika terdapat ID numerik
+  const numericBackendId = parseInt(numStr, 10);
+  if (!isNaN(numericBackendId) && numericBackendId > 0) {
+    adminApi.deleteConsultation(numericBackendId).catch((err) => {
+      console.warn("adminApi.deleteConsultation sinkronisasi:", err);
+    });
+  }
+
   const current = getStoredClientTickets();
   const filtered = current.filter((t) => !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)));
   saveStoredClientTickets(filtered);
@@ -1745,89 +1628,82 @@ export function deleteStoredClientTicket(ticketId: string | number): void {
     saveStoredDocuments(filteredDocs);
   } catch {}
 
-  window.dispatchEvent(new Event("zhou_tickets_cleared"));
-  window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("zhou_tickets_cleared"));
+    window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
+  }
 }
 
 export const markTicketAsDeleted = deleteStoredClientTicket;
 
 /**
- * Menghapus seluruh tiket konsultasi yang ada (baik kustom maupun respon backend)
+ * Menghapus seluruh tiket konsultasi yang ada
  */
 export function clearAllStoredClientTickets(activeTicketIds: (string | number)[] = []): void {
-  if (typeof window === "undefined") return;
-  try {
-    const current = getStoredClientTickets();
-    const toAdd: string[] = [];
-    current.forEach((t) => {
-      toAdd.push(t.id.toLowerCase().trim());
-      if (t.numericId) toAdd.push(String(t.numericId));
-      const numOnly = t.id.replace(/\D/g, "");
+  const current = getStoredClientTickets();
+  const toAdd: string[] = [];
+  current.forEach((t) => {
+    toAdd.push(t.id.toLowerCase().trim());
+    if (t.numericId) toAdd.push(String(t.numericId));
+    const numOnly = t.id.replace(/\D/g, "");
+    if (numOnly) toAdd.push(numOnly);
+  });
+  activeTicketIds.forEach((id) => {
+    if (id !== undefined && id !== null) {
+      toAdd.push(String(id).toLowerCase().trim());
+      const numOnly = String(id).replace(/\D/g, "");
       if (numOnly) toAdd.push(numOnly);
-    });
-    activeTicketIds.forEach((id) => {
-      if (id !== undefined && id !== null) {
-        toAdd.push(String(id).toLowerCase().trim());
-        const numOnly = String(id).replace(/\D/g, "");
-        if (numOnly) toAdd.push(numOnly);
-      }
-    });
-    const existing = getDeletedTicketIds();
-    const updated = Array.from(new Set([...existing, ...toAdd]));
-    localStorage.setItem(DELETED_TICKETS_KEY, JSON.stringify(updated));
-  } catch {}
+    }
+  });
+  memoryDeletedTickets = Array.from(new Set([...memoryDeletedTickets, ...toAdd]));
   saveStoredClientTickets([]);
   saveStoredDocuments([]);
-  window.dispatchEvent(new Event("zhou_tickets_cleared"));
-  window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("zhou_tickets_cleared"));
+    window.dispatchEvent(new Event(DOCUMENTS_UPDATED_EVENT));
+  }
 }
 
 export const markAllTicketsAsDeleted = clearAllStoredClientTickets;
 
 export function clearDeletedTicketHistory(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(DELETED_TICKETS_KEY);
-  } catch {}
+  memoryDeletedTickets = [];
 }
 
 export const ARCHIVED_TICKETS_KEY = "zhou_archived_client_tickets";
 
+let memoryArchivedTickets: string[] = [];
+
 export function getArchivedTicketIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(ARCHIVED_TICKETS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return [...memoryArchivedTickets];
 }
 
 export function isTicketArchived(ticketId: string): boolean {
   if (!ticketId) return false;
-  const ids = getArchivedTicketIds();
-  return ids.includes(String(ticketId).toLowerCase().trim());
+  return memoryArchivedTickets.includes(String(ticketId).toLowerCase().trim());
 }
 
 /**
  * Mengubah status arsip (Arsip / Pulihkan dari Arsip)
  */
 export function toggleArchiveClientTicket(ticketId: string, fallbackTicket?: ClientTicket): boolean {
-  if (typeof window === "undefined") return false;
   const searchKey = ticketId.toLowerCase().trim();
-  const archivedIds = getArchivedTicketIds();
-  const isCurrentlyArchived = archivedIds.includes(searchKey);
+  const isCurrentlyArchived = memoryArchivedTickets.includes(searchKey);
   const nextArchivedState = !isCurrentlyArchived;
 
-  let updatedArchivedIds: string[];
   if (nextArchivedState) {
-    updatedArchivedIds = [...archivedIds.filter((id) => id !== searchKey), searchKey];
+    memoryArchivedTickets = [...memoryArchivedTickets.filter((id) => id !== searchKey), searchKey];
   } else {
-    updatedArchivedIds = archivedIds.filter((id) => id !== searchKey);
+    memoryArchivedTickets = memoryArchivedTickets.filter((id) => id !== searchKey);
   }
-  try {
-    localStorage.setItem(ARCHIVED_TICKETS_KEY, JSON.stringify(updatedArchivedIds));
-  } catch {}
+
+  // Panggil update arsip ke database server backend jika terdapat ID numerik
+  const numId = parseInt(ticketId.replace(/\D/g, ""), 10);
+  if (!isNaN(numId) && numId > 0) {
+    adminApi.archiveConsultation(numId, nextArchivedState).catch((err) => {
+      console.warn("adminApi.archiveConsultation sinkronisasi:", err);
+    });
+  }
 
   const tickets = getStoredClientTickets();
   const idx = tickets.findIndex((t) => t.id.toLowerCase() === searchKey);
