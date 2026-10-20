@@ -1,0 +1,216 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  EnvelopeIcon,
+  CheckCircleIcon,
+  QuestionCircleIcon,
+  PhoneIcon,
+} from "@/components/icons";
+
+import { authApi } from "@/lib/api";
+
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+
+    if (!email.trim()) {
+      setErrorMessage("Alamat email atau ID pengguna wajib diisi.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrorMessage("Format alamat email tidak valid.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await authApi.forgotPassword(email);
+      if (res.success) {
+        setIsSubmitted(true);
+      } else {
+        setErrorMessage(res.message || "Gagal mengirim email pemulihan. Pastikan email terdaftar.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menghubungi server live backend.";
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setIsLoading(true);
+    try {
+      await authApi.forgotPassword(email);
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-surface flex flex-col justify-between selection:bg-primary selection:text-white">
+      {/* Top Header */}
+      <header className="w-full bg-primary text-white py-4 px-6 border-b border-white/10 shadow-sm">
+        <div className="container-custom flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-primary font-bold text-lg">
+              Z
+            </div>
+            <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
+              ZHOU CONSULTING
+            </span>
+          </Link>
+
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/15 hover:border-white/30 text-silver hover:text-white transition-all text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer active:scale-[0.98]"
+            title="Kembali"
+          >
+            <span>Kembali</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Form Center */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-8">
+        <div className="w-full max-w-md bg-white rounded-xl border border-primary-light shadow-xl p-6 sm:p-8 space-y-6">
+          {/* Header Title */}
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-primary tracking-tight">
+              Lupa Kata Sandi?
+            </h1>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Masukkan alamat email korporat terdaftar Anda. Kami akan mengirimkan tautan verifikasi aman untuk mereset kata sandi akun Anda.
+            </p>
+          </div>
+
+          {!isSubmitted ? (
+            /* Reset Request Form */
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <Label htmlFor="reset-email">Alamat Email / ID Klien Terdaftar</Label>
+                <div className="relative">
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errorMessage) setErrorMessage("");
+                    }}
+                    placeholder="nama@perusahaan.com"
+                    required
+                    className={`pl-9 ${errorMessage ? "border-error focus:ring-error" : ""}`}
+                  />
+                  <EnvelopeIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-silver text-xs pointer-events-none" />
+                </div>
+                {errorMessage && (
+                  <p className="text-[11px] text-error mt-1">{errorMessage}</p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                disabled={isLoading}
+                className="w-full font-semibold text-xs tracking-wide"
+              >
+                {isLoading ? (
+                  <span>Mengirimkan tautan...</span>
+                ) : (
+                  <span>Kirim Tautan</span>
+                )}
+              </Button>
+            </form>
+          ) : (
+            /* Success State Feedback */
+            <div className="space-y-4 text-xs animate-in fade-in duration-200">
+              <div className="p-4 rounded-lg bg-success/10 border border-success/30 text-text space-y-2">
+                <div className="flex items-center gap-2 text-success font-semibold text-sm">
+                  <CheckCircleIcon className="text-base flex-shrink-0" />
+                  <span>Tautan Verifikasi Terkirim</span>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  Instruksi pemulihan kata sandi telah dikirimkan ke{" "}
+                  <strong className="text-primary font-semibold">{email}</strong>.
+                  Silakan periksa kotak masuk atau folder spam Anda dalam 5 menit.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-text-secondary">Tidak menerima email?</span>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={isLoading}
+                  className="font-semibold text-primary hover:underline transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? "Mengirim ulang..." : "Kirim ulang instruksi"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Administrator Support Info Card */}
+          <div className="p-3.5 rounded-lg bg-surface border border-primary-light space-y-2">
+            <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
+              <QuestionCircleIcon className="text-silver text-xs" />
+              <span>Butuh Bantuan Akses Langsung?</span>
+            </div>
+            <p className="text-[11px] text-text-secondary leading-relaxed">
+              Bagi klien korporat dengan kendala otentikasi akun atau pergantian penanggung jawab (PIC) fiskal, silakan hubungi kantor Zhou Consulting.
+            </p>
+            <div className="flex items-center gap-4 text-[11px] text-primary font-semibold pt-1 border-t border-primary-light/60">
+              <div className="flex items-center gap-1.5">
+                <PhoneIcon className="text-silver text-[10px]" />
+                <span>(021) 2988-8888</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <EnvelopeIcon className="text-silver text-[10px]" />
+                <a href="mailto:consultingzhou@gmail.com" className="hover:underline">
+                  consultingzhou@gmail.com
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation button back to Login */}
+          <div className="pt-2">
+            <Button
+              variant="outline"
+              size="default"
+              asChild
+              className="w-full font-semibold text-xs border-primary-light text-primary hover:bg-surface justify-center gap-2 cursor-pointer shadow-xs"
+            >
+              <Link href="/login" className="inline-flex items-center justify-center">
+                <span>Kembali ke Login</span>
+              </Link>
+            </Button>
+          </div>
+
+        </div>
+      </main>
+
+      {/* Bottom Footer */}
+      <footer className="py-4 text-center text-xs text-text-secondary border-t border-primary-light bg-white">
+        &copy; {new Date().getFullYear()} Zhou Consulting. All rights reserved.
+      </footer>
+    </div>
+  );
+}

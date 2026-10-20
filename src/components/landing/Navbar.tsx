@@ -1,0 +1,691 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronDownIcon,
+  MenuIcon,
+  CloseIcon,
+} from "@/components/icons";
+import { useLanguage } from "@/context/LanguageContext";
+import { useAuth, normalizeRole } from "@/context/AuthContext";
+
+export function Navbar() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const { language, setLanguage, t } = useLanguage();
+  const { user, isAuthenticated } = useAuth();
+  const userRole = normalizeRole(user?.role, user?.email);
+
+  const getAuthHref = (target: string) => {
+    // Hanya lindungi rute privat (/dashboard)
+    if (target.startsWith("/dashboard") && !isAuthenticated) {
+      return `/login?redirect=${encodeURIComponent(target)}`;
+    }
+    return target;
+  };
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [layananOpen, setLayananOpen] = useState(false);
+  const [mobileLayananOpen, setMobileLayananOpen] = useState(false);
+  const [peraturanOpen, setPeraturanOpen] = useState(false);
+  const [mobilePeraturanOpen, setMobilePeraturanOpen] = useState(false);
+  const [edukasiOpen, setEdukasiOpen] = useState(false);
+  const [mobileEdukasiOpen, setMobileEdukasiOpen] = useState(false);
+
+  const layananRef = useRef<HTMLDivElement>(null);
+  const peraturanRef = useRef<HTMLDivElement>(null);
+  const edukasiRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        layananRef.current &&
+        !layananRef.current.contains(event.target as Node)
+      ) {
+        setLayananOpen(false);
+      }
+      if (
+        peraturanRef.current &&
+        !peraturanRef.current.contains(event.target as Node)
+      ) {
+        setPeraturanOpen(false);
+      }
+      if (
+        edukasiRef.current &&
+        !edukasiRef.current.contains(event.target as Node)
+      ) {
+        setEdukasiOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setLayananOpen(false);
+        setPeraturanOpen(false);
+        setEdukasiOpen(false);
+        setMobileMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  const closeAllMenus = () => {
+    setMobileMenuOpen(false);
+    setLayananOpen(false);
+    setMobileLayananOpen(false);
+    setPeraturanOpen(false);
+    setMobilePeraturanOpen(false);
+    setEdukasiOpen(false);
+    setMobileEdukasiOpen(false);
+  };
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md text-text-primary shadow-sm border-b border-primary-light transition-colors">
+      <div className="container-custom flex h-20 items-center justify-between py-4">
+        {/* Brand Logo */}
+        <Link
+          href="/"
+          className="flex items-center gap-3 group"
+          onClick={closeAllMenus}
+        >
+          <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-primary/20 bg-[#0B1533] group-hover:scale-105 transition-all shrink-0">
+            <Image
+              src="/images/zhou-logo.jpg"
+              alt="Zhou Consulting Logo"
+              width={44}
+              height={44}
+              className="object-cover w-full h-full"
+              priority
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-base sm:text-lg font-bold tracking-tight text-primary group-hover:text-primary-dark transition-colors leading-tight font-sans">
+              ZHOU CONSULTING
+            </span>
+            <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider text-text-muted uppercase">
+              Tax & Accounting Services
+            </span>
+          </div>
+        </Link>
+
+        {/* Desktop Navigation Links */}
+        <nav className="hidden xl:flex items-center gap-6 text-sm font-semibold">
+          <Link
+            href="/"
+            className={`transition-colors duration-150 py-2 relative ${
+              isHome
+                ? "text-primary font-bold after:absolute after:-bottom-[23px] after:left-0 after:right-0 after:h-[2.5px] after:bg-primary"
+                : "text-text-secondary hover:text-primary"
+            }`}
+          >
+            {t.nav.home}
+          </Link>
+
+          {/* Unified Layanan Dropdown (Ringkas & Simpel persis gaya dropdown Peraturan) */}
+          <div
+            className="relative"
+            ref={layananRef}
+            onMouseEnter={() => setLayananOpen(true)}
+            onMouseLeave={() => setLayananOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setLayananOpen(!layananOpen)}
+              aria-expanded={layananOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.services}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  layananOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
+
+            {/* Dropdown Container Ringkas: Kelompok Konsultasi */}
+            {layananOpen && (
+              <div className="absolute top-full left-0 w-72 rounded-xl bg-white border border-primary-light p-2 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="px-3.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                  {t.nav.consultationSection}
+                </div>
+                <div className="space-y-0.5">
+                  <Link
+                    href={getAuthHref("/layanan/akuntansi")}
+                    onClick={closeAllMenus}
+                    className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Accounting Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/bisnis")}
+                    onClick={closeAllMenus}
+                    className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Business &amp; Financial Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/tax-service")}
+                    onClick={closeAllMenus}
+                    className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Tax Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/hukum")}
+                    onClick={closeAllMenus}
+                    className="block px-3.5 py-2 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Law Services
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Peraturan Dropdown */}
+          <div
+            className="relative"
+            ref={peraturanRef}
+            onMouseEnter={() => setPeraturanOpen(true)}
+            onMouseLeave={() => setPeraturanOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setPeraturanOpen(!peraturanOpen)}
+              aria-expanded={peraturanOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.regulations}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  peraturanOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
+
+            {peraturanOpen && (
+              <div className="absolute top-full left-0 w-52 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Link
+                  href={getAuthHref("/peraturan")}
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.regulations}
+                </Link>
+                <Link
+                  href={getAuthHref("/peraturan#kurs-pajak")}
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Kurs Pajak
+                </Link>
+                <Link
+                  href={getAuthHref("/peraturan#unduh-peraturan")}
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  Unduh Peraturan
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Edukasi Pajak Dropdown */}
+          <div
+            className="relative"
+            ref={edukasiRef}
+            onMouseEnter={() => setEdukasiOpen(true)}
+            onMouseLeave={() => setEdukasiOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1.5 cursor-pointer text-text-secondary hover:text-primary transition-colors duration-150 py-2 focus:outline-none"
+              onClick={() => setEdukasiOpen(!edukasiOpen)}
+              aria-expanded={edukasiOpen}
+              aria-haspopup="true"
+            >
+              <span className="font-semibold text-sm">{t.nav.education}</span>
+              <ChevronDownIcon
+                className={`text-[10px] transition-transform duration-200 ${
+                  edukasiOpen ? "rotate-180 text-primary" : ""
+                }`}
+              />
+            </button>
+
+            {edukasiOpen && (
+              <div className="absolute top-full left-0 w-64 rounded-xl bg-white border border-primary-light py-2 px-1.5 shadow-xl text-text-primary z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                <Link
+                  href={getAuthHref("/edukasi")}
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.educationZhou}
+                </Link>
+                <Link
+                  href={getAuthHref("/belajar-pajak")}
+                  onClick={closeAllMenus}
+                  className="block px-3.5 py-2.5 text-sm font-medium text-text-primary hover:text-primary hover:bg-surface rounded-lg transition-colors"
+                >
+                  {t.nav.belajarPajak}
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <Link
+            href={getAuthHref("/kontak")}
+            className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
+          >
+            {t.nav.contact}
+          </Link>
+          <Link
+            href="/karir"
+            className="text-text-secondary hover:text-primary transition-colors duration-150 py-2"
+          >
+            {t.nav.career}
+          </Link>
+        </nav>
+
+        {/* Desktop Header Actions (Language Switcher & Auth Buttons) */}
+        <div className="hidden xl:flex items-center gap-5">
+          {/* Language Switcher */}
+          <div className="flex items-center gap-1.5 text-xs select-none">
+            <button
+              type="button"
+              onClick={() => setLanguage("ID")}
+              className={`transition-colors cursor-pointer ${
+                language === "ID"
+                  ? "font-bold text-primary"
+                  : "text-text-secondary hover:text-primary font-medium"
+              }`}
+            >
+              ID
+            </button>
+            <span className="text-silver/60">|</span>
+            <button
+              type="button"
+              onClick={() => setLanguage("EN")}
+              className={`transition-colors cursor-pointer ${
+                language === "EN"
+                  ? "font-bold text-primary"
+                  : "text-text-secondary hover:text-primary font-medium"
+              }`}
+            >
+              EN
+            </button>
+          </div>
+
+          {/* Action Buttons: Masuk & Daftar OR Role-Based Portal, Profil & Logout */}
+          <div className="flex items-center gap-2">
+            {isAuthenticated && user ? (
+              <>
+                {userRole === "superadmin" ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/superadmin/perikatan">Superadmin Portal</Link>
+                  </Button>
+                ) : userRole === "admin" ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/admin">Admin Portal</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    asChild
+                    className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-3.5 py-2 rounded-md shadow-xs transition-colors"
+                  >
+                    <Link href="/dashboard/user">Dashboard</Link>
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="border-primary-light text-primary hover:bg-surface font-semibold text-xs tracking-wide px-4 py-2 rounded-md transition-colors"
+                >
+                  <Link href="/login">{t.nav.login}</Link>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  asChild
+                  className="bg-primary hover:bg-primary-dark text-white font-semibold text-xs tracking-wide px-4 py-2 rounded-md shadow-xs transition-colors"
+                >
+                  <Link href="/register">{t.nav.register}</Link>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile / Tablet Hamburger & Actions */}
+        <div className="flex xl:hidden items-center gap-2">
+          <div className="flex items-center gap-1 text-xs font-semibold mr-1">
+            <button
+              type="button"
+              onClick={() => setLanguage("ID")}
+              className={`${language === "ID" ? "font-bold text-primary" : "text-text-secondary"}`}
+            >
+              ID
+            </button>
+            <span className="text-silver/60">|</span>
+            <button
+              type="button"
+              onClick={() => setLanguage("EN")}
+              className={`${language === "EN" ? "font-bold text-primary" : "text-text-secondary"}`}
+            >
+              EN
+            </button>
+          </div>
+
+          {isAuthenticated && user ? (
+            <Button
+              variant="primary"
+              size="sm"
+              asChild
+              className="text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
+            >
+              <Link
+                href={
+                  userRole === "superadmin"
+                    ? "/dashboard/superadmin/perikatan"
+                    : userRole === "admin"
+                    ? "/dashboard/admin"
+                    : "/dashboard/user"
+                }
+              >
+                {userRole === "superadmin"
+                  ? "Superadmin Portal"
+                  : userRole === "admin"
+                  ? "Admin Portal"
+                  : "Dashboard"}
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="text-xs font-semibold px-2.5 py-1.5 border-primary-light text-primary"
+              >
+                <Link href="/login">{t.nav.login}</Link>
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                asChild
+                className="text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
+              >
+                <Link href="/register">{t.nav.register}</Link>
+              </Button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-text-primary hover:text-primary focus:outline-none focus:ring-1 focus:ring-primary-light rounded-md"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? (
+              <CloseIcon className="text-xl" />
+            ) : (
+              <MenuIcon className="text-xl" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile / Tablet Drawer */}
+      {mobileMenuOpen && (
+        <div className="xl:hidden border-t border-primary-light bg-white px-4 py-6 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
+          <div className="flex flex-col space-y-2 text-sm font-semibold">
+            <Link
+              href="/"
+              onClick={closeAllMenus}
+              className={`py-2.5 px-3 rounded-md transition-colors ${
+                isHome
+                  ? "text-primary font-bold bg-surface"
+                  : "text-text-primary hover:bg-surface"
+              }`}
+            >
+              {t.nav.home}
+            </Link>
+
+            {/* Unified Mobile Layanan Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobileLayananOpen(!mobileLayananOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
+              >
+                <span>{t.nav.services}</span>
+                <ChevronDownIcon
+                  className={`text-xs transition-transform duration-200 ${
+                    mobileLayananOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {mobileLayananOpen && (
+                <div className="p-2 space-y-1 bg-white border-t border-primary-light text-xs">
+                  <div className="px-3 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-text-secondary select-none">
+                    {t.nav.consultationSection}
+                  </div>
+                  <Link
+                    href={getAuthHref("/layanan/akuntansi")}
+                    onClick={closeAllMenus}
+                    className="block py-2.5 px-3 rounded-lg hover:bg-surface text-text-secondary hover:text-primary font-medium transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Accounting Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/bisnis")}
+                    onClick={closeAllMenus}
+                    className="block py-2.5 px-3 rounded-lg hover:bg-surface text-text-secondary hover:text-primary font-medium transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Business &amp; Financial Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/tax-service")}
+                    onClick={closeAllMenus}
+                    className="block py-2.5 px-3 rounded-lg hover:bg-surface text-text-secondary hover:text-primary font-medium transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Tax Services
+                  </Link>
+                  <Link
+                    href={getAuthHref("/layanan/hukum")}
+                    onClick={closeAllMenus}
+                    className="block py-2.5 px-3 rounded-lg hover:bg-surface text-text-secondary hover:text-primary font-medium transition-colors focus:outline-none focus:bg-surface focus:text-primary"
+                  >
+                    Law Services
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Peraturan Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobilePeraturanOpen(!mobilePeraturanOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
+              >
+                <span>{t.nav.regulations}</span>
+                <ChevronDownIcon
+                  className={`text-xs transition-transform duration-200 ${
+                    mobilePeraturanOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {mobilePeraturanOpen && (
+                <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
+                  <Link
+                    href={getAuthHref("/peraturan")}
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.regulations}
+                  </Link>
+                  <Link
+                    href={getAuthHref("/peraturan#kurs-pajak")}
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Kurs Pajak
+                  </Link>
+                  <Link
+                    href={getAuthHref("/peraturan#unduh-peraturan")}
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    Unduh Peraturan
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Edukasi Pajak Accordion */}
+            <div className="border border-primary-light rounded-xl overflow-hidden bg-white shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobileEdukasiOpen(!mobileEdukasiOpen)}
+                className="w-full flex items-center justify-between py-3 px-3.5 bg-surface text-text-primary transition-colors text-left font-bold"
+              >
+                <span>{t.nav.education}</span>
+                <ChevronDownIcon
+                  className={`text-xs transition-transform duration-200 ${
+                    mobileEdukasiOpen ? "rotate-180 text-primary" : ""
+                  }`}
+                />
+              </button>
+
+              {mobileEdukasiOpen && (
+                <div className="p-3.5 space-y-1 bg-white border-t border-primary-light text-xs">
+                  <Link
+                    href={getAuthHref("/edukasi")}
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.educationZhou}
+                  </Link>
+                  <Link
+                    href={getAuthHref("/belajar-pajak")}
+                    onClick={closeAllMenus}
+                    className="block py-2 px-2.5 rounded hover:bg-surface text-text-secondary hover:text-primary font-medium"
+                  >
+                    {t.nav.belajarPajak}
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link
+              href={getAuthHref("/kontak")}
+              onClick={closeAllMenus}
+              className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
+            >
+              {t.nav.contact}
+            </Link>
+            <Link
+              href="/karir"
+              onClick={closeAllMenus}
+              className="py-2.5 px-3 rounded-md text-text-primary hover:bg-surface transition-colors"
+            >
+              {t.nav.career}
+            </Link>
+          </div>
+
+          <div className="pt-4 border-t border-primary-light flex flex-col gap-2.5">
+            {isAuthenticated && user ? (
+              <>
+                <div className="px-3 py-2 rounded-lg bg-surface text-xs text-text-secondary flex items-center justify-between">
+                  <span className="font-semibold text-text-primary truncate">{user.name}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-primary/10 text-primary">
+                    {userRole === "superadmin"
+                      ? "Superadmin"
+                      : userRole === "admin"
+                      ? "Staff Admin"
+                      : "Klien"}
+                  </span>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-xs justify-center bg-primary hover:bg-primary-dark text-white"
+                  onClick={closeAllMenus}
+                >
+                  <Link
+                    href={
+                      userRole === "superadmin"
+                        ? "/dashboard/superadmin/perikatan"
+                        : userRole === "admin"
+                        ? "/dashboard/admin"
+                        : "/dashboard/user"
+                    }
+                  >
+                    {userRole === "superadmin"
+                      ? "Superadmin Portal"
+                      : userRole === "admin"
+                      ? "Admin Portal"
+                      : "Dashboard"}
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-sm justify-center border-primary-light text-primary hover:bg-surface"
+                  onClick={closeAllMenus}
+                >
+                  <Link href="/login">{t.nav.login}</Link>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  asChild
+                  className="w-full font-semibold text-sm justify-center bg-primary hover:bg-primary-dark text-white"
+                  onClick={closeAllMenus}
+                >
+                  <Link href="/register">{t.nav.register}</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
+  );
+}

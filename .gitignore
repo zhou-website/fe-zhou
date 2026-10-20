@@ -42,3 +42,22 @@ next-env.d.ts
 .cursor/
 .vscode/
 .idea/
+
+# environment files
+.env
+.env.*
+!.env.example
+
+# temporary Figma inspection files
+figma_cdp_screenshot.png
+figma_file_meta.json
+figma_thumbnail.png
+
+# temporary scripts
+scripts/figma-cdp.js
+scripts/figma-inspect.js
+scripts/inspect-all-items.js
+scripts/parse-checklist.js
+
+# local scratch files
+/scratch/

@@ -2,26 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --primary: #0B1533;
+    --primary-dark: #060D22;
+    --primary-light: #E9EDF5;
+    --silver: #C5C8D0;
+    --grey: #C5C8D0;
+    --background: #FFFFFF;
+    --surface: #F7F8FA;
+    --text-primary: #172033;
+    --text-secondary: #667085;
+    --success: #12B76A;
+    --error: #D92D20;
+  }
+
+  * {
+    border-color: #E9EDF5;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: var(--font-open-sans), "Open Sans", sans-serif;
+  }
+
+  body {
+    color: #172033;
+    background-color: #FFFFFF;
+    font-family: var(--font-open-sans), "Open Sans", sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Ensure all form controls, buttons, tables, and code blocks strictly use Open Sans */
+  button, input, optgroup, select, textarea, table, th, td, code, pre, kbd, samp {
+    font-family: var(--font-open-sans), "Open Sans", sans-serif;
+  }
+
+  /* Headings default to bold and primary text */
+  h1, h2, h3, h4, h5, h6 {
+    color: #172033;
+    font-weight: 700;
+    font-family: var(--font-open-sans), "Open Sans", sans-serif;
+  }
+
+  /* Garis vertikal pemisah kolom untuk seluruh tabel */
+  table {
+    border-collapse: collapse;
+  }
+  table th:not(:last-child),
+  table td:not(:last-child) {
+    border-right: 1px solid #E9EDF5;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer utilities {
+  .container-custom {
+    width: 100%;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container-custom {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container-custom {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Hide scrollbar for Chrome, Safari, Edge, Opera and Firefox */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(11, 21, 51, 0.15);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(11, 21, 51, 0.3);
   }
 }
