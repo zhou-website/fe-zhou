@@ -13,9 +13,14 @@ const openSans = Open_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Zhou Consulting",
+  title: "Zhou Consulting - Tax and Accounting Services",
   description:
     "Mitra profesional untuk layanan akuntansi, perpajakan, dan konsultasi bisnis keuangan Anda.",
+  icons: {
+    icon: "/images/zhou-logo.jpg",
+    shortcut: "/images/zhou-logo.jpg",
+    apple: "/images/zhou-logo.jpg",
+  },
 };
 
 export default function RootLayout({

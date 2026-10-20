@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface TaxModuleItem {
@@ -70,6 +71,14 @@ export default function TaxServicePage() {
         (s) =>
           (s.categoryKey?.toLowerCase() === "tax-service" || s.categoryKey?.toLowerCase() === "tax") &&
           s.status === "Published" &&
+          s.id !== "e-billing" &&
+          s.id !== "SRV-TAX-EBL" &&
+          s.id !== "pelaporan-spt" &&
+          s.id !== "SRV-TAX-SPT" &&
+          s.code !== "TAX-EBL" &&
+          s.code !== "SRV-TAX-EBL" &&
+          s.code !== "TAX-SPT" &&
+          s.code !== "SRV-TAX-SPT" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
@@ -117,6 +126,10 @@ export default function TaxServicePage() {
             const name = (item.service_name || "").toLowerCase();
             return (
               (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
+              code !== "tax-ebl" &&
+              code !== "srv-tax-ebl" &&
+              code !== "tax-spt" &&
+              code !== "srv-tax-spt" &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
@@ -130,10 +143,15 @@ export default function TaxServicePage() {
         if (isMounted) syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, () => syncModules());
+    const handleUpdate = () => syncModules();
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleUpdate);
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, () => syncModules());
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleUpdate);
     };
   }, []);
 
@@ -142,7 +160,7 @@ export default function TaxServicePage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* 6 Core Tax Services Cards Grid */}
+        {/* Core Tax Services Cards Grid */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center md:text-left max-w-2xl">
@@ -154,7 +172,12 @@ export default function TaxServicePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {modules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-text-secondary text-sm">
+                Belum ada layanan perpajakan yang dipublikasikan saat ini.
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${modules.length === 1 ? "max-w-xl mx-auto" : "md:grid-cols-2"} gap-6`}>
               {modules.map((item) => (
                 <Card
                   key={item.id}
@@ -203,6 +226,7 @@ export default function TaxServicePage() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </main>

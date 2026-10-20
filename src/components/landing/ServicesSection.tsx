@@ -21,6 +21,7 @@ import {
 } from "@/data/layananStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 
 export function ServicesSection() {
   const [services, setServices] = useState<StoredServiceItem[]>(DEFAULT_SERVICES);
@@ -124,9 +125,15 @@ export function ServicesSection() {
         console.warn("publicApi.getServices in ServicesSection:", err);
       });
 
+    window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleStorageUpdate);
+
     return () => {
       isMounted = false;
       window.removeEventListener(SERVICES_EVENT, handleStorageUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleStorageUpdate);
     };
   }, []);
 

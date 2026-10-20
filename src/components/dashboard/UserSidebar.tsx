@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   DocumentIcon,
@@ -99,11 +100,17 @@ export function UserSidebar({
                 if (isMobileOpen) setMobileOpenState(false);
               }}
             >
-              <div className="w-9 h-9 rounded-xl bg-white text-[#0B1533] font-extrabold text-base flex items-center justify-center shadow-md group-hover:scale-105 transition-transform shrink-0">
-                Z
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 bg-[#0B1533] shadow-md group-hover:scale-105 transition-transform shrink-0">
+                <Image
+                  src="/images/zhou-logo.jpg"
+                  alt="Zhou Consulting Logo"
+                  width={40}
+                  height={40}
+                  className="object-cover w-full h-full"
+                />
               </div>
               <div className="min-w-0">
-                <span className="text-sm font-bold tracking-tight text-white block leading-tight">
+                <span className="text-sm font-bold tracking-tight text-white block leading-tight font-sans">
                   ZHOU CONSULTING
                 </span>
                 <span className="text-[10px] text-blue-200/60 block uppercase font-semibold tracking-wider">

@@ -294,16 +294,18 @@ export function updateStoredService(
   } else {
     const upserted: StoredServiceItem = {
       id,
-      code: (updates as StoredServiceItem).code,
-      categoryKey: (updates as StoredServiceItem).categoryKey || "tax-service",
-      name: (updates as StoredServiceItem).name || id,
-      subtitle: (updates as StoredServiceItem).subtitle || "",
-      badge: (updates as StoredServiceItem).badge || "LAYANAN",
-      route: (updates as StoredServiceItem).route || "/layanan",
-      pillars: (updates as StoredServiceItem).pillars || [],
-      workflow: (updates as StoredServiceItem).workflow || [],
-      deliverables: (updates as StoredServiceItem).deliverables || [],
-      status: (updates as StoredServiceItem).status || "Published",
+      code: updates.code,
+      categoryKey: updates.categoryKey || "tax-service",
+      name: updates.name,
+      subtitle: updates.subtitle,
+      badge: updates.badge || "LAYANAN",
+      route: updates.route || "/layanan",
+      pillars: updates.pillars || (updates.scopes ? updates.scopes.map((sc) => ({ title: sc, description: sc })) : []),
+      workflow: updates.workflow || ["Konsultasi Kebutuhan Awal", "Analisis & Telaah Regulasi", "Eksekusi Layanan", "Penyampaian Laporan Final"],
+      deliverables: updates.deliverables || (updates.deliverable ? [updates.deliverable] : ["Laporan Hasil Kerja Resmi"]),
+      deliverable: updates.deliverable,
+      scopes: updates.scopes,
+      status: updates.status || "Published",
       lastUpdated: today,
       ...updates,
     };
@@ -337,7 +339,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
   saveStoredServices(filtered);
 
   const numId = parseInt(idOrTitle.replace(/\D/g, ""), 10);
-  if (!isNaN(numId) && numId > 0) {
+  if (!isNaN(numId) && numId > 0 && numId < 1000) {
     adminCmsApi.deleteService(numId).catch((err) => {
       console.warn("adminCmsApi.deleteService sinkronisasi:", err);
     });
@@ -345,6 +347,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
 
   return true;
 }
+
 
 /**
  * Reset data layanan ke default

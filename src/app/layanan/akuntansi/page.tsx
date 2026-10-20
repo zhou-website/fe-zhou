@@ -21,6 +21,7 @@ import {
   SERVICES_EVENT,
 } from "@/data/layananStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 import { publicApi, PublicServiceItem } from "@/lib/api";
 
 interface AccountingModuleItem {
@@ -42,18 +43,39 @@ export default function AccountingServicePage() {
   useEffect(() => {
     let isMounted = true;
 
-    const syncModules = () => {
+    const syncModules = (apiItems?: PublicServiceItem[]) => {
       const stored = getStoredServices();
       const accItems = stored.filter(
         (s) =>
           (s.categoryKey?.toLowerCase() === "akuntansi" || s.categoryKey?.toLowerCase() === "accounting") &&
           s.status === "Published" &&
+          getCmsItemStatus(s.id, s.name, s.status || "Published", [s.code]) !== "Draft" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
+
+      const isDefaultDeleted =
+        isCmsItemDeleted(
+          DEFAULT_ACCOUNTING_MODULE.id,
+          DEFAULT_ACCOUNTING_MODULE.title,
+          undefined,
+          DEFAULT_ACCOUNTING_MODULE.code
+        ) ||
+        getCmsItemStatus(
+          DEFAULT_ACCOUNTING_MODULE.id,
+          DEFAULT_ACCOUNTING_MODULE.title,
+          "Published",
+          [DEFAULT_ACCOUNTING_MODULE.code]
+        ) === "Draft";
 
       if (accItems.length > 0) {
         setModules(
           accItems.map((c) => {
+            const apiItem = apiItems?.find(
+              (a) =>
+                (a.service_code && a.service_code.toLowerCase() === (c.code || c.id).toLowerCase()) ||
+                (a.service_name && a.service_name.toLowerCase() === c.name.toLowerCase())
+            );
+
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
@@ -87,6 +109,8 @@ export default function AccountingServicePage() {
         setModules([]);
       }
     };
+
+    syncModules();
 
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi
@@ -124,16 +148,20 @@ export default function AccountingServicePage() {
             return;
           }
         }
-        syncModules();
       })
       .catch(() => {
         syncModules();
       });
 
-    window.addEventListener(SERVICES_EVENT, syncModules);
+    const handleUpdate = () => syncModules();
+    window.addEventListener(SERVICES_EVENT, handleUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+    window.addEventListener("zhou_cms_status_updated", handleUpdate);
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, syncModules);
+      window.removeEventListener(SERVICES_EVENT, handleUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleUpdate);
+      window.removeEventListener("zhou_cms_status_updated", handleUpdate);
     };
   }, []);
 
@@ -142,7 +170,7 @@ export default function AccountingServicePage() {
       <Navbar />
 
       <main className="flex-1">
-        {/* Core Accounting Services Card (1 Grid) */}
+        {/* Core Accounting Services Card */}
         <section className="py-14 md:py-20 bg-white border-b border-primary-light">
           <div className="container-custom space-y-10">
             <div className="space-y-2 text-center max-w-2xl mx-auto">
@@ -154,7 +182,12 @@ export default function AccountingServicePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 max-w-2xl mx-auto gap-6">
+            {modules.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-text-secondary text-sm max-w-xl mx-auto">
+                Belum ada layanan akuntansi yang dipublikasikan saat ini.
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${modules.length === 1 ? "max-w-xl mx-auto" : "md:grid-cols-2"} gap-6`}>
               {modules.map((item) => (
                 <Card
                   key={item.id}
@@ -203,6 +236,7 @@ export default function AccountingServicePage() {
                 </Card>
               ))}
             </div>
+            )}
           </div>
         </section>
       </main>

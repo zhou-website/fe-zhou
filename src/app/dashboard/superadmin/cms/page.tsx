@@ -276,6 +276,8 @@ function AdminCMSPageContent() {
   const [editingEduId, setEditingEduId] = useState<number | null>(null);
   const [editingDjpLinkId, setEditingDjpLinkId] = useState<string | null>(null);
   const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
+  const [editingServiceOriginalId, setEditingServiceOriginalId] = useState<string | null>(null);
+  const [editingServiceOriginalTitle, setEditingServiceOriginalTitle] = useState<string | null>(null);
   const [editingRegId, setEditingRegId] = useState<number | null>(null);
   const [editingKursId, setEditingKursId] = useState<number | null>(null);
   const [editingCareerId, setEditingCareerId] = useState<number | null>(null);
@@ -299,6 +301,8 @@ function AdminCMSPageContent() {
     setEditingEduId(null);
     setEditingDjpLinkId(null);
     setEditingServiceId(null);
+    setEditingServiceOriginalId(null);
+    setEditingServiceOriginalTitle(null);
     setEditingRegId(null);
     setEditingKursId(null);
     setEditingCareerId(null);
@@ -306,7 +310,7 @@ function AdminCMSPageContent() {
   };
 
   const isCurrentlyEditing = Boolean(
-    editingEduId || editingDjpLinkId || editingServiceId || editingRegId || editingKursId || editingCareerId || editingFaq
+    editingEduId || editingDjpLinkId || editingServiceId || editingServiceOriginalId || editingRegId || editingKursId || editingCareerId || editingFaq
   );
 
   // Form states strictly matching backend request bodies:
@@ -1355,7 +1359,7 @@ function AdminCMSPageContent() {
 
         const deliverableVal = serviceForm.deliverable.trim() || "Dokumen Laporan & Rekomendasi Resmi";
 
-        if (editingServiceId) {
+        if (editingServiceId || editingServiceOriginalId) {
           const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0 && editingServiceId < 1000;
           if (isBackendId) {
             try {
@@ -1372,9 +1376,9 @@ function AdminCMSPageContent() {
               console.warn("Backend updateService fallback:", apiErr);
             }
           }
-          const finalSrvId = serviceForm.service_code || `SVC-${editingServiceId}`;
-          updateStoredService(finalSrvId, {
-            id: finalSrvId,
+          const targetId = editingServiceOriginalId || serviceForm.service_code || (editingServiceId ? `SVC-${editingServiceId}` : `SRV-${Date.now()}`);
+          updateStoredService(targetId, {
+            id: targetId,
             code: serviceForm.service_code,
             name: serviceForm.service_name,
             categoryKey: catKey,
@@ -1387,22 +1391,26 @@ function AdminCMSPageContent() {
             pillars: parsedScopes.map((sc) => ({ title: sc, description: sc })),
             status: srvStatus,
           });
-          updateStoredService(serviceForm.service_name, { status: srvStatus, name: serviceForm.service_name });
-          updateStoredService(`SVC-${editingServiceId}`, { status: srvStatus, name: serviceForm.service_name });
           setCmsItemStatus(
             {
-              id: finalSrvId,
-              numericId: editingServiceId,
+              id: targetId,
+              numericId: editingServiceId || undefined,
               title: serviceForm.service_name,
               code: serviceForm.service_code,
-              aliases: [serviceForm.service_code, `SVC-${editingServiceId}`, `SRV-${editingServiceId}`, serviceForm.service_name],
+              aliases: [
+                editingServiceOriginalId,
+                editingServiceOriginalTitle,
+                serviceForm.service_code,
+                editingServiceId ? `SVC-${editingServiceId}` : "",
+                serviceForm.service_name,
+              ].filter((a): a is string => Boolean(a)),
             },
             srvStatus
           );
           // Optimistic update
           setCmsItems((prev) =>
             prev.map((i) =>
-              i.numericId === editingServiceId && i.section === "services"
+              (i.id === targetId || (editingServiceOriginalId && i.id === editingServiceOriginalId) || (editingServiceId && i.numericId === editingServiceId)) && i.section === "services"
                 ? {
                   ...i,
                   title: serviceForm.service_name,
@@ -2106,6 +2114,8 @@ function AdminCMSPageContent() {
     }) | undefined;
     resetAllEditingState();
     setEditingServiceId(item.numericId);
+    setEditingServiceOriginalId(item.id);
+    setEditingServiceOriginalTitle(item.title);
     const catRaw = (raw?.categoryKey || raw?.category || item.subcategory || "").toLowerCase();
     const mappedCategory =
       catRaw.includes("akun")
