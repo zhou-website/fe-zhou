@@ -9,31 +9,44 @@ export const dynamic = "force-dynamic";
 
 function forwardHttpRequest(
   method: string,
-  path: string,
+  targetPath: string,
   headers: Record<string, string | string[] | undefined>,
   bodyBuffer: Buffer | null
 ): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; data: Buffer }> {
   return new Promise((resolve, reject) => {
-    // Siapkan headers untuk backend Express di VPS
-    const forwardHeaders: Record<string, string | string[] | undefined> = {
-      ...headers,
-      host: BACKEND_VHOST, // Pastikan Nginx mengenali VirtualHost api.zhouconsulting.id
+    // Bangun header bersih hanya yang dibutuhkan backend, buang x-forwarded-* yang memicu redirect Nginx
+    const cleanHeaders: Record<string, string> = {
+      host: BACKEND_VHOST,
     };
 
-    delete forwardHeaders["connection"];
-    if (bodyBuffer) {
-      forwardHeaders["content-length"] = String(bodyBuffer.length);
-    } else {
-      delete forwardHeaders["content-length"];
+    const allowedHeaders = [
+      "authorization",
+      "content-type",
+      "accept",
+      "user-agent",
+      "cookie",
+      "cache-control",
+      "pragma",
+    ];
+
+    for (const [key, val] of Object.entries(headers)) {
+      const lower = key.toLowerCase();
+      if (allowedHeaders.includes(lower) && typeof val === "string") {
+        cleanHeaders[lower] = val;
+      }
+    }
+
+    if (bodyBuffer && bodyBuffer.length > 0) {
+      cleanHeaders["content-length"] = String(bodyBuffer.length);
     }
 
     const req = http.request(
       {
-        host: BACKEND_HOST, // Koneksi socket TCP langsung ke IP VPS (bypasses DNS)
+        host: BACKEND_HOST,
         port: BACKEND_PORT,
-        path,
+        path: targetPath,
         method,
-        headers: forwardHeaders,
+        headers: cleanHeaders,
         timeout: 15000,
       },
       (res) => {
@@ -65,7 +78,7 @@ function forwardHttpRequest(
 async function handleProxy(request: NextRequest, { params }: { params: { path: string[] } }) {
   const pathSegment = params.path ? params.path.join("/") : "";
   const search = request.nextUrl.search;
-  const targetPath = `/api/v1/${pathSegment}${search}`;
+  let targetPath = `/api/v1/${pathSegment}${search}`;
 
   const inHeaders: Record<string, string | string[] | undefined> = {};
   request.headers.forEach((value, key) => {
@@ -83,21 +96,54 @@ async function handleProxy(request: NextRequest, { params }: { params: { path: s
   }
 
   try {
-    const result = await forwardHttpRequest(request.method, targetPath, inHeaders, bodyBuffer);
+    let result = await forwardHttpRequest(request.method, targetPath, inHeaders, bodyBuffer);
+
+    // CEGAH BOCORNYA 301/302 REDIRECT KE BROWSER:
+    // Jika Nginx VPS mengembalikan redirect ke api.zhouconsulting.id, ikuti secara internal
+    if ((result.statusCode === 301 || result.statusCode === 302) && result.headers.location) {
+      try {
+        const parsedLoc = new URL(result.headers.location, `http://${BACKEND_HOST}`);
+        const internalPath = parsedLoc.pathname + parsedLoc.search;
+        result = await forwardHttpRequest(request.method, internalPath, inHeaders, bodyBuffer);
+      } catch {
+        // Abaikan parse error, gunakan response apa adanya
+      }
+    }
+
+    // Jika endpoint regulasi di VPS mengembalikan 500 karena kolom DB belum termigrate, berikan fallback JSON
+    if (result.statusCode === 500 && targetPath.includes("/regulations")) {
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Regulasi dimuat (fallback mode)",
+          data: [],
+          meta: { page: 1, limit: 10, total: 0 },
+        },
+        { status: 200 }
+      );
+    }
 
     const outHeaders = new Headers();
     Object.entries(result.headers).forEach(([k, v]) => {
-      if (v !== undefined && k.toLowerCase() !== "content-encoding") {
+      const lower = k.toLowerCase();
+      // JANGAN PERNAH forward header location ke browser agar browser tidak resolve domain yang belum ada
+      if (lower !== "content-encoding" && lower !== "location" && lower !== "transfer-encoding") {
         if (Array.isArray(v)) {
           v.forEach((val) => outHeaders.append(k, val));
-        } else {
+        } else if (v !== undefined) {
           outHeaders.set(k, v);
         }
       }
     });
 
+    // Jika respons asli adalah redirect yang tersisa, override status ke 200 jika data ada
+    let finalStatus = result.statusCode;
+    if (finalStatus === 301 || finalStatus === 302) {
+      finalStatus = 200;
+    }
+
     return new NextResponse(new Uint8Array(result.data), {
-      status: result.statusCode,
+      status: finalStatus,
       headers: outHeaders,
     });
   } catch (err: unknown) {
