@@ -5,28 +5,10 @@
  */
 
 export function getApiBaseUrl(): string {
-  // Jika dimuat di browser via HTTPS (seperti domain Vercel), gunakan relative root ('')
-  // agar request otomatis melewati Next.js reverse-proxy rewrite ke http://43.173.2.162.
-  // Ini mencegah browser memblokir request karena Mixed Content (HTTPS -> HTTP insecure).
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+  if (typeof window !== "undefined") {
     return "";
   }
-
-  let envUrl = process.env.NEXT_PUBLIC_API_URL || "http://43.173.2.162";
-
-  // Bersihkan spasi, trailing slash, /docs, /docs/, dan /api
-  envUrl = envUrl
-    .trim()
-    .replace(/\/+$/, "")
-    .replace(/\/docs\/?$/i, "")
-    .replace(/\/api\/?$/i, "");
-
-  // Selalu gunakan langsung endpoint backend VPS http://43.173.2.162 tanpa sslip.io
-  if (!envUrl || envUrl.includes("sslip.io")) {
-    return "http://43.173.2.162";
-  }
-
-  return envUrl;
+  return process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3000";
 }
 
 export const API_BASE_URL = getApiBaseUrl();
