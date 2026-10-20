@@ -1,10 +1,12 @@
 /**
  * Storage & State Management untuk Pengaturan Status Karir & Rekrutmen Zhou Consulting
- * Memungkinkan Admin mengontrol apakah lowongan dibuka atau ditutup, serta mengubah teks pesan statis.
+ * Data pengaturan karir disimpan langsung di database PostgreSQL melalui API Backend.
+ * Frontend tidak lagi menyimpan data bisnis ke localStorage browser.
  */
 
 import { ContentStatus } from "./publicContentData";
 import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
+import { adminCmsApi, publicApi } from "@/lib/api";
 
 export interface JobPosition {
   id: string;
@@ -37,47 +39,47 @@ export const CAREER_SETTINGS_STORAGE_KEY = "zhou_career_settings_data_v2";
 export const CAREER_SETTINGS_EVENT = "zhou_career_settings_updated";
 
 export const DEFAULT_CAREER_SETTINGS: CareerSettings = {
-  "isOpen": true,
-  "closedTitle": "Lowongan Periode Ini Belum Dibuka",
-  "closedMessage": "Saat ini seluruh posisi di Zhou Consulting telah terisi dan belum ada lowongan baru yang dibuka untuk publik. Silakan pantau halaman ini secara berkala untuk pembaruan jadwal rekrutmen berikutnya.",
-  "closedPeriodNote": "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun LinkedIn Zhou Consulting.",
-  "lastUpdated": "24 September 2026"
+  isOpen: true,
+  closedTitle: "Lowongan Periode Ini Belum Dibuka",
+  closedMessage:
+    "Saat ini seluruh posisi di Zhou Consulting telah terisi dan belum ada lowongan baru yang dibuka untuk publik. Silakan pantau halaman ini secara berkala untuk pembaruan jadwal rekrutmen berikutnya.",
+  closedPeriodNote:
+    "Jadwal penerimaan periode baru akan diumumkan melalui portal resmi dan akun LinkedIn Zhou Consulting.",
+  lastUpdated: "24 September 2026",
+  positions: [],
 };
 
+// In-memory runtime cache
+let memoryCareerSettings: CareerSettings = { ...DEFAULT_CAREER_SETTINGS };
+let memoryCareerPositions: JobPosition[] = [];
+
 /**
- * Membaca pengaturan karir dari localStorage (atau default jika belum ada)
+ * Membaca pengaturan karir (in-memory)
  */
 export function getStoredCareerSettings(): CareerSettings {
-  if (typeof window === "undefined") {
-    return DEFAULT_CAREER_SETTINGS;
-  }
-
-  try {
-    const raw = localStorage.getItem(CAREER_SETTINGS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_CAREER_SETTINGS;
-    }
-    return JSON.parse(raw) as CareerSettings;
-  } catch (error) {
-    console.error("Gagal membaca zhou_career_settings dari localStorage:", error);
-    return DEFAULT_CAREER_SETTINGS;
-  }
+  return { ...memoryCareerSettings };
 }
 
 /**
- * Menyimpan pembaruan pengaturan karir ke localStorage dan memicu custom event
+ * Menyimpan pembaruan pengaturan karir ke Backend Database
  */
 export function saveStoredCareerSettings(settings: CareerSettings): void {
-  if (typeof window === "undefined") return;
+  memoryCareerSettings = { ...settings };
 
-  try {
-    localStorage.setItem(
-      CAREER_SETTINGS_STORAGE_KEY,
-      JSON.stringify(settings)
-    );
+  // Kirimkan pembaruan konfigurasi karir langsung ke database backend
+  adminCmsApi
+    .updateCareerSettings({
+      isOpen: settings.isOpen,
+      closedTitle: settings.closedTitle,
+      closedMessage: settings.closedMessage,
+      closedPeriodNote: settings.closedPeriodNote,
+    })
+    .catch((err) => {
+      console.warn("Sinkronisasi pengaturan karir ke backend:", err);
+    });
+
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
-  } catch (error) {
-    console.error("Gagal menyimpan zhou_career_settings ke localStorage:", error);
   }
 }
 
@@ -85,56 +87,51 @@ export function saveStoredCareerSettings(settings: CareerSettings): void {
  * Mengatur ulang ke nilai default
  */
 export function resetStoredCareerSettings(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(CAREER_SETTINGS_STORAGE_KEY);
+  memoryCareerSettings = { ...DEFAULT_CAREER_SETTINGS };
+  adminCmsApi
+    .updateCareerSettings({
+      isOpen: DEFAULT_CAREER_SETTINGS.isOpen,
+      closedTitle: DEFAULT_CAREER_SETTINGS.closedTitle,
+      closedMessage: DEFAULT_CAREER_SETTINGS.closedMessage,
+      closedPeriodNote: DEFAULT_CAREER_SETTINGS.closedPeriodNote,
+    })
+    .catch(() => {});
+
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
-  } catch (error) {
-    console.error("Gagal mereset zhou_career_settings:", error);
   }
 }
 
 /**
- * Membaca posisi lowongan aktif yang disimpan
+ * Membaca posisi lowongan aktif yang disimpan di memori
  */
 export function getStoredCareerPositions(): JobPosition[] {
-  const settings = getStoredCareerSettings();
-  const list = settings.positions || [];
-  return list.filter((pos) => !isCmsItemDeleted(pos.id, pos.title));
+  return memoryCareerPositions.filter((pos) => !isCmsItemDeleted(pos.id, pos.title));
 }
 
 /**
- * Menambahkan posisi lowongan karir baru
+ * Menambahkan posisi lowongan karir baru ke memori
  */
 export function addStoredCareerPosition(position: JobPosition): JobPosition[] {
-  const settings = getStoredCareerSettings();
-  const currentPositions = settings.positions || [];
+  const currentPositions = memoryCareerPositions;
   const filtered = currentPositions.filter((p) => p.id !== position.id);
   const updatedPositions = [position, ...filtered];
-  const shouldOpen = position.status === "Published" ? true : settings.isOpen;
-  saveStoredCareerSettings({
-    ...settings,
-    isOpen: shouldOpen,
-    positions: updatedPositions,
-    lastUpdated: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-  });
+  memoryCareerPositions = updatedPositions;
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
+  }
   return updatedPositions;
 }
 
 /**
- * Memperbarui data posisi lowongan karir.
- * Jika tidak ditemukan, upsert agar edit lowongan dari backend juga tersimpan lokal.
+ * Memperbarui data posisi lowongan karir di memori
  */
 export function updateStoredCareerPosition(
   id: string,
   changes: Partial<JobPosition>
 ): JobPosition[] {
-  const settings = getStoredCareerSettings();
-  const currentPositions = settings.positions || [];
+  const currentPositions = memoryCareerPositions;
   const existingIndex = currentPositions.findIndex((pos) => pos.id === id);
 
   let updatedPositions: JobPosition[];
@@ -143,7 +140,6 @@ export function updateStoredCareerPosition(
       pos.id === id ? { ...pos, ...changes } : pos
     );
   } else {
-    // Upsert: backend item not in local, create entry
     const upserted: JobPosition = {
       id,
       title: changes.title || id,
@@ -160,27 +156,19 @@ export function updateStoredCareerPosition(
     updatedPositions = [upserted, ...currentPositions];
   }
 
-  const hasPublished = updatedPositions.some((p) => p.status === "Published");
-  saveStoredCareerSettings({
-    ...settings,
-    isOpen: hasPublished ? true : settings.isOpen,
-    positions: updatedPositions,
-    lastUpdated: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-  });
+  memoryCareerPositions = updatedPositions;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
+  }
   return updatedPositions;
 }
 
 /**
- * Menghapus posisi lowongan karir
+ * Menghapus posisi lowongan karir dari memori
  */
 export function deleteStoredCareerPosition(idOrTitle: string): JobPosition[] {
   recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
-  const settings = getStoredCareerSettings();
-  const currentPositions = settings.positions || [];
+  const currentPositions = memoryCareerPositions;
   const target = idOrTitle.trim().toLowerCase();
   const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
   const updatedPositions = currentPositions.filter((pos) => {
@@ -194,21 +182,16 @@ export function deleteStoredCareerPosition(idOrTitle: string): JobPosition[] {
       pTitle !== target
     );
   });
-  saveStoredCareerSettings({
-    ...settings,
-    positions: updatedPositions,
-    lastUpdated: new Date().toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }),
-  });
+
+  memoryCareerPositions = updatedPositions;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(CAREER_SETTINGS_EVENT));
+  }
   return updatedPositions;
 }
 
 /**
  * Pelacak Pengiriman Lamaran Pelamar Kerja & Penyimpanan Lamaran Masuk
- * Memastikan satu email hanya dapat melamar satu kali pada lowongan yang sama.
  */
 export interface SubmittedApplicationRecord {
   jobId: string | number;
@@ -242,28 +225,16 @@ export const APPLICATIONS_TRACKER_STORAGE_KEY = "zhou_submitted_applications";
 export const STORED_APPLICATIONS_STORAGE_KEY = "zhou_stored_job_applications_v1";
 export const APPLICATIONS_UPDATED_EVENT = "zhou_applications_updated";
 
+// In-memory application session trackers
+const memorySubmittedApplications: SubmittedApplicationRecord[] = [];
+let memoryStoredJobApplications: StoredJobApplication[] = [];
+
 export function getSubmittedApplications(): SubmittedApplicationRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(APPLICATIONS_TRACKER_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [...memorySubmittedApplications];
 }
 
 export function getStoredJobApplications(): StoredJobApplication[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORED_APPLICATIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [...memoryStoredJobApplications];
 }
 
 export function hasAppliedToCareer(jobId: string | number, email: string): boolean {
@@ -271,94 +242,57 @@ export function hasAppliedToCareer(jobId: string | number, email: string): boole
   const cleanEmail = email.trim().toLowerCase();
   const cleanJobId = String(jobId).trim().toLowerCase();
 
-  // 1. Periksa tracker log
-  const list = getSubmittedApplications();
-  const isMatchInTracker = list.some(
+  return memorySubmittedApplications.some(
     (item) =>
       item.email.trim().toLowerCase() === cleanEmail &&
       String(item.jobId).trim().toLowerCase() === cleanJobId
   );
-  if (isMatchInTracker) return true;
-
-  // 2. Periksa daftar lamaran tersimpan
-  const apps = getStoredJobApplications();
-  return apps.some((app) => {
-    const appEmail = (app.applicant_email || "").trim().toLowerCase();
-    if (appEmail !== cleanEmail) return false;
-
-    const appId = String(app.job_id || app.career_id || "").trim().toLowerCase();
-    const appCode = String(app.job?.position_code || "").trim().toLowerCase();
-    const appTitle = String(app.job?.position_title || "").trim().toLowerCase();
-
-    return (
-      appId === cleanJobId ||
-      appCode === cleanJobId ||
-      appTitle === cleanJobId
-    );
-  });
 }
 
 export function recordCareerApplication(jobId: string | number, email: string): void {
-  if (typeof window === "undefined" || !email || !jobId) return;
-  try {
-    const list = getSubmittedApplications();
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanJobId = String(jobId).trim().toLowerCase();
-    if (!list.some((item) => item.email === cleanEmail && String(item.jobId) === cleanJobId)) {
-      list.push({
-        jobId: cleanJobId,
-        email: cleanEmail,
-        appliedAt: new Date().toISOString(),
-      });
-      localStorage.setItem(APPLICATIONS_TRACKER_STORAGE_KEY, JSON.stringify(list));
-    }
-  } catch (err) {
-    console.error("Gagal menyimpan rekam lamaran:", err);
+  if (!email || !jobId) return;
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanJobId = String(jobId).trim().toLowerCase();
+  if (
+    !memorySubmittedApplications.some(
+      (item) => item.email === cleanEmail && String(item.jobId) === cleanJobId
+    )
+  ) {
+    memorySubmittedApplications.push({
+      jobId: cleanJobId,
+      email: cleanEmail,
+      appliedAt: new Date().toISOString(),
+    });
   }
 }
 
 export function saveStoredJobApplication(app: StoredJobApplication): void {
-  if (typeof window === "undefined") return;
-  try {
-    const list = getStoredJobApplications();
-    // Cegah duplikasi ID
-    const filtered = list.filter((item) => String(item.id) !== String(app.id));
-    const updated = [app, ...filtered];
-    localStorage.setItem(STORED_APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
-
-    // Catat juga ke tracker
-    recordCareerApplication(app.job_id, app.applicant_email);
-    if (app.job?.position_code) {
-      recordCareerApplication(app.job.position_code, app.applicant_email);
-    }
-
+  const filtered = memoryStoredJobApplications.filter(
+    (item) => String(item.id) !== String(app.id)
+  );
+  memoryStoredJobApplications = [app, ...filtered];
+  recordCareerApplication(app.job_id, app.applicant_email);
+  if (app.job?.position_code) {
+    recordCareerApplication(app.job.position_code, app.applicant_email);
+  }
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
-  } catch (err) {
-    console.error("Gagal menyimpan data lamaran masuk:", err);
   }
 }
 
 export function deleteStoredJobApplication(id: number | string): void {
-  if (typeof window === "undefined") return;
-  try {
-    const list = getStoredJobApplications();
-    const updated = list.filter((item) => String(item.id) !== String(id));
-    localStorage.setItem(STORED_APPLICATIONS_STORAGE_KEY, JSON.stringify(updated));
+  memoryStoredJobApplications = memoryStoredJobApplications.filter(
+    (item) => String(item.id) !== String(id)
+  );
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
-  } catch (err) {
-    console.error("Gagal menghapus data lamaran masuk:", err);
   }
 }
 
 export function clearAllStoredJobApplications(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(STORED_APPLICATIONS_STORAGE_KEY);
-    localStorage.removeItem(APPLICATIONS_TRACKER_STORAGE_KEY);
+  memoryStoredJobApplications = [];
+  memorySubmittedApplications.length = 0;
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(APPLICATIONS_UPDATED_EVENT));
-  } catch (err) {
-    console.error("Gagal membersihkan data lamaran masuk:", err);
   }
 }
-
-

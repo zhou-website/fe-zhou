@@ -328,6 +328,22 @@ export interface ClientDocumentItem {
   file_path: string;
   file_size?: string;
   file_type?: string;
+  sha_hash?: string;
+  download_url?: string;
+  project?: {
+    id?: number;
+    project_code?: string;
+    title?: string;
+    client?: {
+      id?: number;
+      name?: string;
+      company_name?: string;
+    };
+  };
+  uploader?: {
+    id?: number;
+    name?: string;
+  };
   uploaded_by?: number;
   created_at: string;
 }
@@ -464,6 +480,21 @@ export const adminApi = {
       body: JSON.stringify(payload),
     }),
 
+  updateConsultation: (
+    id: number | string,
+    payload: {
+      status?: string;
+      progress_percent?: number;
+      assigned_admin_id?: number;
+      description?: string;
+      title?: string;
+    }
+  ) =>
+    apiFetch<ConsultationItem>(`/api/v1/admin/consultations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
   updateConsultationStatus: (id: number | string, status: string) =>
     apiFetch(`/api/v1/admin/consultations/${id}/status`, {
       method: "PATCH",
@@ -515,9 +546,26 @@ export const adminApi = {
 
   getAllDocuments: () => apiFetch<ClientDocumentItem[]>("/api/v1/admin/documents"),
 
+  deleteDocument: (id: number | string) =>
+    apiFetch(`/api/v1/admin/documents/${id}`, {
+      method: "DELETE",
+    }),
+
   deleteConsultation: (id: number | string) =>
     apiFetch(`/api/v1/admin/consultations/${id}`, {
       method: "DELETE",
+    }),
+
+  archiveConsultation: (id: number | string, is_archived: boolean) =>
+    apiFetch(`/api/v1/admin/consultations/${id}/archive`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_archived }),
+    }),
+
+  updateConsultationPriority: (id: number | string, priority: string) =>
+    apiFetch(`/api/v1/admin/consultations/${id}/priority`, {
+      method: "PATCH",
+      body: JSON.stringify({ priority }),
     }),
 };
 
@@ -531,6 +579,8 @@ export interface CreateRegulationPayload {
   file_size?: string;
   category?: string;
   description?: string;
+  legal_status?: string;
+  replacement_ref?: string;
 }
 
 export interface CreateEducationPayload {
@@ -550,6 +600,8 @@ export interface CreateServicePayload {
   service_name: string;
   category: string;
   description?: string;
+  card_explanation?: string;
+  features?: string[];
   is_active?: boolean;
 }
 
@@ -628,21 +680,23 @@ export const adminCmsApi = {
     });
   },
 
-  createRegulation: (payload: CreateRegulationPayload) => {
+  createRegulation: (payload: CreateRegulationPayload | FormData) => {
     const err = assertSuperadminCmsPermission();
     if (err) return Promise.resolve(err);
+    const body = payload instanceof FormData ? payload : JSON.stringify(payload);
     return apiFetch("/api/v1/admin/cms/regulations", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body,
     });
   },
 
-  updateRegulation: (id: number | string, payload: Partial<CreateRegulationPayload>) => {
+  updateRegulation: (id: number | string, payload: Partial<CreateRegulationPayload> | FormData) => {
     const err = assertSuperadminCmsPermission();
     if (err) return Promise.resolve(err);
+    const body = payload instanceof FormData ? payload : JSON.stringify(payload);
     return apiFetch(`/api/v1/admin/cms/regulations/${id}`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      body,
     });
   },
 
@@ -654,21 +708,23 @@ export const adminCmsApi = {
     });
   },
 
-  createEducation: (payload: CreateEducationPayload) => {
+  createEducation: (payload: CreateEducationPayload | FormData) => {
     const err = assertSuperadminCmsPermission();
     if (err) return Promise.resolve(err);
+    const body = payload instanceof FormData ? payload : JSON.stringify(payload);
     return apiFetch("/api/v1/admin/cms/education", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body,
     });
   },
 
-  updateEducation: (id: number | string, payload: Partial<CreateEducationPayload>) => {
+  updateEducation: (id: number | string, payload: Partial<CreateEducationPayload> | FormData) => {
     const err = assertSuperadminCmsPermission();
     if (err) return Promise.resolve(err);
+    const body = payload instanceof FormData ? payload : JSON.stringify(payload);
     return apiFetch(`/api/v1/admin/cms/education/${id}`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      body,
     });
   },
 
@@ -796,6 +852,29 @@ export const adminCmsApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  getCareerSettings: () => {
+    return apiFetch<{
+      isOpen: boolean;
+      closedTitle: string;
+      closedMessage: string;
+      closedPeriodNote: string;
+    }>("/api/v1/admin/cms/career-settings");
+  },
+
+  updateCareerSettings: (payload: {
+    isOpen?: boolean;
+    closedTitle?: string;
+    closedMessage?: string;
+    closedPeriodNote?: string;
+  }) => {
+    const err = assertSuperadminCmsPermission();
+    if (err) return Promise.resolve(err);
+    return apiFetch("/api/v1/admin/cms/career-settings", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 // ----------------------------------------------------
@@ -837,6 +916,12 @@ export interface PublicRegulationItem {
   regulation_type: string;
   file_path: string;
   file_size?: string;
+  category?: string;
+  description?: string;
+  legal_status?: string;
+  replacement_ref?: string;
+  download_url?: string;
+  file_url?: string;
   created_at: string;
 }
 
@@ -849,6 +934,8 @@ export interface PublicEducationItem {
   file_path?: string;
   image?: string;
   image_url?: string;
+  download_url?: string;
+  file_url?: string;
   created_at: string;
 }
 
@@ -1028,21 +1115,11 @@ export const publicApi = {
     jobId: number | string,
     payload: ApplyCareerPayload | FormData
   ) => {
-    let bodyData: ApplyCareerPayload;
-    if (payload instanceof FormData) {
-      bodyData = {
-        applicant_name: String(payload.get("name") || payload.get("applicant_name") || ""),
-        applicant_email: String(payload.get("email") || payload.get("applicant_email") || ""),
-        applicant_phone: String(payload.get("phone") || payload.get("applicant_phone") || ""),
-        cv_file_path: String(payload.get("resume") ? (payload.get("resume") as File).name : payload.get("cv_file_path") || "cv-pelamar.pdf"),
-      };
-    } else {
-      bodyData = payload;
-    }
+    const body = payload instanceof FormData ? payload : JSON.stringify(payload);
 
     return apiFetch(`/api/v1/public/careers/${jobId}/apply`, {
       method: "POST",
-      body: JSON.stringify(bodyData),
+      body,
       skipAuth: true,
     });
   },
@@ -1089,6 +1166,16 @@ export const publicApi = {
       public_url?: string;
       expires_in_seconds?: number;
     }>(`/api/v1/public/education/${id}/download`, {
+      skipAuth: true,
+    }),
+
+  getCareerSettings: () =>
+    apiFetch<{
+      isOpen: boolean;
+      closedTitle: string;
+      closedMessage: string;
+      closedPeriodNote: string;
+    }>("/api/v1/public/career-settings", {
       skipAuth: true,
     }),
 };
@@ -1202,6 +1289,16 @@ export const superadminApi = {
       }>
       | { export_url: string }
     >("/api/v1/superadmin/audit-logs/export"),
+
+  clearAuditLogs: () =>
+    apiFetch<{ deleted_count: number }>("/api/v1/superadmin/audit-logs", {
+      method: "DELETE",
+    }),
+
+  deleteAuditLog: (id: number | string) =>
+    apiFetch(`/api/v1/superadmin/audit-logs/${id}`, {
+      method: "DELETE",
+    }),
 };
 
 // ----------------------------------------------------

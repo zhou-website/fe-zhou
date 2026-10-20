@@ -114,25 +114,9 @@ export function EducationSection() {
             };
           });
 
-          setArticles((prev) => {
-            const localMap = new Map(
-              prev.map((p) => [p.title.toLowerCase().trim(), p])
-            );
-            const mergedApi: ZhouArticle[] = apiArticles.map((apiItem) => {
-              const localMatch = localMap.get(apiItem.title.toLowerCase().trim());
-              return {
-                ...apiItem,
-                image: apiItem.image || localMatch?.image || undefined,
-              };
-            });
-            const apiTitles = new Set(
-              apiArticles.map((a) => a.title.toLowerCase().trim())
-            );
-            const localOnly = prev.filter(
-              (p) => !apiTitles.has(p.title.toLowerCase().trim())
-            );
-            return [...mergedApi, ...localOnly];
-          });
+          setArticles(apiArticles);
+        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+          setArticles([]);
         }
       })
       .catch((err) => {

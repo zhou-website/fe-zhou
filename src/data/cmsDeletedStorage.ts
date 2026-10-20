@@ -3,6 +3,9 @@
 export const CMS_DELETED_ITEMS_KEY = "zhou_deleted_cms_items_v3";
 export const CMS_DELETED_ITEMS_EVENT = "zhou_deleted_cms_items_updated";
 
+// In-memory runtime state, tidak lagi menggunakan localStorage
+let memoryDeletedItems: string[] = [];
+
 /**
  * Normalisasi string untuk pencocokan toleran
  */
@@ -21,23 +24,14 @@ function slugify(str?: string | number | null): string {
 }
 
 /**
- * Membaca daftar identifier konten yang telah dihapus admin
+ * Membaca daftar identifier konten yang telah dihapus admin (in-memory)
  */
 export function getDeletedCmsIdentifiers(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(CMS_DELETED_ITEMS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [...memoryDeletedItems];
 }
 
 /**
- * Merekam satu atau banyak identifier dari konten yang dihapus ke dalam tombstone storage.
- * Mencakup ID asli, prefix variations, slug judul, nama/title lowercase, numeric ID, dsb.
+ * Merekam satu atau banyak identifier dari konten yang dihapus ke dalam in-memory cache saat runtime.
  */
 export function recordDeletedCmsItem(item: {
   id?: string | number | null;
@@ -47,18 +41,14 @@ export function recordDeletedCmsItem(item: {
   rawId?: string | number | null;
   category?: string | null;
 }): void {
-  if (typeof window === "undefined") return;
-
   try {
-    const currentList = getDeletedCmsIdentifiers();
-    const set = new Set(currentList.map((s) => normalizeStr(s)));
+    const set = new Set(memoryDeletedItems.map((s) => normalizeStr(s)));
 
     const addCandidate = (val?: string | number | null) => {
       if (!val) return;
       const norm = normalizeStr(val);
       if (norm) {
         set.add(norm);
-        // Stripped prefix variants (misal: "edu-1" -> "1")
         const stripped = norm.replace(/^(edu|svc|srv|reg|car|tax|app|faq|be|cfg)-/, "");
         if (stripped && stripped !== norm) {
           set.add(stripped);
@@ -76,7 +66,6 @@ export function recordDeletedCmsItem(item: {
     addCandidate(item.code);
     addCandidate(item.rawId);
 
-    // Tambahkan variasi prefix standar sistem
     if (item.numericId !== undefined && item.numericId !== null) {
       const numStr = String(item.numericId);
       addCandidate(`edu-${numStr}`);
@@ -90,18 +79,17 @@ export function recordDeletedCmsItem(item: {
       addCandidate(`be-${numStr}`);
     }
 
-    const updated = Array.from(set);
-    localStorage.setItem(CMS_DELETED_ITEMS_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent(CMS_DELETED_ITEMS_EVENT, { detail: updated }));
+    memoryDeletedItems = Array.from(set);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(CMS_DELETED_ITEMS_EVENT, { detail: memoryDeletedItems }));
+    }
   } catch (err) {
-    console.error("Gagal menyimpan tombstone penghapusan:", err);
+    console.error("Gagal mencatat penghapusan:", err);
   }
 }
 
 /**
  * Memeriksa apakah suatu konten merupakan data dummy/mockup/pengujian sebelumnya
- * (seperti bibit data pengujian dengan timestamp, PER-0707, lowongan dummy, dll)
- * Pengecualian: Kurs Pajak (KMK) dan Kontak resmi tidak pernah dianggap dummy.
  */
 export function isDummyCmsItem(item?: {
   id?: string | number | null;
@@ -116,7 +104,6 @@ export function isDummyCmsItem(item?: {
   if (!item) return false;
   const title = (item.title || "").toLowerCase().trim();
   const code = (item.code || "").toLowerCase().trim();
-  const file = (item.file_path || "").toLowerCase().trim();
   const strId = String(item.id || "").toLowerCase().trim();
 
   // Kurs Pajak dan Kontak resmi Zhou Consulting tidak boleh dianggap dummy
@@ -132,68 +119,14 @@ export function isDummyCmsItem(item?: {
     return false;
   }
 
-  // Kata kunci dummy dan suite pengujian
   if (
-    title.includes("dummy") ||
-    title.includes("mock") ||
-    title.includes("test suite") ||
-    title.includes("pengujian") ||
-    title.includes("updated srv") ||
-    title.includes("updated title") ||
-    title.includes("peraturan pengujian") ||
     title === "dd" ||
     title === "wefc" ||
     title === "cvfds" ||
     title === "no1.e" ||
-    code.includes("srv-test") ||
-    code.includes("job-tst") ||
     code === "tax" ||
     code === "tyuiokm" ||
-    code === "axksjfo" ||
-    code === "srv-7140" ||
-    code === "srv-4845" ||
-    file.includes("test-doc") ||
-    file.includes("test-edu") ||
-    file.includes("typography zhou") ||
-    title.includes("pajak1") ||
-    title.includes("kepatuhan pajak1") ||
-    code.includes("1872") ||
-    strId.includes("1872")
-  ) {
-    return true;
-  }
-
-  // Pola timestamp pengujian (misal: 1791...) pada judul artikel atau berkas
-  if (/\b17\d{10,12}\b/.test(title) || /\b17\d{10,12}\b/.test(file)) {
-    return true;
-  }
-
-  // Regulasi dummy dari seed backend
-  if (
-    title.includes("per-0707") ||
-    title.includes("per-6211") ||
-    title.includes("per-1907") ||
-    title.includes("per-4681") ||
-    title.includes("pmk no. 120/pmk.03/2026") ||
-    title.includes("panduan praktis pengisian formulir spt 1771")
-  ) {
-    return true;
-  }
-
-  // Lowongan karir dummy dari seed backend & Database Talenta yang sudah dihapus
-  if (
-    title.includes("junior accounting staff") ||
-    title.includes("senior tax consultant") ||
-    title.includes("junior tax auditor") ||
-    title.includes("database talenta") ||
-    title.includes("talent-pool") ||
-    title.includes("talent pool") ||
-    title.includes("sak ep / psak") ||
-    title.includes("penyusunan laporan keuangan sak ep") ||
-    code === "job-acc-jr-01" ||
-    code === "job-tax-sr-01" ||
-    code.includes("talent") ||
-    strId.includes("talent")
+    code === "axksjfo"
   ) {
     return true;
   }
@@ -210,19 +143,15 @@ export function isCmsItemDeleted(
   rawId?: string | number | null,
   code?: string | null
 ): boolean {
-  // Saring otomatis semua data mockup/dummy yang terdeteksi
   if (isDummyCmsItem({ id, title, rawId, code })) {
     return true;
   }
 
-  if (typeof window === "undefined") return false;
+  if (memoryDeletedItems.length === 0) return false;
 
-  const deletedList = getDeletedCmsIdentifiers();
-  if (!deletedList || deletedList.length === 0) return false;
-
-  const set = new Set(deletedList.map((s) => normalizeStr(s)));
-
+  const set = new Set(memoryDeletedItems.map((s) => normalizeStr(s)));
   const candidates: string[] = [];
+
   const checkAndAdd = (val?: string | number | null) => {
     if (!val) return;
     const norm = normalizeStr(val);
@@ -248,14 +177,11 @@ export function isCmsItemDeleted(
 }
 
 /**
- * Menghapus tombstone (jika diperlukan untuk restore)
+ * Menghapus tombstone dari memori
  */
 export function clearDeletedCmsTombstones(): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(CMS_DELETED_ITEMS_KEY);
+  memoryDeletedItems = [];
+  if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(CMS_DELETED_ITEMS_EVENT, { detail: [] }));
-  } catch (err) {
-    console.error("Gagal membersihkan tombstone:", err);
   }
 }

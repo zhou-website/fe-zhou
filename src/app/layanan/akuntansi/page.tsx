@@ -36,23 +36,9 @@ interface AccountingModuleItem {
   waTemplate: string;
 }
 
-const DEFAULT_ACCOUNTING_MODULE: AccountingModuleItem = {
-  id: "SVC-4798",
-  code: "SVC-4798",
-  title: "Penyusunan Laporan Keuangan & Pembukuan",
-  badge: "ACCOUNTING SERVICES",
-  subtitle: "Penyusunan laporan posisi keuangan (neraca), laba rugi, perubahan ekuitas, dan arus kas standar resmi perbankan & audit.",
-  scopes: [
-    "Layanan pengelolaan akuntansi berbasis data yang akurat guna menghasilkan laporan keuangan bulanan dan tahunan yang kredibel. Kami memastikan seluruh pencatatan bisnis Anda rapi, patuh regulasi, serta siap digunakan untuk kebutuhan internal maupun eksternal (seperti perbankan dan audit)."
-  ],
-  deliverable: "Bundel Laporan Keuangan Lengkap (Audit-ready / Bank-ready) beserta CALK resmi.",
-  topicParam: "laporan-keuangan",
-  waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Penyusunan Laporan Keuangan & Pembukuan.",
-};
-
 export default function AccountingServicePage() {
   const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
-  const [modules, setModules] = useState<AccountingModuleItem[]>([DEFAULT_ACCOUNTING_MODULE]);
+  const [modules, setModules] = useState<AccountingModuleItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -61,7 +47,7 @@ export default function AccountingServicePage() {
       const stored = getStoredServices();
       const accItems = stored.filter(
         (s) =>
-          s.categoryKey?.toLowerCase() === "akuntansi" &&
+          (s.categoryKey?.toLowerCase() === "akuntansi" || s.categoryKey?.toLowerCase() === "accounting") &&
           s.status === "Published" &&
           getCmsItemStatus(s.id, s.name, s.status || "Published", [s.code]) !== "Draft" &&
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
@@ -93,22 +79,23 @@ export default function AccountingServicePage() {
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p) => p.title || p.description)
-                : undefined) ||
-              (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
-              DEFAULT_ACCOUNTING_MODULE.scopes;
+                ? c.pillars.map((p: any) => p.title || p.description)
+                : undefined) || [
+                "Penyusunan laporan keuangan terstandar PSAK",
+                "Pencatatan pembukuan dan rekonsiliasi akun",
+              ];
 
             const rawDeliverable =
               (c.deliverable && c.deliverable.trim()) ||
               (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
-              DEFAULT_ACCOUNTING_MODULE.deliverable;
+              "Bundel Laporan Keuangan Lengkap";
 
             return {
               id: c.id,
               code: c.code || c.id,
-              title: c.name || apiItem?.service_name || DEFAULT_ACCOUNTING_MODULE.title,
-              badge: c.badge || DEFAULT_ACCOUNTING_MODULE.badge,
-              subtitle: c.subtitle || apiItem?.description || DEFAULT_ACCOUNTING_MODULE.subtitle,
+              title: c.name,
+              badge: c.badge || "ACCOUNTING SERVICES",
+              subtitle: c.subtitle || "Layanan akuntansi dan pembukuan korporasi",
               scopes: rawScopes,
               deliverable: rawDeliverable,
               topicParam: c.topicParam || "laporan-keuangan",
@@ -118,8 +105,6 @@ export default function AccountingServicePage() {
             };
           })
         );
-      } else if (!isDefaultDeleted) {
-        setModules([DEFAULT_ACCOUNTING_MODULE]);
       } else {
         setModules([]);
       }
@@ -138,12 +123,30 @@ export default function AccountingServicePage() {
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
-              (cat.includes("akuntansi") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan")) &&
+              (cat.includes("akuntansi") || cat.includes("accounting") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
 
-          syncModules(accFromApi);
+          if (accFromApi.length > 0) {
+            setModules(
+              accFromApi.map((c: PublicServiceItem) => ({
+                id: `SVC-${c.id}`,
+                code: c.service_code || `SVC-${c.id}`,
+                title: c.service_name,
+                badge: c.category?.toUpperCase() || "ACCOUNTING SERVICES",
+                subtitle: c.description || "Layanan akuntansi dan pembukuan korporasi terstandar",
+                scopes: c.features && c.features.length > 0 ? c.features : [
+                  "Penyusunan laporan keuangan terstandar PSAK",
+                  "Pencatatan pembukuan dan rekonsiliasi akun",
+                ],
+                deliverable: "Laporan Keuangan Resmi",
+                topicParam: "laporan-keuangan",
+                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+              }))
+            );
+            return;
+          }
         }
       })
       .catch(() => {

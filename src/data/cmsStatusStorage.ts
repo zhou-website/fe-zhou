@@ -5,6 +5,9 @@ export const CMS_STATUS_UPDATED_EVENT = "zhou_cms_status_updated";
 
 export type CMSPublicationStatus = "Published" | "Draft" | "Archived";
 
+// In-memory runtime state, tidak lagi menggunakan localStorage
+const memoryStatusOverrides: Record<string, CMSPublicationStatus> = {};
+
 /**
  * Normalisasi string untuk pencocokan toleran
  */
@@ -23,23 +26,14 @@ function slugify(str?: string | number | null): string {
 }
 
 /**
- * Membaca map seluruh override status konten dari localStorage
+ * Membaca map seluruh override status konten (in-memory)
  */
 export function getAllCmsStatusOverrides(): Record<string, CMSPublicationStatus> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(CMS_STATUS_OVERRIDE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return typeof parsed === "object" && parsed !== null ? parsed : {};
-  } catch {
-    return {};
-  }
+  return { ...memoryStatusOverrides };
 }
 
 /**
- * Menyimpan status publikasi (Published / Draft) untuk konten tertentu.
- * Merekam ke berbagai variasi identifier agar pencocokan saat refresh selalu akurat.
+ * Menyimpan status publikasi (Published / Draft) untuk konten tertentu secara in-memory.
  */
 export function setCmsItemStatus(
   item: {
@@ -51,32 +45,26 @@ export function setCmsItemStatus(
   },
   status: CMSPublicationStatus
 ): void {
-  if (typeof window === "undefined") return;
-
   try {
-    const currentMap = getAllCmsStatusOverrides();
-    const updatedMap = { ...currentMap };
-
     const recordKey = (val?: string | number | null) => {
       if (!val) return;
       const norm = normalizeStr(val);
       if (norm) {
-        updatedMap[norm] = status;
+        memoryStatusOverrides[norm] = status;
         const stripped = norm.replace(/^(edu|svc|srv|reg|car|tax|app|faq|be|cfg|pos)[-_]/, "");
         if (stripped && stripped !== norm) {
-          updatedMap[stripped] = status;
+          memoryStatusOverrides[stripped] = status;
         }
-        // Normalize underscore to hyphen and vice versa
         if (norm.includes("_")) {
-          updatedMap[norm.replace(/_/g, "-")] = status;
+          memoryStatusOverrides[norm.replace(/_/g, "-")] = status;
         }
         if (norm.includes("-")) {
-          updatedMap[norm.replace(/-/g, "_")] = status;
+          memoryStatusOverrides[norm.replace(/-/g, "_")] = status;
         }
       }
       const slug = slugify(val);
       if (slug) {
-        updatedMap[slug] = status;
+        memoryStatusOverrides[slug] = status;
       }
     };
 
@@ -100,17 +88,16 @@ export function setCmsItemStatus(
       recordKey(`be-${numStr}`);
     }
 
-    localStorage.setItem(CMS_STATUS_OVERRIDE_KEY, JSON.stringify(updatedMap));
-    window.dispatchEvent(new CustomEvent(CMS_STATUS_UPDATED_EVENT, { detail: { item, status } }));
-    window.dispatchEvent(new StorageEvent("storage", { key: CMS_STATUS_OVERRIDE_KEY }));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(CMS_STATUS_UPDATED_EVENT, { detail: { item, status } }));
+    }
   } catch (err) {
-    console.error("Gagal menyimpan override status publikasi CMS:", err);
+    console.error("Gagal memperbarui status publikasi CMS:", err);
   }
 }
 
 /**
- * Membaca status publikasi konten dengan fallback ke nilai default bawaan konten.
- * Jika pernah di-set "Draft" atau "Published" oleh admin, nilai tersebut yang digunakan.
+ * Membaca status publikasi konten dengan fallback ke nilai bawaan.
  */
 export function getCmsItemStatus(
   id?: string | number | null,
@@ -118,11 +105,7 @@ export function getCmsItemStatus(
   fallback: CMSPublicationStatus = "Published",
   extraKeys?: (string | number | null | undefined)[]
 ): CMSPublicationStatus {
-  if (typeof window === "undefined") return fallback;
-
   try {
-    const overrides = getAllCmsStatusOverrides();
-
     const keysToCheck: string[] = [];
     const addCheckKey = (val?: string | number | null) => {
       if (!val) return;
@@ -147,8 +130,8 @@ export function getCmsItemStatus(
     }
 
     for (const key of keysToCheck) {
-      if (overrides[key] !== undefined) {
-        return overrides[key];
+      if (memoryStatusOverrides[key] !== undefined) {
+        return memoryStatusOverrides[key];
       }
     }
 
@@ -156,4 +139,8 @@ export function getCmsItemStatus(
   } catch {
     return fallback;
   }
+}
+
+export function clearCmsStatusStorage(): void {
+  Object.keys(memoryStatusOverrides).forEach((k) => delete memoryStatusOverrides[k]);
 }
