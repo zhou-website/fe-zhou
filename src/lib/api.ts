@@ -1176,6 +1176,20 @@ export const publicApi = {
     }>("/api/v1/public/career-settings", {
       skipAuth: true,
     }),
+
+  uploadPublicFile: (formData: FormData) =>
+    apiFetch<{
+      file_name: string;
+      file_path: string;
+      file_size?: string;
+      file_type?: string;
+      public_url?: string;
+      download_url?: string;
+    }>("/api/v1/public/upload", {
+      method: "POST",
+      body: formData,
+      skipAuth: true,
+    }),
 };
 
 // ----------------------------------------------------

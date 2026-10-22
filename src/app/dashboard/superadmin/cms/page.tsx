@@ -90,6 +90,7 @@ import {
   PublicRegulationItem,
   PublicServiceItem,
   PublicCareerItem,
+  CreateEducationPayload,
 } from "@/lib/api";
 
 export type CMSTab =
@@ -358,7 +359,27 @@ function AdminCMSPageContent() {
         image: compressedDataUrl,
         image_name: file.name,
       }));
-      showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
+      showToast(`Memproses gambar sampul "${file.name}"...`);
+
+      // Unggah berkas gambar langsung ke Supabase Storage via /api/v1/public/upload
+      const imgFd = new FormData();
+      imgFd.append("file", file);
+      imgFd.append("folder", "education");
+      publicApi
+        .uploadPublicFile(imgFd)
+        .then((uploadRes) => {
+          if (uploadRes?.data?.public_url || uploadRes?.data?.download_url) {
+            const uploadedUrl = uploadRes.data.public_url || uploadRes.data.download_url;
+            setEduForm((prev) => ({
+              ...prev,
+              image: uploadedUrl || prev.image,
+            }));
+            showToast(`Gambar sampul "${file.name}" berhasil diunggah ke Supabase Storage.`);
+          }
+        })
+        .catch((uploadErr) => {
+          console.warn("Background image upload fallback notice:", uploadErr);
+        });
     } catch (err) {
       console.error("Gagal memproses file gambar:", err);
       showToast("Gagal memproses file gambar.");
@@ -366,7 +387,7 @@ function AdminCMSPageContent() {
   };
 
   // Handler Upload Berkas PDF Edukasi (Opsional)
-  const handleEduPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEduPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -378,11 +399,32 @@ function AdminCMSPageContent() {
     setEduPdfFile(file);
     setEduForm((prev) => ({
       ...prev,
-      file_path: `/docs/${file.name}`,
       file_name: file.name,
       file_size: sizeStr,
     }));
-    showToast(`Berkas PDF "${file.name}" (${sizeStr}) siap diunggah ke server.`);
+    showToast(`Mengunggah berkas PDF "${file.name}" ke storage...`);
+
+    // Unggah berkas biner fisik langsung ke Supabase Storage via /api/v1/public/upload
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "education");
+      const res = await publicApi.uploadPublicFile(fd);
+      if (res?.data && res.data.file_path) {
+        const uploadedData = res.data;
+        setEduForm((prev) => ({
+          ...prev,
+          file_path: uploadedData.file_path,
+          file_name: uploadedData.file_name || file.name,
+          file_size: uploadedData.file_size || sizeStr,
+        }));
+        showToast(`Berkas PDF "${file.name}" berhasil diunggah ke storage.`);
+        return;
+      }
+    } catch (err) {
+      console.warn("Direct PDF upload notice, will fallback to form submission:", err);
+    }
+    showToast(`Berkas PDF "${file.name}" (${sizeStr}) siap dikirim.`);
   };
 
   // Handler Upload Berkas PDF Regulasi
@@ -539,10 +581,11 @@ function AdminCMSPageContent() {
         eduRes.value.data.forEach((e: PublicEducationItem) => {
           const id = `EDU-${e.id}`;
           if (isCmsItemDeleted(id, e.title, e.id)) return;
+          const rawE = e as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
           const { image, cleanBody } = extractEducationImageAndBody(
             e.body,
             e.file_path,
-            e.image || e.image_url
+            rawE.image || rawE.image_url || rawE.cover_image || rawE.photo_url || rawE.imageUrl
           );
           existingEduIds.add(id);
           existingEduIds.add(`be-${e.id}`);
@@ -969,14 +1012,15 @@ function AdminCMSPageContent() {
           }
         }
       } else if (item.section === "services") {
-        if (item.numericId && item.numericId < 9000) {
+        const targetServiceId = item.numericId || (rawId ? parseInt(rawId.replace(/\D/g, ""), 10) : undefined);
+        if (targetServiceId && !isNaN(targetServiceId) && targetServiceId > 0) {
           try {
-            const res = await adminCmsApi.deleteService(item.numericId);
+            const res = await adminCmsApi.deleteService(targetServiceId);
             if (res && res.success === false) {
               deleteSuccess = false;
               deleteErrorMsg =
                 res.message ||
-                "Layanan tidak dapat dihapus karena masih terhubung dengan tiket/klien aktif di database (Foreign Key Constraint).";
+                "Layanan tidak dapat dihapus dari database karena masih terhubung dengan tiket/klien aktif (Foreign Key Constraint).";
             }
           } catch (apiErr) {
             deleteSuccess = false;
@@ -1198,13 +1242,20 @@ function AdminCMSPageContent() {
               fd.append("category", eduForm.category);
               fd.append("content_type", eduForm.content_type);
               fd.append("body", bodyWithImage);
+              if (eduForm.file_path) {
+                fd.append("file_path", eduForm.file_path);
+              }
               if (eduForm.image) {
                 fd.append("image", eduForm.image);
                 fd.append("image_url", eduForm.image);
                 fd.append("photo_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("cover_image", eduForm.image);
               }
               if (eduPdfFile) {
                 fd.append("file", eduPdfFile);
+              } else if (eduImageFile) {
+                fd.append("file", eduImageFile);
               }
               await adminCmsApi.updateEducation(editingEduId, fd);
             } else {
@@ -1217,7 +1268,9 @@ function AdminCMSPageContent() {
                 image: eduForm.image || undefined,
                 image_url: eduForm.image || undefined,
                 photo_url: eduForm.image || undefined,
-              });
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
+              } as unknown as Partial<CreateEducationPayload>);
             }
           } catch (apiErr) {
             console.warn("Backend updateEducation fallback:", apiErr);
@@ -1271,13 +1324,20 @@ function AdminCMSPageContent() {
               fd.append("category", eduForm.category);
               fd.append("content_type", eduForm.content_type);
               fd.append("body", bodyWithImage);
+              if (eduForm.file_path) {
+                fd.append("file_path", eduForm.file_path);
+              }
               if (eduForm.image) {
                 fd.append("image", eduForm.image);
                 fd.append("image_url", eduForm.image);
                 fd.append("photo_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("cover_image", eduForm.image);
               }
               if (eduPdfFile) {
                 fd.append("file", eduPdfFile);
+              } else if (eduImageFile) {
+                fd.append("file", eduImageFile);
               }
               createRes = await adminCmsApi.createEducation(fd);
             } else {
@@ -1290,7 +1350,9 @@ function AdminCMSPageContent() {
                 image: eduForm.image || undefined,
                 image_url: eduForm.image || undefined,
                 photo_url: eduForm.image || undefined,
-              });
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
+              } as unknown as CreateEducationPayload);
             }
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdNumId = (createRes.data as { id: number }).id;
@@ -2203,13 +2265,13 @@ function AdminCMSPageContent() {
   };
 
   const openEditEducation = (item: UnifiedCMSItem) => {
-    const raw = item.raw as (PublicEducationItem & { image?: string }) | undefined;
+    const raw = item.raw as (PublicEducationItem & { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string }) | undefined;
     resetAllEditingState();
     setEditingEduId(item.numericId);
     const { image, cleanBody } = extractEducationImageAndBody(
       raw?.body || item.summary,
       raw?.file_path,
-      raw?.image || raw?.image_url
+      raw?.image || raw?.image_url || raw?.cover_image || raw?.photo_url || raw?.imageUrl
     );
     setEduForm({
       title: item.title,

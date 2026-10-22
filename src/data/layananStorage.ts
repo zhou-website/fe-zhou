@@ -234,7 +234,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
   saveStoredServices(filtered);
 
   const numId = parseInt(idOrTitle.replace(/\D/g, ""), 10);
-  if (!isNaN(numId) && numId > 0 && numId < 1000) {
+  if (!isNaN(numId) && numId > 0) {
     adminCmsApi.deleteService(numId).catch((err) => {
       console.warn("adminCmsApi.deleteService sinkronisasi:", err);
     });

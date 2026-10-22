@@ -29,16 +29,22 @@ export function extractEducationImageAndBody(
 
   const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
   if (tagMatch) {
-    if (!image) {
-      image = tagMatch[1].trim();
+    const embedded = tagMatch[1].trim();
+    if (embedded) {
+      if (!image || image.includes("unsplash.com") || image.includes("images.unsplash")) {
+        image = embedded;
+      }
     }
     cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
   }
 
   const mdMatch = cleanBody.match(/^!\[.*?\]\((.*?)\)\r?\n?/);
   if (mdMatch) {
-    if (!image) {
-      image = mdMatch[1].trim();
+    const mdImg = mdMatch[1].trim();
+    if (mdImg) {
+      if (!image || image.includes("unsplash.com") || image.includes("images.unsplash")) {
+        image = mdImg;
+      }
     }
     cleanBody = cleanBody.replace(/^!\[.*?\]\(.*?\)\r?\n?/, "").trim();
   }
