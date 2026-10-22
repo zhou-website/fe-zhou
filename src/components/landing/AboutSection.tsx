@@ -21,9 +21,14 @@ export function AboutSection() {
             (p) => p.section_key === "about_hero" || p.section_key === "vision_mission"
           );
           if (aboutItem && (aboutItem.title || aboutItem.content)) {
+            const rawContent = aboutItem.content?.trim();
+            const isOldSeed =
+              !rawContent ||
+              rawContent.includes("kantor konsultan pajak dan akuntansi terkemuka") ||
+              rawContent.includes("mencapai kepatuhan pajak optimal");
             setAboutProfile({
               headline: aboutItem.title,
-              content: aboutItem.content,
+              content: isOldSeed ? undefined : rawContent,
             });
           }
         }
