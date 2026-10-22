@@ -44,6 +44,7 @@ import {
   getStoredZhouArticles,
   ZHOU_ARTICLES_EVENT,
   extractEducationImageAndBody,
+  getSafeEducationCover,
 } from "@/data/edukasiStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
@@ -353,89 +354,84 @@ function EducationPortalContent() {
   const [activeArticleModal, setActiveArticleModal] = useState<ZhouArticle | null>(null);
   const [downloadSuccessModal, setDownloadSuccessModal] = useState<string | null>(null);
 
-  // Load articles from Backend API & state on mount and listen to updates
+  // Load articles directly from Backend API on mount and listen to updates
   useEffect(() => {
     let isMounted = true;
-    setArticlesList(getStoredZhouArticles());
 
-    // Fetch from live backend API
-    publicApi
-      .getEducation()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiArticles: ZhouArticle[] = res.data
-            .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
-            .map((item: EducationItem) => {
-            const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
-            const { image, cleanBody } = extractEducationImageAndBody(
-              item.body,
-              item.file_path,
-              item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
-            );
-            return {
-              id: `be-${item.id}`,
-              numericId: item.id,
-              title: item.title,
-              category: item.category || "Coretax DJP 2026",
-              categoryKey: (item.category?.toLowerCase().includes("pph")
-                ? "pph-ppn"
-                : item.category?.toLowerCase().includes("sp2dk")
-                ? "sp2dk"
-                : item.category?.toLowerCase().includes("akun")
-                ? "akuntansi"
-                : item.category?.toLowerCase().includes("leg")
-                ? "legal"
-                : "coretax") as ZhouArticle["categoryKey"],
-              date: item.created_at
-                ? new Date(item.created_at).toLocaleDateString("id-ID", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : "2026",
-              author: "Tim Riset Fiskal Zhou",
-              readTime: "5 menit baca",
-              summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
-              takeaways: [
-                "Kepatuhan regulasi fiskal dan pembukuan komersial.",
-                "Mitigasi risiko sanksi administratif dan ekualisasi data.",
-              ],
-              content: [cleanBody],
-              status: getCmsItemStatus(`be-${item.id}`, item.title, "Published", [item.id]) === "Draft" ? "Draft" : "Published",
-              image: image,
-              attachment: (item.download_url || item.file_url || item.file_path)
-                ? {
-                    name: `${item.title.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 40)}.pdf`,
-                    type: "PDF",
-                    size: "1.5 MB",
-                    url: item.download_url || item.file_url || item.file_path,
-                  }
-                : undefined,
-            };
-          });
+    const fetchArticles = () => {
+      publicApi
+        .getEducation()
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+              const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
+              const { image: extractedImg, cleanBody } = extractEducationImageAndBody(
+                item.body,
+                item.file_path,
+                item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
+              );
+              const finalImage = extractedImg || item.image_url || itemAny.cover_image || item.image || getSafeEducationCover(item.category, item.id);
+              return {
+                id: `be-${item.id}`,
+                numericId: item.id,
+                title: item.title,
+                category: item.category || "Coretax DJP 2026",
+                categoryKey: (item.category?.toLowerCase().includes("pph")
+                  ? "pph-ppn"
+                  : item.category?.toLowerCase().includes("sp2dk")
+                  ? "sp2dk"
+                  : item.category?.toLowerCase().includes("akun")
+                  ? "akuntansi"
+                  : item.category?.toLowerCase().includes("leg")
+                  ? "legal"
+                  : "coretax") as ZhouArticle["categoryKey"],
+                date: item.created_at
+                  ? new Date(item.created_at).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "2026",
+                author: "Tim Riset Fiskal Zhou",
+                readTime: "5 menit baca",
+                summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
+                takeaways: [
+                  "Kepatuhan regulasi fiskal dan pembukuan komersial.",
+                  "Mitigasi risiko sanksi administratif dan ekualisasi data.",
+                ],
+                content: [cleanBody],
+                status: getCmsItemStatus(`be-${item.id}`, item.title, "Published", [item.id]) === "Draft" ? "Draft" : "Published",
+                image: finalImage,
+                attachment: (item.download_url || item.file_url || item.file_path)
+                  ? {
+                      name: `${item.title.replace(/[^a-zA-Z0-9_\-]/g, "_").slice(0, 40)}.pdf`,
+                      type: "PDF",
+                      size: "1.5 MB",
+                      url: item.download_url || item.file_url || item.file_path,
+                    }
+                  : undefined,
+              };
+            });
 
-          setArticlesList(apiArticles);
-        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
-          setArticlesList([]);
-        }
-      })
-      .catch((err) => {
-        console.warn("publicApi.getEducation fallback:", err);
-      });
-
-    const handleArticlesUpdate = () => {
-      setArticlesList(getStoredZhouArticles());
+            setArticlesList(apiArticles);
+          } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+            setArticlesList([]);
+          }
+        })
+        .catch((err) => {
+          console.warn("publicApi.getEducation fallback:", err);
+        });
     };
 
-    window.addEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
-    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleArticlesUpdate);
-    window.addEventListener("storage", handleArticlesUpdate);
+    fetchArticles();
+
+    window.addEventListener(ZHOU_ARTICLES_EVENT, fetchArticles);
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, fetchArticles);
     return () => {
       isMounted = false;
-      window.removeEventListener(ZHOU_ARTICLES_EVENT, handleArticlesUpdate);
-      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleArticlesUpdate);
-      window.removeEventListener("storage", handleArticlesUpdate);
+      window.removeEventListener(ZHOU_ARTICLES_EVENT, fetchArticles);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, fetchArticles);
     };
   }, []);
 
@@ -650,6 +646,11 @@ function EducationPortalContent() {
                       <img
                         src={currentFeatured.image}
                         alt={currentFeatured.title}
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.onerror = null;
+                          target.src = getSafeEducationCover(currentFeatured.category, currentFeatured.id);
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent pointer-events-none" />
@@ -850,6 +851,11 @@ function EducationPortalContent() {
                             <img
                               src={article.image}
                               alt={article.title}
+                              onError={(e) => {
+                                const target = e.currentTarget as HTMLImageElement;
+                                target.onerror = null;
+                                target.src = getSafeEducationCover(article.category, article.id);
+                              }}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                             />
                           </div>
@@ -969,6 +975,11 @@ function EducationPortalContent() {
                 <img
                   src={activeArticleModal.image}
                   alt={activeArticleModal.title}
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = getSafeEducationCover(activeArticleModal.category, activeArticleModal.id);
+                  }}
                   className="w-full h-full object-cover"
                 />
               </div>

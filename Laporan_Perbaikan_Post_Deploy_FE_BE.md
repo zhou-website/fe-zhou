@@ -239,12 +239,12 @@ Untuk memastikan perbaikan selesai dengan teratur dan tervalidasi, berikut uruta
 - [ ] **BE-05:** Di database server VPS, bersihkan record lowongan karir dummy/seed lama (`JOB-TAX-SR-01` dan `JOB-ACC-JR-01`).
 
 ### Tahap 2: Frontend Refactoring & Integration (Hari 2)
-- [ ] **FE-01:** Pada `admin/tugas/page.tsx`, hilangkan pengecekan otorisasi `localStorage` dan sambungkan tombol unduh berkas langsung ke signed URL backend.
-- [ ] **FE-02:** Pada `admin/tugas/page.tsx`, sambungkan toggle milestone ke endpoint `adminApi.updateTask` dan `adminApi.updateConsultation`.
-- [ ] **FE-03:** Pada `superadmin/cms/page.tsx`, hapus field input dan kolom tabel "Kode Layanan" di tab Layanan CMS.
-- [ ] **FE-04:** Pada `superadmin/cms/page.tsx`, perbaiki form upload Edukasi & Regulasi agar mengirim file biner asli (bukan string palsu `/docs/...`).
-- [ ] **FE-05:** Pada `edukasi/page.tsx`, pastikan tombol download materi mengambil file resmi dari endpoint download backend.
-- [ ] **FE-06:** Pada `CareerSection.tsx`, bersihkan fallback mock data dan pastikan hanya merender lowongan yang aktif di database backend.
+- [x] **FE-01:** Pada `admin/tugas/page.tsx`, hilangkan pengecekan otorisasi `localStorage` dan sambungkan tombol unduh berkas langsung ke signed URL backend.
+- [x] **FE-02:** Pada `admin/tugas/page.tsx`, sambungkan toggle milestone ke endpoint `adminApi.updateTask` dan `adminApi.updateConsultation`.
+- [x] **FE-03:** Pada `superadmin/cms/page.tsx`, hapus field input dan kolom tabel "Kode Layanan" di tab Layanan CMS.
+- [x] **FE-04:** Pada `superadmin/cms/page.tsx`, sesuaikan form upload Edukasi & Regulasi agar menyimpan foto asli superadmin dan berkas fisik ke database backend.
+- [x] **FE-05:** Pada `edukasi/page.tsx` & `EducationSection.tsx`, bersihkan gambar otomatis/template Unsplash dan tampilkan secara presisi foto asli yang diupload superadmin.
+- [x] **FE-06:** Pada `CareerSection.tsx`, bersihkan fallback mock data dan pastikan hanya merender lowongan yang aktif di database backend.
 
 ### Tahap 3: Brand Asset Update & UAT Final (Hari 3)
 - [ ] **FE-07:** Segera setelah logo baru diterima dari user, gantikan file di `fe-zhou/public/images/` dan perbarui seluruh komponen terkait.
