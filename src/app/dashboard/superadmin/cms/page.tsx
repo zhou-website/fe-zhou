@@ -1139,9 +1139,6 @@ function AdminCMSPageContent() {
               body: bodyWithImage,
               file_path: eduForm.file_path || undefined,
               image: eduForm.image || undefined,
-              image_url: eduForm.image || undefined,
-              photo_url: eduForm.image || undefined,
-              cover_image: eduForm.image || undefined,
             });
           } catch (apiErr) {
             console.warn("Backend updateEducation fallback:", apiErr);
@@ -1169,7 +1166,7 @@ function AdminCMSPageContent() {
             },
             eduForm.status
           );
-          // Optimistic update: langsung perbarui state tabel CMS termasuk raw.image
+          // Optimistic update: langsung perbarui state tabel CMS
           setCmsItems((prev) =>
             prev.map((i) =>
               i.numericId === editingEduId && i.section === "edukasi"
@@ -1179,14 +1176,6 @@ function AdminCMSPageContent() {
                   subcategory: eduForm.category,
                   summary: eduForm.body.slice(0, 140) + (eduForm.body.length > 140 ? "..." : ""),
                   status: eduForm.status,
-                  raw: {
-                    ...(typeof i.raw === "object" ? i.raw : {}),
-                    title: eduForm.title,
-                    category: eduForm.category,
-                    body: eduForm.body,
-                    image: eduForm.image || (i.raw as { image?: string })?.image,
-                    image_url: eduForm.image || (i.raw as { image_url?: string })?.image_url,
-                  },
                 }
                 : i
             )
@@ -1203,9 +1192,6 @@ function AdminCMSPageContent() {
               body: bodyWithImage,
               file_path: eduForm.file_path || undefined,
               image: eduForm.image || undefined,
-              image_url: eduForm.image || undefined,
-              photo_url: eduForm.image || undefined,
-              cover_image: eduForm.image || undefined,
             });
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdNumId = (createRes.data as { id: number }).id;
