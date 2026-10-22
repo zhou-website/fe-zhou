@@ -44,6 +44,7 @@ import {
   getStoredZhouArticles,
   ZHOU_ARTICLES_EVENT,
   extractEducationImageAndBody,
+  getSafeEducationCover,
 } from "@/data/edukasiStorage";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
@@ -650,6 +651,11 @@ function EducationPortalContent() {
                       <img
                         src={currentFeatured.image}
                         alt={currentFeatured.title}
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          target.onerror = null;
+                          target.src = getSafeEducationCover(currentFeatured.category, currentFeatured.id);
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-primary-dark/80 via-transparent to-transparent pointer-events-none" />
@@ -850,6 +856,11 @@ function EducationPortalContent() {
                             <img
                               src={article.image}
                               alt={article.title}
+                              onError={(e) => {
+                                const target = e.currentTarget as HTMLImageElement;
+                                target.onerror = null;
+                                target.src = getSafeEducationCover(article.category, article.id);
+                              }}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                             />
                           </div>
@@ -969,6 +980,11 @@ function EducationPortalContent() {
                 <img
                   src={activeArticleModal.image}
                   alt={activeArticleModal.title}
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = getSafeEducationCover(activeArticleModal.category, activeArticleModal.id);
+                  }}
                   className="w-full h-full object-cover"
                 />
               </div>

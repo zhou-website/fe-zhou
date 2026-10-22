@@ -368,13 +368,13 @@ function AdminCMSPageContent() {
       publicApi
         .uploadPublicFile(imgFd)
         .then((uploadRes) => {
-          if (uploadRes?.data?.public_url || uploadRes?.data?.download_url) {
-            const uploadedUrl = uploadRes.data.public_url || uploadRes.data.download_url;
+          if (uploadRes?.data?.download_url || uploadRes?.data?.public_url) {
+            const uploadedUrl = uploadRes.data.download_url || uploadRes.data.public_url;
             setEduForm((prev) => ({
               ...prev,
               image: uploadedUrl || prev.image,
             }));
-            showToast(`Gambar sampul "${file.name}" berhasil diunggah ke Supabase Storage.`);
+            showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
           }
         })
         .catch((uploadErr) => {
@@ -1240,31 +1240,33 @@ function AdminCMSPageContent() {
               if (eduForm.file_path) {
                 fd.append("file_path", eduForm.file_path);
               }
-              if (eduForm.image) {
-                fd.append("image", eduForm.image);
-                fd.append("image_url", eduForm.image);
-                fd.append("photo_url", eduForm.image);
-                fd.append("imageUrl", eduForm.image);
-                fd.append("cover_image", eduForm.image);
+              const imageVal = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
+              if (imageVal) {
+                fd.append("image", imageVal);
+                fd.append("image_url", imageVal);
+                fd.append("photo_url", imageVal);
+                fd.append("imageUrl", imageVal);
+                fd.append("cover_image", imageVal);
               }
-              if (eduPdfFile) {
-                fd.append("file", eduPdfFile);
-              } else if (eduImageFile) {
+              if (eduImageFile) {
                 fd.append("file", eduImageFile);
+              } else if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
               }
               await adminCmsApi.updateEducation(editingEduId, fd);
             } else {
+              const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
               await adminCmsApi.updateEducation(editingEduId, {
                 title: eduForm.title,
                 category: eduForm.category,
                 content_type: eduForm.content_type,
                 body: bodyWithImage,
                 file_path: eduForm.file_path || undefined,
-                image: eduForm.image || undefined,
-                image_url: eduForm.image || undefined,
-                photo_url: eduForm.image || undefined,
-                imageUrl: eduForm.image || undefined,
-                cover_image: eduForm.image || undefined,
+                image: safeImage,
+                image_url: safeImage,
+                photo_url: safeImage,
+                imageUrl: safeImage,
+                cover_image: safeImage,
               } as unknown as Partial<CreateEducationPayload>);
             }
           } catch (apiErr) {
@@ -1322,31 +1324,33 @@ function AdminCMSPageContent() {
               if (eduForm.file_path) {
                 fd.append("file_path", eduForm.file_path);
               }
-              if (eduForm.image) {
-                fd.append("image", eduForm.image);
-                fd.append("image_url", eduForm.image);
-                fd.append("photo_url", eduForm.image);
-                fd.append("imageUrl", eduForm.image);
-                fd.append("cover_image", eduForm.image);
+              const imageVal = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
+              if (imageVal) {
+                fd.append("image", imageVal);
+                fd.append("image_url", imageVal);
+                fd.append("photo_url", imageVal);
+                fd.append("imageUrl", imageVal);
+                fd.append("cover_image", imageVal);
               }
-              if (eduPdfFile) {
-                fd.append("file", eduPdfFile);
-              } else if (eduImageFile) {
+              if (eduImageFile) {
                 fd.append("file", eduImageFile);
+              } else if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
               }
               createRes = await adminCmsApi.createEducation(fd);
             } else {
+              const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
               createRes = await adminCmsApi.createEducation({
                 title: eduForm.title,
                 category: eduForm.category,
                 content_type: eduForm.content_type,
                 body: bodyWithImage,
                 file_path: eduForm.file_path || undefined,
-                image: eduForm.image || undefined,
-                image_url: eduForm.image || undefined,
-                photo_url: eduForm.image || undefined,
-                imageUrl: eduForm.image || undefined,
-                cover_image: eduForm.image || undefined,
+                image: safeImage,
+                image_url: safeImage,
+                photo_url: safeImage,
+                imageUrl: safeImage,
+                cover_image: safeImage,
               } as unknown as CreateEducationPayload);
             }
             if (createRes?.data && (createRes.data as { id?: number })?.id) {

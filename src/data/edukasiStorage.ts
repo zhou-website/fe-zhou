@@ -60,6 +60,26 @@ export function extractEducationImageAndBody(
 }
 
 /**
+ * Menyediakan gambar sampul cadangan berkualitas tinggi jika gambar unggahan tidak dapat dimuat
+ */
+export function getSafeEducationCover(category?: string, id?: string | number): string {
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("pph") || cat.includes("ppn")) {
+    return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("sp2dk") || cat.includes("hukum") || cat.includes("legal") || cat.includes("sengketa")) {
+    return "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("akun") || cat.includes("keuangan") || cat.includes("laporan")) {
+    return "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("bisnis") || cat.includes("konsultasi")) {
+    return "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80";
+  }
+  return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
+}
+
+/**
  * Menyematkan gambar sampul ke dalam kolom body
  */
 export function formatEducationBodyWithImage(body: string, image?: string): string {

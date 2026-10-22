@@ -38,6 +38,7 @@ import {
   getStoredZhouArticles,
   ZHOU_ARTICLES_EVENT,
   extractEducationImageAndBody,
+  getSafeEducationCover,
 } from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
@@ -268,6 +269,11 @@ export function EducationSection() {
                     <img
                       src={article.image}
                       alt={article.title}
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        target.onerror = null;
+                        target.src = getSafeEducationCover(article.category, article.id);
+                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   </div>
