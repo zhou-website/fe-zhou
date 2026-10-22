@@ -533,11 +533,24 @@ function ClientTicketMonitoringContent() {
     if (deliverable.id) {
       try {
         const rawId = String(deliverable.id).replace(/\D/g, "");
-        if (rawId) {
-          const res = await clientApi.getDownloadUrl(rawId);
+        const numericId = parseInt(rawId, 10);
+        if (numericId > 0 && numericId <= 2147483647) {
+          const res = await clientApi.getDownloadUrl(numericId);
           if (res.success && res.data?.download_url) {
             const dlRes = await downloadRemoteFile(res.data.download_url, deliverable.name);
             if (dlRes.success) {
+              showToast(`Deliverable "${deliverable.name}" berhasil diunduh.`);
+              return;
+            }
+            if (typeof window !== "undefined") {
+              const link = document.createElement("a");
+              link.href = res.data.download_url;
+              link.download = deliverable.name;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
               showToast(`Deliverable "${deliverable.name}" berhasil diunduh.`);
               return;
             }
@@ -620,11 +633,24 @@ function ClientTicketMonitoringContent() {
     if (doc.id) {
       try {
         const rawId = String(doc.id).replace(/\D/g, "");
-        if (rawId) {
-          const res = await clientApi.getDownloadUrl(rawId);
+        const numericId = parseInt(rawId, 10);
+        if (numericId > 0 && numericId <= 2147483647) {
+          const res = await clientApi.getDownloadUrl(numericId);
           if (res.success && res.data?.download_url) {
             const dlRes = await downloadRemoteFile(res.data.download_url, doc.name);
             if (dlRes.success) {
+              showToast(`Dokumen pendukung "${doc.name}" berhasil diunduh.`);
+              return;
+            }
+            if (typeof window !== "undefined") {
+              const link = document.createElement("a");
+              link.href = res.data.download_url;
+              link.download = doc.name;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
               showToast(`Dokumen pendukung "${doc.name}" berhasil diunduh.`);
               return;
             }

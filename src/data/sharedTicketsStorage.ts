@@ -579,7 +579,25 @@ export function mergeTicketsWithLocalOverrides(
         }
       });
 
-      // Priority: Data live backend didahulukan sebagai Single Source of Truth
+      // Priority: Data live backend didahulukan, tetapi pertahankan checklist milestone & progres staf terbaru jika lebih mutakhir
+      const ltCompleted = (lt.milestones || []).filter((m) => m.status === "completed").length;
+      const btCompleted = (bt.milestones || []).filter((m) => m.status === "completed").length;
+      const resolvedMilestones =
+        ltCompleted > btCompleted
+          ? lt.milestones
+          : (bt.milestones && bt.milestones.length > 0)
+          ? bt.milestones
+          : lt.milestones;
+      const resolvedProgress = Math.max(bt.progress || 0, lt.progress || 0);
+      const resolvedStatus =
+        resolvedProgress === 100
+          ? "Selesai"
+          : bt.status === "Selesai"
+          ? "Selesai"
+          : (lt.status && lt.status !== "Menunggu Penugasan")
+          ? lt.status
+          : bt.status;
+
       merged[existingIdx] = {
         ...lt,
         ...bt,
@@ -588,9 +606,9 @@ export function mergeTicketsWithLocalOverrides(
         deliverables: combinedDeliverables,
         clientDocuments: combinedClientDocs,
         correspondences: combinedCorrespondences,
-        milestones: (bt.milestones && bt.milestones.length > 0) ? bt.milestones : lt.milestones,
-        status: bt.status || lt.status,
-        progress: bt.progress !== undefined ? bt.progress : lt.progress,
+        milestones: resolvedMilestones,
+        status: resolvedStatus,
+        progress: resolvedProgress,
         consultant: (bt.consultant && !bt.consultant.includes("Menunggu"))
           ? bt.consultant
           : (lt.consultant || bt.consultant),

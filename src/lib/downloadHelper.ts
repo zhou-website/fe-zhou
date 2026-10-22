@@ -30,9 +30,21 @@ export function resolveBackendUrl(urlOrPath: string): string {
   if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://") || urlOrPath.startsWith("data:") || urlOrPath.startsWith("blob:")) {
     return urlOrPath;
   }
+  const cleanPath = urlOrPath.replace(/^\/+/, "");
+  // Jika path merujuk ke berkas di Supabase storage bucket zhou-documents
+  if (
+    cleanPath.startsWith("documents/") ||
+    cleanPath.startsWith("education/") ||
+    cleanPath.startsWith("regulations/") ||
+    cleanPath.startsWith("cv/") ||
+    cleanPath.endsWith(".pdf") ||
+    cleanPath.endsWith(".xlsx") ||
+    cleanPath.endsWith(".docx")
+  ) {
+    return `https://akzqjzmlbtchaohnzvvo.supabase.co/storage/v1/object/public/zhou-documents/${cleanPath}`;
+  }
   const baseUrl = getApiBaseUrl();
-  const cleanPath = urlOrPath.startsWith("/") ? urlOrPath : `/${urlOrPath}`;
-  return `${baseUrl}${cleanPath}`;
+  return `${baseUrl}/${cleanPath}`;
 }
 
 /**
@@ -107,7 +119,11 @@ export async function downloadRemoteFile(
     Accept: "*/*",
     ...(options?.customHeaders || {}),
   };
-  if (token) {
+  // Hanya sertakan Authorization header jika targetUrl menuju ke endpoint backend internal Zhou Consulting
+  const isInternalBackend =
+    targetUrl.startsWith(getApiBaseUrl()) ||
+    (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://"));
+  if (token && isInternalBackend) {
     reqHeaders["Authorization"] = `Bearer ${token}`;
   }
 
@@ -121,6 +137,23 @@ export async function downloadRemoteFile(
 
     // Tangani respons error HTTP
     if (!response.ok) {
+      // Jika URL adalah URL publik / signed Supabase dan fetch gagal, coba direct link download
+      if (typeof window !== "undefined" && (targetUrl.includes("supabase.co") || targetUrl.includes("/object/"))) {
+        try {
+          const link = document.createElement("a");
+          link.href = targetUrl;
+          link.download = defaultFileName;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return { success: true, fileName: defaultFileName };
+        } catch {
+          // continue to error handling
+        }
+      }
+
       if (response.status === 404) {
         return {
           success: false,
@@ -184,6 +217,22 @@ export async function downloadRemoteFile(
     downloadBlob(safeBlob, finalFileName);
     return { success: true, fileName: finalFileName };
   } catch (err) {
+    // Jika fetch terblokir (misal CORS di browser saat mengakses storage pihak ketiga), lakukan direct click
+    if (typeof window !== "undefined" && (targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+      try {
+        const link = document.createElement("a");
+        link.href = targetUrl;
+        link.download = defaultFileName;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return { success: true, fileName: defaultFileName };
+      } catch {
+        // continue to error return
+      }
+    }
     const errorText = err instanceof Error ? err.message : String(err);
     return {
       success: false,
