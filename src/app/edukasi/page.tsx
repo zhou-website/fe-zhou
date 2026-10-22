@@ -354,12 +354,11 @@ function EducationPortalContent() {
   const [activeArticleModal, setActiveArticleModal] = useState<ZhouArticle | null>(null);
   const [downloadSuccessModal, setDownloadSuccessModal] = useState<string | null>(null);
 
-  // Load articles from Backend API & state on mount and listen to updates
+  // Load articles directly from Backend API on mount and listen to updates
   useEffect(() => {
     let isMounted = true;
-    setArticlesList(getStoredZhouArticles());
 
-    // Fetch from live backend API
+    // Fetch directly from live backend API
     publicApi
       .getEducation()
       .then((res) => {

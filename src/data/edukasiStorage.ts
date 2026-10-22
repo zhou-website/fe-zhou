@@ -9,6 +9,15 @@ export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
 export const GOV_LINKS_STORAGE_KEY = "zhou_gov_links_data_v2";
 export const GOV_LINKS_EVENT = "zhou_gov_links_updated";
 
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem(ZHOU_ARTICLES_STORAGE_KEY);
+    localStorage.removeItem("zhou_articles_data_v1");
+    localStorage.removeItem(GOV_LINKS_STORAGE_KEY);
+    localStorage.removeItem("zhou_gov_links_data_v1");
+  } catch {}
+}
+
 // In-memory runtime cache, tidak lagi menggunakan localStorage
 let memoryZhouArticles: ZhouArticle[] = [];
 let memoryBelajarPajakLinks: BelajarPajakLink[] = [...BELAJAR_PAJAK_LINKS];
@@ -28,13 +37,13 @@ export function extractEducationImageAndBody(
   let cleanBody = rawBody || "";
 
   // Prioritas 1: Ambil gambar resmi dari tag khusus <!--ZHOU_IMAGE:...--> yang disematkan saat superadmin upload
-  const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
+  const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:([\s\S]*?)-->/);
   if (tagMatch) {
     const embedded = tagMatch[1].trim();
     if (embedded) {
       image = embedded;
     }
-    cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
+    cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:[\s\S]*?-->\r?\n?/, "").trim();
   }
 
   // Prioritas 2: Markdown image ![alt](url)
@@ -54,9 +63,14 @@ export function extractEducationImageAndBody(
     }
   }
 
-  // JANGAN memasang gambar otomatis/template (Unsplash dari BE default cover)
-  // Hanya gunakan gambar yang benar-benar diunggah oleh superadmin
-  if (image && (image.includes("unsplash.com") || image.includes("images.unsplash") || image.includes("placeholder"))) {
+  // JANGAN memasang gambar otomatis/template (Unsplash dari BE default cover) atau broken Supabase bucket
+  // Hanya gunakan gambar yang benar-benar valid yang diunggah oleh superadmin
+  if (image && (
+    image.includes("unsplash.com") || 
+    image.includes("images.unsplash") || 
+    image.includes("placeholder") ||
+    image.includes("akzqjzmlbtchaohnzvvo.supabase.co")
+  )) {
     image = undefined;
   }
 

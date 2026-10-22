@@ -66,14 +66,7 @@ export function EducationSection() {
   useEffect(() => {
     let isMounted = true;
 
-    // Load initial from local storage
-    const stored = getStoredZhouArticles();
-    if (stored.length > 0) {
-      setArticles(stored);
-      setIsLoading(false);
-    }
-
-    // Fetch from live backend API
+    // Fetch directly from live backend API
     publicApi
       .getEducation()
       .then((res) => {
