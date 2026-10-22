@@ -87,6 +87,16 @@ function AdminTugasSayaContent() {
   const [detailDocNotes, setDetailDocNotes] = useState<string>("");
   const [isSendingDetailDoc, setIsSendingDetailDoc] = useState(false);
 
+  // Otomatis dedup agar dokumen deliverable resmi konsultan tidak pernah muncul ganda di dokumen pendukung klien
+  const cleanClientDocuments = useMemo(() => {
+    if (!selectedTicket?.clientDocuments) return [];
+    const delivNames = new Set((selectedTicket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+    const delivIds = new Set((selectedTicket.deliverables || []).map((d) => String(d.numericId || d.id)));
+    return selectedTicket.clientDocuments.filter(
+      (doc) => !delivNames.has(doc.name.toLowerCase().trim()) && !delivIds.has(String(doc.numericId || doc.id))
+    );
+  }, [selectedTicket?.clientDocuments, selectedTicket?.deliverables]);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -181,18 +191,23 @@ function AdminTugasSayaContent() {
             assignedAdminName: c.assigned_admin?.name,
             assignedAdminEmail: c.assigned_admin?.email,
             milestones: taskMilestones,
-            deliverables: (c.documents || [])
-              .filter((d) => (d.uploaded_by && c.client_id ? d.uploaded_by !== c.client_id : true))
-              .map((d) => ({
-                id: `DOC-${d.id}`,
-                numericId: d.id,
-                name: d.file_name,
-                size: d.file_size || "1.5 MB",
-                type: d.file_type || "PDF",
-                date: new Date(d.created_at).toLocaleDateString("id-ID"),
-                status: "Terkirim",
-                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-              })),
+            deliverables: (() => {
+              const rawDocs = c.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
+              return rawDocs
+                .filter((d) => !isClientUpload(d))
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  status: "Terkirim",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
             correspondences: c.description ? [
               {
                 id: `msg-${c.id}`,
@@ -202,19 +217,33 @@ function AdminTugasSayaContent() {
                 message: c.description,
               }
             ] : [],
-            clientDocuments: (c.documents || [])
-              .filter((d) => (d.uploaded_by && c.client_id ? d.uploaded_by === c.client_id : false))
-              .map((d) => ({
-                id: `DOC-${d.id}`,
-                numericId: d.id,
-                name: d.file_name,
-                size: d.file_size || "1.5 MB",
-                type: d.file_type || "PDF",
-                date: new Date(d.created_at).toLocaleDateString("id-ID"),
-                uploadedBy: c.client?.name || "Klien",
-                status: "Diterima PIC",
-                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-              })),
+            clientDocuments: (() => {
+              const rawDocs = c.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
+              const adminDeliverables = rawDocs.filter((d) => !isClientUpload(d));
+              const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
+              const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
+
+              return rawDocs
+                .filter(
+                  (d) =>
+                    isClientUpload(d) &&
+                    !delivNames.has(d.file_name.toLowerCase().trim()) &&
+                    !delivIds.has(String(d.id))
+                )
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  uploadedBy: c.client?.name || "Klien",
+                  status: "Diterima PIC",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
           };
         });
 
@@ -401,6 +430,7 @@ function AdminTugasSayaContent() {
           const updatedTicket = {
             ...selectedTicket,
             deliverables: saveRes.ticket.deliverables,
+            clientDocuments: saveRes.ticket.clientDocuments,
             correspondences: saveRes.ticket.correspondences,
           };
           setSelectedTicket(updatedTicket);
@@ -1011,19 +1041,19 @@ function AdminTugasSayaContent() {
                         Dokumen Pendukung Klien
                       </h4>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
-                        {selectedTicket.clientDocuments?.length || 0}
+                        {cleanClientDocuments.length}
                       </span>
                     </div>
                     <span className="text-[10px] text-text-muted">Berkas Unggahan Klien</span>
                   </div>
 
-                  {(!selectedTicket.clientDocuments || selectedTicket.clientDocuments.length === 0) ? (
+                  {cleanClientDocuments.length === 0 ? (
                     <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
                       Belum ada dokumen pendukung yang dilampirkan oleh klien.
                     </div>
                   ) : (
                     <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
-                      {selectedTicket.clientDocuments.map((doc, docIdx) => (
+                      {cleanClientDocuments.map((doc, docIdx) => (
                         <div key={docIdx} className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-md bg-surface text-primary flex items-center justify-center text-[10px] shrink-0 font-bold border border-primary-light">

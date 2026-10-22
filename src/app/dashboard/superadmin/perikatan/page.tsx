@@ -188,18 +188,23 @@ function SuperadminPerikatanContent() {
                     description: "Penyampaian deliverable akhir dan penutupan tiket.",
                   },
                 ],
-            deliverables: (b.documents || [])
-              .filter((d) => (d.uploaded_by && b.client_id ? d.uploaded_by !== b.client_id : true))
-              .map((d) => ({
-                id: `DOC-${d.id}`,
-                numericId: d.id,
-                name: d.file_name,
-                size: d.file_size || "1.5 MB",
-                type: d.file_type || "PDF",
-                date: new Date(d.created_at).toLocaleDateString("id-ID"),
-                status: "Terkirim",
-                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-              })),
+            deliverables: (() => {
+              const rawDocs = b.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && b.client_id && Number(d.uploaded_by) === Number(b.client_id));
+              return rawDocs
+                .filter((d) => !isClientUpload(d))
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  status: "Terkirim",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
             description: b.description || "",
             correspondences: b.description ? [
               {
@@ -210,19 +215,33 @@ function SuperadminPerikatanContent() {
                 message: b.description,
               }
             ] : [],
-            clientDocuments: (b.documents || [])
-              .filter((d) => (d.uploaded_by && b.client_id ? d.uploaded_by === b.client_id : false))
-              .map((d) => ({
-                id: `DOC-${d.id}`,
-                numericId: d.id,
-                name: d.file_name,
-                size: d.file_size || "1.5 MB",
-                type: d.file_type || "PDF",
-                date: new Date(d.created_at).toLocaleDateString("id-ID"),
-                uploadedBy: b.client?.name || "Klien",
-                status: "Diterima PIC",
-                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-              })),
+            clientDocuments: (() => {
+              const rawDocs = b.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && b.client_id && Number(d.uploaded_by) === Number(b.client_id));
+              const adminDeliverables = rawDocs.filter((d) => !isClientUpload(d));
+              const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
+              const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
+
+              return rawDocs
+                .filter(
+                  (d) =>
+                    isClientUpload(d) &&
+                    !delivNames.has(d.file_name.toLowerCase().trim()) &&
+                    !delivIds.has(String(d.id))
+                )
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  uploadedBy: b.client?.name || "Klien",
+                  status: "Diterima PIC",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
             isArchived: isTicketArchived(bCode),
           };
         });
@@ -1127,77 +1146,75 @@ function SuperadminPerikatanContent() {
 
             {/* Dokumen Pendukung Klien */}
             {(() => {
-              const docs = (selectedDetailTicket.clientDocuments && selectedDetailTicket.clientDocuments.length > 0)
-                ? selectedDetailTicket.clientDocuments
-                : [
-                    {
-                      id: "doc-sample-1",
-                      name: "Zhou_Consulting_Frontend_Checklist_v2.xlsx",
-                      size: "0.02 MB",
-                      type: "xlsx",
-                      date: "Hari ini",
-                      uploadedBy: selectedDetailTicket.clientName || "Budi Pratama (Direktur)",
-                      status: "Diterima",
-                    },
-                  ];
+              const delivNames = new Set((selectedDetailTicket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+              const delivIds = new Set((selectedDetailTicket.deliverables || []).map((d) => String(d.numericId || d.id)));
+              const cleanDocs = (selectedDetailTicket.clientDocuments || []).filter(
+                (doc) => !delivNames.has(doc.name.toLowerCase().trim()) && !delivIds.has(String(doc.numericId || doc.id))
+              );
 
               return (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-primary flex items-center justify-between">
                     <span>Dokumen Pendukung dari Klien:</span>
                     <span className="text-[11px] font-normal text-text-secondary">
-                      {docs.length} Dokumen
+                      {cleanDocs.length} Dokumen
                     </span>
                   </label>
 
-                  <div className="space-y-2">
-                    {docs.map((doc, idx) => {
-                      const isXls = doc.name.toLowerCase().endsWith(".xlsx") || doc.name.toLowerCase().endsWith(".xls");
-                      const isDoc = doc.name.toLowerCase().endsWith(".docx") || doc.name.toLowerCase().endsWith(".doc");
+                  {cleanDocs.length === 0 ? (
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {cleanDocs.map((doc, idx) => {
+                        const isXls = doc.name.toLowerCase().endsWith(".xlsx") || doc.name.toLowerCase().endsWith(".xls");
+                        const isDoc = doc.name.toLowerCase().endsWith(".docx") || doc.name.toLowerCase().endsWith(".doc");
 
-                      return (
-                        <div
-                          key={doc.id || idx}
-                          className="p-3 bg-white rounded-xl border border-primary-light flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
-                                isXls ? "bg-emerald-600" : isDoc ? "bg-blue-600" : "bg-primary"
-                              }`}
-                            >
-                              {isXls ? "XLS" : isDoc ? "DOC" : "PDF"}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-primary truncate">{doc.name}</p>
-                              <p className="text-[10px] text-text-muted mt-0.5">
-                                {doc.size} &bull; {doc.date} &bull; Pengunggah: {doc.uploadedBy || selectedDetailTicket.clientName || "Budi Pratama (Direktur)"}
-                              </p>
-                              {doc.description && (
-                                <p className="text-[11px] text-text-secondary mt-1 bg-surface px-2 py-0.5 rounded border border-primary-light/60 inline-block">
-                                  Tujuan: {doc.description}
+                        return (
+                          <div
+                            key={doc.id || idx}
+                            className="p-3 bg-white rounded-xl border border-primary-light flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
+                                  isXls ? "bg-emerald-600" : isDoc ? "bg-blue-600" : "bg-primary"
+                                }`}
+                              >
+                                {isXls ? "XLS" : isDoc ? "DOC" : "PDF"}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-primary truncate">{doc.name}</p>
+                                <p className="text-[10px] text-text-muted mt-0.5">
+                                  {doc.size} &bull; {doc.date} &bull; Pengunggah: {doc.uploadedBy || selectedDetailTicket.clientName || "Budi Pratama (Direktur)"}
                                 </p>
-                              )}
+                                {doc.description && (
+                                  <p className="text-[11px] text-text-secondary mt-1 bg-surface px-2 py-0.5 rounded border border-primary-light/60 inline-block">
+                                    Tujuan: {doc.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200">
+                                {doc.status || "Diterima"}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl, (doc as unknown as { numericId?: number }).numericId || doc.id)}
+                                className="text-xs h-7 px-2.5 font-medium border-primary-light"
+                              >
+                                Unduh
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200">
-                              {doc.status || "Diterima"}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl, (doc as unknown as { numericId?: number }).numericId || doc.id)}
-                              className="text-xs h-7 px-2.5 font-medium border-primary-light"
-                            >
-                              Unduh
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })()}

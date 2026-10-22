@@ -437,7 +437,13 @@ export function getStoredClientTickets(): ClientTicket[] {
               : t.consultant && getDisplayPicName({ consultant: t.consultant, status: t.status }) !== "Menunggu PIC"
               ? t.consultant
               : "Menunggu PIC",
-          clientDocuments: t.clientDocuments || [],
+          clientDocuments: (() => {
+            const delivNames = new Set((t.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+            const delivIds = new Set((t.deliverables || []).map((d) => String(d.numericId || d.id)));
+            return (t.clientDocuments || []).filter(
+              (cd) => !delivNames.has(cd.name.toLowerCase().trim()) && !delivIds.has(String(cd.numericId || cd.id))
+            );
+          })(),
           priority: t.priority || "Normal",
           isArchived: Boolean(t.isArchived || isTicketArchived(t.id)),
           archivedAt: t.archivedAt,
@@ -453,7 +459,17 @@ export function getStoredClientTickets(): ClientTicket[] {
  * Menyimpan tiket ke in-memory dan mentrigger event agar dashboard admin dan user langsung tersinkron
  */
 export function saveStoredClientTickets(tickets: ClientTicket[]): void {
-  memoryTickets = tickets;
+  const sanitized = tickets.map((t) => {
+    const delivNames = new Set((t.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+    const delivIds = new Set((t.deliverables || []).map((d) => String(d.numericId || d.id)));
+    return {
+      ...t,
+      clientDocuments: (t.clientDocuments || []).filter(
+        (cd) => !delivNames.has(cd.name.toLowerCase().trim()) && !delivIds.has(String(cd.numericId || cd.id))
+      ),
+    };
+  });
+  memoryTickets = sanitized;
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(TICKETS_UPDATED_EVENT));
   }
@@ -1235,6 +1251,14 @@ export function addAdminDeliverableToTicket(
 
   const existing = target.deliverables || [];
   target.deliverables = [newDeliverable, ...existing];
+
+  // Otomatis bersihkan duplikasi jika berkas deliverable yang diunggah konsultan sebelumnya ada di clientDocuments
+  if (target.clientDocuments && target.clientDocuments.length > 0) {
+    const dName = deliverable.name.toLowerCase().trim();
+    target.clientDocuments = target.clientDocuments.filter(
+      (cd) => cd.name.toLowerCase().trim() !== dName
+    );
+  }
 
   // Tambahkan catatan resmi dari konsultan
   const staffName = adminProfile?.name || target.assignedAdminName || "Konsultan PIC";

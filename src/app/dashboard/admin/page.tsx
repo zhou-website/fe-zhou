@@ -175,7 +175,8 @@ function AdminDashboardContent() {
     
     // Total dokumen pada tugas-tugas milik admin ini
     const totalDocs = validTickets.reduce((acc, curr) => {
-      const clientDocs = curr.clientDocuments?.length || 0;
+      const delivNames = new Set((curr.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+      const clientDocs = (curr.clientDocuments || []).filter((cd) => !delivNames.has(cd.name.toLowerCase().trim())).length;
       const deliverables = curr.deliverables?.length || 0;
       return acc + clientDocs + deliverables;
     }, 0);

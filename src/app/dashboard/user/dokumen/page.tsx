@@ -122,7 +122,10 @@ export default function ClientDocumentVaultPage() {
             : "Pajak";
 
         // A. Berkas Pendukung yang diunggah Klien pada konsultasi ini
-        (ticket.clientDocuments || []).forEach((cd, idx) => {
+        const delivNames = new Set((ticket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+        (ticket.clientDocuments || [])
+          .filter((cd) => !delivNames.has(cd.name.toLowerCase().trim()))
+          .forEach((cd, idx) => {
           const isXlsx =
             cd.type === "XLSX" ||
             cd.name.toLowerCase().endsWith(".xlsx") ||

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -162,18 +162,18 @@ function ClientTicketMonitoringContent() {
           const projectDocs = backendDocs.filter(
             (d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code))
           );
-          const adminDeliverables = projectDocs.filter((d) => {
-            if (d.uploaded_by && c.client_id) {
-              return d.uploaded_by !== c.client_id;
-            }
-            return true;
-          });
-          const clientSupportingDocs = projectDocs.filter((d) => {
-            if (d.uploaded_by && c.client_id) {
-              return d.uploaded_by === c.client_id;
-            }
-            return false;
-          });
+          const isClientUpload = (d: { uploaded_by?: number }) =>
+            Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
+          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d));
+          const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
+          const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
+
+          const clientSupportingDocs = projectDocs.filter(
+            (d) =>
+              isClientUpload(d) &&
+              !delivNames.has(d.file_name.toLowerCase().trim()) &&
+              !delivIds.has(String(d.id))
+          );
 
           const matchingDocs: Deliverable[] = adminDeliverables.map((d) => ({
             id: d.id,
@@ -478,6 +478,16 @@ function ClientTicketMonitoringContent() {
     : urlTicketId
     ? tickets.find((t) => t.id.toLowerCase() === urlTicketId.toLowerCase()) || null
     : null;
+
+  // Otomatis dedup agar dokumen deliverable resmi konsultan tidak pernah muncul ganda di dokumen pendukung klien
+  const cleanClientDocuments = useMemo(() => {
+    if (!selectedTicket?.clientDocuments) return [];
+    const delivNames = new Set((selectedTicket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+    const delivIds = new Set((selectedTicket.deliverables || []).map((d) => String(d.id)));
+    return selectedTicket.clientDocuments.filter(
+      (doc) => !delivNames.has(doc.name.toLowerCase().trim()) && !delivIds.has(String(doc.numericId || doc.id))
+    );
+  }, [selectedTicket?.clientDocuments, selectedTicket?.deliverables]);
 
   // Handle Download File Deliverable
   const handleDownloadFile = async (deliverableOrName: Deliverable | string) => {
@@ -1233,16 +1243,20 @@ function ClientTicketMonitoringContent() {
                         Dokumen Pendukung Klien
                       </h4>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
-                        {selectedTicket.clientDocuments?.length || 0}
+                        {cleanClientDocuments.length}
                       </span>
                     </div>
                     <span className="text-[10px] text-text-muted">Maks. 10 MB (.pdf, .xlsx, .docx)</span>
                   </div>
 
                   {/* List Dokumen Terunggah */}
-                  {selectedTicket.clientDocuments && selectedTicket.clientDocuments.length > 0 && (
+                  {cleanClientDocuments.length === 0 ? (
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
+                    </div>
+                  ) : (
                     <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
-                      {selectedTicket.clientDocuments.map((doc, docIdx) => (
+                      {cleanClientDocuments.map((doc, docIdx) => (
                         <div
                           key={doc.id || docIdx}
                           className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors"
