@@ -9,15 +9,6 @@ export const ZHOU_ARTICLES_EVENT = "zhou_articles_updated";
 export const GOV_LINKS_STORAGE_KEY = "zhou_gov_links_data_v2";
 export const GOV_LINKS_EVENT = "zhou_gov_links_updated";
 
-if (typeof window !== "undefined") {
-  try {
-    localStorage.removeItem(ZHOU_ARTICLES_STORAGE_KEY);
-    localStorage.removeItem("zhou_articles_data_v1");
-    localStorage.removeItem(GOV_LINKS_STORAGE_KEY);
-    localStorage.removeItem("zhou_gov_links_data_v1");
-  } catch {}
-}
-
 // In-memory runtime cache, tidak lagi menggunakan localStorage
 let memoryZhouArticles: ZhouArticle[] = [];
 let memoryBelajarPajakLinks: BelajarPajakLink[] = [...BELAJAR_PAJAK_LINKS];
@@ -37,13 +28,13 @@ export function extractEducationImageAndBody(
   let cleanBody = rawBody || "";
 
   // Prioritas 1: Ambil gambar resmi dari tag khusus <!--ZHOU_IMAGE:...--> yang disematkan saat superadmin upload
-  const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:([\s\S]*?)-->/);
+  const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
   if (tagMatch) {
     const embedded = tagMatch[1].trim();
     if (embedded) {
       image = embedded;
     }
-    cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:[\s\S]*?-->\r?\n?/, "").trim();
+    cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
   }
 
   // Prioritas 2: Markdown image ![alt](url)
@@ -63,25 +54,27 @@ export function extractEducationImageAndBody(
     }
   }
 
-  // JANGAN memasang gambar otomatis/template (Unsplash dari BE default cover) atau broken Supabase bucket
-  // Hanya gunakan gambar yang benar-benar valid yang diunggah oleh superadmin
-  if (image && (
-    image.includes("unsplash.com") || 
-    image.includes("images.unsplash") || 
-    image.includes("placeholder") ||
-    image.includes("akzqjzmlbtchaohnzvvo.supabase.co")
-  )) {
-    image = undefined;
-  }
-
   return { image, cleanBody };
 }
 
 /**
- * Cadangan sampul edukasi: mengembalikan string kosong agar tidak menampilkan gambar template/duplikasi
+ * Menyediakan gambar sampul cadangan jika gambar unggahan tidak dapat dimuat
  */
 export function getSafeEducationCover(category?: string, id?: string | number): string {
-  return "";
+  const cat = (category || "").toLowerCase();
+  if (cat.includes("pph") || cat.includes("ppn")) {
+    return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("sp2dk") || cat.includes("hukum") || cat.includes("legal") || cat.includes("sengketa")) {
+    return "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("akun") || cat.includes("keuangan") || cat.includes("laporan")) {
+    return "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80";
+  }
+  if (cat.includes("bisnis") || cat.includes("konsultasi")) {
+    return "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80";
+  }
+  return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
 }
 
 /**

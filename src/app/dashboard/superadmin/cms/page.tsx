@@ -585,34 +585,8 @@ function AdminCMSPageContent() {
         });
       }
 
-      // Selalu sertakan artikel dari getStoredZhouArticles() (misal: materi yang dibuat admin di browser)
-      const storedArticles = getStoredZhouArticles();
-      storedArticles.forEach((art) => {
-        if (isCmsItemDeleted(art.id, art.title)) return;
-        const titleKey = art.title.trim().toLowerCase();
-        if (!existingEduTitles.has(titleKey) && !existingEduIds.has(art.id)) {
-          existingEduTitles.add(titleKey);
-          existingEduIds.add(art.id);
-          const numId = parseInt(art.id.replace(/\D/g, "")) || getStableCmsNumericId(art.id + art.title);
-          const displayId = art.id.startsWith("EDU-") ? art.id : `EDU-${numId}`;
-          items.push({
-            id: displayId,
-            numericId: numId,
-            section: "edukasi",
-            title: art.title,
-            category: "Edukasi Zhou",
-            subcategory: art.category || "Coretax DJP",
-            summary: art.summary || (Array.isArray(art.content) ? art.content.join(" ").slice(0, 140) : ""),
-            status: getCmsItemStatus(displayId, art.title, art.status === "Draft" ? "Draft" : "Published", [art.id, numId]),
-            updatedAt: art.date || "Terbaru",
-            raw: {
-              ...art,
-              body: Array.isArray(art.content) ? art.content.join("\n\n") : "",
-              file_path: art.attachment?.name,
-            },
-          });
-        }
-      });
+      // Modul edukasi kini 100% tersinkronisasi langsung dengan endpoint backend API
+      // Tidak lagi mencampur dengan data lokal/localStorage browser
 
       // Selalu sertakan link eksternal DJP/Kemenkeu dari getStoredBelajarPajakLinks()
       const storedGovLinks = getStoredBelajarPajakLinks();
@@ -971,11 +945,7 @@ function AdminCMSPageContent() {
             }
           }
           if (deleteSuccess) {
-            deleteZhouArticle(item.id);
-            deleteZhouArticle(item.title);
-            deleteZhouArticle(`be-${item.numericId}`);
-            deleteZhouArticle(`EDU-${item.numericId}`);
-            if (rawId) deleteZhouArticle(rawId);
+            await loadAllCMS();
           }
         }
       } else if (item.section === "services") {
@@ -1209,173 +1179,89 @@ function AdminCMSPageContent() {
         const bodyWithImage = formatEducationBodyWithImage(eduForm.body, eduForm.image);
 
         if (editingEduId) {
-          // UPDATE ke backend database & local storage
+          // UPDATE ke backend database API
           try {
-            if (eduPdfFile) {
+            if (eduPdfFile || eduImageFile) {
               const fd = new FormData();
               fd.append("title", eduForm.title);
               fd.append("category", eduForm.category);
               fd.append("content_type", eduForm.content_type);
-              fd.append("body", bodyWithImage);
+              fd.append("body", eduForm.body);
+              if (eduImageFile) {
+                fd.append("file", eduImageFile);
+              } else if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
+              }
+              if (eduForm.image) {
+                fd.append("image_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("photo_url", eduForm.image);
+                fd.append("cover_image", eduForm.image);
+              }
               if (eduForm.file_path) {
                 fd.append("file_path", eduForm.file_path);
               }
-              const imageVal = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
-              if (imageVal) {
-                fd.append("image", imageVal);
-                fd.append("image_url", imageVal);
-                fd.append("photo_url", imageVal);
-                fd.append("imageUrl", imageVal);
-                fd.append("cover_image", imageVal);
-              }
-              fd.append("file", eduPdfFile);
               await adminCmsApi.updateEducation(editingEduId, fd);
             } else {
-              const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
               await adminCmsApi.updateEducation(editingEduId, {
                 title: eduForm.title,
                 category: eduForm.category,
                 content_type: eduForm.content_type,
-                body: bodyWithImage,
+                body: eduForm.body,
                 file_path: eduForm.file_path || undefined,
-                image: safeImage,
-                image_url: safeImage,
-                photo_url: safeImage,
-                imageUrl: safeImage,
-                cover_image: safeImage,
+                image_url: eduForm.image || undefined,
+                photo_url: eduForm.image || undefined,
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
               } as unknown as Partial<CreateEducationPayload>);
             }
           } catch (apiErr) {
             console.warn("Backend updateEducation fallback:", apiErr);
           }
-          updateZhouArticle(`be-${editingEduId}`, {
-            title: eduForm.title,
-            category: eduForm.category,
-            content: [eduForm.body],
-            summary: eduForm.body.slice(0, 160) + (eduForm.body.length > 160 ? "..." : ""),
-            image: eduForm.image || undefined,
-            status: eduForm.status,
-            attachment: eduForm.file_path || eduPdfFile
-              ? {
-                name: eduPdfFile?.name || eduForm.file_name || "modul-panduan.pdf",
-                size: eduForm.file_size || (eduPdfFile ? `${(eduPdfFile.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB"),
-                type: "PDF",
-              }
-              : undefined,
-          });
-          setCmsItemStatus(
-            {
-              id: `EDU-${editingEduId}`,
-              numericId: editingEduId,
-              title: eduForm.title,
-            },
-            eduForm.status
-          );
-          // Optimistic update: langsung perbarui state tabel CMS
-          setCmsItems((prev) =>
-            prev.map((i) =>
-              i.numericId === editingEduId && i.section === "edukasi"
-                ? {
-                  ...i,
-                  title: eduForm.title,
-                  subcategory: eduForm.category,
-                  summary: eduForm.body.slice(0, 140) + (eduForm.body.length > 140 ? "..." : ""),
-                  status: eduForm.status,
-                }
-                : i
-            )
-          );
-          showToast(eduForm.status === "Published" ? "Materi edukasi berhasil diperbarui & dipublikasikan!" : "Materi edukasi berhasil disimpan sebagai draf!");
+          await loadAllCMS();
+          showToast("Materi edukasi berhasil diperbarui di database backend!");
         } else {
-          // CREATE ke backend database & local storage
-          let createdNumId: number | undefined = undefined;
+          // CREATE ke backend database API
           try {
-            let createRes;
-            if (eduPdfFile) {
+            if (eduPdfFile || eduImageFile) {
               const fd = new FormData();
               fd.append("title", eduForm.title);
               fd.append("category", eduForm.category);
               fd.append("content_type", eduForm.content_type);
-              fd.append("body", bodyWithImage);
+              fd.append("body", eduForm.body);
+              if (eduImageFile) {
+                fd.append("file", eduImageFile);
+              } else if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
+              }
+              if (eduForm.image) {
+                fd.append("image_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("photo_url", eduForm.image);
+                fd.append("cover_image", eduForm.image);
+              }
               if (eduForm.file_path) {
                 fd.append("file_path", eduForm.file_path);
               }
-              const imageVal = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
-              if (imageVal) {
-                fd.append("image", imageVal);
-                fd.append("image_url", imageVal);
-                fd.append("photo_url", imageVal);
-                fd.append("imageUrl", imageVal);
-                fd.append("cover_image", imageVal);
-              }
-              fd.append("file", eduPdfFile);
-              createRes = await adminCmsApi.createEducation(fd);
+              await adminCmsApi.createEducation(fd);
             } else {
-              const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
-              createRes = await adminCmsApi.createEducation({
+              await adminCmsApi.createEducation({
                 title: eduForm.title,
                 category: eduForm.category,
                 content_type: eduForm.content_type,
-                body: bodyWithImage,
+                body: eduForm.body,
                 file_path: eduForm.file_path || undefined,
-                image: safeImage,
-                image_url: safeImage,
-                photo_url: safeImage,
-                imageUrl: safeImage,
-                cover_image: safeImage,
+                image_url: eduForm.image || undefined,
+                photo_url: eduForm.image || undefined,
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
               } as unknown as CreateEducationPayload);
-            }
-            if (createRes?.data && (createRes.data as { id?: number })?.id) {
-              createdNumId = (createRes.data as { id: number }).id;
             }
           } catch (apiErr) {
             console.warn("Backend createEducation fallback:", apiErr);
           }
-          const createdArt = addZhouArticle({
-            title: eduForm.title,
-            category: eduForm.category,
-            categoryKey: eduForm.category.toLowerCase().includes("pph")
-              ? "pph-ppn"
-              : eduForm.category.toLowerCase().includes("sp2dk")
-                ? "sp2dk"
-                : eduForm.category.toLowerCase().includes("akun")
-                  ? "akuntansi"
-                  : eduForm.category.toLowerCase().includes("leg")
-                    ? "legal"
-                    : "coretax",
-            date: new Date().toLocaleDateString("id-ID", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            }),
-            readTime: "5 menit baca",
-            author: "Tim Riset Fiskal Zhou",
-            summary: eduForm.body.slice(0, 160) + (eduForm.body.length > 160 ? "..." : ""),
-            takeaways: [
-              "Kepatuhan regulasi fiskal dan pembukuan komersial.",
-              "Mitigasi risiko sanksi administratif dan ekualisasi data.",
-            ],
-            content: [eduForm.body],
-            status: eduForm.status,
-            image: eduForm.image || undefined,
-            attachment: eduForm.file_path || eduPdfFile
-              ? {
-                name: eduPdfFile?.name || eduForm.file_name || "modul-panduan.pdf",
-                size: eduForm.file_size || (eduPdfFile ? `${(eduPdfFile.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB"),
-                type: "PDF",
-              }
-              : undefined,
-            isFeatured: true,
-          });
-          setCmsItemStatus(
-            {
-              id: createdArt?.id || (createdNumId ? `EDU-${createdNumId}` : undefined),
-              numericId: createdNumId,
-              title: eduForm.title,
-            },
-            eduForm.status
-          );
-          showToast(eduForm.status === "Published" ? "Materi edukasi berhasil ditambahkan & dipublikasikan!" : "Materi edukasi berhasil disimpan sebagai draf!");
+          await loadAllCMS();
+          showToast("Materi edukasi berhasil ditambahkan ke database backend!");
         }
 
         loadAllCMS();

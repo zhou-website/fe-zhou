@@ -35,13 +35,10 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { ZhouArticle } from "@/data/edukasiData";
 import {
-  getStoredZhouArticles,
-  ZHOU_ARTICLES_EVENT,
   extractEducationImageAndBody,
   getSafeEducationCover,
 } from "@/data/edukasiStorage";
 import { publicApi, EducationItem } from "@/lib/api";
-import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 
 export function EducationSection() {
   const { t } = useLanguage();
@@ -66,74 +63,67 @@ export function EducationSection() {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch directly from live backend API
-    publicApi
-      .getEducation()
-      .then((res) => {
-        if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-          const apiArticles: ZhouArticle[] = res.data
-            .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
-            .map((item: EducationItem) => {
-            const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
-            const { image, cleanBody } = extractEducationImageAndBody(
-              item.body,
-              item.file_path,
-              item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
-            );
-            return {
-              id: `be-${item.id}`,
-              title: item.title,
-              category: item.category || "Coretax DJP 2026",
-              categoryKey: (item.category?.toLowerCase().includes("pph")
-                ? "kepatuhan"
-                : item.category?.toLowerCase().includes("akuntansi")
-                ? "akuntansi"
-                : "transformasi"),
-              date: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
-              readTime: "5 menit baca",
-              author: "Tim Konsultan Zhou Consulting",
-              summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
-              takeaways: [
-                "Kepatuhan regulasi perpajakan nasional dan mitigasi risiko.",
-                "Penyelarasan bukti potong dan rekonsiliasi data fiskal berkala.",
-              ],
-              content: [cleanBody],
-              status: "Published",
-              isFeatured: true,
-              image: image,
-            };
-          });
+    const fetchArticles = () => {
+      publicApi
+        .getEducation()
+        .then((res) => {
+          if (!isMounted) return;
+          if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+            const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+              const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
+              const { image: extractedImg, cleanBody } = extractEducationImageAndBody(
+                item.body,
+                item.file_path,
+                item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
+              );
+              const finalImage = extractedImg || item.image_url || itemAny.cover_image || item.image || getSafeEducationCover(item.category, item.id);
+              return {
+                id: `be-${item.id}`,
+                title: item.title,
+                category: item.category || "Coretax DJP 2026",
+                categoryKey: (item.category?.toLowerCase().includes("pph")
+                  ? "kepatuhan"
+                  : item.category?.toLowerCase().includes("akuntansi")
+                  ? "akuntansi"
+                  : "transformasi"),
+                date: new Date(item.created_at || Date.now()).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                }),
+                readTime: "5 menit baca",
+                author: "Tim Konsultan Zhou Consulting",
+                summary: cleanBody.slice(0, 160) + (cleanBody.length > 160 ? "..." : ""),
+                takeaways: [
+                  "Kepatuhan regulasi perpajakan nasional dan mitigasi risiko.",
+                  "Penyelarasan bukti potong dan rekonsiliasi data fiskal berkala.",
+                ],
+                content: [cleanBody],
+                status: "Published",
+                isFeatured: true,
+                image: finalImage,
+              };
+            });
 
-          setArticles(apiArticles);
-        } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
-          setArticles([]);
-        }
-      })
-      .catch((err) => {
-        console.warn("publicApi.getEducation in EducationSection:", err);
-      })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      });
-
-    const handleUpdate = () => {
-      setArticles(getStoredZhouArticles());
+            setArticles(apiArticles);
+          } else if (res?.data && Array.isArray(res.data) && res.data.length === 0) {
+            setArticles([]);
+          }
+        })
+        .catch((err) => {
+          console.warn("publicApi.getEducation in EducationSection:", err);
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        });
     };
 
-    window.addEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
+    fetchArticles();
 
     return () => {
       isMounted = false;
-      window.removeEventListener(ZHOU_ARTICLES_EVENT, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
     };
   }, []);
 
@@ -265,10 +255,7 @@ export function EducationSection() {
                       onError={(e) => {
                         const target = e.currentTarget as HTMLImageElement;
                         target.onerror = null;
-                        const container = target.parentElement;
-                        if (container) {
-                          container.style.display = "none";
-                        }
+                        target.src = getSafeEducationCover(article.category, article.id);
                       }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -372,10 +359,7 @@ export function EducationSection() {
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
                       target.onerror = null;
-                      const container = target.parentElement;
-                      if (container) {
-                        container.style.display = "none";
-                      }
+                      target.src = getSafeEducationCover(selectedArticle.category, selectedArticle.id);
                     }}
                     className="w-full h-full object-cover"
                   />
