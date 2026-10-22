@@ -188,16 +188,18 @@ function SuperadminPerikatanContent() {
                     description: "Penyampaian deliverable akhir dan penutupan tiket.",
                   },
                 ],
-            deliverables: (b.documents || []).map((d) => ({
-              id: `DOC-${d.id}`,
-              numericId: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.5 MB",
-              type: d.file_type || "PDF",
-              date: new Date(d.created_at).toLocaleDateString("id-ID"),
-              status: "Terkirim",
-              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-            })),
+            deliverables: (b.documents || [])
+              .filter((d) => (d.uploaded_by && b.client_id ? d.uploaded_by !== b.client_id : true))
+              .map((d) => ({
+                id: `DOC-${d.id}`,
+                numericId: d.id,
+                name: d.file_name,
+                size: d.file_size || "1.5 MB",
+                type: d.file_type || "PDF",
+                date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                status: "Terkirim",
+                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+              })),
             description: b.description || "",
             correspondences: b.description ? [
               {
@@ -208,17 +210,19 @@ function SuperadminPerikatanContent() {
                 message: b.description,
               }
             ] : [],
-            clientDocuments: (b.documents || []).map((d) => ({
-              id: `DOC-${d.id}`,
-              numericId: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.5 MB",
-              type: d.file_type || "PDF",
-              date: new Date(d.created_at).toLocaleDateString("id-ID"),
-              uploadedBy: b.client?.name || "Klien",
-              status: "Diterima PIC",
-              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-            })),
+            clientDocuments: (b.documents || [])
+              .filter((d) => (d.uploaded_by && b.client_id ? d.uploaded_by === b.client_id : false))
+              .map((d) => ({
+                id: `DOC-${d.id}`,
+                numericId: d.id,
+                name: d.file_name,
+                size: d.file_size || "1.5 MB",
+                type: d.file_type || "PDF",
+                date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                uploadedBy: b.client?.name || "Klien",
+                status: "Diterima PIC",
+                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+              })),
             isArchived: isTicketArchived(bCode),
           };
         });

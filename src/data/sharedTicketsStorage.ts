@@ -539,10 +539,18 @@ export function mergeTicketsWithLocalOverrides(
         }
       });
 
-      // Gabungkan berkas dokumen klien tanpa duplikat
-      const combinedClientDocs = [...(bt.clientDocuments || [])];
+      // Filter deliverables agar tidak pernah tercampur ke clientDocuments
+      const deliverableNameSet = new Set(combinedDeliverables.map((d) => d.name.toLowerCase().trim()));
+
+      // Gabungkan berkas dokumen klien tanpa duplikat, dan singkirkan dokumen deliverable resmi
+      const combinedClientDocs = (bt.clientDocuments || []).filter(
+        (cd) => !deliverableNameSet.has(cd.name.toLowerCase().trim())
+      );
       (lt.clientDocuments || []).forEach((lcd) => {
-        if (!combinedClientDocs.some((d) => d.name.toLowerCase() === lcd.name.toLowerCase() || d.id === lcd.id)) {
+        if (
+          !deliverableNameSet.has(lcd.name.toLowerCase().trim()) &&
+          !combinedClientDocs.some((d) => d.name.toLowerCase() === lcd.name.toLowerCase() || d.id === lcd.id)
+        ) {
           combinedClientDocs.unshift(lcd);
         }
       });

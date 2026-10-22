@@ -181,16 +181,18 @@ function AdminTugasSayaContent() {
             assignedAdminName: c.assigned_admin?.name,
             assignedAdminEmail: c.assigned_admin?.email,
             milestones: taskMilestones,
-            deliverables: (c.documents || []).map((d) => ({
-              id: `DOC-${d.id}`,
-              numericId: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.5 MB",
-              type: d.file_type || "PDF",
-              date: new Date(d.created_at).toLocaleDateString("id-ID"),
-              status: "Terkirim",
-              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-            })),
+            deliverables: (c.documents || [])
+              .filter((d) => (d.uploaded_by && c.client_id ? d.uploaded_by !== c.client_id : true))
+              .map((d) => ({
+                id: `DOC-${d.id}`,
+                numericId: d.id,
+                name: d.file_name,
+                size: d.file_size || "1.5 MB",
+                type: d.file_type || "PDF",
+                date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                status: "Terkirim",
+                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+              })),
             correspondences: c.description ? [
               {
                 id: `msg-${c.id}`,
@@ -200,17 +202,19 @@ function AdminTugasSayaContent() {
                 message: c.description,
               }
             ] : [],
-            clientDocuments: (c.documents || []).map((d) => ({
-              id: `DOC-${d.id}`,
-              numericId: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.5 MB",
-              type: d.file_type || "PDF",
-              date: new Date(d.created_at).toLocaleDateString("id-ID"),
-              uploadedBy: c.client?.name || "Klien",
-              status: "Diterima PIC",
-              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-            })),
+            clientDocuments: (c.documents || [])
+              .filter((d) => (d.uploaded_by && c.client_id ? d.uploaded_by === c.client_id : false))
+              .map((d) => ({
+                id: `DOC-${d.id}`,
+                numericId: d.id,
+                name: d.file_name,
+                size: d.file_size || "1.5 MB",
+                type: d.file_type || "PDF",
+                date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                uploadedBy: c.client?.name || "Klien",
+                status: "Diterima PIC",
+                downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+              })),
           };
         });
 

@@ -159,20 +159,50 @@ function ClientTicketMonitoringContent() {
 
         backendTickets = validConsultations.map((c: ConsultationItem) => {
           const ticketCode = c.project_code || `TK-${c.id}`;
-          const matchingDocs: Deliverable[] = backendDocs
-            .filter((d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code)))
-            .map((d) => ({
-              id: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.8 MB",
-              format: d.file_type || "PDF",
-              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
-              date: new Date(d.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
-            }));
+          const projectDocs = backendDocs.filter(
+            (d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code))
+          );
+          const adminDeliverables = projectDocs.filter((d) => {
+            if (d.uploaded_by && c.client_id) {
+              return d.uploaded_by !== c.client_id;
+            }
+            return true;
+          });
+          const clientSupportingDocs = projectDocs.filter((d) => {
+            if (d.uploaded_by && c.client_id) {
+              return d.uploaded_by === c.client_id;
+            }
+            return false;
+          });
+
+          const matchingDocs: Deliverable[] = adminDeliverables.map((d) => ({
+            id: d.id,
+            name: d.file_name,
+            size: d.file_size || "1.8 MB",
+            format: d.file_type || "PDF",
+            downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+            date: new Date(d.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+          }));
+
+          const matchingClientDocs: ClientUploadedFile[] = clientSupportingDocs.map((d) => ({
+            id: String(d.id),
+            numericId: d.id,
+            name: d.file_name,
+            size: d.file_size || "1.8 MB",
+            type: d.file_type || "PDF",
+            date: new Date(d.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            uploadedBy: c.client?.name || "Klien",
+            status: "Diterima",
+            downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+          }));
 
           const isCompleted = c.status === "COMPLETED";
 
@@ -237,6 +267,7 @@ function ClientTicketMonitoringContent() {
                   },
                 ]
               : [],
+            clientDocuments: matchingClientDocs,
             correspondences: [
               {
                 id: `msg-${c.id}`,
