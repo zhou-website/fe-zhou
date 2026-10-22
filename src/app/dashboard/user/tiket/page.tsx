@@ -166,7 +166,7 @@ function ClientTicketMonitoringContent() {
               name: d.file_name,
               size: d.file_size || "1.8 MB",
               format: d.file_type || "PDF",
-              downloadUrl: d.file_path,
+              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
               date: new Date(d.created_at).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
@@ -180,8 +180,8 @@ function ClientTicketMonitoringContent() {
             ? c.tasks.map((task, idx) => ({
                 step: `0${idx + 1}`,
                 title: task.task_name,
-                status: (task.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-                date: "Proses",
+                status: (task.is_completed || (c.assigned_admin && idx <= 1) ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                date: (task.is_completed || (c.assigned_admin && idx <= 1)) ? "Selesai" : "Proses",
                 description: task.task_name,
               }))
             : [

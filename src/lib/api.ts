@@ -588,6 +588,7 @@ export interface CreateEducationPayload {
   file_path?: string;
   image?: string;
   image_url?: string;
+  photo_url?: string;
   author?: string;
   excerpt?: string;
 }

@@ -35,112 +35,7 @@ export interface StoredServiceItem {
   waTemplate?: string;
 }
 
-export const DEFAULT_SERVICES: StoredServiceItem[] = [
-  {
-    id: "SVC-4798",
-    code: "SVC-4798",
-    categoryKey: "akuntansi",
-    name: "Penyusunan Laporan Keuangan & Pembukuan",
-    subtitle: "Penyusunan laporan posisi keuangan (neraca), laba rugi, perubahan ekuitas, dan arus kas standar resmi perbankan & audit.",
-    badge: "ACCOUNTING SERVICES",
-    route: "/layanan/akuntansi",
-    pillars: [
-      {
-        title: "Pencatatan Buku Besar & Jurnal",
-        description: "Pengelolaan akuntansi berbasis data yang akurat guna menghasilkan laporan bulanan dan tahunan kredibel.",
-      },
-    ],
-    workflow: [],
-    deliverables: [
-      "Bundel Laporan Keuangan Lengkap (Audit-ready / Bank-ready) beserta CALK resmi.",
-    ],
-    status: "Published",
-    lastUpdated: "19 Okt 2026",
-    scopes: [
-      "Laporan Posisi Keuangan (Neraca)",
-      "Laporan Laba Rugi Komprehensif",
-      "Laporan Arus Kas",
-    ],
-  },
-  {
-    id: "SVC-5021",
-    code: "SVC-5021",
-    categoryKey: "tax-service",
-    name: "Kepatuhan Pajak Korporasi & Pelaporan SPT",
-    subtitle: "Pendampingan perhitungan, penyetoran, dan pelaporan SPT Masa & Tahunan (PPh Badan, PPh 21, PPh 23, PPN).",
-    badge: "TAX SERVICES",
-    route: "/layanan/tax-service",
-    pillars: [
-      {
-        title: "Perhitungan & Rekonsiliasi Fiskal",
-        description: "Pemeriksaan rekonsiliasi komersial ke fiskal untuk meminimalisasi risiko koreksi pajak.",
-      },
-    ],
-    workflow: [],
-    deliverables: [
-      "Bukti Penerimaan Elektronik (BPE) & Laporan SPT Tahunan PPh Badan.",
-    ],
-    status: "Published",
-    lastUpdated: "19 Okt 2026",
-    scopes: [
-      "SPT Tahunan PPh Badan",
-      "SPT Masa PPh & PPN",
-      "Tax Planning & Review",
-    ],
-  },
-  {
-    id: "SVC-6034",
-    code: "SVC-6034",
-    categoryKey: "hukum",
-    name: "Kepatuhan Hukum & Legal Drafting Kontrak",
-    subtitle: "Penyusunan dan review perjanjian bisnis, uji tuntas hukum (legal due diligence), serta perizinan berusaha OSS-RBA.",
-    badge: "LEGAL COMPLIANCE",
-    route: "/layanan/hukum",
-    pillars: [
-      {
-        title: "Perjanjian Bisnis & Kepatuhan Korporasi",
-        description: "Mitigasi risiko perikatan hukum komersial dan pemenuhan perizinan OSS terintegrasi.",
-      },
-    ],
-    workflow: [],
-    deliverables: [
-      "Draft Kontrak Final & Legal Opinion Resmi Rekomendasi Advokat.",
-    ],
-    status: "Published",
-    lastUpdated: "19 Okt 2026",
-    scopes: [
-      "Perjanjian Kerjasama (MoU/PKS)",
-      "Uji Tuntas Hukum Usaha",
-      "Perizinan OSS-RBA",
-    ],
-  },
-  {
-    id: "SVC-7045",
-    code: "SVC-7045",
-    categoryKey: "bisnis",
-    name: "Konsultasi Strategi Finansial & Restrukturisasi",
-    subtitle: "Perencanaan arus kas korporasi, analisis kelayakan investasi bisnis, serta restrukturisasi permodalan usaha.",
-    badge: "BUSINESS CONSULTING",
-    route: "/layanan/bisnis",
-    pillars: [
-      {
-        title: "Analisis Kelayakan Finansial",
-        description: "Pemetaan kesehatan neraca dan permodelan proyeksi keuangan ekspansi bisnis.",
-      },
-    ],
-    workflow: [],
-    deliverables: [
-      "Laporan Financial Feasibility Study & Roadmap Restrukturisasi.",
-    ],
-    status: "Published",
-    lastUpdated: "19 Okt 2026",
-    scopes: [
-      "Studi Kelayakan Bisnis",
-      "Manajemen Modal Kerja",
-      "Valuasi & Restrukturisasi",
-    ],
-  },
-];
+export const DEFAULT_SERVICES: StoredServiceItem[] = [];
 
 export const SERVICES_STORAGE_KEY = "zhou_services_data_v2";
 export const SERVICES_EVENT = "zhou_services_updated";
@@ -168,8 +63,8 @@ export function inferDeliverableFromTitle(title?: string): string {
   return "Dokumen Laporan & Rekomendasi Resmi";
 }
 
-// In-memory runtime state, tidak lagi menggunakan localStorage
-let memoryServices: StoredServiceItem[] = [...DEFAULT_SERVICES];
+// In-memory runtime state, tidak lagi menginjeksi mock data layanan lama
+let memoryServices: StoredServiceItem[] = [];
 
 /**
  * Mendapatkan daftar layanan (in-memory)

@@ -123,10 +123,11 @@ function AdminTugasSayaContent() {
         const mappedTickets: ClientTicket[] = assignedConsultations.map((c: ConsultationItem) => {
           const taskMilestones: Milestone[] = (c.tasks && c.tasks.length > 0)
             ? c.tasks.map((task, idx) => ({
+                taskId: task.id,
                 step: `0${idx + 1}`,
                 title: task.task_name,
                 status: (task.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-                date: "Proses",
+                date: task.is_completed ? "Selesai" : "Proses",
                 description: task.task_name,
               }))
             : [
@@ -182,12 +183,13 @@ function AdminTugasSayaContent() {
             milestones: taskMilestones,
             deliverables: (c.documents || []).map((d) => ({
               id: `DOC-${d.id}`,
+              numericId: d.id,
               name: d.file_name,
               size: d.file_size || "1.5 MB",
               type: d.file_type || "PDF",
               date: new Date(d.created_at).toLocaleDateString("id-ID"),
               status: "Terkirim",
-              downloadUrl: d.file_path,
+              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
             })),
             correspondences: c.description ? [
               {
@@ -200,13 +202,14 @@ function AdminTugasSayaContent() {
             ] : [],
             clientDocuments: (c.documents || []).map((d) => ({
               id: `DOC-${d.id}`,
+              numericId: d.id,
               name: d.file_name,
               size: d.file_size || "1.5 MB",
               type: d.file_type || "PDF",
               date: new Date(d.created_at).toLocaleDateString("id-ID"),
               uploadedBy: c.client?.name || "Klien",
               status: "Diterima PIC",
-              downloadUrl: d.file_path,
+              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
             })),
           };
         });
@@ -534,6 +537,7 @@ function AdminTugasSayaContent() {
 
     const target = currentMilestones[milestoneIdx];
     const newStatus = target.status === "completed" ? "in_progress" : "completed";
+    const newIsCompleted = newStatus === "completed";
     currentMilestones[milestoneIdx] = {
       ...target,
       status: newStatus,
@@ -548,7 +552,21 @@ function AdminTugasSayaContent() {
 
     const rawId = selectedTicket.numericId || parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.id;
 
-    // 1. Simpan ke local storage tersinkronisasi
+    // 1. Simpan langsung ke backend API (Task checklist & Consultation Status/Progress)
+    try {
+      if (target.taskId) {
+        await adminApi.updateTask(rawId, target.taskId, newIsCompleted);
+      }
+      await adminApi.updateConsultation(rawId, {
+        progress_percent: nextProgress,
+        status: backendStatus,
+      });
+      await adminApi.updateConsultationStatus(rawId, backendStatus);
+    } catch (apiErr) {
+      console.warn("Update consultation task/status backend notice:", apiErr);
+    }
+
+    // 2. Simpan ke local storage tersinkronisasi sebagai cache
     const saveRes = updateStoredClientTicketProgress(
       selectedTicket.id,
       {
@@ -559,13 +577,6 @@ function AdminTugasSayaContent() {
       activeStaffProfile,
       selectedTicket
     );
-
-    // 2. Simpan ke backend API
-    try {
-      await adminApi.updateConsultationStatus(rawId, backendStatus);
-    } catch (apiErr) {
-      console.warn("Update consultation status backend notice:", apiErr);
-    }
 
     if (saveRes.success && saveRes.ticket) {
       setSelectedTicket(saveRes.ticket);
@@ -589,7 +600,7 @@ function AdminTugasSayaContent() {
     await loadData();
   };
 
-  // Unduh dokumen pendukung klien (dengan verifikasi otorisasi PIC)
+  // Unduh dokumen pendukung klien (langsung memanggil signed URL backend)
   const handleDownloadClientDoc = async (
     fileName: string,
     clientName?: string,
@@ -597,18 +608,36 @@ function AdminTugasSayaContent() {
     downloadUrl?: string,
     docId?: string | number
   ) => {
-    if (ticketId) {
-      const authCheck = getTicketByIdForStaff(ticketId, activeStaffProfile);
-      if (!authCheck.success) {
-        showToast("Akses ditolak: Anda tidak memiliki hak akses mengunduh dokumen dari tiket ini.");
+    const cleanFileName = (fileName || "Dokumen.pdf").trim();
+    showToast(`Menyiapkan unduhan berkas "${cleanFileName}"...`);
+
+    // 1. Coba minta signed download URL dari backend jika ada docId
+    const numericDocId = docId ? parseInt(String(docId).replace(/\D/g, ""), 10) : undefined;
+    if (numericDocId && !isNaN(numericDocId)) {
+      try {
+        const signRes = await clientApi.getDownloadUrl(numericDocId);
+        if (signRes?.data?.download_url) {
+          const res = await downloadRemoteFile(signRes.data.download_url, cleanFileName);
+          if (res.success) {
+            showToast(`Dokumen "${cleanFileName}" berhasil diunduh.`);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Signed URL fetch notice:", err);
+      }
+    }
+
+    // 2. Coba unduh dari URL remote server jika ada (sudah signed URL dari backend)
+    if (downloadUrl && downloadUrl !== "#") {
+      const res = await downloadRemoteFile(downloadUrl, cleanFileName);
+      if (res.success) {
+        showToast(`Dokumen "${cleanFileName}" berhasil diunduh.`);
         return;
       }
     }
 
-    const cleanFileName = (fileName || "Dokumen.pdf").trim();
-    showToast(`Menyiapkan unduhan berkas "${cleanFileName}"...`);
-
-    // 1. Cek blob file di IndexedDB persistent storage dan memory cache
+    // 3. Cek blob file di IndexedDB persistent storage dan memory cache sebagai fallback
     const cachedBlob =
       (await getCachedFileBlobAsync(cleanFileName)) ||
       (ticketId ? await getCachedFileBlobAsync(`${ticketId}:${cleanFileName}`) : undefined) ||
@@ -621,32 +650,8 @@ function AdminTugasSayaContent() {
       return;
     }
 
-    // 2. Coba minta signed download URL dari backend jika ada docId
-    const numericDocId = docId ? parseInt(String(docId).replace(/\D/g, ""), 10) : undefined;
-    if (numericDocId && !isNaN(numericDocId)) {
-      try {
-        const signRes = await clientApi.getDownloadUrl(numericDocId);
-        if (signRes?.data?.download_url) {
-          const res = await downloadRemoteFile(signRes.data.download_url, cleanFileName);
-          if (res.success) {
-            showToast(`Dokumen "${cleanFileName}" berhasil diunduh.`);
-            return;
-          }
-        }
-      } catch {}
-    }
-
-    // 3. Coba unduh dari URL remote server jika ada
-    if (downloadUrl && downloadUrl !== "#") {
-      const res = await downloadRemoteFile(downloadUrl, cleanFileName);
-      if (res.success) {
-        showToast(`Dokumen "${cleanFileName}" berhasil diunduh untuk peninjauan.`);
-        return;
-      }
-    }
-
-    // Berkas fisik asli klien belum tersedia di repositori server browser saat ini
-    showToast(`Berkas fisik asli "${cleanFileName}" belum tersedia di repositori server browser.`);
+    // Berkas fisik asli klien belum tersedia di repositori server
+    showToast(`Berkas fisik "${cleanFileName}" belum tersedia untuk diunduh.`);
   };
 
   // Helper Badge Status
@@ -983,7 +988,7 @@ function AdminTugasSayaContent() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDownloadClientDoc(d.name, "Konsultan PIC", selectedTicket.id, d.downloadUrl, d.id)}
+                            onClick={() => handleDownloadClientDoc(d.name, "Konsultan PIC", selectedTicket.id, d.downloadUrl, d.numericId || d.id)}
                             className="text-xs h-7 px-2.5 font-medium shrink-0"
                           >
                             Unduh
@@ -1029,7 +1034,7 @@ function AdminTugasSayaContent() {
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl, doc.id)}
+                            onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl, doc.numericId || doc.id)}
                             className="text-xs h-7 px-2.5 font-medium shrink-0"
                           >
                             Unduh

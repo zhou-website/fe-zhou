@@ -10,6 +10,7 @@ export type ConsultationStatus =
   | "Dibatalkan";
 
 export interface Milestone {
+  taskId?: number;
   step: string;
   title: string;
   status: "completed" | "in_progress" | "pending";
@@ -19,6 +20,7 @@ export interface Milestone {
 
 export interface Deliverable {
   id: string;
+  numericId?: number;
   name: string;
   type: string;
   size: string;
@@ -37,6 +39,7 @@ export interface Correspondence {
 
 export interface ClientUploadedFile {
   id?: string;
+  numericId?: number;
   name: string;
   size: string;
   type: string;

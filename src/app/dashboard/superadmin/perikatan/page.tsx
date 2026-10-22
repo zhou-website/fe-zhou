@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   adminApi,
+  clientApi,
   superadminApi,
   ConsultationItem,
   AdminUserItem,
@@ -146,20 +147,56 @@ function SuperadminPerikatanContent() {
             assignedAdminId: b.assigned_admin ? `ADM-${String(b.assigned_admin.id).padStart(3, "0")}` : undefined,
             assignedAdminName: b.assigned_admin?.name,
             assignedAdminEmail: b.assigned_admin?.email,
-            milestones: (b.tasks || []).map((t, idx) => ({
-              step: `0${idx + 1}`,
-              title: t.task_name,
-              status: (t.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-              date: "Proses",
-              description: t.task_name,
-            })),
+            milestones: (b.tasks && b.tasks.length > 0)
+              ? b.tasks.map((t, idx) => ({
+                  taskId: t.id,
+                  step: `0${idx + 1}`,
+                  title: t.task_name,
+                  status: (t.is_completed || (b.assigned_admin && idx <= 1) ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                  date: (t.is_completed || (b.assigned_admin && idx <= 1)) ? "Selesai" : "Proses",
+                  description: t.task_name,
+                }))
+              : [
+                  {
+                    step: "01",
+                    title: "Permohonan Diterima",
+                    status: "completed" as const,
+                    date: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID") : "Hari ini",
+                    description: "Permohonan konsultasi diverifikasi dan dicatat sistem.",
+                  },
+                  {
+                    step: "02",
+                    title: b.assigned_admin?.name ? `PIC Ditetapkan: ${b.assigned_admin.name}` : "Penetapan Konsultan PIC & Divisi Terkait",
+                    status: (b.assigned_admin ? "completed" : "in_progress") as "completed" | "in_progress" | "pending",
+                    date: b.assigned_admin ? "Selesai" : "Menunggu",
+                    description: b.assigned_admin
+                      ? `Superadmin menetapkan ${b.assigned_admin.name} sebagai konsultan PIC.`
+                      : "Menunggu penetapan PIC oleh Superadmin.",
+                  },
+                  {
+                    step: "03",
+                    title: "Pengerjaan Kertas Kerja & Pembahasan",
+                    status: (isCompleted ? "completed" : b.assigned_admin ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                    date: isCompleted ? "Selesai" : "-",
+                    description: "Penyusunan kertas kerja dan telaah kepatuhan.",
+                  },
+                  {
+                    step: "04",
+                    title: "Konsultasi Selesai & Laporan Final",
+                    status: (isCompleted ? "completed" : "pending") as "completed" | "in_progress" | "pending",
+                    date: isCompleted ? "Selesai" : "-",
+                    description: "Penyampaian deliverable akhir dan penutupan tiket.",
+                  },
+                ],
             deliverables: (b.documents || []).map((d) => ({
               id: `DOC-${d.id}`,
+              numericId: d.id,
               name: d.file_name,
               size: d.file_size || "1.5 MB",
               type: d.file_type || "PDF",
               date: new Date(d.created_at).toLocaleDateString("id-ID"),
               status: "Terkirim",
+              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
             })),
             description: b.description || "",
             correspondences: b.description ? [
@@ -171,7 +208,17 @@ function SuperadminPerikatanContent() {
                 message: b.description,
               }
             ] : [],
-            clientDocuments: [],
+            clientDocuments: (b.documents || []).map((d) => ({
+              id: `DOC-${d.id}`,
+              numericId: d.id,
+              name: d.file_name,
+              size: d.file_size || "1.5 MB",
+              type: d.file_type || "PDF",
+              date: new Date(d.created_at).toLocaleDateString("id-ID"),
+              uploadedBy: b.client?.name || "Klien",
+              status: "Diterima PIC",
+              downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+            })),
             isArchived: isTicketArchived(bCode),
           };
         });
@@ -370,19 +417,26 @@ function SuperadminPerikatanContent() {
   const handleDownloadAttachment = async (
     fileName: string,
     clientName?: string,
-    downloadUrl?: string
+    downloadUrl?: string,
+    docId?: string | number
   ) => {
-    showToast(`Menyiapkan unduhan berkas asli "${fileName}"...`);
+    showToast(`Menyiapkan unduhan berkas "${fileName}"...`);
 
-    // 1. Cek berkas fisik asli di IndexedDB & memory cache
-    const cachedBlob =
-      (await getCachedFileBlobAsync(fileName)) ||
-      (selectedDetailTicket?.id ? await getCachedFileBlobAsync(`${selectedDetailTicket.id}:${fileName}`) : undefined);
-
-    if (cachedBlob) {
-      downloadBlob(cachedBlob, fileName);
-      showToast(`Dokumen asli "${fileName}" berhasil diunduh.`);
-      return;
+    // 1. Coba minta signed download URL dari backend jika ada docId
+    const numericDocId = docId ? parseInt(String(docId).replace(/\D/g, ""), 10) : undefined;
+    if (numericDocId && !isNaN(numericDocId)) {
+      try {
+        const signRes = await clientApi.getDownloadUrl(numericDocId);
+        if (signRes?.data?.download_url) {
+          const res = await downloadRemoteFile(signRes.data.download_url, fileName);
+          if (res.success) {
+            showToast(`Dokumen "${fileName}" berhasil diunduh.`);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Signed URL error:", err);
+      }
     }
 
     // 2. Coba unduh dari URL remote jika ada
@@ -394,7 +448,19 @@ function SuperadminPerikatanContent() {
       }
     }
 
-    showToast(`Berkas fisik asli "${fileName}" belum tersedia pada penyimpanan server/peramban.`);
+    // 3. Cek berkas fisik asli di IndexedDB & memory cache
+    const cachedBlob =
+      (await getCachedFileBlobAsync(fileName)) ||
+      (selectedDetailTicket?.id ? await getCachedFileBlobAsync(`${selectedDetailTicket.id}:${fileName}`) : undefined) ||
+      (docId ? await getCachedFileBlobAsync(String(docId)) : undefined);
+
+    if (cachedBlob) {
+      downloadBlob(cachedBlob, fileName);
+      showToast(`Dokumen asli "${fileName}" berhasil diunduh.`);
+      return;
+    }
+
+    showToast(`Berkas fisik "${fileName}" belum tersedia untuk diunduh.`);
   };
 
   // Helper ekspor Ringkasan Data Klien ke Excel dengan struktur kolom rapi
@@ -1118,7 +1184,7 @@ function SuperadminPerikatanContent() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl)}
+                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl, (doc as unknown as { numericId?: number }).numericId || doc.id)}
                               className="text-xs h-7 px-2.5 font-medium border-primary-light"
                             >
                               Unduh
