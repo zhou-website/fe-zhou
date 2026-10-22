@@ -44,7 +44,7 @@ export default function KonsultasiHukumPage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
-      if (apiItems && apiItems.length > 0) {
+      if (apiItems !== undefined) {
         setModules(
           apiItems.map((c) => ({
             id: `LAW-${c.id}`,
@@ -64,6 +64,7 @@ export default function KonsultasiHukumPage() {
         return;
       }
 
+      // Fallback hanya saat backend API offline
       const stored = getStoredServices();
       const lawItems = stored.filter(
         (s) =>
@@ -109,12 +110,13 @@ export default function KonsultasiHukumPage() {
       .getServices()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const lawFromApi = res.data.filter((item: PublicServiceItem) => {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
+              item.is_active !== false &&
               (cat.includes("hukum") || cat.includes("legal") || code.includes("law") || code.includes("legal") || name.includes("hukum") || name.includes("legal") || cat.includes("sengketa")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );

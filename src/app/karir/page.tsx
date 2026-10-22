@@ -110,7 +110,7 @@ export default function CareerPage() {
       .getCareers()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const apiJobs: JobPosition[] = res.data
             .filter((c: CareerItem) => !isCmsItemDeleted(c.id, c.position_title, undefined, c.position_code))
             .map((c: CareerItem) => {
@@ -160,11 +160,7 @@ export default function CareerPage() {
             };
           });
 
-          setJobsList((prev) => {
-            const titles = new Set(apiJobs.map((j) => j.title.toLowerCase()));
-            const localOnly = prev.filter((p) => !titles.has(p.title.toLowerCase()));
-            return [...apiJobs, ...localOnly];
-          });
+          setJobsList(apiJobs);
         }
       })
       .catch((err) => {

@@ -44,6 +44,27 @@ export default function KonsultasiBisnisPage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
+      if (apiItems !== undefined) {
+        setModules(
+          apiItems.map((c: PublicServiceItem) => ({
+            id: `FIN-${c.id}`,
+            code: c.service_code || `FIN-${c.id}`,
+            title: c.service_name,
+            badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
+            subtitle: c.description || "Konsultasi restrukturisasi bisnis dan manajemen arus kas perusahaan",
+            scopes: c.features && c.features.length > 0 ? c.features : [
+              "Konsultasi perencanaan keuangan dan strategi bisnis",
+              "Evaluasi kinerja dan manajemen risiko korporasi",
+            ],
+            deliverable: "Laporan Studi Kelayakan Bisnis & Analisis Finansial",
+            topicParam: "studi-kelayakan",
+            waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+          }))
+        );
+        return;
+      }
+
+      // Fallback hanya saat backend API offline
       const stored = getStoredServices();
       const bizItems = stored.filter(
         (s) =>
@@ -53,17 +74,9 @@ export default function KonsultasiBisnisPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-
-
       if (bizItems.length > 0) {
         setModules(
           bizItems.map((c) => {
-            const apiItem = apiItems?.find(
-              (a) =>
-                (a.service_code && a.service_code.toLowerCase() === (c.code || c.id).toLowerCase()) ||
-                (a.service_name && a.service_name.toLowerCase() === c.name.toLowerCase())
-            );
-
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
@@ -98,47 +111,30 @@ export default function KonsultasiBisnisPage() {
       }
     };
 
-    syncModules();
-
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const bizFromApi = res.data.filter((item: PublicServiceItem) => {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
+              item.is_active !== false &&
               (cat.includes("bisnis") || cat.includes("finan") || cat.includes("consulting") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
 
-          if (bizFromApi.length > 0) {
-            setModules(
-              bizFromApi.map((c: PublicServiceItem) => ({
-                id: `FIN-${c.id}`,
-                code: c.service_code || `FIN-${c.id}`,
-                title: c.service_name,
-                badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
-                subtitle: c.description || "Konsultasi restrukturisasi bisnis dan manajemen arus kas perusahaan",
-                scopes: c.features && c.features.length > 0 ? c.features : [
-                  "Konsultasi perencanaan keuangan dan strategi bisnis",
-                  "Evaluasi kinerja dan manajemen risiko korporasi",
-                ],
-                deliverable: "Laporan Studi Kelayakan Bisnis & Analisis Finansial",
-                topicParam: "studi-kelayakan",
-                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-              }))
-            );
-            return;
-          }
+          syncModules(bizFromApi);
+        } else {
+          syncModules();
         }
       })
       .catch(() => {
-        syncModules();
+        if (isMounted) syncModules();
       });
 
     const handleUpdate = () => syncModules();

@@ -46,7 +46,7 @@ export default function TaxServicePage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
-      if (apiItems && apiItems.length > 0) {
+      if (apiItems !== undefined) {
         setModules(
           apiItems.map((c) => ({
             id: `TAX-${c.id}`,
@@ -66,6 +66,7 @@ export default function TaxServicePage() {
         return;
       }
 
+      // Fallback hanya saat backend API offline
       const stored = getStoredServices();
       const taxStored = stored.filter(
         (s) =>
@@ -114,17 +115,18 @@ export default function TaxServicePage() {
       }
     };
 
-    // 1. Ambil data dari live endpoint backend (zero-cache) untuk sinkronisasi atribut terbaru
+    // 1. Ambil data langsung dari live endpoint backend (zero-cache)
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const taxFromApi = res.data.filter((item: PublicServiceItem) => {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
+              item.is_active !== false &&
               (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
               code !== "tax-ebl" &&
               code !== "srv-tax-ebl" &&

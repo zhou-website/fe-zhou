@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   adminApi,
+  clientApi,
   superadminApi,
   ConsultationItem,
   AdminUserItem,
@@ -146,21 +147,64 @@ function SuperadminPerikatanContent() {
             assignedAdminId: b.assigned_admin ? `ADM-${String(b.assigned_admin.id).padStart(3, "0")}` : undefined,
             assignedAdminName: b.assigned_admin?.name,
             assignedAdminEmail: b.assigned_admin?.email,
-            milestones: (b.tasks || []).map((t, idx) => ({
-              step: `0${idx + 1}`,
-              title: t.task_name,
-              status: (t.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-              date: "Proses",
-              description: t.task_name,
-            })),
-            deliverables: (b.documents || []).map((d) => ({
-              id: `DOC-${d.id}`,
-              name: d.file_name,
-              size: d.file_size || "1.5 MB",
-              type: d.file_type || "PDF",
-              date: new Date(d.created_at).toLocaleDateString("id-ID"),
-              status: "Terkirim",
-            })),
+            milestones: (b.tasks && b.tasks.length > 0)
+              ? b.tasks.map((t, idx) => ({
+                  taskId: t.id,
+                  step: `0${idx + 1}`,
+                  title: t.task_name,
+                  status: (t.is_completed || (b.assigned_admin && idx <= 1) ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                  date: (t.is_completed || (b.assigned_admin && idx <= 1)) ? "Selesai" : "Proses",
+                  description: t.task_name,
+                }))
+              : [
+                  {
+                    step: "01",
+                    title: "Permohonan Diterima",
+                    status: "completed" as const,
+                    date: b.created_at ? new Date(b.created_at).toLocaleDateString("id-ID") : "Hari ini",
+                    description: "Permohonan konsultasi diverifikasi dan dicatat sistem.",
+                  },
+                  {
+                    step: "02",
+                    title: b.assigned_admin?.name ? `PIC Ditetapkan: ${b.assigned_admin.name}` : "Penetapan Konsultan PIC & Divisi Terkait",
+                    status: (b.assigned_admin ? "completed" : "in_progress") as "completed" | "in_progress" | "pending",
+                    date: b.assigned_admin ? "Selesai" : "Menunggu",
+                    description: b.assigned_admin
+                      ? `Superadmin menetapkan ${b.assigned_admin.name} sebagai konsultan PIC.`
+                      : "Menunggu penetapan PIC oleh Superadmin.",
+                  },
+                  {
+                    step: "03",
+                    title: "Pengerjaan Kertas Kerja & Pembahasan",
+                    status: (isCompleted ? "completed" : b.assigned_admin ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                    date: isCompleted ? "Selesai" : "-",
+                    description: "Penyusunan kertas kerja dan telaah kepatuhan.",
+                  },
+                  {
+                    step: "04",
+                    title: "Konsultasi Selesai & Laporan Final",
+                    status: (isCompleted ? "completed" : "pending") as "completed" | "in_progress" | "pending",
+                    date: isCompleted ? "Selesai" : "-",
+                    description: "Penyampaian deliverable akhir dan penutupan tiket.",
+                  },
+                ],
+            deliverables: (() => {
+              const rawDocs = b.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && b.client_id && Number(d.uploaded_by) === Number(b.client_id));
+              return rawDocs
+                .filter((d) => !isClientUpload(d))
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  status: "Terkirim",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
             description: b.description || "",
             correspondences: b.description ? [
               {
@@ -171,7 +215,33 @@ function SuperadminPerikatanContent() {
                 message: b.description,
               }
             ] : [],
-            clientDocuments: [],
+            clientDocuments: (() => {
+              const rawDocs = b.documents || [];
+              const isClientUpload = (d: { uploaded_by?: number }) =>
+                Boolean(d.uploaded_by && b.client_id && Number(d.uploaded_by) === Number(b.client_id));
+              const adminDeliverables = rawDocs.filter((d) => !isClientUpload(d));
+              const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
+              const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
+
+              return rawDocs
+                .filter(
+                  (d) =>
+                    isClientUpload(d) &&
+                    !delivNames.has(d.file_name.toLowerCase().trim()) &&
+                    !delivIds.has(String(d.id))
+                )
+                .map((d) => ({
+                  id: `DOC-${d.id}`,
+                  numericId: d.id,
+                  name: d.file_name,
+                  size: d.file_size || "1.5 MB",
+                  type: d.file_type || "PDF",
+                  date: new Date(d.created_at).toLocaleDateString("id-ID"),
+                  uploadedBy: b.client?.name || "Klien",
+                  status: "Diterima PIC",
+                  downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+                }));
+            })(),
             isArchived: isTicketArchived(bCode),
           };
         });
@@ -370,19 +440,26 @@ function SuperadminPerikatanContent() {
   const handleDownloadAttachment = async (
     fileName: string,
     clientName?: string,
-    downloadUrl?: string
+    downloadUrl?: string,
+    docId?: string | number
   ) => {
-    showToast(`Menyiapkan unduhan berkas asli "${fileName}"...`);
+    showToast(`Menyiapkan unduhan berkas "${fileName}"...`);
 
-    // 1. Cek berkas fisik asli di IndexedDB & memory cache
-    const cachedBlob =
-      (await getCachedFileBlobAsync(fileName)) ||
-      (selectedDetailTicket?.id ? await getCachedFileBlobAsync(`${selectedDetailTicket.id}:${fileName}`) : undefined);
-
-    if (cachedBlob) {
-      downloadBlob(cachedBlob, fileName);
-      showToast(`Dokumen asli "${fileName}" berhasil diunduh.`);
-      return;
+    // 1. Coba minta signed download URL dari backend jika ada docId
+    const numericDocId = docId ? parseInt(String(docId).replace(/\D/g, ""), 10) : undefined;
+    if (numericDocId && !isNaN(numericDocId)) {
+      try {
+        const signRes = await clientApi.getDownloadUrl(numericDocId);
+        if (signRes?.data?.download_url) {
+          const res = await downloadRemoteFile(signRes.data.download_url, fileName);
+          if (res.success) {
+            showToast(`Dokumen "${fileName}" berhasil diunduh.`);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Signed URL error:", err);
+      }
     }
 
     // 2. Coba unduh dari URL remote jika ada
@@ -394,7 +471,19 @@ function SuperadminPerikatanContent() {
       }
     }
 
-    showToast(`Berkas fisik asli "${fileName}" belum tersedia pada penyimpanan server/peramban.`);
+    // 3. Cek berkas fisik asli di IndexedDB & memory cache
+    const cachedBlob =
+      (await getCachedFileBlobAsync(fileName)) ||
+      (selectedDetailTicket?.id ? await getCachedFileBlobAsync(`${selectedDetailTicket.id}:${fileName}`) : undefined) ||
+      (docId ? await getCachedFileBlobAsync(String(docId)) : undefined);
+
+    if (cachedBlob) {
+      downloadBlob(cachedBlob, fileName);
+      showToast(`Dokumen asli "${fileName}" berhasil diunduh.`);
+      return;
+    }
+
+    showToast(`Berkas fisik "${fileName}" belum tersedia untuk diunduh.`);
   };
 
   // Helper ekspor Ringkasan Data Klien ke Excel dengan struktur kolom rapi
@@ -1057,77 +1146,75 @@ function SuperadminPerikatanContent() {
 
             {/* Dokumen Pendukung Klien */}
             {(() => {
-              const docs = (selectedDetailTicket.clientDocuments && selectedDetailTicket.clientDocuments.length > 0)
-                ? selectedDetailTicket.clientDocuments
-                : [
-                    {
-                      id: "doc-sample-1",
-                      name: "Zhou_Consulting_Frontend_Checklist_v2.xlsx",
-                      size: "0.02 MB",
-                      type: "xlsx",
-                      date: "Hari ini",
-                      uploadedBy: selectedDetailTicket.clientName || "Budi Pratama (Direktur)",
-                      status: "Diterima",
-                    },
-                  ];
+              const delivNames = new Set((selectedDetailTicket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+              const delivIds = new Set((selectedDetailTicket.deliverables || []).map((d) => String(d.numericId || d.id)));
+              const cleanDocs = (selectedDetailTicket.clientDocuments || []).filter(
+                (doc) => !delivNames.has(doc.name.toLowerCase().trim()) && !delivIds.has(String(doc.numericId || doc.id))
+              );
 
               return (
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-primary flex items-center justify-between">
                     <span>Dokumen Pendukung dari Klien:</span>
                     <span className="text-[11px] font-normal text-text-secondary">
-                      {docs.length} Dokumen
+                      {cleanDocs.length} Dokumen
                     </span>
                   </label>
 
-                  <div className="space-y-2">
-                    {docs.map((doc, idx) => {
-                      const isXls = doc.name.toLowerCase().endsWith(".xlsx") || doc.name.toLowerCase().endsWith(".xls");
-                      const isDoc = doc.name.toLowerCase().endsWith(".docx") || doc.name.toLowerCase().endsWith(".doc");
+                  {cleanDocs.length === 0 ? (
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {cleanDocs.map((doc, idx) => {
+                        const isXls = doc.name.toLowerCase().endsWith(".xlsx") || doc.name.toLowerCase().endsWith(".xls");
+                        const isDoc = doc.name.toLowerCase().endsWith(".docx") || doc.name.toLowerCase().endsWith(".doc");
 
-                      return (
-                        <div
-                          key={doc.id || idx}
-                          className="p-3 bg-white rounded-xl border border-primary-light flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
-                                isXls ? "bg-emerald-600" : isDoc ? "bg-blue-600" : "bg-primary"
-                              }`}
-                            >
-                              {isXls ? "XLS" : isDoc ? "DOC" : "PDF"}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-primary truncate">{doc.name}</p>
-                              <p className="text-[10px] text-text-muted mt-0.5">
-                                {doc.size} &bull; {doc.date} &bull; Pengunggah: {doc.uploadedBy || selectedDetailTicket.clientName || "Budi Pratama (Direktur)"}
-                              </p>
-                              {doc.description && (
-                                <p className="text-[11px] text-text-secondary mt-1 bg-surface px-2 py-0.5 rounded border border-primary-light/60 inline-block">
-                                  Tujuan: {doc.description}
+                        return (
+                          <div
+                            key={doc.id || idx}
+                            className="p-3 bg-white rounded-xl border border-primary-light flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
+                                  isXls ? "bg-emerald-600" : isDoc ? "bg-blue-600" : "bg-primary"
+                                }`}
+                              >
+                                {isXls ? "XLS" : isDoc ? "DOC" : "PDF"}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-primary truncate">{doc.name}</p>
+                                <p className="text-[10px] text-text-muted mt-0.5">
+                                  {doc.size} &bull; {doc.date} &bull; Pengunggah: {doc.uploadedBy || selectedDetailTicket.clientName || "Budi Pratama (Direktur)"}
                                 </p>
-                              )}
+                                {doc.description && (
+                                  <p className="text-[11px] text-text-secondary mt-1 bg-surface px-2 py-0.5 rounded border border-primary-light/60 inline-block">
+                                    Tujuan: {doc.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200">
+                                {doc.status || "Diterima"}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl, (doc as unknown as { numericId?: number }).numericId || doc.id)}
+                                className="text-xs h-7 px-2.5 font-medium border-primary-light"
+                              >
+                                Unduh
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-semibold border border-emerald-200">
-                              {doc.status || "Diterima"}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadAttachment(doc.name, doc.uploadedBy, doc.downloadUrl)}
-                              className="text-xs h-7 px-2.5 font-medium border-primary-light"
-                            >
-                              Unduh
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })()}

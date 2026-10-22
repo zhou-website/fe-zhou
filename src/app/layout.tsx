@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   description:
     "Mitra profesional untuk layanan akuntansi, perpajakan, dan konsultasi bisnis keuangan Anda.",
   icons: {
-    icon: "/images/zhou-logo.jpg",
-    shortcut: "/images/zhou-logo.jpg",
-    apple: "/images/zhou-logo.jpg",
+    icon: "/images/zhou-logo.png",
+    shortcut: "/images/zhou-logo.png",
+    apple: "/images/zhou-logo.png",
   },
 };
 

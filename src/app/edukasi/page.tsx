@@ -367,13 +367,15 @@ function EducationPortalContent() {
           const apiArticles: ZhouArticle[] = res.data
             .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
             .map((item: EducationItem) => {
+            const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
             const { image, cleanBody } = extractEducationImageAndBody(
               item.body,
               item.file_path,
-              item.image || item.image_url
+              item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
             );
             return {
               id: `be-${item.id}`,
+              numericId: item.id,
               title: item.title,
               category: item.category || "Coretax DJP 2026",
               categoryKey: (item.category?.toLowerCase().includes("pph")
@@ -525,6 +527,20 @@ function EducationPortalContent() {
       const targetFileName = cleanBaseName.toLowerCase().endsWith(".pdf")
         ? cleanBaseName
         : `${cleanBaseName}.pdf`;
+
+      // 1. Coba minta signed download URL dari backend API jika ada ID
+      const numId = article.numericId || parseInt(String(article.id).replace(/\D/g, ""), 10);
+      if (numId && !isNaN(numId) && numId > 0) {
+        try {
+          const signRes = await publicApi.getEducationDownloadUrl(numId);
+          if (signRes?.data?.download_url) {
+            const dlRes = await downloadRemoteFile(signRes.data.download_url, targetFileName);
+            if (dlRes.success) return;
+          }
+        } catch (signErr) {
+          console.warn("Backend education signed download notice:", signErr);
+        }
+      }
 
       if (article.attachment?.dataUrl) {
         const link = document.createElement("a");

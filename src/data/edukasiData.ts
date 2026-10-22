@@ -8,6 +8,7 @@ export interface ZhouArticleAttachment {
 
 export interface ZhouArticle {
   id: string;
+  numericId?: number;
   title: string;
   category: "Coretax DJP 2026" | "Kepatuhan PPh & PPN" | "Mitigasi SP2DK" | "Akuntansi SAK" | "Legal Korporat" | string;
   categoryKey: "coretax" | "pph-ppn" | "sp2dk" | "akuntansi" | "legal" | string;

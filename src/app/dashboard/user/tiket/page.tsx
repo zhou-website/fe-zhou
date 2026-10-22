@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
+import { clientApi, publicApi, ConsultationItem, ClientDocumentItem, PublicServiceItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,6 @@ import {
 } from "@/data/sharedTicketsStorage";
 import { downloadBlob, downloadRemoteFile, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { savePersistentFileBlob } from "@/lib/fileStorageDB";
-import { getStoredServices } from "@/data/layananStorage";
 import {
   CheckCircleIcon,
   DocumentIcon,
@@ -159,20 +158,50 @@ function ClientTicketMonitoringContent() {
 
         backendTickets = validConsultations.map((c: ConsultationItem) => {
           const ticketCode = c.project_code || `TK-${c.id}`;
-          const matchingDocs: Deliverable[] = backendDocs
-            .filter((d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code)))
-            .map((d) => ({
-              id: d.id,
-              name: d.file_name,
-              size: d.file_size || "1.8 MB",
-              format: d.file_type || "PDF",
-              downloadUrl: d.file_path,
-              date: new Date(d.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
-            }));
+          const projectDocs = backendDocs.filter(
+            (d) => d.project_id === c.id || (c.project_code && d.file_name.includes(c.project_code))
+          );
+          const isClientUpload = (d: { uploaded_by?: number }) =>
+            Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
+          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d));
+          const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
+          const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
+
+          const clientSupportingDocs = projectDocs.filter(
+            (d) =>
+              isClientUpload(d) &&
+              !delivNames.has(d.file_name.toLowerCase().trim()) &&
+              !delivIds.has(String(d.id))
+          );
+
+          const matchingDocs: Deliverable[] = adminDeliverables.map((d) => ({
+            id: d.id,
+            name: d.file_name,
+            size: d.file_size || "1.8 MB",
+            format: d.file_type || "PDF",
+            downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+            date: new Date(d.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+          }));
+
+          const matchingClientDocs: ClientUploadedFile[] = clientSupportingDocs.map((d) => ({
+            id: String(d.id),
+            numericId: d.id,
+            name: d.file_name,
+            size: d.file_size || "1.8 MB",
+            type: d.file_type || "PDF",
+            date: new Date(d.created_at).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            uploadedBy: c.client?.name || "Klien",
+            status: "Diterima",
+            downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
+          }));
 
           const isCompleted = c.status === "COMPLETED";
 
@@ -180,8 +209,8 @@ function ClientTicketMonitoringContent() {
             ? c.tasks.map((task, idx) => ({
                 step: `0${idx + 1}`,
                 title: task.task_name,
-                status: (task.is_completed ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-                date: "Proses",
+                status: (task.is_completed || (c.assigned_admin && idx <= 1) ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
+                date: (task.is_completed || (c.assigned_admin && idx <= 1)) ? "Selesai" : "Proses",
                 description: task.task_name,
               }))
             : [
@@ -237,6 +266,7 @@ function ClientTicketMonitoringContent() {
                   },
                 ]
               : [],
+            clientDocuments: matchingClientDocs,
             correspondences: [
               {
                 id: `msg-${c.id}`,
@@ -394,14 +424,30 @@ function ClientTicketMonitoringContent() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const dynamicServices = typeof window !== "undefined" ? getStoredServices() : [];
+  const [backendServiceNames, setBackendServiceNames] = useState<string[]>([]);
+  useEffect(() => {
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (res?.data && Array.isArray(res.data)) {
+          setBackendServiceNames(
+            res.data
+              .filter((s: PublicServiceItem) => s.is_active !== false)
+              .map((s: PublicServiceItem) => s.service_name)
+              .filter(Boolean)
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const serviceOptions = Array.from(
     new Set([
       "Tax Service Core",
       "Accounting Service",
       "Business Consulting",
       "Legal Compliance",
-      ...dynamicServices.map((s) => s.name).filter(Boolean),
+      ...backendServiceNames,
     ])
   );
 
@@ -447,6 +493,16 @@ function ClientTicketMonitoringContent() {
     : urlTicketId
     ? tickets.find((t) => t.id.toLowerCase() === urlTicketId.toLowerCase()) || null
     : null;
+
+  // Otomatis dedup agar dokumen deliverable resmi konsultan tidak pernah muncul ganda di dokumen pendukung klien
+  const cleanClientDocuments = useMemo(() => {
+    if (!selectedTicket?.clientDocuments) return [];
+    const delivNames = new Set((selectedTicket.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+    const delivIds = new Set((selectedTicket.deliverables || []).map((d) => String(d.id)));
+    return selectedTicket.clientDocuments.filter(
+      (doc) => !delivNames.has(doc.name.toLowerCase().trim()) && !delivIds.has(String(doc.numericId || doc.id))
+    );
+  }, [selectedTicket?.clientDocuments, selectedTicket?.deliverables]);
 
   // Handle Download File Deliverable
   const handleDownloadFile = async (deliverableOrName: Deliverable | string) => {
@@ -1202,16 +1258,20 @@ function ClientTicketMonitoringContent() {
                         Dokumen Pendukung Klien
                       </h4>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
-                        {selectedTicket.clientDocuments?.length || 0}
+                        {cleanClientDocuments.length}
                       </span>
                     </div>
                     <span className="text-[10px] text-text-muted">Maks. 10 MB (.pdf, .xlsx, .docx)</span>
                   </div>
 
                   {/* List Dokumen Terunggah */}
-                  {selectedTicket.clientDocuments && selectedTicket.clientDocuments.length > 0 && (
+                  {cleanClientDocuments.length === 0 ? (
+                    <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
+                    </div>
+                  ) : (
                     <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
-                      {selectedTicket.clientDocuments.map((doc, docIdx) => (
+                      {cleanClientDocuments.map((doc, docIdx) => (
                         <div
                           key={doc.id || docIdx}
                           className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors"

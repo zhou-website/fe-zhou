@@ -271,7 +271,10 @@ export default function UserDashboardPage() {
           const catLabel = cat.includes("akuntansi") ? "Akuntansi" : "Pajak";
 
           // Dokumen pendukung klien
-          (t.clientDocuments || []).forEach((cd, i) => {
+          const delivNames = new Set((t.deliverables || []).map((d) => d.name.toLowerCase().trim()));
+          (t.clientDocuments || [])
+            .filter((cd) => !delivNames.has(cd.name.toLowerCase().trim()))
+            .forEach((cd, i) => {
             ticketDocs.push({
               id: cd.id || `cd-${t.id}-${i}`,
               name: cd.name,

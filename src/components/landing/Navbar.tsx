@@ -97,13 +97,13 @@ export function Navbar() {
           className="flex items-center gap-3 group"
           onClick={closeAllMenus}
         >
-          <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-primary/20 bg-[#0B1533] group-hover:scale-105 transition-all shrink-0">
+          <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-white group-hover:scale-105 transition-all shrink-0">
             <Image
-              src="/images/zhou-logo.jpg"
+              src="/images/zhou-logo.png"
               alt="Zhou Consulting Logo"
               width={44}
               height={44}
-              className="object-cover w-full h-full"
+              className="object-contain w-full h-full p-0.5"
               priority
             />
           </div>

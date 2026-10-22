@@ -84,13 +84,13 @@ export function Footer() {
           {/* Col 1: Brand, Tagline & Official Contact (5 cols) */}
           <div className="lg:col-span-5 space-y-5">
             <div className="flex items-center gap-3.5">
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden shadow-md border border-white/20 bg-[#0B1533] shrink-0">
+              <div className="relative flex h-12 w-12 items-center justify-center rounded-xl overflow-hidden shadow-md border border-white/20 bg-white shrink-0">
                 <Image
-                  src="/images/zhou-logo.jpg"
+                  src="/images/zhou-logo.png"
                   alt="Zhou Consulting Logo"
                   width={48}
                   height={48}
-                  className="object-cover w-full h-full"
+                  className="object-contain w-full h-full p-0.5"
                 />
               </div>
               <div className="flex flex-col">

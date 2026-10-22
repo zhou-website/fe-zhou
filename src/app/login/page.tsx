@@ -155,13 +155,13 @@ function LoginFormContent() {
       <header className="w-full bg-primary text-white py-4 px-6 border-b border-white/10 shadow-sm">
         <div className="container-custom flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden border border-white/20 bg-[#0B1533] shadow-sm group-hover:scale-105 transition-transform shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden border border-white/20 bg-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
               <Image
-                src="/images/zhou-logo.jpg"
+                src="/images/zhou-logo.png"
                 alt="Zhou Consulting Logo"
                 width={40}
                 height={40}
-                className="object-cover w-full h-full"
+                className="object-contain w-full h-full p-0.5"
               />
             </div>
             <div className="flex flex-col">

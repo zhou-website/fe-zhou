@@ -90,6 +90,7 @@ import {
   PublicRegulationItem,
   PublicServiceItem,
   PublicCareerItem,
+  CreateEducationPayload,
 } from "@/lib/api";
 
 export type CMSTab =
@@ -281,6 +282,9 @@ function AdminCMSPageContent() {
   const [editingRegId, setEditingRegId] = useState<number | null>(null);
   const [editingKursId, setEditingKursId] = useState<number | null>(null);
   const [editingCareerId, setEditingCareerId] = useState<number | null>(null);
+  const [eduImageFile, setEduImageFile] = useState<File | null>(null);
+  const [eduPdfFile, setEduPdfFile] = useState<File | null>(null);
+  const [regPdfFile, setRegPdfFile] = useState<File | null>(null);
   const [viewingItem, setViewingItem] = useState<UnifiedCMSItem | null>(null);
   const [modalSection, setModalSection] = useState<
     "services" | "regulasi" | "kurs" | "edukasi" | "edukasi_djp" | "kontak" | "karir" | "faqs"
@@ -307,6 +311,9 @@ function AdminCMSPageContent() {
     setEditingKursId(null);
     setEditingCareerId(null);
     setEditingFaq(null);
+    setEduImageFile(null);
+    setEduPdfFile(null);
+    setRegPdfFile(null);
   };
 
   const isCurrentlyEditing = Boolean(
@@ -344,14 +351,35 @@ function AdminCMSPageContent() {
     }
 
     try {
-      // Kompresi otomatis ke resolusi optimal 1200x800 & JPEG kualitas 82% agar muat di kolom TEXT database
+      setEduImageFile(file);
+      // Kompresi otomatis ke resolusi optimal 1200x800 & JPEG kualitas 82% agar muat di preview
       const compressedDataUrl = await compressImageFile(file, 1200, 800, 0.82);
       setEduForm((prev) => ({
         ...prev,
         image: compressedDataUrl,
         image_name: file.name,
       }));
-      showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
+      showToast(`Memproses gambar sampul "${file.name}"...`);
+
+      // Unggah berkas gambar langsung ke Supabase Storage via /api/v1/public/upload
+      const imgFd = new FormData();
+      imgFd.append("file", file);
+      imgFd.append("folder", "education");
+      publicApi
+        .uploadPublicFile(imgFd)
+        .then((uploadRes) => {
+          if (uploadRes?.data?.public_url || uploadRes?.data?.download_url) {
+            const uploadedUrl = uploadRes.data.public_url || uploadRes.data.download_url;
+            setEduForm((prev) => ({
+              ...prev,
+              image: uploadedUrl || prev.image,
+            }));
+            showToast(`Gambar sampul "${file.name}" berhasil diunggah ke Supabase Storage.`);
+          }
+        })
+        .catch((uploadErr) => {
+          console.warn("Background image upload fallback notice:", uploadErr);
+        });
     } catch (err) {
       console.error("Gagal memproses file gambar:", err);
       showToast("Gagal memproses file gambar.");
@@ -359,7 +387,7 @@ function AdminCMSPageContent() {
   };
 
   // Handler Upload Berkas PDF Edukasi (Opsional)
-  const handleEduPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEduPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -368,13 +396,35 @@ function AdminCMSPageContent() {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`;
 
+    setEduPdfFile(file);
     setEduForm((prev) => ({
       ...prev,
-      file_path: `/docs/${file.name}`,
       file_name: file.name,
       file_size: sizeStr,
     }));
-    showToast(`Berkas PDF "${file.name}" (${sizeStr}) siap dilampirkan.`);
+    showToast(`Mengunggah berkas PDF "${file.name}" ke storage...`);
+
+    // Unggah berkas biner fisik langsung ke Supabase Storage via /api/v1/public/upload
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "education");
+      const res = await publicApi.uploadPublicFile(fd);
+      if (res?.data && res.data.file_path) {
+        const uploadedData = res.data;
+        setEduForm((prev) => ({
+          ...prev,
+          file_path: uploadedData.file_path,
+          file_name: uploadedData.file_name || file.name,
+          file_size: uploadedData.file_size || sizeStr,
+        }));
+        showToast(`Berkas PDF "${file.name}" berhasil diunggah ke storage.`);
+        return;
+      }
+    } catch (err) {
+      console.warn("Direct PDF upload notice, will fallback to form submission:", err);
+    }
+    showToast(`Berkas PDF "${file.name}" (${sizeStr}) siap dikirim.`);
   };
 
   // Handler Upload Berkas PDF Regulasi
@@ -397,6 +447,7 @@ function AdminCMSPageContent() {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`;
 
+    setRegPdfFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
@@ -407,7 +458,7 @@ function AdminCMSPageContent() {
         file_size: sizeStr,
         file_data_url: dataUrl,
       }));
-      showToast(`Dokumen PDF "${file.name}" (${sizeStr}) berhasil dipilih.`);
+      showToast(`Dokumen PDF "${file.name}" (${sizeStr}) siap diunggah ke server.`);
     };
     reader.onerror = () => {
       showToast("Gagal membaca berkas PDF.");
@@ -416,6 +467,7 @@ function AdminCMSPageContent() {
   };
 
   const handleRemoveRegPdf = () => {
+    setRegPdfFile(null);
     setRegForm((prev) => ({
       ...prev,
       file_path: "",
@@ -529,10 +581,11 @@ function AdminCMSPageContent() {
         eduRes.value.data.forEach((e: PublicEducationItem) => {
           const id = `EDU-${e.id}`;
           if (isCmsItemDeleted(id, e.title, e.id)) return;
+          const rawE = e as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
           const { image, cleanBody } = extractEducationImageAndBody(
             e.body,
             e.file_path,
-            e.image || e.image_url
+            rawE.image || rawE.image_url || rawE.cover_image || rawE.photo_url || rawE.imageUrl
           );
           existingEduIds.add(id);
           existingEduIds.add(`be-${e.id}`);
@@ -615,14 +668,14 @@ function AdminCMSPageContent() {
         return text.trim();
       };
 
-      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data) && srvRes.value.data.length > 0) {
+      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data)) {
         srvRes.value.data.forEach((s: PublicServiceItem) => {
           const id = `SVC-${s.id}`;
           if (isCmsItemDeleted(id, s.service_name, s.id, s.service_code)) {
-            if (s.id && (String(s.id).includes("1872") || (s.service_name || "").toLowerCase().includes("pajak1"))) {
-              try {
-                adminCmsApi.deleteService(s.id);
-              } catch {}
+            // Jika ada item yang pernah dihapus tetapi masih tersimpan aktif di backend, otomatis nonaktifkan di database backend
+            if (s.id) {
+              adminCmsApi.updateService(s.id, { is_active: false }).catch(() => {});
+              adminCmsApi.deleteService(s.id).catch(() => {});
             }
             return;
           }
@@ -643,24 +696,11 @@ function AdminCMSPageContent() {
             raw: s,
           });
         });
-      }
-
-      const storedServices = getStoredServices();
-      storedServices.forEach((s) => {
-        if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
-        const titleKey = s.name.trim().toLowerCase();
-        const codeKey = (s.code || "").trim().toLowerCase();
-
-        // Hindari duplikasi jika sudah terdaftar dari backend dengan ID, kode, atau judul yang sama persis
-        const isDuplicate =
-          existingSrvTitles.has(titleKey) ||
-          existingSrvIds.has(s.id.toLowerCase()) ||
-          (codeKey && existingSrvIds.has(codeKey));
-
-        if (!isDuplicate) {
-          existingSrvTitles.add(titleKey);
-          existingSrvIds.add(s.id.toLowerCase());
-          if (codeKey) existingSrvIds.add(codeKey);
+      } else {
+        // Fallback hanya jika koneksi backend offline
+        const storedServices = getStoredServices();
+        storedServices.forEach((s) => {
+          if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
           const numId = parseInt(s.id.replace(/\D/g, ""), 10) || getStableCmsNumericId(s.id + s.name);
           const displayId = s.id.startsWith("SVC-") || s.id.startsWith("SRV-") ? s.id : `SVC-${s.code || s.id}`;
           items.push({
@@ -675,8 +715,8 @@ function AdminCMSPageContent() {
             updatedAt: s.lastUpdated || "Aktif",
             raw: s,
           });
-        }
-      });
+        });
+      }
 
       // 3. Regulations (Gabungkan Backend API & Local Storage)
       const existingRegTitles = new Set<string>();
@@ -929,7 +969,142 @@ function AdminCMSPageContent() {
       const rawId = rawObj.id !== undefined ? String(rawObj.id) : "";
       const rawCode = String(rawObj.code || rawObj.service_code || rawObj.position_code || rawObj.docNumber || "");
 
-      // 1. Rekam ke tombstone storage agar permanen tidak pernah muncul kembali
+      let deleteSuccess = true;
+      let deleteErrorMsg = "";
+
+      // 1. Jalankan backend DELETE API terlebih dahulu untuk memvalidasi constraint database
+      if (item.section === "edukasi") {
+        if ((rawObj as Record<string, unknown>)?.isDjpLink) {
+          deleteStoredBelajarPajakLink(((rawObj as Record<string, unknown>)?.id as string) || item.id);
+          deleteStoredBelajarPajakLink(item.title);
+        } else {
+          if (item.numericId && item.numericId < 9000) {
+            try {
+              const res = await adminCmsApi.deleteEducation(item.numericId);
+              if (res && res.success === false) {
+                deleteSuccess = false;
+                deleteErrorMsg = res.message || "Gagal menghapus materi edukasi dari database server.";
+              }
+            } catch (apiErr) {
+              deleteSuccess = false;
+              deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus materi edukasi.";
+            }
+          }
+          if (deleteSuccess) {
+            deleteZhouArticle(item.id);
+            deleteZhouArticle(item.title);
+            deleteZhouArticle(`be-${item.numericId}`);
+            deleteZhouArticle(`EDU-${item.numericId}`);
+            if (rawId) deleteZhouArticle(rawId);
+          }
+        }
+      } else if (item.section === "services") {
+        const targetServiceId = item.numericId || (rawId ? parseInt(rawId.replace(/\D/g, ""), 10) : undefined);
+        if (targetServiceId && !isNaN(targetServiceId) && targetServiceId > 0) {
+          try {
+            // 1. Soft-delete di backend database via is_active: false
+            // Ini menjamin layanan langsung lenyap dari API publik (/api/v1/cms/services) di Vercel dan seluruh visitor
+            // tanpa pernah gagal karena Foreign Key Constraint (tiket/klien).
+            await adminCmsApi.updateService(targetServiceId, { is_active: false });
+
+            // 2. Upayakan hard-delete dari database PostgreSQL jika tidak terikat foreign key
+            try {
+              const res = await adminCmsApi.deleteService(targetServiceId);
+              if (res && res.success === false) {
+                console.warn("Hard delete service skipped (FK constraint):", res.message);
+              }
+            } catch (hardErr) {
+              console.warn("Hard delete service skipped (FK constraint):", hardErr);
+            }
+            deleteSuccess = true;
+          } catch (apiErr) {
+            deleteSuccess = false;
+            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus layanan dari database server.";
+          }
+        }
+        if (deleteSuccess) {
+          deleteStoredService(item.id);
+          deleteStoredService(item.title);
+          deleteStoredService(`SVC-${item.numericId}`);
+          if (rawId) deleteStoredService(rawId);
+          if (rawCode) deleteStoredService(rawCode);
+        }
+      } else if (item.section === "regulasi") {
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            const res = await adminCmsApi.deleteRegulation(item.numericId);
+            if (res && res.success === false) {
+              deleteSuccess = false;
+              deleteErrorMsg = res.message || "Gagal menghapus regulasi dari database server.";
+            }
+          } catch (apiErr) {
+            deleteSuccess = false;
+            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus regulasi.";
+          }
+        }
+        if (deleteSuccess) {
+          deleteRegulation(item.id);
+          deleteRegulation(item.title);
+          deleteRegulation(`REG-${item.numericId}`);
+          if (rawId) deleteRegulation(rawId);
+        }
+      } else if (item.section === "kurs") {
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            const res = await adminCmsApi.deleteTaxRate(item.numericId);
+            if (res && res.success === false) {
+              deleteSuccess = false;
+              deleteErrorMsg = res.message || "Gagal menghapus kurs dari database server.";
+            }
+          } catch (apiErr) {
+            deleteSuccess = false;
+            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus kurs.";
+          }
+        }
+      } else if (item.section === "karir") {
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            const res = await adminCmsApi.deleteCareer(item.numericId);
+            if (res && res.success === false) {
+              deleteSuccess = false;
+              deleteErrorMsg =
+                res.message ||
+                "Posisi karir tidak dapat dihapus karena masih terkait data lamaran aktif (Foreign Key Constraint).";
+            }
+          } catch (apiErr) {
+            deleteSuccess = false;
+            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus karir.";
+          }
+        }
+        if (deleteSuccess) {
+          deleteStoredCareerPosition(item.id);
+          deleteStoredCareerPosition(item.title);
+          deleteStoredCareerPosition(`CAR-${item.numericId}`);
+          if (rawId) deleteStoredCareerPosition(rawId);
+        }
+      } else if (item.section === "faqs") {
+        if (item.numericId && item.numericId < 9000) {
+          try {
+            const res = await adminCmsApi.deleteFaq(item.numericId);
+            if (res && res.success === false) {
+              deleteSuccess = false;
+              deleteErrorMsg = res.message || "Gagal menghapus FAQ dari database server.";
+            }
+          } catch (apiErr) {
+            deleteSuccess = false;
+            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus FAQ.";
+          }
+        }
+      } else if (item.section === "kontak") {
+        // Profil & kontak ditandai terhapus via tombstone
+      }
+
+      if (!deleteSuccess) {
+        showToast(deleteErrorMsg || "Penghapusan dibatalkan oleh database backend.");
+        return;
+      }
+
+      // 2. Rekam ke tombstone storage setelah backend mengonfirmasi sukses
       recordDeletedCmsItem({
         id: item.id,
         numericId: item.numericId,
@@ -939,7 +1114,7 @@ function AdminCMSPageContent() {
         category: item.category,
       });
 
-      // 2. Langsung perbarui state lokal UI seketika (zero flicker & zero delay)
+      // 3. Langsung perbarui state lokal UI seketika
       setCmsItems((prev) =>
         prev.filter((i) => {
           if (i.id === item.id) return false;
@@ -950,82 +1125,6 @@ function AdminCMSPageContent() {
           return !isCmsItemDeleted(i.id, i.title, rId, rCode);
         })
       );
-
-      // 3. Jalankan backend DELETE API & bersihkan dari local storage spesifik
-      if (item.section === "edukasi") {
-        if ((rawObj as Record<string, unknown>)?.isDjpLink) {
-          deleteStoredBelajarPajakLink(((rawObj as Record<string, unknown>)?.id as string) || item.id);
-          deleteStoredBelajarPajakLink(item.title);
-        } else {
-          if (item.numericId && item.numericId < 9000) {
-            try {
-              await adminCmsApi.deleteEducation(item.numericId);
-            } catch (apiErr) {
-              console.warn("Backend education delete fallback:", apiErr);
-            }
-          }
-          deleteZhouArticle(item.id);
-          deleteZhouArticle(item.title);
-          deleteZhouArticle(`be-${item.numericId}`);
-          deleteZhouArticle(`EDU-${item.numericId}`);
-          if (rawId) deleteZhouArticle(rawId);
-        }
-      } else if (item.section === "services") {
-        if (item.numericId && item.numericId < 9000) {
-          try {
-            await adminCmsApi.deleteService(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend service delete fallback:", apiErr);
-          }
-        }
-        deleteStoredService(item.id);
-        deleteStoredService(item.title);
-        deleteStoredService(`SVC-${item.numericId}`);
-        if (rawId) deleteStoredService(rawId);
-        if (rawCode) deleteStoredService(rawCode);
-      } else if (item.section === "regulasi") {
-        if (item.numericId && item.numericId < 9000) {
-          try {
-            await adminCmsApi.deleteRegulation(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend regulation delete fallback:", apiErr);
-          }
-        }
-        deleteRegulation(item.id);
-        deleteRegulation(item.title);
-        deleteRegulation(`REG-${item.numericId}`);
-        if (rawId) deleteRegulation(rawId);
-      } else if (item.section === "kurs") {
-        if (item.numericId && item.numericId < 9000) {
-          try {
-            await adminCmsApi.deleteTaxRate(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend tax rate delete fallback:", apiErr);
-          }
-        }
-      } else if (item.section === "karir") {
-        if (item.numericId && item.numericId < 9000) {
-          try {
-            await adminCmsApi.deleteCareer(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend career delete fallback:", apiErr);
-          }
-        }
-        deleteStoredCareerPosition(item.id);
-        deleteStoredCareerPosition(item.title);
-        deleteStoredCareerPosition(`CAR-${item.numericId}`);
-        if (rawId) deleteStoredCareerPosition(rawId);
-      } else if (item.section === "faqs") {
-        if (item.numericId && item.numericId < 9000) {
-          try {
-            await adminCmsApi.deleteFaq(item.numericId);
-          } catch (apiErr) {
-            console.warn("Backend faq delete fallback:", apiErr);
-          }
-        }
-      } else if (item.section === "kontak") {
-        // Profil & kontak ditandai terhapus via tombstone
-      }
 
       showToast(`Konten "${item.title.slice(0, 30)}..." berhasil dihapus.`);
     } catch (err: unknown) {
@@ -1070,7 +1169,7 @@ function AdminCMSPageContent() {
       );
 
       if (item.section === "services") {
-        const isBackendId = typeof item.numericId === "number" && item.numericId > 0 && item.numericId < 1000;
+        const isBackendId = typeof item.numericId === "number" && item.numericId > 0;
         if (isBackendId) {
           try {
             await adminCmsApi.updateService(item.numericId, { is_active: isActive });
@@ -1132,14 +1231,42 @@ function AdminCMSPageContent() {
         if (editingEduId) {
           // UPDATE ke backend database & local storage
           try {
-            await adminCmsApi.updateEducation(editingEduId, {
-              title: eduForm.title,
-              category: eduForm.category,
-              content_type: eduForm.content_type,
-              body: bodyWithImage,
-              file_path: eduForm.file_path || undefined,
-              image: eduForm.image || undefined,
-            });
+            if (eduPdfFile || eduImageFile) {
+              const fd = new FormData();
+              fd.append("title", eduForm.title);
+              fd.append("category", eduForm.category);
+              fd.append("content_type", eduForm.content_type);
+              fd.append("body", bodyWithImage);
+              if (eduForm.file_path) {
+                fd.append("file_path", eduForm.file_path);
+              }
+              if (eduForm.image) {
+                fd.append("image", eduForm.image);
+                fd.append("image_url", eduForm.image);
+                fd.append("photo_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("cover_image", eduForm.image);
+              }
+              if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
+              } else if (eduImageFile) {
+                fd.append("file", eduImageFile);
+              }
+              await adminCmsApi.updateEducation(editingEduId, fd);
+            } else {
+              await adminCmsApi.updateEducation(editingEduId, {
+                title: eduForm.title,
+                category: eduForm.category,
+                content_type: eduForm.content_type,
+                body: bodyWithImage,
+                file_path: eduForm.file_path || undefined,
+                image: eduForm.image || undefined,
+                image_url: eduForm.image || undefined,
+                photo_url: eduForm.image || undefined,
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
+              } as unknown as Partial<CreateEducationPayload>);
+            }
           } catch (apiErr) {
             console.warn("Backend updateEducation fallback:", apiErr);
           }
@@ -1150,10 +1277,10 @@ function AdminCMSPageContent() {
             summary: eduForm.body.slice(0, 160) + (eduForm.body.length > 160 ? "..." : ""),
             image: eduForm.image || undefined,
             status: eduForm.status,
-            attachment: eduForm.file_path
+            attachment: eduForm.file_path || eduPdfFile
               ? {
-                name: eduForm.file_name || "modul-panduan.pdf",
-                size: eduForm.file_size || "1.2 MB",
+                name: eduPdfFile?.name || eduForm.file_name || "modul-panduan.pdf",
+                size: eduForm.file_size || (eduPdfFile ? `${(eduPdfFile.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB"),
                 type: "PDF",
               }
               : undefined,
@@ -1185,14 +1312,43 @@ function AdminCMSPageContent() {
           // CREATE ke backend database & local storage
           let createdNumId: number | undefined = undefined;
           try {
-            const createRes = await adminCmsApi.createEducation({
-              title: eduForm.title,
-              category: eduForm.category,
-              content_type: eduForm.content_type,
-              body: bodyWithImage,
-              file_path: eduForm.file_path || undefined,
-              image: eduForm.image || undefined,
-            });
+            let createRes;
+            if (eduPdfFile || eduImageFile) {
+              const fd = new FormData();
+              fd.append("title", eduForm.title);
+              fd.append("category", eduForm.category);
+              fd.append("content_type", eduForm.content_type);
+              fd.append("body", bodyWithImage);
+              if (eduForm.file_path) {
+                fd.append("file_path", eduForm.file_path);
+              }
+              if (eduForm.image) {
+                fd.append("image", eduForm.image);
+                fd.append("image_url", eduForm.image);
+                fd.append("photo_url", eduForm.image);
+                fd.append("imageUrl", eduForm.image);
+                fd.append("cover_image", eduForm.image);
+              }
+              if (eduPdfFile) {
+                fd.append("file", eduPdfFile);
+              } else if (eduImageFile) {
+                fd.append("file", eduImageFile);
+              }
+              createRes = await adminCmsApi.createEducation(fd);
+            } else {
+              createRes = await adminCmsApi.createEducation({
+                title: eduForm.title,
+                category: eduForm.category,
+                content_type: eduForm.content_type,
+                body: bodyWithImage,
+                file_path: eduForm.file_path || undefined,
+                image: eduForm.image || undefined,
+                image_url: eduForm.image || undefined,
+                photo_url: eduForm.image || undefined,
+                imageUrl: eduForm.image || undefined,
+                cover_image: eduForm.image || undefined,
+              } as unknown as CreateEducationPayload);
+            }
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdNumId = (createRes.data as { id: number }).id;
             }
@@ -1226,10 +1382,10 @@ function AdminCMSPageContent() {
             content: [eduForm.body],
             status: eduForm.status,
             image: eduForm.image || undefined,
-            attachment: eduForm.file_path
+            attachment: eduForm.file_path || eduPdfFile
               ? {
-                name: eduForm.file_name || "modul-panduan.pdf",
-                size: eduForm.file_size || "1.2 MB",
+                name: eduPdfFile?.name || eduForm.file_name || "modul-panduan.pdf",
+                size: eduForm.file_size || (eduPdfFile ? `${(eduPdfFile.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB"),
                 type: "PDF",
               }
               : undefined,
@@ -1359,12 +1515,18 @@ function AdminCMSPageContent() {
 
         const deliverableVal = serviceForm.deliverable.trim() || "Dokumen Laporan & Rekomendasi Resmi";
 
+        const generateServiceSlug = (name: string) => {
+          const clean = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+          return clean ? `srv-${clean}` : `srv-${Date.now().toString().slice(-4)}`;
+        };
+        const srvCode = serviceForm.service_code || generateServiceSlug(serviceForm.service_name);
+
         if (editingServiceId || editingServiceOriginalId) {
-          const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0 && editingServiceId < 1000;
+          const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0;
           if (isBackendId) {
             try {
               await adminCmsApi.updateService(editingServiceId, {
-                service_code: serviceForm.service_code || `SRV-${editingServiceId}`,
+                service_code: srvCode,
                 service_name: serviceForm.service_name,
                 category: catKey,
                 description: serviceForm.description,
@@ -1376,10 +1538,10 @@ function AdminCMSPageContent() {
               console.warn("Backend updateService fallback:", apiErr);
             }
           }
-          const targetId = editingServiceOriginalId || serviceForm.service_code || (editingServiceId ? `SVC-${editingServiceId}` : `SRV-${Date.now()}`);
+          const targetId = editingServiceOriginalId || srvCode || (editingServiceId ? `SVC-${editingServiceId}` : `SRV-${Date.now()}`);
           updateStoredService(targetId, {
             id: targetId,
-            code: serviceForm.service_code,
+            code: srvCode,
             name: serviceForm.service_name,
             categoryKey: catKey,
             subtitle: serviceForm.description,
@@ -1396,11 +1558,11 @@ function AdminCMSPageContent() {
               id: targetId,
               numericId: editingServiceId || undefined,
               title: serviceForm.service_name,
-              code: serviceForm.service_code,
+              code: srvCode,
               aliases: [
                 editingServiceOriginalId,
                 editingServiceOriginalTitle,
-                serviceForm.service_code,
+                srvCode,
                 editingServiceId ? `SVC-${editingServiceId}` : "",
                 serviceForm.service_name,
               ].filter((a): a is string => Boolean(a)),
@@ -1431,7 +1593,6 @@ function AdminCMSPageContent() {
           );
           showToast("Layanan bisnis berhasil diperbarui!");
         } else {
-          const srvCode = serviceForm.service_code || `SRV-${Date.now().toString().slice(-4)}`;
           let createdNumId: number | undefined = undefined;
           try {
             const createRes = await adminCmsApi.createService({
@@ -1484,7 +1645,7 @@ function AdminCMSPageContent() {
         const finalFilePath =
           regForm.file_path ||
           (regForm.file_name ? `/docs/${regForm.file_name}` : `/docs/${regForm.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`);
-        const finalFileSize = regForm.file_size || "1.2 MB";
+        const finalFileSize = regForm.file_size || (regPdfFile ? `${(regPdfFile.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB");
 
         setStoredRegulationLegalStatus(regForm.title, targetLegalStatus, regForm.replacement_ref);
 
@@ -1492,12 +1653,21 @@ function AdminCMSPageContent() {
           setStoredRegulationLegalStatus(`REG-${editingRegId}`, targetLegalStatus, regForm.replacement_ref);
           setStoredRegulationLegalStatus(String(editingRegId), targetLegalStatus, regForm.replacement_ref);
           try {
-            await adminCmsApi.updateRegulation(editingRegId, {
-              title: regForm.title,
-              regulation_type: regCategory,
-              file_path: finalFilePath,
-              file_size: finalFileSize,
-            });
+            if (regPdfFile) {
+              const fd = new FormData();
+              fd.append("title", regForm.title);
+              fd.append("regulation_type", regCategory);
+              fd.append("file_size", finalFileSize);
+              fd.append("file", regPdfFile);
+              await adminCmsApi.updateRegulation(editingRegId, fd);
+            } else {
+              await adminCmsApi.updateRegulation(editingRegId, {
+                title: regForm.title,
+                regulation_type: regCategory,
+                file_path: finalFilePath,
+                file_size: finalFileSize,
+              });
+            }
           } catch (apiErr) {
             console.warn("Backend updateRegulation fallback:", apiErr);
           }
@@ -1537,12 +1707,22 @@ function AdminCMSPageContent() {
         } else {
           let createdRegNumId: number | undefined = undefined;
           try {
-            const createRes = await adminCmsApi.createRegulation({
-              title: regForm.title,
-              regulation_type: regCategory,
-              file_path: finalFilePath,
-              file_size: finalFileSize,
-            });
+            let createRes;
+            if (regPdfFile) {
+              const fd = new FormData();
+              fd.append("title", regForm.title);
+              fd.append("regulation_type", regCategory);
+              fd.append("file_size", finalFileSize);
+              fd.append("file", regPdfFile);
+              createRes = await adminCmsApi.createRegulation(fd);
+            } else {
+              createRes = await adminCmsApi.createRegulation({
+                title: regForm.title,
+                regulation_type: regCategory,
+                file_path: finalFilePath,
+                file_size: finalFileSize,
+              });
+            }
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdRegNumId = (createRes.data as { id: number }).id;
             }
@@ -2080,13 +2260,13 @@ function AdminCMSPageContent() {
   };
 
   const openEditEducation = (item: UnifiedCMSItem) => {
-    const raw = item.raw as (PublicEducationItem & { image?: string }) | undefined;
+    const raw = item.raw as (PublicEducationItem & { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string }) | undefined;
     resetAllEditingState();
     setEditingEduId(item.numericId);
     const { image, cleanBody } = extractEducationImageAndBody(
       raw?.body || item.summary,
       raw?.file_path,
-      raw?.image || raw?.image_url
+      raw?.image || raw?.image_url || raw?.cover_image || raw?.photo_url || raw?.imageUrl
     );
     setEduForm({
       title: item.title,
@@ -2126,9 +2306,17 @@ function AdminCMSPageContent() {
             ? "hukum"
             : "tax-service";
 
-    // Cari data scopes dan deliverable dari storedServices jika tidak ada di raw
+    // Cari data scopes dan deliverable dari raw backend
     let scopesList: string[] = [];
-    if (Array.isArray(raw?.scopes) && raw.scopes.length > 0) {
+    const rawFeatures = (raw as Record<string, any>)?.features;
+    if (Array.isArray(rawFeatures) && rawFeatures.length > 0) {
+      scopesList = rawFeatures.filter(Boolean);
+    } else if (typeof rawFeatures === "string" && rawFeatures.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(rawFeatures);
+        if (Array.isArray(parsed)) scopesList = parsed.filter(Boolean);
+      } catch {}
+    } else if (Array.isArray(raw?.scopes) && raw.scopes.length > 0) {
       scopesList = raw.scopes.filter(Boolean);
     } else if (Array.isArray(raw?.pillars) && raw.pillars.length > 0) {
       scopesList = raw.pillars.map((p) => p.title || p.description || "").filter(Boolean);
@@ -2145,7 +2333,7 @@ function AdminCMSPageContent() {
       }
     }
 
-    let deliverableText = raw?.deliverable || raw?.deliverables?.[0] || "";
+    let deliverableText = raw?.card_explanation || raw?.deliverable || raw?.deliverables?.[0] || "";
     if (!deliverableText) {
       const stored = getStoredServices();
       const match = stored.find(
@@ -3316,30 +3504,18 @@ function AdminCMSPageContent() {
               {/* DYNAMIC FORM 2: SERVICES */}
               {modalSection === "services" && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs font-semibold text-primary">Kode Layanan (Opsional)</Label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. TAX-CMPL"
-                        value={serviceForm.service_code}
-                        onChange={(e) => setServiceForm((prev) => ({ ...prev, service_code: e.target.value }))}
-                        className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] h-9 mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-semibold text-primary">Kategori Layanan *</Label>
-                      <Select
-                        value={serviceForm.category}
-                        onChange={(e) => setServiceForm((prev) => ({ ...prev, category: e.target.value }))}
-                        className="text-[11px] text-slate-600 mt-1"
-                      >
-                        <option value="akuntansi">Accounting Services (Akuntansi &amp; SAK)</option>
-                        <option value="bisnis">Business &amp; Financial (Advisory Finansial)</option>
-                        <option value="tax-service">Tax Services (Kepatuhan Pajak &amp; SPT)</option>
-                        <option value="hukum">Law Services (Hukum Bisnis &amp; Sengketa)</option>
-                      </Select>
-                    </div>
+                  <div>
+                    <Label className="text-xs font-semibold text-primary">Kategori Layanan *</Label>
+                    <Select
+                      value={serviceForm.category}
+                      onChange={(e) => setServiceForm((prev) => ({ ...prev, category: e.target.value }))}
+                      className="text-[11px] text-slate-600 mt-1"
+                    >
+                      <option value="akuntansi">Accounting Services (Akuntansi &amp; SAK)</option>
+                      <option value="bisnis">Business &amp; Financial (Advisory Finansial)</option>
+                      <option value="tax-service">Tax Services (Kepatuhan Pajak &amp; SPT)</option>
+                      <option value="hukum">Law Services (Hukum Bisnis &amp; Sengketa)</option>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold text-primary">Nama Layanan Bisnis *</Label>

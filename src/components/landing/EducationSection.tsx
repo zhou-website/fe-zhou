@@ -81,10 +81,11 @@ export function EducationSection() {
           const apiArticles: ZhouArticle[] = res.data
             .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title, undefined, item.file_path))
             .map((item: EducationItem) => {
+            const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
             const { image, cleanBody } = extractEducationImageAndBody(
               item.body,
               item.file_path,
-              item.image || item.image_url
+              item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
             );
             return {
               id: `be-${item.id}`,

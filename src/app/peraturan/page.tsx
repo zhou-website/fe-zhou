@@ -108,6 +108,7 @@ export default function PeraturanPage() {
               const pubStatus = getCmsItemStatus(`BE-${item.id}`, item.title, "Published", [item.id]);
               return {
                 id: `BE-${item.id}`,
+                backendId: item.id,
                 docNumber: item.title,
                 title: item.title,
                 category,
@@ -389,6 +390,20 @@ export default function PeraturanPage() {
         .replace(/[^a-zA-Z0-9_\-]/g, "_")
         .substring(0, 60);
       const targetFileName = cleanFileName.endsWith(".pdf") ? cleanFileName : `${cleanFileName}.pdf`;
+
+      // 1. Coba minta signed download URL dari backend jika ada backendId atau ID numerik
+      const numId = item.backendId || parseInt(String(item.id).replace(/\D/g, ""), 10);
+      if (numId && !isNaN(numId) && numId < 9000) {
+        try {
+          const signRes = await publicApi.getRegulationDownloadUrl(numId);
+          if (signRes?.data?.download_url) {
+            const dlRes = await downloadRemoteFile(signRes.data.download_url, targetFileName);
+            if (dlRes.success) return;
+          }
+        } catch (signErr) {
+          console.warn("Backend regulation signed download notice:", signErr);
+        }
+      }
 
       if (item.fileDataUrl || (item.downloadUrl && item.downloadUrl.startsWith("data:application/pdf"))) {
         const link = document.createElement("a");

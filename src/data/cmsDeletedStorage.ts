@@ -3,8 +3,23 @@
 export const CMS_DELETED_ITEMS_KEY = "zhou_deleted_cms_items_v3";
 export const CMS_DELETED_ITEMS_EVENT = "zhou_deleted_cms_items_updated";
 
-// In-memory runtime state, tidak lagi menggunakan localStorage
-let memoryDeletedItems: string[] = [];
+// Persistent & in-memory runtime state agar item yang dihapus tidak pernah muncul kembali saat refresh
+function loadInitialDeletedItems(): string[] {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(CMS_DELETED_ITEMS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn("Gagal membaca tombstone dari localStorage:", e);
+    }
+  }
+  return [];
+}
+
+let memoryDeletedItems: string[] = loadInitialDeletedItems();
 
 /**
  * Normalisasi string untuk pencocokan toleran
@@ -81,6 +96,11 @@ export function recordDeletedCmsItem(item: {
 
     memoryDeletedItems = Array.from(set);
     if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(CMS_DELETED_ITEMS_KEY, JSON.stringify(memoryDeletedItems));
+      } catch (e) {
+        console.warn("Gagal menyimpan tombstone ke localStorage:", e);
+      }
       window.dispatchEvent(new CustomEvent(CMS_DELETED_ITEMS_EVENT, { detail: memoryDeletedItems }));
     }
   } catch (err) {
@@ -182,6 +202,11 @@ export function isCmsItemDeleted(
 export function clearDeletedCmsTombstones(): void {
   memoryDeletedItems = [];
   if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(CMS_DELETED_ITEMS_KEY);
+    } catch (e) {
+      console.warn("Gagal menghapus tombstone dari localStorage:", e);
+    }
     window.dispatchEvent(new CustomEvent(CMS_DELETED_ITEMS_EVENT, { detail: [] }));
   }
 }

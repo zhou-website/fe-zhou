@@ -118,13 +118,13 @@ export function SuperadminSidebar({
                 if (isMobileOpen) setMobileOpenState(false);
               }}
             >
-              <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 bg-[#0B1533] shadow-md group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 bg-white shadow-md group-hover:scale-105 transition-transform shrink-0 flex items-center justify-center">
                 <Image
-                  src="/images/zhou-logo.jpg"
+                  src="/images/zhou-logo.png"
                   alt="Zhou Consulting Logo"
                   width={40}
                   height={40}
-                  className="object-cover w-full h-full"
+                  className="object-contain w-full h-full p-0.5"
                 />
               </div>
               <div className="min-w-0">
