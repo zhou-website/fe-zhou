@@ -44,6 +44,27 @@ export default function AccountingServicePage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
+      if (apiItems !== undefined) {
+        setModules(
+          apiItems.map((c: PublicServiceItem) => ({
+            id: `SVC-${c.id}`,
+            code: c.service_code || `SVC-${c.id}`,
+            title: c.service_name,
+            badge: c.category?.toUpperCase() || "ACCOUNTING SERVICES",
+            subtitle: c.description || "Layanan akuntansi dan pembukuan korporasi terstandar",
+            scopes: c.features && c.features.length > 0 ? c.features : [
+              "Penyusunan laporan keuangan terstandar PSAK",
+              "Pencatatan pembukuan dan rekonsiliasi akun",
+            ],
+            deliverable: "Laporan Keuangan Resmi",
+            topicParam: "laporan-keuangan",
+            waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+          }))
+        );
+        return;
+      }
+
+      // Fallback hanya saat backend API offline
       const stored = getStoredServices();
       const accItems = stored.filter(
         (s) =>
@@ -53,17 +74,9 @@ export default function AccountingServicePage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-
-
       if (accItems.length > 0) {
         setModules(
           accItems.map((c) => {
-            const apiItem = apiItems?.find(
-              (a) =>
-                (a.service_code && a.service_code.toLowerCase() === (c.code || c.id).toLowerCase()) ||
-                (a.service_name && a.service_name.toLowerCase() === c.name.toLowerCase())
-            );
-
             const rawScopes =
               (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
               (c.pillars && c.pillars.length > 0
@@ -98,47 +111,30 @@ export default function AccountingServicePage() {
       }
     };
 
-    syncModules();
-
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const accFromApi = res.data.filter((item: PublicServiceItem) => {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
             return (
+              item.is_active !== false &&
               (cat.includes("akuntansi") || cat.includes("accounting") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan")) &&
               !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
             );
           });
 
-          if (accFromApi.length > 0) {
-            setModules(
-              accFromApi.map((c: PublicServiceItem) => ({
-                id: `SVC-${c.id}`,
-                code: c.service_code || `SVC-${c.id}`,
-                title: c.service_name,
-                badge: c.category?.toUpperCase() || "ACCOUNTING SERVICES",
-                subtitle: c.description || "Layanan akuntansi dan pembukuan korporasi terstandar",
-                scopes: c.features && c.features.length > 0 ? c.features : [
-                  "Penyusunan laporan keuangan terstandar PSAK",
-                  "Pencatatan pembukuan dan rekonsiliasi akun",
-                ],
-                deliverable: "Laporan Keuangan Resmi",
-                topicParam: "laporan-keuangan",
-                waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-              }))
-            );
-            return;
-          }
+          syncModules(accFromApi);
+        } else {
+          syncModules();
         }
       })
       .catch(() => {
-        syncModules();
+        if (isMounted) syncModules();
       });
 
     const handleUpdate = () => syncModules();

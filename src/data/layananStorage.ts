@@ -172,7 +172,7 @@ export function updateStoredService(
     saveStoredServices(updatedList);
 
     const numericBackendId = parseInt(String(id).replace(/\D/g, ""), 10);
-    if (!isNaN(numericBackendId) && numericBackendId > 0 && numericBackendId < 1000) {
+    if (!isNaN(numericBackendId) && numericBackendId > 0) {
       adminCmsApi
         .updateService(numericBackendId, {
           service_name: updatedItem.name,
@@ -235,6 +235,7 @@ export function deleteStoredService(idOrTitle: string): boolean {
 
   const numId = parseInt(idOrTitle.replace(/\D/g, ""), 10);
   if (!isNaN(numId) && numId > 0) {
+    adminCmsApi.updateService(numId, { is_active: false }).catch(() => {});
     adminCmsApi.deleteService(numId).catch((err) => {
       console.warn("adminCmsApi.deleteService sinkronisasi:", err);
     });

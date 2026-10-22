@@ -668,14 +668,14 @@ function AdminCMSPageContent() {
         return text.trim();
       };
 
-      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data) && srvRes.value.data.length > 0) {
+      if (srvRes.status === "fulfilled" && Array.isArray(srvRes.value.data)) {
         srvRes.value.data.forEach((s: PublicServiceItem) => {
           const id = `SVC-${s.id}`;
           if (isCmsItemDeleted(id, s.service_name, s.id, s.service_code)) {
-            if (s.id && (String(s.id).includes("1872") || (s.service_name || "").toLowerCase().includes("pajak1"))) {
-              try {
-                adminCmsApi.deleteService(s.id);
-              } catch {}
+            // Jika ada item yang pernah dihapus tetapi masih tersimpan aktif di backend, otomatis nonaktifkan di database backend
+            if (s.id) {
+              adminCmsApi.updateService(s.id, { is_active: false }).catch(() => {});
+              adminCmsApi.deleteService(s.id).catch(() => {});
             }
             return;
           }
@@ -696,24 +696,11 @@ function AdminCMSPageContent() {
             raw: s,
           });
         });
-      }
-
-      const storedServices = getStoredServices();
-      storedServices.forEach((s) => {
-        if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
-        const titleKey = s.name.trim().toLowerCase();
-        const codeKey = (s.code || "").trim().toLowerCase();
-
-        // Hindari duplikasi jika sudah terdaftar dari backend dengan ID, kode, atau judul yang sama persis
-        const isDuplicate =
-          existingSrvTitles.has(titleKey) ||
-          existingSrvIds.has(s.id.toLowerCase()) ||
-          (codeKey && existingSrvIds.has(codeKey));
-
-        if (!isDuplicate) {
-          existingSrvTitles.add(titleKey);
-          existingSrvIds.add(s.id.toLowerCase());
-          if (codeKey) existingSrvIds.add(codeKey);
+      } else {
+        // Fallback hanya jika koneksi backend offline
+        const storedServices = getStoredServices();
+        storedServices.forEach((s) => {
+          if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
           const numId = parseInt(s.id.replace(/\D/g, ""), 10) || getStableCmsNumericId(s.id + s.name);
           const displayId = s.id.startsWith("SVC-") || s.id.startsWith("SRV-") ? s.id : `SVC-${s.code || s.id}`;
           items.push({
@@ -728,8 +715,8 @@ function AdminCMSPageContent() {
             updatedAt: s.lastUpdated || "Aktif",
             raw: s,
           });
-        }
-      });
+        });
+      }
 
       // 3. Regulations (Gabungkan Backend API & Local Storage)
       const existingRegTitles = new Set<string>();
@@ -1015,13 +1002,21 @@ function AdminCMSPageContent() {
         const targetServiceId = item.numericId || (rawId ? parseInt(rawId.replace(/\D/g, ""), 10) : undefined);
         if (targetServiceId && !isNaN(targetServiceId) && targetServiceId > 0) {
           try {
-            const res = await adminCmsApi.deleteService(targetServiceId);
-            if (res && res.success === false) {
-              deleteSuccess = false;
-              deleteErrorMsg =
-                res.message ||
-                "Layanan tidak dapat dihapus dari database karena masih terhubung dengan tiket/klien aktif (Foreign Key Constraint).";
+            // 1. Soft-delete di backend database via is_active: false
+            // Ini menjamin layanan langsung lenyap dari API publik (/api/v1/cms/services) di Vercel dan seluruh visitor
+            // tanpa pernah gagal karena Foreign Key Constraint (tiket/klien).
+            await adminCmsApi.updateService(targetServiceId, { is_active: false });
+
+            // 2. Upayakan hard-delete dari database PostgreSQL jika tidak terikat foreign key
+            try {
+              const res = await adminCmsApi.deleteService(targetServiceId);
+              if (res && res.success === false) {
+                console.warn("Hard delete service skipped (FK constraint):", res.message);
+              }
+            } catch (hardErr) {
+              console.warn("Hard delete service skipped (FK constraint):", hardErr);
             }
+            deleteSuccess = true;
           } catch (apiErr) {
             deleteSuccess = false;
             deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus layanan dari database server.";
@@ -1174,7 +1169,7 @@ function AdminCMSPageContent() {
       );
 
       if (item.section === "services") {
-        const isBackendId = typeof item.numericId === "number" && item.numericId > 0 && item.numericId < 1000;
+        const isBackendId = typeof item.numericId === "number" && item.numericId > 0;
         if (isBackendId) {
           try {
             await adminCmsApi.updateService(item.numericId, { is_active: isActive });
@@ -1527,7 +1522,7 @@ function AdminCMSPageContent() {
         const srvCode = serviceForm.service_code || generateServiceSlug(serviceForm.service_name);
 
         if (editingServiceId || editingServiceOriginalId) {
-          const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0 && editingServiceId < 1000;
+          const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0;
           if (isBackendId) {
             try {
               await adminCmsApi.updateService(editingServiceId, {
@@ -2311,9 +2306,17 @@ function AdminCMSPageContent() {
             ? "hukum"
             : "tax-service";
 
-    // Cari data scopes dan deliverable dari storedServices jika tidak ada di raw
+    // Cari data scopes dan deliverable dari raw backend
     let scopesList: string[] = [];
-    if (Array.isArray(raw?.scopes) && raw.scopes.length > 0) {
+    const rawFeatures = (raw as Record<string, any>)?.features;
+    if (Array.isArray(rawFeatures) && rawFeatures.length > 0) {
+      scopesList = rawFeatures.filter(Boolean);
+    } else if (typeof rawFeatures === "string" && rawFeatures.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(rawFeatures);
+        if (Array.isArray(parsed)) scopesList = parsed.filter(Boolean);
+      } catch {}
+    } else if (Array.isArray(raw?.scopes) && raw.scopes.length > 0) {
       scopesList = raw.scopes.filter(Boolean);
     } else if (Array.isArray(raw?.pillars) && raw.pillars.length > 0) {
       scopesList = raw.pillars.map((p) => p.title || p.description || "").filter(Boolean);
@@ -2330,7 +2333,7 @@ function AdminCMSPageContent() {
       }
     }
 
-    let deliverableText = raw?.deliverable || raw?.deliverables?.[0] || "";
+    let deliverableText = raw?.card_explanation || raw?.deliverable || raw?.deliverables?.[0] || "";
     if (!deliverableText) {
       const stored = getStoredServices();
       const match = stored.find(

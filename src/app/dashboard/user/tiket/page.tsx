@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { clientApi, ConsultationItem, ClientDocumentItem } from "@/lib/api";
+import { clientApi, publicApi, ConsultationItem, ClientDocumentItem, PublicServiceItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,6 @@ import {
 } from "@/data/sharedTicketsStorage";
 import { downloadBlob, downloadRemoteFile, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { savePersistentFileBlob } from "@/lib/fileStorageDB";
-import { getStoredServices } from "@/data/layananStorage";
 import {
   CheckCircleIcon,
   DocumentIcon,
@@ -425,14 +424,30 @@ function ClientTicketMonitoringContent() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const dynamicServices = typeof window !== "undefined" ? getStoredServices() : [];
+  const [backendServiceNames, setBackendServiceNames] = useState<string[]>([]);
+  useEffect(() => {
+    publicApi
+      .getServices()
+      .then((res) => {
+        if (res?.data && Array.isArray(res.data)) {
+          setBackendServiceNames(
+            res.data
+              .filter((s: PublicServiceItem) => s.is_active !== false)
+              .map((s: PublicServiceItem) => s.service_name)
+              .filter(Boolean)
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const serviceOptions = Array.from(
     new Set([
       "Tax Service Core",
       "Accounting Service",
       "Business Consulting",
       "Legal Compliance",
-      ...dynamicServices.map((s) => s.name).filter(Boolean),
+      ...backendServiceNames,
     ])
   );
 

@@ -58,14 +58,14 @@ export function ServicesSection() {
 
     window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
 
-    // Sync from live backend API if available
+    // Sync directly from live backend API as primary source of truth
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
-        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           const apiServices: StoredServiceItem[] = res.data
-            .filter((item: PublicServiceItem) => !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code))
+            .filter((item: PublicServiceItem) => item.is_active !== false && !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code))
             .map((item: PublicServiceItem) => {
             const catLower = (item.category || "").toLowerCase();
             const codeUpper = (item.service_code || "").toUpperCase();
@@ -116,9 +116,7 @@ export function ServicesSection() {
             };
           });
 
-          if (apiServices.length > 0) {
-            setServices(apiServices);
-          }
+          setServices(apiServices);
         }
       })
       .catch((err) => {
