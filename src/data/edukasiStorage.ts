@@ -27,24 +27,22 @@ export function extractEducationImageAndBody(
   let image: string | undefined = explicitImage;
   let cleanBody = rawBody || "";
 
+  // Prioritas 1: Ambil gambar resmi dari tag khusus <!--ZHOU_IMAGE:...--> yang disematkan saat superadmin upload
   const tagMatch = cleanBody.match(/<!--ZHOU_IMAGE:(.*?)-->/);
   if (tagMatch) {
     const embedded = tagMatch[1].trim();
     if (embedded) {
-      if (!image || image.includes("unsplash.com") || image.includes("images.unsplash")) {
-        image = embedded;
-      }
+      image = embedded;
     }
     cleanBody = cleanBody.replace(/<!--ZHOU_IMAGE:.*?-->\r?\n?/, "").trim();
   }
 
+  // Prioritas 2: Markdown image ![alt](url)
   const mdMatch = cleanBody.match(/^!\[.*?\]\((.*?)\)\r?\n?/);
   if (mdMatch) {
     const mdImg = mdMatch[1].trim();
-    if (mdImg) {
-      if (!image || image.includes("unsplash.com") || image.includes("images.unsplash")) {
-        image = mdImg;
-      }
+    if (mdImg && !image) {
+      image = mdImg;
     }
     cleanBody = cleanBody.replace(/^!\[.*?\]\(.*?\)\r?\n?/, "").trim();
   }
@@ -56,27 +54,20 @@ export function extractEducationImageAndBody(
     }
   }
 
+  // JANGAN memasang gambar otomatis/template (Unsplash dari BE default cover)
+  // Hanya gunakan gambar yang benar-benar diunggah oleh superadmin
+  if (image && (image.includes("unsplash.com") || image.includes("images.unsplash") || image.includes("placeholder"))) {
+    image = undefined;
+  }
+
   return { image, cleanBody };
 }
 
 /**
- * Menyediakan gambar sampul cadangan berkualitas tinggi jika gambar unggahan tidak dapat dimuat
+ * Cadangan sampul edukasi: mengembalikan string kosong agar tidak menampilkan gambar template/duplikasi
  */
 export function getSafeEducationCover(category?: string, id?: string | number): string {
-  const cat = (category || "").toLowerCase();
-  if (cat.includes("pph") || cat.includes("ppn")) {
-    return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
-  }
-  if (cat.includes("sp2dk") || cat.includes("hukum") || cat.includes("legal") || cat.includes("sengketa")) {
-    return "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=800&q=80";
-  }
-  if (cat.includes("akun") || cat.includes("keuangan") || cat.includes("laporan")) {
-    return "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80";
-  }
-  if (cat.includes("bisnis") || cat.includes("konsultasi")) {
-    return "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80";
-  }
-  return "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
+  return "";
 }
 
 /**

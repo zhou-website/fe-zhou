@@ -654,7 +654,10 @@ function EducationPortalContent() {
                         onError={(e) => {
                           const target = e.currentTarget as HTMLImageElement;
                           target.onerror = null;
-                          target.src = getSafeEducationCover(currentFeatured.category, currentFeatured.id);
+                          const container = target.parentElement;
+                          if (container) {
+                            container.style.display = "none";
+                          }
                         }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
@@ -859,7 +862,10 @@ function EducationPortalContent() {
                               onError={(e) => {
                                 const target = e.currentTarget as HTMLImageElement;
                                 target.onerror = null;
-                                target.src = getSafeEducationCover(article.category, article.id);
+                                const container = target.parentElement;
+                                if (container) {
+                                  container.style.display = "none";
+                                }
                               }}
                               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                             />
@@ -983,7 +989,10 @@ function EducationPortalContent() {
                   onError={(e) => {
                     const target = e.currentTarget as HTMLImageElement;
                     target.onerror = null;
-                    target.src = getSafeEducationCover(activeArticleModal.category, activeArticleModal.id);
+                    const container = target.parentElement;
+                    if (container) {
+                      container.style.display = "none";
+                    }
                   }}
                   className="w-full h-full object-cover"
                 />

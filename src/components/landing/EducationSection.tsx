@@ -272,7 +272,10 @@ export function EducationSection() {
                       onError={(e) => {
                         const target = e.currentTarget as HTMLImageElement;
                         target.onerror = null;
-                        target.src = getSafeEducationCover(article.category, article.id);
+                        const container = target.parentElement;
+                        if (container) {
+                          container.style.display = "none";
+                        }
                       }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -373,6 +376,14 @@ export function EducationSection() {
                   <img
                     src={selectedArticle.image}
                     alt={selectedArticle.title}
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.onerror = null;
+                      const container = target.parentElement;
+                      if (container) {
+                        container.style.display = "none";
+                      }
+                    }}
                     className="w-full h-full object-cover"
                   />
                 </div>

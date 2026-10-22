@@ -352,34 +352,14 @@ function AdminCMSPageContent() {
 
     try {
       setEduImageFile(file);
-      // Kompresi otomatis ke resolusi optimal 1200x800 & JPEG kualitas 82% agar muat di preview
+      // Kompresi otomatis ke resolusi optimal 1200x800 & JPEG kualitas 82% agar muat di preview dan database
       const compressedDataUrl = await compressImageFile(file, 1200, 800, 0.82);
       setEduForm((prev) => ({
         ...prev,
         image: compressedDataUrl,
         image_name: file.name,
       }));
-      showToast(`Memproses gambar sampul "${file.name}"...`);
-
-      // Unggah berkas gambar langsung ke Supabase Storage via /api/v1/public/upload
-      const imgFd = new FormData();
-      imgFd.append("file", file);
-      imgFd.append("folder", "education");
-      publicApi
-        .uploadPublicFile(imgFd)
-        .then((uploadRes) => {
-          if (uploadRes?.data?.download_url || uploadRes?.data?.public_url) {
-            const uploadedUrl = uploadRes.data.download_url || uploadRes.data.public_url;
-            setEduForm((prev) => ({
-              ...prev,
-              image: uploadedUrl || prev.image,
-            }));
-            showToast(`Gambar sampul "${file.name}" berhasil diunggah.`);
-          }
-        })
-        .catch((uploadErr) => {
-          console.warn("Background image upload fallback notice:", uploadErr);
-        });
+      showToast(`Gambar sampul "${file.name}" berhasil diproses.`);
     } catch (err) {
       console.error("Gagal memproses file gambar:", err);
       showToast("Gagal memproses file gambar.");
@@ -1231,7 +1211,7 @@ function AdminCMSPageContent() {
         if (editingEduId) {
           // UPDATE ke backend database & local storage
           try {
-            if (eduPdfFile || eduImageFile) {
+            if (eduPdfFile) {
               const fd = new FormData();
               fd.append("title", eduForm.title);
               fd.append("category", eduForm.category);
@@ -1248,11 +1228,7 @@ function AdminCMSPageContent() {
                 fd.append("imageUrl", imageVal);
                 fd.append("cover_image", imageVal);
               }
-              if (eduImageFile) {
-                fd.append("file", eduImageFile);
-              } else if (eduPdfFile) {
-                fd.append("file", eduPdfFile);
-              }
+              fd.append("file", eduPdfFile);
               await adminCmsApi.updateEducation(editingEduId, fd);
             } else {
               const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
@@ -1315,7 +1291,7 @@ function AdminCMSPageContent() {
           let createdNumId: number | undefined = undefined;
           try {
             let createRes;
-            if (eduPdfFile || eduImageFile) {
+            if (eduPdfFile) {
               const fd = new FormData();
               fd.append("title", eduForm.title);
               fd.append("category", eduForm.category);
@@ -1332,11 +1308,7 @@ function AdminCMSPageContent() {
                 fd.append("imageUrl", imageVal);
                 fd.append("cover_image", imageVal);
               }
-              if (eduImageFile) {
-                fd.append("file", eduImageFile);
-              } else if (eduPdfFile) {
-                fd.append("file", eduPdfFile);
-              }
+              fd.append("file", eduPdfFile);
               createRes = await adminCmsApi.createEducation(fd);
             } else {
               const safeImage = eduForm.image && !eduForm.image.startsWith("data:") ? eduForm.image : undefined;
