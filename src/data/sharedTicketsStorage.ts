@@ -230,14 +230,107 @@ export function formatConsultationDate(rawDate?: string): string {
  * Mengekstrak uraian detail masalah klien yang bersih.
  * Jika deskripsi berasal dari eskalasi bot otomatis (misal mengandung 'Pesan Klien: ...'),
  * ambil isi pesan klien tersebut agar tampil bersih, jelas, dan informatif.
+ * Otomatis memisahkan catatan tim konsultan yang mungkin disematkan di bagian bawah.
  */
 export function formatTicketDescription(desc?: string): string {
   if (!desc || !desc.trim()) return "";
-  const clientMatch = desc.match(/Pesan Klien:\s*([\s\S]+)$/i);
+  let clientText = desc;
+  const splitIdx = clientText.search(/(?:\r?\n\r?\n?|\s*)\[(?:CATATAN|TANGGAPAN) KONSULTAN/i);
+  if (splitIdx !== -1) {
+    clientText = clientText.substring(0, splitIdx);
+  }
+  const clientMatch = clientText.match(/Pesan Klien:\s*([\s\S]+)$/i);
   if (clientMatch && clientMatch[1]?.trim()) {
     return clientMatch[1].trim();
   }
-  return desc.trim();
+  return clientText.trim();
+}
+
+/**
+ * Format catatan resmi konsultan untuk disimpan ke deskripsi database backend
+ */
+export function formatConsultantNoteForStorage(
+  noteText: string,
+  staffName = "Tim Konsultan Zhou",
+  dateString?: string
+): string {
+  const dateFormatted =
+    dateString ||
+    new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+  return `[CATATAN KONSULTAN - ${dateFormatted} - ${staffName}]\n${noteText.trim()}`;
+}
+
+/**
+ * Menggabungkan catatan baru konsultan ke deskripsi perikatan secara aman
+ */
+export function appendConsultantNoteToDescription(
+  existingDesc?: string,
+  formattedNote?: string
+): string {
+  if (!formattedNote || !formattedNote.trim()) return existingDesc || "";
+  if (!existingDesc || !existingDesc.trim()) return formattedNote.trim();
+  return `${existingDesc.trim()}\n\n${formattedNote.trim()}`;
+}
+
+/**
+ * Mengekstrak seluruh catatan korespondensi resmi konsultan dari deskripsi perikatan backend
+ */
+export function extractCorrespondencesFromDescription(
+  desc?: string,
+  fallbackIdPrefix = "c-note"
+): Correspondence[] {
+  if (!desc || !desc.trim()) return [];
+
+  const notesRegex = /\[(?:CATATAN|TANGGAPAN) KONSULTAN\s*-\s*([^\]\r\n]+?)(?:\s*-\s*([^\]\r\n]+?))?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN) KONSULTAN)|$)/gi;
+  const correspondences: Correspondence[] = [];
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = notesRegex.exec(desc)) !== null) {
+    idx++;
+    const part1 = (match[1] || "").trim();
+    const part2 = (match[2] || "").trim();
+    const message = (match[3] || "").trim();
+
+    if (!message) continue;
+
+    const isDate = (str: string) => /\d{1,4}/.test(str) && (str.includes("WIB") || str.includes("202") || str.includes("Okt") || str.includes("/"));
+    let sender = "Tim Konsultan Zhou";
+    let date = "Terbaru";
+
+    if (part2) {
+      if (isDate(part1)) {
+        date = part1;
+        sender = part2;
+      } else {
+        sender = part1;
+        date = part2;
+      }
+    } else if (part1) {
+      if (isDate(part1)) {
+        date = part1;
+      } else {
+        sender = part1;
+      }
+    }
+
+    correspondences.unshift({
+      id: `${fallbackIdPrefix}-${idx}-${Date.now()}`,
+      sender,
+      role: "Konsultan",
+      date,
+      message,
+    });
+  }
+
+  return correspondences;
 }
 
 /**
@@ -571,10 +664,16 @@ export function mergeTicketsWithLocalOverrides(
         }
       });
 
-      // Gabungkan korespondensi/catatan
+      // Gabungkan korespondensi/catatan resmi konsultan
+      const fromBackendDesc = extractCorrespondencesFromDescription(bt.description, `bt-note-${bt.id}`);
       const combinedCorrespondences = [...(bt.correspondences || [])];
+      fromBackendDesc.forEach((fc) => {
+        if (!combinedCorrespondences.some((c) => c.message.trim() === fc.message.trim())) {
+          combinedCorrespondences.unshift(fc);
+        }
+      });
       (lt.correspondences || []).forEach((lc) => {
-        if (!combinedCorrespondences.some((c) => c.id === lc.id || (c.message === lc.message && c.date === lc.date))) {
+        if (!combinedCorrespondences.some((c) => c.id === lc.id || (c.message.trim() === lc.message.trim() && c.date === lc.date))) {
           combinedCorrespondences.unshift(lc);
         }
       });

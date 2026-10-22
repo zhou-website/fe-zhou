@@ -44,6 +44,9 @@ import {
   mergeTicketsWithLocalOverrides,
   sortAndNormalizeMilestones,
   getMilestoneRank,
+  formatConsultantNoteForStorage,
+  appendConsultantNoteToDescription,
+  extractCorrespondencesFromDescription,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -245,15 +248,7 @@ function AdminTugasSayaContent() {
                   downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
                 }));
             })(),
-            correspondences: c.description ? [
-              {
-                id: `msg-${c.id}`,
-                sender: "Klien",
-                role: "Klien",
-                date: "Awal Perikatan",
-                message: c.description,
-              }
-            ] : [],
+            correspondences: extractCorrespondencesFromDescription(c.description, `msg-${c.id}`),
             clientDocuments: (() => {
               const rawDocs = c.documents || [];
               const isClientUpload = (d: { uploaded_by?: number }) =>
@@ -448,7 +443,13 @@ function AdminTugasSayaContent() {
     setIsSendingDetailDoc(true);
 
     try {
-      const rawId = selectedTicket.numericId || parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.id;
+      const rawId =
+        selectedTicket.numericId ||
+        (selectedTicket.id.startsWith("TK-") ? parseInt(selectedTicket.id.replace(/\D/g, ""), 10) : undefined) ||
+        tickets.find((t) => t.id === selectedTicket.id)?.numericId ||
+        parseInt(selectedTicket.id.replace(/\D/g, ""), 10);
+
+      const staffName = activeStaffProfile.name || selectedTicket.assignedAdminName || "Tim Konsultan Zhou";
 
       if (detailSendFile) {
         // Cache blob untuk unduhan instan langsung dari memori browser & IndexedDB
@@ -456,6 +457,13 @@ function AdminTugasSayaContent() {
           [detailSendFile.name, `${selectedTicket.id}:${detailSendFile.name}`, selectedTicket.id],
           detailSendFile
         );
+
+        // Siapkan catatan konsultan untuk disimpan ke shared storage dan backend database
+        const noteText = detailDocNotes.trim()
+          ? `Berkas deliverable resmi telah diterbitkan: "${detailSendFile.name}". Catatan: "${detailDocNotes.trim()}"`
+          : `Berkas deliverable resmi telah diterbitkan: "${detailSendFile.name}".`;
+        const formattedNote = formatConsultantNoteForStorage(noteText, staffName);
+        const combinedDesc = appendConsultantNoteToDescription(selectedTicket.description, formattedNote);
 
         // 1. Simpan deliverable langsung ke shared storage (agar instan tersinkron ke portal klien)
         const saveRes = addAdminDeliverableToTicket(
@@ -473,6 +481,7 @@ function AdminTugasSayaContent() {
         if (saveRes.success && saveRes.ticket) {
           const updatedTicket = {
             ...selectedTicket,
+            description: combinedDesc,
             deliverables: saveRes.ticket.deliverables,
             clientDocuments: saveRes.ticket.clientDocuments,
             correspondences: saveRes.ticket.correspondences,
@@ -491,17 +500,24 @@ function AdminTugasSayaContent() {
             formData.append("description", `[${detailDocCategory}] ${detailDocNotes.trim()}`);
           }
           await adminApi.uploadDocument(rawId, formData);
+          if (rawId) {
+            await adminApi.updateConsultation(rawId, {
+              description: combinedDesc,
+            });
+          }
         } catch (apiErr) {
           console.warn("Backend deliverable upload notice:", apiErr);
         }
 
         showToast(`Dokumen deliverable "${detailSendFile.name}" berhasil dikirimkan ke Klien.`);
       } else if (detailDocNotes.trim()) {
-        const rawId = parseInt(selectedTicket.id.replace(/\D/g, ""), 10) || selectedTicket.numericId;
+        const formattedNote = formatConsultantNoteForStorage(detailDocNotes.trim(), staffName);
+        const combinedDesc = appendConsultantNoteToDescription(selectedTicket.description, formattedNote);
+
         if (rawId) {
           try {
             await adminApi.updateConsultation(rawId, {
-              description: detailDocNotes.trim(),
+              description: combinedDesc,
             });
           } catch (apiErr) {
             console.warn("Backend consultation notes update:", apiErr);
@@ -517,6 +533,7 @@ function AdminTugasSayaContent() {
         if (updateRes.success && updateRes.ticket) {
           const updatedTicket = {
             ...selectedTicket,
+            description: combinedDesc,
             correspondences: updateRes.ticket.correspondences,
           };
           setSelectedTicket(updatedTicket);
@@ -1299,14 +1316,17 @@ function AdminTugasSayaContent() {
 
                 {/* 4. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
                 {(() => {
+                  const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
                   const cleanCorrespondences = (selectedTicket.correspondences || [])
                     .map((c) => ({
                       ...c,
                       cleanMsg: formatCorrespondenceMessage(c.message),
                     }))
-                    .filter((c) => c.cleanMsg && c.cleanMsg.length > 0);
-
-                  if (cleanCorrespondences.length === 0) return null;
+                    .filter((c) => {
+                      if (!c.cleanMsg || c.cleanMsg.trim().length === 0) return false;
+                      if (cleanProblem && c.cleanMsg.trim().toLowerCase() === cleanProblem) return false;
+                      return true;
+                    });
 
                   return (
                     <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
@@ -1317,24 +1337,30 @@ function AdminTugasSayaContent() {
                         <span className="text-[10px] text-text-muted">Riwayat Korespondensi</span>
                       </div>
 
-                      <div className="space-y-2">
-                        {cleanCorrespondences.map((c) => (
-                          <div
-                            key={c.id}
-                            className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
-                          >
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-bold text-primary">
-                                {c.sender} <span className="font-normal text-text-muted">({c.role})</span>
-                              </span>
-                              <span className="text-text-muted font-mono">{c.date}</span>
+                      {cleanCorrespondences.length === 0 ? (
+                        <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                          Belum ada catatan atau instruksi yang dikirimkan untuk perikatan ini.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {cleanCorrespondences.map((c) => (
+                            <div
+                              key={c.id}
+                              className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
+                            >
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="font-bold text-primary">
+                                  {c.sender} <span className="font-normal text-text-muted">({c.role})</span>
+                                </span>
+                                <span className="text-text-muted font-mono">{c.date}</span>
+                              </div>
+                              <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
+                                {c.cleanMsg}
+                              </p>
                             </div>
-                            <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
-                              {c.cleanMsg}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
