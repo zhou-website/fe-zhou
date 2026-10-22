@@ -391,6 +391,26 @@ function SuperadminPerikatanContent() {
       try {
         const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId);
         if (assignRes.success) {
+          // Otomatis tandai task nomor 2 (Penetapan PIC) menjadi selesai dan naikkan progres menjadi min 50%
+          try {
+            const tasksRes = await adminApi.getTasks(targetProjectId);
+            if (tasksRes.success && Array.isArray(tasksRes.data)) {
+              const picTask = tasksRes.data.find(
+                (t) =>
+                  t.task_name.toLowerCase().includes("pic") ||
+                  t.task_name.toLowerCase().includes("penetapan")
+              ) || tasksRes.data[1];
+              if (picTask && !picTask.is_completed) {
+                await adminApi.updateTask(targetProjectId, picTask.id, true);
+              }
+            }
+            await adminApi.updateConsultation(targetProjectId, {
+              progress_percent: Math.max(managingPicTicket.progress || 0, 50),
+            });
+          } catch (taskErr) {
+            console.warn("Auto-complete PIC task notice:", taskErr);
+          }
+
           showToast(
             isReassign
               ? `Penugasan tiket ${managingPicTicket.id} berhasil dialihkan dari ${prevName} kepada ${targetAdmin.name}.`

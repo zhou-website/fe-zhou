@@ -42,6 +42,8 @@ import {
   formatCorrespondenceMessage,
   updateStoredClientTicketProgress,
   mergeTicketsWithLocalOverrides,
+  sortAndNormalizeMilestones,
+  getMilestoneRank,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -132,26 +134,51 @@ function AdminTugasSayaContent() {
 
         const mappedTickets: ClientTicket[] = assignedConsultations.map((c: ConsultationItem) => {
           const isCompleted = c.status === "COMPLETED";
+          const hasAssignedPic = Boolean(
+            c.assigned_admin?.name ||
+            c.assigned_to ||
+            (c as unknown as { assigned_admin_id?: number }).assigned_admin_id
+          );
           const progressVal =
             typeof c.progress_percent === "number" && !isNaN(c.progress_percent)
               ? c.progress_percent
               : isCompleted
               ? 100
-              : 50;
+              : hasAssignedPic
+              ? Math.max(50, c.progress_percent || 0)
+              : 35;
 
-          const taskMilestones: Milestone[] = (c.tasks && c.tasks.length > 0)
-            ? c.tasks.map((task, idx) => ({
-                taskId: task.id,
-                step: `0${idx + 1}`,
-                title: task.task_name,
-                status: (task.is_completed
-                  ? "completed"
-                  : idx === 0 || (idx > 0 && c.tasks![idx - 1].is_completed)
-                  ? "in_progress"
-                  : "pending") as "completed" | "in_progress" | "pending",
-                date: task.is_completed ? "Selesai" : "Proses",
-                description: task.task_name,
-              }))
+          // Urutkan task sesuai alur kerja kronologis (1: Intake/Verifikasi, 2: Penetapan PIC, 3: Analisis/Kertas Kerja, 4: Finalisasi/Hasil)
+          const sortedRawTasks = (c.tasks && c.tasks.length > 0)
+            ? sortAndNormalizeMilestones(c.tasks)
+            : [];
+
+          const taskMilestones: Milestone[] = sortedRawTasks.length > 0
+            ? sortedRawTasks.map((task, idx) => {
+                const isPicTask = getMilestoneRank(task.task_name) === 2 || task.task_name.toLowerCase().includes("pic");
+                // Syarat penting: Task no 2 penetapan PIC otomatis checklist selesai jika PIC sudah ditugaskan
+                const isTaskDone = Boolean(task.is_completed || (isPicTask && hasAssignedPic));
+
+                // Otomatis sinkronkan status selesai ke backend database jika belum tercatat
+                if (isPicTask && hasAssignedPic && !task.is_completed && c.id) {
+                  adminApi.updateTask(c.id, task.id, true).catch(() => {});
+                }
+
+                return {
+                  taskId: task.id,
+                  step: `0${idx + 1}`,
+                  title: isPicTask && c.assigned_admin?.name
+                    ? `PIC Ditetapkan: ${c.assigned_admin.name}`
+                    : task.task_name,
+                  status: (isTaskDone
+                    ? "completed"
+                    : idx === 0 || (idx > 0 && (sortedRawTasks[idx - 1].is_completed || (getMilestoneRank(sortedRawTasks[idx - 1].task_name) === 2 && hasAssignedPic)))
+                    ? "in_progress"
+                    : "pending") as "completed" | "in_progress" | "pending",
+                  date: isTaskDone ? "Selesai" : "Proses",
+                  description: task.task_name,
+                };
+              })
             : [
                 {
                   step: "1",
@@ -552,7 +579,7 @@ function AdminTugasSayaContent() {
       return;
     }
 
-    const currentMilestones: Milestone[] =
+    const rawMilestones: Milestone[] =
       selectedTicket.milestones && selectedTicket.milestones.length > 0
         ? selectedTicket.milestones.map((m) => ({ ...m }))
         : [
@@ -573,18 +600,23 @@ function AdminTugasSayaContent() {
             {
               step: "3",
               title: "Pengerjaan Kertas Kerja & Pembahasan",
-              status: selectedTicket.status === "Selesai" ? "completed" : "in_progress",
+              status: (selectedTicket.progress >= 75 || selectedTicket.status === "Selesai") ? "completed" : "in_progress",
               date: formatConsultationDate(selectedTicket.createdAt),
               description: "Konsultan PIC sedang menyusun kertas kerja, rekonsiliasi, serta analisis kepatuhan.",
             },
             {
               step: "4",
               title: "Konsultasi Selesai & Laporan Final",
-              status: selectedTicket.status === "Selesai" ? "completed" : "pending",
+              status: (selectedTicket.progress >= 100 || selectedTicket.status === "Selesai") ? "completed" : (selectedTicket.progress >= 75 ? "in_progress" : "pending"),
               date: selectedTicket.status === "Selesai" ? formatConsultationDate(selectedTicket.createdAt) : "-",
               description: "Penyampaian deliverable akhir dan penutupan perikatan konsultasi.",
             },
           ];
+
+    const currentMilestones: Milestone[] = sortAndNormalizeMilestones(rawMilestones).map((m, idx) => ({
+      ...m,
+      step: `0${idx + 1}`,
+    }));
 
     const target = currentMilestones[milestoneIdx];
     const newStatus = target.status === "completed" ? "in_progress" : "completed";
@@ -774,7 +806,7 @@ function AdminTugasSayaContent() {
   const renderDetailView = () => {
     if (!selectedTicket) return null;
 
-    const milestonesList: Milestone[] =
+    const rawMilestonesList: Milestone[] =
       selectedTicket.milestones && selectedTicket.milestones.length > 0
         ? selectedTicket.milestones
         : [
@@ -807,6 +839,11 @@ function AdminTugasSayaContent() {
               description: "Penyampaian deliverable akhir dan penutupan perikatan konsultasi.",
             },
           ];
+
+    const milestonesList: Milestone[] = sortAndNormalizeMilestones(rawMilestonesList).map((m, idx) => ({
+      ...m,
+      step: `0${idx + 1}`,
+    }));
 
     const completedMilestones = milestonesList.filter((m) => m.status === "completed").length;
     const calculatedProgress =

@@ -35,6 +35,8 @@ import {
   formatCorrespondenceMessage,
   addSupportingDocumentsToTicket,
   mergeTicketsWithLocalOverrides,
+  sortAndNormalizeMilestones,
+  getMilestoneRank,
 } from "@/data/sharedTicketsStorage";
 import { downloadBlob, downloadRemoteFile, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { savePersistentFileBlob } from "@/lib/fileStorageDB";
@@ -204,15 +206,32 @@ function ClientTicketMonitoringContent() {
           }));
 
           const isCompleted = c.status === "COMPLETED";
+          const hasAssignedPic = Boolean(
+            c.assigned_admin?.name ||
+            c.assigned_to ||
+            (c as unknown as { assigned_admin_id?: number }).assigned_admin_id
+          );
 
-          const taskMilestones = (c.tasks && c.tasks.length > 0)
-            ? c.tasks.map((task, idx) => ({
-                step: `0${idx + 1}`,
-                title: task.task_name,
-                status: (task.is_completed || (c.assigned_admin && idx <= 1) ? "completed" : idx === 0 ? "in_progress" : "pending") as "completed" | "in_progress" | "pending",
-                date: (task.is_completed || (c.assigned_admin && idx <= 1)) ? "Selesai" : "Proses",
-                description: task.task_name,
-              }))
+          const sortedRawTasks = (c.tasks && c.tasks.length > 0)
+            ? sortAndNormalizeMilestones(c.tasks)
+            : [];
+
+          const taskMilestones = sortedRawTasks.length > 0
+            ? sortedRawTasks.map((task, idx) => {
+                const isPicTask = getMilestoneRank(task.task_name) === 2 || task.task_name.toLowerCase().includes("pic");
+                const isDone = Boolean(task.is_completed || (isPicTask && hasAssignedPic));
+                return {
+                  step: `0${idx + 1}`,
+                  title: isPicTask && c.assigned_admin?.name ? `PIC Ditetapkan: ${c.assigned_admin.name}` : task.task_name,
+                  status: (isDone
+                    ? "completed"
+                    : idx === 0 || (idx > 0 && (sortedRawTasks[idx - 1].is_completed || (getMilestoneRank(sortedRawTasks[idx - 1].task_name) === 2 && hasAssignedPic)))
+                    ? "in_progress"
+                    : "pending") as "completed" | "in_progress" | "pending",
+                  date: isDone ? "Selesai" : "Proses",
+                  description: task.task_name,
+                };
+              })
             : [
                 {
                   step: "01",

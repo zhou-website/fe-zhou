@@ -626,6 +626,42 @@ export function mergeTicketsWithLocalOverrides(
 }
 
 /**
+ * Mengembalikan peringkat urutan kronologis standar tahapan konsultasi
+ * 1: Intake & Verifikasi Berkas Awal
+ * 2: Penetapan Konsultan PIC & Divisi Terkait
+ * 3: Analisis & Pengerjaan Lembar Kerja Fiskal / Pembahasan
+ * 4: Finalisasi & Penyampaian Hasil Konsultasi / Laporan Final
+ */
+export function getMilestoneRank(name?: string): number {
+  const lower = (name || "").toLowerCase();
+  if (lower.includes("intake") || lower.includes("verifikasi") || lower.includes("permohonan")) return 1;
+  if (lower.includes("pic") || lower.includes("penetapan") || lower.includes("penugasan")) return 2;
+  if (lower.includes("analisis") || lower.includes("kertas kerja") || lower.includes("lembar kerja") || lower.includes("pembahasan")) return 3;
+  if (lower.includes("finalisasi") || lower.includes("penyampaian") || lower.includes("laporan") || lower.includes("selesai")) return 4;
+  return 99;
+}
+
+/**
+ * Mengurutkan array milestone/task agar selalu sesuai dengan urutan alur kerja 1, 2, 3, 4
+ * Mencegah anomali task terlempar ke bawah atau ke atas akibat update PostgreSQL tanpa ORDER BY.
+ */
+export function sortAndNormalizeMilestones<
+  T extends { taskId?: number | string; id?: number | string; task_name?: string; title?: string }
+>(items: T[]): T[] {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return [...items].sort((a, b) => {
+    const nameA = a.task_name || a.title || "";
+    const nameB = b.task_name || b.title || "";
+    const rankA = getMilestoneRank(nameA);
+    const rankB = getMilestoneRank(nameB);
+    if (rankA !== rankB) return rankA - rankB;
+    const idA = typeof a.taskId === "number" ? a.taskId : typeof a.id === "number" ? a.id : 0;
+    const idB = typeof b.taskId === "number" ? b.taskId : typeof b.id === "number" ? b.id : 0;
+    return idA - idB;
+  });
+}
+
+/**
  * Menugaskan Admin / PIC ke tiket konsultasi atau Mengalihkan PIC (Kewenangan Khusus Superadmin)
  * Memvalidasi PIC aktif, merekam PIC lama dan PIC baru, serta mencatat audit log korespondensi resmi.
  */
@@ -671,14 +707,14 @@ export function assignTicketPic(
   const prevAdminDivision = target.assignedAdminDivision || "-";
 
   // Konsistensi Status & Progres:
-  // Jika tiket masih "Menunggu Penugasan", perbarui status menjadi "Ditugaskan" (progres min 35%).
+  // Jika tiket masih "Menunggu Penugasan", perbarui status menjadi "Ditugaskan" (progres min 35%-50%).
   // Jika tiket sudah berjalan ("Dalam Proses", "Menunggu Klien", "Selesai"), pertahankan status & progres yang ada!
   let newStatus = target.status;
   let newProgress = target.progress || 15;
 
   if (target.status === "Menunggu Penugasan" || !target.assignedAdminName) {
     newStatus = "Ditugaskan";
-    newProgress = Math.max(target.progress || 0, 35);
+    newProgress = Math.max(target.progress || 0, 50);
   }
 
   const nowFormatted = new Date().toLocaleDateString("id-ID", {
@@ -689,11 +725,13 @@ export function assignTicketPic(
     minute: "2-digit",
   }) + " WIB";
 
-  // Milestone tracking: pertahankan progres yang sudah diselesaikan
-  const updatedMilestones: Milestone[] = (target.milestones && target.milestones.length > 0)
-    ? target.milestones.map((m, idx) => {
+  // Milestone tracking: pastikan milestones terurut dan task penetapan PIC otomatis completed
+  const sortedTargetMilestones = sortAndNormalizeMilestones(target.milestones || []);
+  const updatedMilestones: Milestone[] = (sortedTargetMilestones.length > 0)
+    ? sortedTargetMilestones.map((m, idx) => {
+        const isPicMilestone = getMilestoneRank(m.title) === 2 || m.title.toLowerCase().includes("pic") || idx === 1;
         if (idx === 0) return { ...m, status: "completed" as const };
-        if (idx === 1) {
+        if (isPicMilestone) {
           return {
             ...m,
             status: "completed" as const,
