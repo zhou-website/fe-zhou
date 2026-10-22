@@ -107,7 +107,7 @@ export const translations = {
       tagline2:
         "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
       desc:
-        "Kami menghadirkan pendampingan pajak, keuangan, dan hukum terpadu untuk mendukung bisnis Anda. Melalui strategi menyeluruh, kami memitigasi risiko, memastikan kepatuhan hukum, dan mendorong pertumbuhan perusahaan secara berkelanjutan.",
+        "Kami hadir untuk memastikan ekspansi bisnis Anda berjalan tanpa hambatan regulasi. Dengan memadukan analisis pajak, presisi akuntansi, dan perlindungan hukum, kami membangun benteng pertahanan bisnis yang kokoh sekaligus membuka peluang pertumbuhan baru bagi perusahaan Anda.",
       navTitle: "Navigasi Website",
       consultTitle: "Konsultasi",
       taxTitle: "Tax Services",
@@ -224,7 +224,7 @@ export const translations = {
       tagline2:
         "As a strategic partner, we ensure your company meets tax, accounting, and legal obligations accurately. We focus on providing practical solutions so you can focus on business growth without worrying about regulatory compliance.",
       desc:
-        "We provide integrated tax, finance, and legal advisory to empower your business. Through comprehensive strategies, we mitigate risks, ensure regulatory compliance, and drive sustainable corporate growth.",
+        "We are here to ensure your business expansion runs smoothly without regulatory hurdles. By combining tax analysis, accounting precision, and legal protection, we build a solid fortress for your business while unlocking new growth opportunities for your company.",
       navTitle: "Website Navigation",
       consultTitle: "Advisory",
       taxTitle: "Tax Services",

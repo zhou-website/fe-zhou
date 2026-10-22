@@ -19,7 +19,6 @@ import {
   LocationIcon,
   EnvelopeIcon,
   WhatsappIcon,
-  LinkedinIcon,
   InstagramIcon,
 } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
@@ -36,6 +35,7 @@ export function Footer() {
     phone?: string;
     address?: string;
     whatsapp?: string;
+    instagram?: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -159,16 +159,7 @@ export function Footer() {
                 <WhatsappIcon />
               </a>
               <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="LinkedIn Zhou Consulting"
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white hover:text-primary text-white flex items-center justify-center transition-colors text-xs"
-              >
-                <LinkedinIcon />
-              </a>
-              <a
-                href="https://instagram.com"
+                href={contact?.instagram || "https://www.instagram.com/zhou_consulting?obrf=MWcybnllMHJnOTN1NA=="}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram Zhou Consulting"
@@ -260,22 +251,27 @@ export function Footer() {
               <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] text-silver">
                 <li>
                   <Link href={getAuthHref("/layanan/tax-service#e-faktur")} className="hover:text-white transition-colors">
-                    e-Faktur / PPN
+                    e-Faktur Pajak
                   </Link>
                 </li>
                 <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-bupot-21")} className="hover:text-white transition-colors">
-                    e-Bupot PPh 21
+                  <Link href={getAuthHref("/layanan/tax-service#e-bupot")} className="hover:text-white transition-colors">
+                    e-Bupot
                   </Link>
                 </li>
                 <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-bupot-unifikasi")} className="hover:text-white transition-colors">
-                    e-Bupot Unifikasi
+                  <Link href={getAuthHref("/layanan/tax-service#e-billing")} className="hover:text-white transition-colors">
+                    e-Billing
                   </Link>
                 </li>
                 <li>
-                  <Link href={getAuthHref("/layanan/tax-service#kesiapan-coretax")} className="hover:text-white transition-colors">
-                    Mitigasi Pajak &amp; SP2DK
+                  <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
+                    Pelaporan SPT
+                  </Link>
+                </li>
+                <li className="col-span-2">
+                  <Link href={getAuthHref("/layanan/tax-service#layanan-mitigasi-pajak")} className="hover:text-white transition-colors">
+                    Layanan Mitigasi Pajak
                   </Link>
                 </li>
               </ul>
