@@ -606,7 +606,7 @@ export default function SuperadminUsersPage() {
         <div className="border-t border-primary-light" />
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[760px]">
             <thead>
               <tr className="bg-surface/70 border-b border-primary-light text-text-muted font-bold uppercase tracking-wider text-[10px]">
                 <th className="py-3.5 px-4">Staf &amp; NIP</th>

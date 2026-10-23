@@ -341,7 +341,7 @@ function AdminDashboardContent() {
       </div>
 
       {/* MY TASKS OVERVIEW TABLE (SECARA UMUM) */}
-      <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
+      <Card className="rounded-2xl border-primary-light bg-white p-4 sm:p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative w-full sm:w-80 md:w-96">
             <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
@@ -378,7 +378,7 @@ function AdminDashboardContent() {
 
         {/* Table View (Secara Umum) */}
         <div className="overflow-x-auto rounded-xl border border-primary-light">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
                 <th className="py-3 px-3.5 text-center w-12">No</th>

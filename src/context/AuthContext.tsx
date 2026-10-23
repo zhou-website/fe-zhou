@@ -232,18 +232,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load auth state from localStorage and verify with backend on client mount
   useEffect(() => {
     try {
-      // Pembersihan otomatis data inputan, unggahan berkas, dan data mockup sebelumnya agar bersih 0 data
-      // Catatan: Kurs Pajak (KMK) dan Kontak resmi selalu dipertahankan utuh
-      const CLEANUP_FLAG = "zhou_clean_all_data_20261014_v2";
+      // Pembersihan otomatis data konten lama di localStorage agar frontend 100% menggunakan endpoint backend API
+      const CLEANUP_FLAG = "zhou_clean_all_content_storage_v4";
       if (typeof window !== "undefined" && !localStorage.getItem(CLEANUP_FLAG)) {
         localStorage.removeItem("zhou_client_custom_tickets");
         localStorage.removeItem("zhou_shared_documents");
         localStorage.removeItem("zhou_stored_job_applications_v1");
         localStorage.removeItem("zhou_submitted_applications");
         localStorage.removeItem("zhou_articles_data_v2");
+        localStorage.removeItem("zhou_articles_data");
         localStorage.removeItem("zhou_belajar_pajak_links_v1");
+        localStorage.removeItem("zhou_belajar_pajak_links_v2");
         localStorage.removeItem("zhou_regulations_data_v2");
+        localStorage.removeItem("zhou_regulations_data");
         localStorage.removeItem("zhou_career_settings_data_v2");
+        localStorage.removeItem("zhou_career_settings_data");
+        localStorage.removeItem("zhou_services_data_v2");
+        localStorage.removeItem("zhou_services_data");
         localStorage.setItem(CLEANUP_FLAG, "true");
 
         window.dispatchEvent(new Event("zhou_tickets_updated"));
@@ -251,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.dispatchEvent(new Event("zhou_applications_updated"));
         window.dispatchEvent(new Event("zhou_regulations_updated"));
         window.dispatchEvent(new Event("zhou_career_settings_updated"));
+        window.dispatchEvent(new Event("zhou_services_updated"));
         window.dispatchEvent(new CustomEvent("zhou_articles_updated", { detail: [] }));
       }
 

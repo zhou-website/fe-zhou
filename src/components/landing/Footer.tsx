@@ -24,6 +24,8 @@ import {
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { publicApi, parseContactSettings } from "@/lib/api";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 
 export function Footer() {
   const { t } = useLanguage();
@@ -56,8 +58,16 @@ export function Footer() {
         }
       });
 
+    const handleStatusUpdate = () => {
+      if (isMounted) setIsLoading(false);
+    };
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleStatusUpdate);
+    window.addEventListener("zhou_deleted_cms_items_updated", handleStatusUpdate);
+
     return () => {
       isMounted = false;
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleStatusUpdate);
+      window.removeEventListener("zhou_deleted_cms_items_updated", handleStatusUpdate);
     };
   }, []);
 
@@ -249,31 +259,41 @@ export function Footer() {
                 </h4>
               </div>
               <ul className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] text-silver">
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-faktur")} className="hover:text-white transition-colors">
-                    e-Faktur Pajak
-                  </Link>
-                </li>
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-bupot")} className="hover:text-white transition-colors">
-                    e-Bupot
-                  </Link>
-                </li>
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#e-billing")} className="hover:text-white transition-colors">
-                    e-Billing
-                  </Link>
-                </li>
-                <li>
-                  <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
-                    Pelaporan SPT
-                  </Link>
-                </li>
-                <li className="col-span-2">
-                  <Link href={getAuthHref("/layanan/tax-service#layanan-mitigasi-pajak")} className="hover:text-white transition-colors">
-                    Layanan Mitigasi Pajak
-                  </Link>
-                </li>
+                {!isCmsItemDeleted("e-faktur", "e-Faktur Pajak") && getCmsItemStatus("e-faktur", "e-Faktur Pajak") !== "Draft" && (
+                  <li>
+                    <Link href={getAuthHref("/layanan/tax-service#e-faktur")} className="hover:text-white transition-colors">
+                      e-Faktur Pajak
+                    </Link>
+                  </li>
+                )}
+                {!isCmsItemDeleted("e-bupot", "e-Bupot") && getCmsItemStatus("e-bupot", "e-Bupot") !== "Draft" && (
+                  <li>
+                    <Link href={getAuthHref("/layanan/tax-service#e-bupot")} className="hover:text-white transition-colors">
+                      e-Bupot
+                    </Link>
+                  </li>
+                )}
+                {!isCmsItemDeleted("e-billing", "e-Billing") && getCmsItemStatus("e-billing", "e-Billing") !== "Draft" && (
+                  <li>
+                    <Link href={getAuthHref("/layanan/tax-service#e-billing")} className="hover:text-white transition-colors">
+                      e-Billing
+                    </Link>
+                  </li>
+                )}
+                {!isCmsItemDeleted("pelaporan-spt", "Pelaporan SPT") && getCmsItemStatus("pelaporan-spt", "Pelaporan SPT") !== "Draft" && (
+                  <li>
+                    <Link href={getAuthHref("/layanan/tax-service#pelaporan-spt")} className="hover:text-white transition-colors">
+                      Pelaporan SPT
+                    </Link>
+                  </li>
+                )}
+                {!isCmsItemDeleted("layanan-mitigasi-pajak", "Layanan Mitigasi Pajak") && getCmsItemStatus("layanan-mitigasi-pajak", "Layanan Mitigasi Pajak") !== "Draft" && (
+                  <li className="col-span-2">
+                    <Link href={getAuthHref("/layanan/tax-service#layanan-mitigasi-pajak")} className="hover:text-white transition-colors">
+                      Layanan Mitigasi Pajak
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
           </div>

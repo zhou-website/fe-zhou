@@ -46,7 +46,14 @@ export default function KonsultasiBisnisPage() {
     const syncModules = (apiItems?: PublicServiceItem[]) => {
       if (apiItems !== undefined) {
         setModules(
-          apiItems.map((c: PublicServiceItem) => ({
+          apiItems
+            .filter((c: PublicServiceItem) => {
+              if (c.is_active === false) return false;
+              if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
+              const status = getCmsItemStatus(`FIN-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
+              return status === "Published";
+            })
+            .map((c: PublicServiceItem) => ({
             id: `FIN-${c.id}`,
             code: c.service_code || `FIN-${c.id}`,
             title: c.service_name,
@@ -121,10 +128,12 @@ export default function KonsultasiBisnisPage() {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
+            if (item.is_active === false) return false;
+            if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
+            const status = getCmsItemStatus(`FIN-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
+            if (status !== "Published") return false;
             return (
-              item.is_active !== false &&
-              (cat.includes("bisnis") || cat.includes("finan") || cat.includes("consulting") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial")) &&
-              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+              (cat.includes("bisnis") || cat.includes("finan") || cat.includes("consulting") || code.includes("fin") || name.includes("bisnis") || name.includes("finansial"))
             );
           });
 
@@ -179,11 +188,6 @@ export default function KonsultasiBisnisPage() {
                   className="scroll-mt-24 rounded-2xl border-primary-light hover:border-primary hover:shadow-lg transition-all duration-200 bg-white flex flex-col justify-between"
                 >
                   <CardHeader className="space-y-2.5 pb-3">
-                    <div className="flex items-center justify-end">
-                      <span className="text-[10px] font-mono font-semibold text-text-muted">
-                        {item.code}
-                      </span>
-                    </div>
                     <CardTitle className="text-lg font-bold text-primary leading-snug">
                       {item.title}
                     </CardTitle>

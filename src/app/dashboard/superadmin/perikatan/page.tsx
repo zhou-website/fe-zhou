@@ -786,7 +786,7 @@ function SuperadminPerikatanContent() {
       </div>
 
       {/* OPERATIONAL CONSULTATIONS TABLE */}
-      <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-5">
+      <Card className="rounded-2xl border-primary-light bg-white p-4 sm:p-6 shadow-xs space-y-5">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
           <div>
             <h2 className="text-base font-bold text-primary">Daftar Perikatan &amp; Konsultasi Klien</h2>
@@ -795,8 +795,8 @@ function SuperadminPerikatanContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-            <div className="relative w-56 sm:w-64">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative w-full sm:w-64">
               <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
               <Input
                 type="text"
@@ -806,7 +806,7 @@ function SuperadminPerikatanContent() {
                 className="pl-8 text-xs h-9 w-full bg-surface border-primary-light"
               />
             </div>
-            <div className="w-40 sm:w-44 shrink-0">
+            <div className="w-full sm:w-44 shrink-0">
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -852,7 +852,7 @@ function SuperadminPerikatanContent() {
 
         {/* Table View */}
         <div className="overflow-x-auto rounded-xl border border-primary-light min-h-[320px]">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[800px]">
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
                 <th className="py-3 px-4 text-center w-56 md:w-64 shrink-0">Kode &amp; Judul Kebutuhan</th>

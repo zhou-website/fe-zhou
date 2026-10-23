@@ -48,7 +48,14 @@ export default function TaxServicePage() {
     const syncModules = (apiItems?: PublicServiceItem[]) => {
       if (apiItems !== undefined) {
         setModules(
-          apiItems.map((c) => ({
+          apiItems
+            .filter((c) => {
+              if (c.is_active === false) return false;
+              if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
+              const pubStatus = getCmsItemStatus(`SVC-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
+              return pubStatus === "Published";
+            })
+            .map((c) => ({
             id: `TAX-${c.id}`,
             code: c.service_code || `TAX-${c.id}`,
             title: c.service_name,
@@ -71,7 +78,7 @@ export default function TaxServicePage() {
       const taxStored = stored.filter(
         (s) =>
           (s.categoryKey?.toLowerCase() === "tax-service" || s.categoryKey?.toLowerCase() === "tax") &&
-          s.status === "Published" &&
+          getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]) === "Published" &&
           s.id !== "e-billing" &&
           s.id !== "SRV-TAX-EBL" &&
           s.id !== "pelaporan-spt" &&
@@ -125,14 +132,17 @@ export default function TaxServicePage() {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
+            if (item.is_active === false) return false;
+            if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
+            const pubStatus = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
+            if (pubStatus !== "Published") return false;
+
             return (
-              item.is_active !== false &&
               (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
               code !== "tax-ebl" &&
               code !== "srv-tax-ebl" &&
               code !== "tax-spt" &&
-              code !== "srv-tax-spt" &&
-              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+              code !== "srv-tax-spt"
             );
           });
 
@@ -187,11 +197,6 @@ export default function TaxServicePage() {
                   className="scroll-mt-24 rounded-2xl border-primary-light hover:border-primary hover:shadow-lg transition-all duration-200 bg-white flex flex-col justify-between"
                 >
                   <CardHeader className="space-y-2.5 pb-3">
-                    <div className="flex items-center justify-end">
-                      <span className="text-[10px] font-mono font-semibold text-text-muted">
-                        {item.code}
-                      </span>
-                    </div>
                     <CardTitle className="text-lg font-bold text-primary leading-snug">
                       {item.title}
                     </CardTitle>

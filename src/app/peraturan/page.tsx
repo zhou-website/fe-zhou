@@ -75,7 +75,7 @@ export default function PeraturanPage() {
       const pubStatus = getCmsItemStatus(
         r.id,
         r.title,
-        r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+        r.status === "Draft" ? "Draft" : "Published",
         [r.docNumber]
       );
 
@@ -165,7 +165,7 @@ export default function PeraturanPage() {
         const pubStatus = getCmsItemStatus(
           r.id,
           r.title,
-          r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+          r.status === "Draft" ? "Draft" : "Published",
           [r.docNumber]
         );
 
@@ -546,7 +546,7 @@ export default function PeraturanPage() {
 
               {/* Tabel Arsip Peraturan (Langsung menyambung dari filter tanpa space di tengah) */}
               <div className="overflow-x-auto border-t border-primary-light">
-                <Table>
+                <Table className="min-w-[850px]">
                   <TableHeader className="bg-surface">
                     <TableRow>
                       <TableHead className="w-[210px] min-w-[190px] font-bold text-xs text-primary">
@@ -692,9 +692,9 @@ export default function PeraturanPage() {
             {/* Tabel Kurs KMK (Lebar Presisi Penuh Kontainer) */}
             <div className="space-y-4">
               <div className="rounded-lg border border-primary-light bg-white overflow-hidden shadow-sm">
-                <div className="bg-surface px-5 py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
+                <div className="bg-surface px-4 sm:px-5 py-3.5 sm:py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-sm font-bold text-primary">
                         Kurs Menteri Keuangan (KMK)
                       </h3>
@@ -707,7 +707,7 @@ export default function PeraturanPage() {
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <a
                       href={kmkData.officialDjpUrl || "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak"}
                       target="_blank"
@@ -723,29 +723,29 @@ export default function PeraturanPage() {
                   </div>
                 </div>
 
-                <Table>
+                <Table className="min-w-[480px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="py-3 px-5">Mata Uang</TableHead>
-                      <TableHead className="py-3 px-5">Nama Valuta</TableHead>
-                      <TableHead className="py-3 px-5 text-right">Nilai Kurs (IDR)</TableHead>
-                      <TableHead className="py-3 px-5 text-right">Fluktuasi</TableHead>
+                      <TableHead className="py-3 px-3 sm:px-5">Mata Uang</TableHead>
+                      <TableHead className="py-3 px-3 sm:px-5">Nama Valuta</TableHead>
+                      <TableHead className="py-3 px-3 sm:px-5 text-right">Nilai Kurs (IDR)</TableHead>
+                      <TableHead className="py-3 px-3 sm:px-5 text-right">Fluktuasi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {kmkData.rates.length > 0 ? (
                       kmkData.rates.map((item) => (
                         <TableRow key={item.currency} className="hover:bg-surface/50">
-                          <TableCell className="py-3 px-5 font-bold text-primary">
+                          <TableCell className="py-3 px-3 sm:px-5 font-bold text-primary">
                             {item.currency}
                           </TableCell>
-                          <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                          <TableCell className="py-3 px-3 sm:px-5 text-text-secondary text-xs">
                             {item.name}
                           </TableCell>
-                          <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                          <TableCell className="py-3 px-3 sm:px-5 text-right font-semibold text-text">
                             {item.rate}
                           </TableCell>
-                          <TableCell className="py-3 px-5 text-right text-xs">
+                          <TableCell className="py-3 px-3 sm:px-5 text-right text-xs">
                             <span
                               className={
                                 item.trend === "up"

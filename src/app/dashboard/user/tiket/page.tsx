@@ -56,6 +56,8 @@ import {
   UnarchiveIcon,
   TrashIcon,
 } from "@/components/icons";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 
 interface Milestone {
   step: string;
@@ -439,19 +441,32 @@ function ClientTicketMonitoringContent() {
 
   const [backendServiceNames, setBackendServiceNames] = useState<string[]>([]);
   useEffect(() => {
-    publicApi
-      .getServices()
-      .then((res) => {
-        if (res?.data && Array.isArray(res.data)) {
-          setBackendServiceNames(
-            res.data
-              .filter((s: PublicServiceItem) => s.is_active !== false)
-              .map((s: PublicServiceItem) => s.service_name)
-              .filter(Boolean)
-          );
-        }
-      })
-      .catch(() => {});
+    const loadServices = () => {
+      publicApi
+        .getServices()
+        .then((res) => {
+          if (res?.data && Array.isArray(res.data)) {
+            setBackendServiceNames(
+              res.data
+                .filter((s: PublicServiceItem) => {
+                  if (s.is_active === false) return false;
+                  if (isCmsItemDeleted(s.id, s.service_name, s.id, s.service_code)) return false;
+                  const status = getCmsItemStatus(`SVC-${s.id}`, s.service_name, s.is_active ? "Published" : "Draft", [s.id, s.service_code]);
+                  return status === "Published";
+                })
+                .map((s: PublicServiceItem) => s.service_name)
+                .filter(Boolean)
+            );
+          }
+        })
+        .catch(() => {});
+    };
+
+    loadServices();
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, loadServices);
+    return () => {
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, loadServices);
+    };
   }, []);
 
   const serviceOptions = Array.from(
@@ -1655,7 +1670,7 @@ function ClientTicketMonitoringContent() {
 
         <CardContent className="p-0">
           <div className="overflow-x-auto min-h-[380px] pb-24">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[750px]">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
                   <th className="py-3.5 px-4 text-center">ID Konsultasi</th>

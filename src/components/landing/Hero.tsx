@@ -173,7 +173,20 @@ function EmbossedCube({ cx, cy, size = 52 }: { cx: number; cy: number; size?: nu
 
 export function Hero() {
   const { t } = useLanguage();
-  const [heroData, setHeroData] = useState<{ title?: string; content?: string } | null>(null);
+  const [heroData, setHeroData] = useState<{ title?: string; content?: string } | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("zhou_hero_override_v1");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.headline || parsed.subheadline) {
+            return { title: parsed.headline, content: parsed.subheadline };
+          }
+        }
+      } catch {}
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -199,7 +212,10 @@ export function Hero() {
             (p) => p.section_key === "hero" || p.section_key === "hero_tentang_kami"
           );
           if (found && (found.title || found.content)) {
-            setHeroData({ title: found.title, content: found.content });
+            setHeroData((prev) => ({
+              title: found.title || prev?.title,
+              content: found.content || prev?.content,
+            }));
           }
         }
       })
@@ -401,7 +417,7 @@ export function Hero() {
             {/* Subtitles */}
             <div className="space-y-2 text-left">
               <p className="text-base sm:text-lg lg:text-xl font-normal text-white/90 leading-relaxed text-left max-w-2xl">
-                {t.hero.subtitle2}
+                {heroData?.content || t.hero.subtitle2}
               </p>
             </div>
 

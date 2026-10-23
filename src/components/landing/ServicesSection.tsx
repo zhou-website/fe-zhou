@@ -65,7 +65,12 @@ export function ServicesSection() {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data)) {
           const apiServices: StoredServiceItem[] = res.data
-            .filter((item: PublicServiceItem) => item.is_active !== false && !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code))
+            .filter((item: PublicServiceItem) => {
+              if (item.is_active === false) return false;
+              if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
+              const pubStatus = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
+              return pubStatus === "Published";
+            })
             .map((item: PublicServiceItem) => {
             const catLower = (item.category || "").toLowerCase();
             const codeUpper = (item.service_code || "").toUpperCase();
@@ -109,7 +114,7 @@ export function ServicesSection() {
                 "Penyampaian Laporan Final",
               ],
               deliverables: ["Laporan Hasil Kerja & Risalah Penugasan Resmi"],
-              status: item.is_active ? "Published" : "Draft",
+              status: getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]),
               lastUpdated: item.created_at
                 ? new Date(item.created_at).toLocaleDateString("id-ID", { month: "short", year: "numeric" })
                 : "Oktober 2026",

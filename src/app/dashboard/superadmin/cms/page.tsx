@@ -121,7 +121,7 @@ export interface UnifiedCMSItem {
   | string;
   subcategory: string;
   summary: string;
-  status: "Published" | "Draft" | "Archived";
+  status: "Published" | "Draft";
   updatedAt: string;
   raw?: unknown;
 }
@@ -479,7 +479,7 @@ function AdminCMSPageContent() {
     file_data_url: "",
     legal_status: "Berlaku" as "Berlaku" | "Diperbarui" | "Tidak Berlaku",
     replacement_ref: "",
-    status: "Published" as "Published" | "Draft" | "Archived",
+    status: "Published" as "Published" | "Draft",
   });
 
   // 4. Kurs Pajak (Integrasi Tautan Resmi DJP - Terupdate Berkala)
@@ -626,11 +626,6 @@ function AdminCMSPageContent() {
         srvRes.value.data.forEach((s: PublicServiceItem) => {
           const id = `SVC-${s.id}`;
           if (isCmsItemDeleted(id, s.service_name, s.id, s.service_code)) {
-            // Jika ada item yang pernah dihapus tetapi masih tersimpan aktif di backend, otomatis nonaktifkan di database backend
-            if (s.id) {
-              adminCmsApi.updateService(s.id, { is_active: false }).catch(() => {});
-              adminCmsApi.deleteService(s.id).catch(() => {});
-            }
             return;
           }
           existingSrvIds.add(id);
@@ -650,11 +645,17 @@ function AdminCMSPageContent() {
             raw: s,
           });
         });
-      } else {
-        // Fallback hanya jika koneksi backend offline
-        const storedServices = getStoredServices();
-        storedServices.forEach((s) => {
-          if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
+      }
+
+      // Selalu sertakan 4 Layanan Hukum (Law Services) dan layanan standar jika belum tersimpan di database backend
+      const storedServices = getStoredServices();
+      storedServices.forEach((s) => {
+        if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return;
+        const titleKey = s.name.trim().toLowerCase();
+        const codeKey = (s.code || s.id).trim().toLowerCase();
+        if (!existingSrvTitles.has(titleKey) && !existingSrvIds.has(codeKey)) {
+          existingSrvTitles.add(titleKey);
+          existingSrvIds.add(codeKey);
           const numId = parseInt(s.id.replace(/\D/g, ""), 10) || getStableCmsNumericId(s.id + s.name);
           const displayId = s.id.startsWith("SVC-") || s.id.startsWith("SRV-") ? s.id : `SVC-${s.code || s.id}`;
           items.push({
@@ -663,14 +664,14 @@ function AdminCMSPageContent() {
             section: "services",
             title: s.name,
             category: "Katalog Layanan",
-            subcategory: s.categoryKey || "Akuntansi",
+            subcategory: s.categoryKey === "hukum" ? "Hukum" : s.categoryKey || "Akuntansi",
             summary: s.subtitle || "Layanan konsultasi resmi",
             status: getCmsItemStatus(displayId, s.name, s.status === "Draft" ? "Draft" : "Published", [s.id, s.code, numId]),
             updatedAt: s.lastUpdated || "Aktif",
             raw: s,
           });
-        });
-      }
+        }
+      });
 
       // 3. Regulations (Gabungkan Backend API & Local Storage)
       const existingRegTitles = new Set<string>();
@@ -878,6 +879,22 @@ function AdminCMSPageContent() {
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("zhou_services_data_v2");
+        localStorage.removeItem("zhou_services_data");
+        localStorage.removeItem("zhou_articles_data_v2");
+        localStorage.removeItem("zhou_articles_data");
+        localStorage.removeItem("zhou_regulations_data_v2");
+        localStorage.removeItem("zhou_regulations_data");
+        localStorage.removeItem("zhou_career_settings_data_v2");
+        localStorage.removeItem("zhou_career_settings_data");
+        localStorage.removeItem("zhou_belajar_pajak_links_v2");
+        localStorage.removeItem("zhou_belajar_pajak_links_v1");
+        localStorage.removeItem("zhou_belajar_pajak_links");
+      } catch {}
+    }
+
     loadAllCMS();
     syncKmkRatesFromDjp().catch((err) => console.warn("syncKmkRatesFromDjp on CMS mount:", err));
 
@@ -1218,10 +1235,34 @@ function AdminCMSPageContent() {
           } catch (apiErr) {
             console.warn("Backend updateEducation fallback:", apiErr);
           }
+          const targetEduStatus = eduForm.status || "Published";
+          setCmsItemStatus(
+            {
+              id: `EDU-${editingEduId}`,
+              numericId: editingEduId,
+              title: eduForm.title,
+              aliases: [`be-${editingEduId}`, String(editingEduId), eduForm.title],
+            },
+            targetEduStatus
+          );
+          setCmsItems((prev) =>
+            prev.map((i) =>
+              i.numericId === editingEduId && i.section === "edukasi"
+                ? {
+                  ...i,
+                  title: eduForm.title,
+                  subcategory: eduForm.category,
+                  status: targetEduStatus,
+                }
+                : i
+            )
+          );
           await loadAllCMS();
-          showToast("Materi edukasi berhasil diperbarui di database backend!");
+          showToast(targetEduStatus === "Published" ? "Materi edukasi berhasil diperbarui & dipublikasikan!" : "Materi edukasi disimpan sebagai draf!");
         } else {
           // CREATE ke backend database API
+          let createdEduId: number | undefined = undefined;
+          const targetEduStatus = eduForm.status || "Published";
           try {
             if (eduPdfFile || eduImageFile) {
               const fd = new FormData();
@@ -1243,9 +1284,12 @@ function AdminCMSPageContent() {
               if (eduForm.file_path) {
                 fd.append("file_path", eduForm.file_path);
               }
-              await adminCmsApi.createEducation(fd);
+              const res = await adminCmsApi.createEducation(fd);
+              if (res?.data && (res.data as { id?: number })?.id) {
+                createdEduId = (res.data as { id: number }).id;
+              }
             } else {
-              await adminCmsApi.createEducation({
+              const res = await adminCmsApi.createEducation({
                 title: eduForm.title,
                 category: eduForm.category,
                 content_type: eduForm.content_type,
@@ -1256,12 +1300,24 @@ function AdminCMSPageContent() {
                 imageUrl: eduForm.image || undefined,
                 cover_image: eduForm.image || undefined,
               } as unknown as CreateEducationPayload);
+              if (res?.data && (res.data as { id?: number })?.id) {
+                createdEduId = (res.data as { id: number }).id;
+              }
             }
           } catch (apiErr) {
             console.warn("Backend createEducation fallback:", apiErr);
           }
+          setCmsItemStatus(
+            {
+              id: createdEduId ? `EDU-${createdEduId}` : undefined,
+              numericId: createdEduId,
+              title: eduForm.title,
+              aliases: createdEduId ? [`be-${createdEduId}`, String(createdEduId)] : [],
+            },
+            targetEduStatus
+          );
           await loadAllCMS();
-          showToast("Materi edukasi berhasil ditambahkan ke database backend!");
+          showToast(targetEduStatus === "Published" ? "Materi edukasi berhasil ditambahkan & dipublikasikan!" : "Materi edukasi disimpan sebagai draf!");
         }
 
         loadAllCMS();
@@ -1394,7 +1450,7 @@ function AdminCMSPageContent() {
                 description: serviceForm.description,
                 card_explanation: serviceForm.description,
                 features: parsedScopes,
-                is_active: serviceForm.is_active,
+                is_active: true, // Selalu true di backend agar query prisma where: { is_active: true } tidak mengabaikannya
               });
             } catch (apiErr) {
               console.warn("Backend updateService fallback:", apiErr);
@@ -1453,7 +1509,7 @@ function AdminCMSPageContent() {
                 : i
             )
           );
-          showToast("Layanan bisnis berhasil diperbarui!");
+          showToast(srvStatus === "Published" ? "Layanan bisnis berhasil diperbarui & diterbitkan!" : "Layanan bisnis disimpan sebagai draf!");
         } else {
           let createdNumId: number | undefined = undefined;
           try {
@@ -1464,7 +1520,7 @@ function AdminCMSPageContent() {
               description: serviceForm.description,
               card_explanation: serviceForm.description,
               features: parsedScopes,
-              is_active: serviceForm.is_active,
+              is_active: true, // Selalu true di backend database
             });
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdNumId = (createRes.data as { id: number }).id;
@@ -1696,7 +1752,7 @@ function AdminCMSPageContent() {
               level: careerForm.level,
               location: careerForm.location,
               description: careerForm.description,
-              is_active: careerForm.is_active,
+              is_active: true, // Selalu true di backend database agar prisma where: { is_active: true } tidak mengabaikannya
             });
           } catch (apiErr) {
             console.warn("Backend updateCareer fallback:", apiErr);
@@ -1733,7 +1789,7 @@ function AdminCMSPageContent() {
                 : i
             )
           );
-          showToast("Lowongan karir berhasil diperbarui!");
+          showToast(jobStatus === "Published" ? "Lowongan karir berhasil diperbarui & dipublikasikan!" : "Lowongan karir disimpan sebagai draf!");
         } else {
           const newPosCode = careerForm.position_code || `POS-${Date.now().toString().slice(-4)}`;
           let createdCarId: number | undefined = undefined;
@@ -1744,7 +1800,7 @@ function AdminCMSPageContent() {
               level: careerForm.level,
               location: careerForm.location,
               description: careerForm.description,
-              is_active: careerForm.is_active,
+              is_active: true, // Selalu true di backend database
             });
             if (createRes?.data && (createRes.data as { id?: number })?.id) {
               createdCarId = (createRes.data as { id: number }).id;
@@ -1918,6 +1974,9 @@ function AdminCMSPageContent() {
         console.warn("Backend updateCompanyProfile fallback:", apiErr);
       }
       if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("zhou_hero_override_v1", JSON.stringify(heroForm));
+        } catch {}
         window.dispatchEvent(new CustomEvent("zhou_hero_updated", { detail: heroForm }));
       }
       setCmsItems((prev) =>
@@ -2426,7 +2485,7 @@ function AdminCMSPageContent() {
       </div>
 
       {/* 2. SATU CARD UTAMA CONTENT MANAGEMENT (Header, Toolbar, & Master Table) */}
-      <Card className="rounded-2xl border-primary-light bg-white p-6 shadow-xs space-y-4">
+      <Card className="rounded-2xl border-primary-light bg-white p-4 sm:p-6 shadow-xs space-y-4">
         {/* A. Header: Title & Deskripsi */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -2441,11 +2500,11 @@ function AdminCMSPageContent() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {/* Search Box */}
-            <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <div className="relative w-full sm:w-auto sm:min-w-[200px] flex-1 sm:max-w-xs">
               <SearchIcon className="absolute left-3 top-2.5 text-text-muted text-xs" />
               <Input
                 type="text"
-                placeholder="Cari konten, ID, atau kata kunci..."
+                placeholder="Cari judul, konten, atau kata kunci..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 text-xs h-9 bg-surface border-primary-light w-full"
@@ -2453,7 +2512,7 @@ function AdminCMSPageContent() {
             </div>
 
             {/* Dropdown Filter Kategori Utama (Floating Menu sesuai Visual & Interaction Pattern Public Website) */}
-            <div className="relative" ref={categoryDropdownRef}>
+            <div className="relative w-full sm:w-auto" ref={categoryDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
@@ -2462,7 +2521,7 @@ function AdminCMSPageContent() {
                     return !prev;
                   });
                 }}
-                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none min-w-[170px] cursor-pointer transition-colors shadow-2xs"
+                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none w-full sm:w-auto sm:min-w-[170px] cursor-pointer transition-colors shadow-2xs"
                 aria-expanded={isCategoryDropdownOpen}
                 aria-haspopup="true"
               >
@@ -2527,7 +2586,7 @@ function AdminCMSPageContent() {
             </div>
 
             {/* Dropdown Filter Status (Floating Menu sesuai Visual & Interaction Pattern Public Website) */}
-            <div className="relative" ref={statusDropdownRef}>
+            <div className="relative w-full sm:w-auto" ref={statusDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
@@ -2536,7 +2595,7 @@ function AdminCMSPageContent() {
                     return !prev;
                   });
                 }}
-                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none min-w-[140px] cursor-pointer transition-colors shadow-2xs"
+                className="flex items-center justify-between gap-2.5 text-xs h-9 px-3.5 rounded-xl border border-primary-light bg-surface text-text-primary hover:bg-white focus:bg-white font-medium focus:outline-none w-full sm:w-auto sm:min-w-[140px] cursor-pointer transition-colors shadow-2xs"
                 aria-expanded={isStatusDropdownOpen}
                 aria-haspopup="true"
               >
@@ -2571,7 +2630,7 @@ function AdminCMSPageContent() {
                   <div className="my-1 border-t border-primary-light/60" />
 
                   <div className="space-y-0.5">
-                    {["Published", "Draft", "Archived"].map((st) => {
+                    {["Published", "Draft"].map((st) => {
                       const isSelected = statusFilter === st;
                       return (
                         <button
@@ -2618,9 +2677,9 @@ function AdminCMSPageContent() {
           </div>
 
           {/* Action Button: Tambah Konten Baru on Toolbar Right */}
-          <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap w-full sm:w-auto">
             {(categoryFilter === "Kurs Pajak" || categoryFilter === "Kurs KMK") && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
@@ -2685,7 +2744,7 @@ function AdminCMSPageContent() {
                 };
                 openAddModal(catMap[categoryFilter] || "services");
               }}
-              className="text-xs font-semibold h-9 px-4 shadow-sm"
+              className="text-xs font-semibold h-9 px-4 shadow-sm w-full sm:w-auto"
             >
               Tambah Konten Baru
             </Button>
@@ -2694,11 +2753,10 @@ function AdminCMSPageContent() {
 
         {/* Master Table */}
         <div className="overflow-x-auto rounded-xl border border-primary-light min-h-[280px]">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[680px]">
             <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
               <tr>
-                <th className="py-3 px-4 w-28">ID</th>
-                <th className="py-3 px-4 min-w-[260px]">Judul</th>
+                <th className="py-3 px-4 min-w-[280px]">Judul</th>
                 <th className="py-3 px-4 w-36">Kategori</th>
                 <th className="py-3 px-4 w-44">Subkategori</th>
                 <th className="py-3 px-4 w-24">Status</th>
@@ -2715,12 +2773,7 @@ function AdminCMSPageContent() {
 
                 return (
                   <tr key={item.id} className="hover:bg-surface/50 transition-colors">
-                    {/* 1. ID */}
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-text-muted whitespace-nowrap">
-                      {item.id}
-                    </td>
-
-                    {/* 2. Judul & Ringkasan */}
+                    {/* 1. Judul & Ringkasan */}
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-xs text-primary leading-tight">
                         {item.title}
@@ -2751,14 +2804,14 @@ function AdminCMSPageContent() {
                     {/* 5. Status */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <Badge
-                        variant={item.status === "Published" ? "success" : item.status === "Draft" ? "silver" : "secondary"}
+                        variant={item.status === "Published" ? "success" : "silver"}
                         size="sm"
                       >
                         {item.status}
                       </Badge>
                     </td>
 
-                    {/* 6. Aksi: [Lihat] dan [⋮] (Menu Edit dimasukkan ke dalam ⋮) */}
+                    {/* 6. Aksi: [Lihat] dan [⋮] */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center justify-end gap-1.5">
                         {/* Kontrol 1: Lihat */}
@@ -2868,7 +2921,7 @@ function AdminCMSPageContent() {
               {/* Empty State */}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-text-secondary text-xs">
+                  <td colSpan={5} className="py-12 text-center text-text-secondary text-xs">
                     <div className="max-w-sm mx-auto space-y-2">
                       <p className="font-semibold text-primary text-sm">
                         {isLoading
@@ -3049,7 +3102,7 @@ function AdminCMSPageContent() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-semibold text-primary">Kategori Topik *</Label>
                       <Select
@@ -3275,7 +3328,7 @@ function AdminCMSPageContent() {
                       className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] h-9 mt-1 font-mono"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-semibold text-primary">Instansi Resmi *</Label>
                       <Select
@@ -3639,14 +3692,13 @@ function AdminCMSPageContent() {
                         onChange={(e) =>
                           setRegForm((prev) => ({
                             ...prev,
-                            status: e.target.value as "Published" | "Draft" | "Archived",
+                            status: e.target.value as "Published" | "Draft",
                           }))
                         }
                         className="h-10 text-xs text-slate-700 rounded-xl bg-white"
                       >
                         <option value="Published">Published</option>
                         <option value="Draft">Draft</option>
-                        <option value="Archived">Archived</option>
                       </Select>
                     </div>
                   </div>
@@ -3762,7 +3814,7 @@ function AdminCMSPageContent() {
               {/* DYNAMIC FORM 5: KARIR */}
               {modalSection === "karir" && (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-semibold text-primary">Kode Lowongan (Opsional)</Label>
                       <Input
@@ -3947,7 +3999,7 @@ function AdminCMSPageContent() {
                       className="text-[11px] text-slate-600 placeholder:text-slate-400 placeholder:text-[11px] h-9 mt-1"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-semibold text-primary">Email Resmi *</Label>
                       <Input
@@ -4113,7 +4165,7 @@ function AdminCMSPageContent() {
                   required
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-semibold text-primary">Email Resmi *</Label>
                   <Input

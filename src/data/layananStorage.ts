@@ -35,7 +35,112 @@ export interface StoredServiceItem {
   waTemplate?: string;
 }
 
-export const DEFAULT_SERVICES: StoredServiceItem[] = [];
+export const DEFAULT_SERVICES: StoredServiceItem[] = [
+  {
+    id: "SRV-LAW-CTR",
+    code: "LAW-CTR",
+    categoryKey: "hukum",
+    name: "Drafting & Review Kontrak Komersial",
+    subtitle: "Penyusunan dan penelaahan perjanjian kerjasama, NDA, MoU, perjanjian pemegang saham, dan kontrak vendor.",
+    badge: "KONTRAK & PERJANJIAN BISNIS",
+    route: "/layanan/hukum",
+    scopes: [
+      "Penyusunan klausul mitigasi risiko sengketa perdata & force majeure",
+      "Klausul ganti rugi (indemnification), batasan tanggung jawab, & dispute settlement",
+      "Review kepatuhan terhadap Kitab Undang-Undang Hukum Perdata (KUHPerdata)",
+      "Penyelarasan hak kekayaan intelektual (HAKI) dan kerahasiaan data komersial",
+    ],
+    deliverable: "Final Draft Kontrak Bahasa Indonesia / Bilingual & Legal Opinion Ringkas.",
+    pillars: [
+      {
+        title: "Drafting Kontrak Komersial",
+        description: "Penyusunan perjanjian kerjasama, NDA, MoU, dan kontrak bisnis dengan mitigasi risiko hukum.",
+      },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+    topicParam: "kontrak-komersial",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai pembuatan dan penelaahan Kontrak Bisnis / Komersial.",
+  },
+  {
+    id: "SRV-LAW-OSS",
+    code: "LAW-OSS",
+    categoryKey: "hukum",
+    name: "Perizinan Usaha Berbasis Risiko OSS-RBA",
+    subtitle: "Pendampingan penerbitan NIB, Sertifikat Standar, dan izin operasional komersial melalui sistem OSS terintegrasi.",
+    badge: "PERIZINAN BERUSAHA & KBLI",
+    route: "/layanan/hukum",
+    scopes: [
+      "Pemetaan Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) 2020 yang tepat",
+      "Penerbitan Nomor Induk Berusaha (NIB) dan pemenuhan persyaratan komitmen",
+      "Pengurusan Kesesuaian Kegiatan Pemanfaatan Ruang (KKPR) dan Persetujuan Lingkungan",
+      "Migrasi data profil perizinan dan updating penanggung jawab usaha",
+    ],
+    deliverable: "NIB Terverifikasi, Sertifikat Standar / Izin Operasional Resmi OSS.",
+    pillars: [
+      {
+        title: "Perizinan OSS-RBA",
+        description: "Penerbitan NIB, Sertifikat Standar, dan pemenuhan komitmen izin berusaha terintegrasi.",
+      },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+    topicParam: "perizinan-oss",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perizinan usaha OSS-RBA dan penyesuaian KBLI perusahaan.",
+  },
+  {
+    id: "SRV-LAW-CORP",
+    code: "LAW-CORP",
+    categoryKey: "hukum",
+    name: "Restrukturisasi Legalitas & Anggaran Dasar PT",
+    subtitle: "Penyesuaian anggaran dasar, peralihan saham, perubahan susunan direksi/komisaris, dan penerbitan akta notaris Kemenkumham.",
+    badge: "HUKUM PERSEROAN TERBATAS",
+    route: "/layanan/hukum",
+    scopes: [
+      "Penyelenggaraan Rapat Umum Pemegang Saham (RUPS) fisik maupun sirkuler",
+      "Penyusunan risalah RUPS untuk peningkatan modal disetor dan jual beli saham",
+      "Pendampingan penerbitan Surat Keputusan (SK) Pengesahan AHU Kemenkumham",
+      "Due diligence legalitas perizinan perseroan dan kelengkapan dokumen pendirian",
+    ],
+    deliverable: "Risalah RUPS Resmi, Akta Notaris Perubahan, & SK AHU Kemenkumham.",
+    pillars: [
+      {
+        title: "Hukum Perseroan Terbatas",
+        description: "Penyesuaian anggaran dasar PT, RUPS, perubahan susunan pengurus, dan legalitas notaris.",
+      },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+    topicParam: "restrukturisasi-pt",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perubahan anggaran dasar PT, RUPS, dan legalitas perseroan.",
+  },
+  {
+    id: "SRV-LEGAL-TAX",
+    code: "LEGAL_TAX",
+    categoryKey: "hukum",
+    name: "Legal & Tax Dispute Advisory",
+    subtitle: "Pendampingan pemeriksaan pajak, klarifikasi SP2DK, pengajuan keberatan, dan mitigasi risiko regulasi.",
+    badge: "ADVOKASI & SENGKETA HUKUM",
+    route: "/layanan/hukum",
+    scopes: [
+      "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+      "Penyusunan Tanggapan Resmi Surat Klarifikasi SP2DK",
+      "Pengajuan Permohonan Keberatan Pajak",
+      "Advokasi & Banding di Pengadilan Pajak",
+    ],
+    deliverable: "Risalah Tanggapan Hukum & SPHP, Surat Keberatan / Memori Banding, & Legal Opinion Resmi.",
+    pillars: [
+      {
+        title: "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+        description: "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+      },
+    ],
+    status: "Published",
+    lastUpdated: "Oktober 2026",
+    topicParam: "sengketa-hukum-pajak",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Legal & Tax Dispute Advisory dan pendampingan sengketa hukum.",
+  },
+];
 
 export const SERVICES_STORAGE_KEY = "zhou_services_data_v2";
 export const SERVICES_EVENT = "zhou_services_updated";
@@ -63,8 +168,15 @@ export function inferDeliverableFromTitle(title?: string): string {
   return "Dokumen Laporan & Rekomendasi Resmi";
 }
 
-// In-memory runtime state, tidak lagi menginjeksi mock data layanan lama
-let memoryServices: StoredServiceItem[] = [];
+// In-memory runtime state berisi 4 layanan hukum standar Zhou (data layanan kini 100% tersinkronisasi langsung via backend REST API)
+let memoryServices: StoredServiceItem[] = [...DEFAULT_SERVICES];
+
+if (typeof window !== "undefined") {
+  try {
+    localStorage.removeItem(SERVICES_STORAGE_KEY);
+    localStorage.removeItem("zhou_services_data");
+  } catch {}
+}
 
 /**
  * Mendapatkan daftar layanan (in-memory)
@@ -124,7 +236,7 @@ export function addStoredService(
       service_name: newService.name,
       category: newService.categoryKey,
       description: newService.subtitle,
-      is_active: newService.status === "Published",
+      is_active: true, // Selalu true di backend agar query prisma where: { is_active: true } tidak menyembunyikannya
     })
     .catch((err) => {
       console.warn("adminCmsApi.createService sinkronisasi:", err);
@@ -178,7 +290,7 @@ export function updateStoredService(
           service_name: updatedItem.name,
           category: updatedItem.categoryKey,
           description: updatedItem.subtitle,
-          is_active: updatedItem.status === "Published",
+          is_active: true, // Selalu true di backend database agar prisma where: { is_active: true } tidak mengabaikannya
         })
         .catch((err) => {
           console.warn("adminCmsApi.updateService sinkronisasi:", err);

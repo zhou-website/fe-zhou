@@ -1482,7 +1482,7 @@ function AdminTugasSayaContent() {
 
             {/* Tabel Konsultasi PIC */}
             <div className="overflow-x-auto rounded-xl border border-primary-light">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[800px]">
                 <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
                   <tr>
                     <th className="py-3 px-4 text-center min-w-[200px]">Kode &amp; Judul Kebutuhan</th>

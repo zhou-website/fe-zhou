@@ -575,7 +575,7 @@ export default function ClientDocumentVaultPage() {
 
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-primary-light">
                 <tr>
                   <th className="py-3.5 px-4 text-center">Nama Dokumen &amp; Format</th>
