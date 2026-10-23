@@ -407,7 +407,7 @@ export function Navbar() {
               variant="primary"
               size="sm"
               asChild
-              className="text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
+              className="hidden sm:inline-flex text-xs font-semibold px-2.5 py-1.5 bg-primary text-white"
             >
               <Link
                 href={
@@ -426,7 +426,7 @@ export function Navbar() {
               </Link>
             </Button>
           ) : (
-            <>
+            <div className="hidden sm:flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -443,7 +443,7 @@ export function Navbar() {
               >
                 <Link href="/register">{t.nav.register}</Link>
               </Button>
-            </>
+            </div>
           )}
 
           <button

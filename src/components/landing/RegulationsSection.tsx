@@ -54,7 +54,7 @@ export function RegulationsSection() {
         const pubStatus = getCmsItemStatus(
           r.id,
           r.title,
-          r.status === "Archived" ? "Archived" : r.status === "Draft" ? "Draft" : "Published",
+          r.status === "Draft" ? "Draft" : "Published",
           [r.docNumber]
         );
         return pubStatus === "Published";
@@ -165,9 +165,9 @@ export function RegulationsSection() {
           {/* Table Container (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             <div className="rounded-lg border border-primary-light bg-white overflow-hidden shadow-sm">
-              <div className="bg-surface px-5 py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
+              <div className="bg-surface px-4 sm:px-5 py-3.5 sm:py-4 border-b border-primary-light flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-bold text-primary">
                       Kurs Menteri Keuangan (KMK)
                     </h3>
@@ -193,35 +193,35 @@ export function RegulationsSection() {
                   href={kmkData.officialDjpUrl || "https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-primary bg-primary/10 hover:bg-primary hover:text-white transition-colors shrink-0"
                 >
                   Buka Portal Resmi DJP
                 </a>
               </div>
 
-              <Table>
+              <Table className="min-w-[480px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="py-3 px-5">Mata Uang</TableHead>
-                    <TableHead className="py-3 px-5">Nama Valuta</TableHead>
-                    <TableHead className="py-3 px-5 text-right">Nilai Kurs (IDR)</TableHead>
-                    <TableHead className="py-3 px-5 text-right">Fluktuasi</TableHead>
+                    <TableHead className="py-3 px-3 sm:px-5">Mata Uang</TableHead>
+                    <TableHead className="py-3 px-3 sm:px-5">Nama Valuta</TableHead>
+                    <TableHead className="py-3 px-3 sm:px-5 text-right">Nilai Kurs (IDR)</TableHead>
+                    <TableHead className="py-3 px-3 sm:px-5 text-right">Fluktuasi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoadingKmk ? (
                     [1, 2, 3, 4, 5].map((i) => (
                       <TableRow key={i}>
-                        <TableCell className="py-3 px-5">
+                        <TableCell className="py-3 px-3 sm:px-5">
                           <Skeleton className="h-4 w-12" />
                         </TableCell>
-                        <TableCell className="py-3 px-5">
+                        <TableCell className="py-3 px-3 sm:px-5">
                           <Skeleton className="h-4 w-32" />
                         </TableCell>
-                        <TableCell className="py-3 px-5 text-right">
+                        <TableCell className="py-3 px-3 sm:px-5 text-right">
                           <Skeleton className="h-4 w-24 ml-auto" />
                         </TableCell>
-                        <TableCell className="py-3 px-5 text-right">
+                        <TableCell className="py-3 px-3 sm:px-5 text-right">
                           <Skeleton className="h-4 w-14 ml-auto" />
                         </TableCell>
                       </TableRow>
@@ -229,16 +229,16 @@ export function RegulationsSection() {
                   ) : kmkData.rates.length > 0 ? (
                     kmkData.rates.map((item) => (
                       <TableRow key={item.currency} className="hover:bg-surface/50">
-                        <TableCell className="py-3 px-5 font-bold text-primary">
+                        <TableCell className="py-3 px-3 sm:px-5 font-bold text-primary">
                           {item.currency}
                         </TableCell>
-                        <TableCell className="py-3 px-5 text-text-secondary text-xs">
+                        <TableCell className="py-3 px-3 sm:px-5 text-text-secondary text-xs">
                           {item.name}
                         </TableCell>
-                        <TableCell className="py-3 px-5 text-right font-semibold text-text">
+                        <TableCell className="py-3 px-3 sm:px-5 text-right font-semibold text-text">
                           {item.rate}
                         </TableCell>
-                        <TableCell className="py-3 px-5 text-right text-xs">
+                        <TableCell className="py-3 px-3 sm:px-5 text-right text-xs">
                           <span
                             className={
                               item.trend === "up"

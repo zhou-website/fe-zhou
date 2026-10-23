@@ -311,7 +311,7 @@ function AdminLamaranPageContent() {
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-primary-light">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead className="bg-surface/80 border-b border-primary-light/60 text-primary font-semibold">
               <tr>
                 <th className="py-3 px-4">Nama Pelamar</th>

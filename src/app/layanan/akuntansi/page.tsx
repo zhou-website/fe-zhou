@@ -46,7 +46,14 @@ export default function AccountingServicePage() {
     const syncModules = (apiItems?: PublicServiceItem[]) => {
       if (apiItems !== undefined) {
         setModules(
-          apiItems.map((c: PublicServiceItem) => ({
+          apiItems
+            .filter((c: PublicServiceItem) => {
+              if (c.is_active === false) return false;
+              if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
+              const status = getCmsItemStatus(`SVC-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
+              return status === "Published";
+            })
+            .map((c: PublicServiceItem) => ({
             id: `SVC-${c.id}`,
             code: c.service_code || `SVC-${c.id}`,
             title: c.service_name,
@@ -121,10 +128,12 @@ export default function AccountingServicePage() {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
+            if (item.is_active === false) return false;
+            if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
+            const status = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
+            if (status !== "Published") return false;
             return (
-              item.is_active !== false &&
-              (cat.includes("akuntansi") || cat.includes("accounting") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan")) &&
-              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+              (cat.includes("akuntansi") || cat.includes("accounting") || code.includes("acc") || name.includes("akuntansi") || name.includes("pembukuan"))
             );
           });
 
@@ -179,11 +188,6 @@ export default function AccountingServicePage() {
                   className="scroll-mt-24 rounded-2xl border-primary-light hover:border-primary hover:shadow-lg transition-all duration-200 bg-white flex flex-col justify-between"
                 >
                   <CardHeader className="space-y-2.5 pb-3">
-                    <div className="flex items-center justify-end">
-                      <span className="text-[10px] font-mono font-semibold text-text-muted">
-                        {item.code}
-                      </span>
-                    </div>
                     <CardTitle className="text-lg font-bold text-primary leading-snug">
                       {item.title}
                     </CardTitle>

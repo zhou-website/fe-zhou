@@ -3,10 +3,22 @@
 export const CMS_STATUS_OVERRIDE_KEY = "zhou_cms_status_overrides_v1";
 export const CMS_STATUS_UPDATED_EVENT = "zhou_cms_status_updated";
 
-export type CMSPublicationStatus = "Published" | "Draft" | "Archived";
+export type CMSPublicationStatus = "Published" | "Draft";
 
-// In-memory runtime state, tidak lagi menggunakan localStorage
+// Runtime state with safe client-side persistent storage
 const memoryStatusOverrides: Record<string, CMSPublicationStatus> = {};
+
+if (typeof window !== "undefined") {
+  try {
+    const raw = localStorage.getItem(CMS_STATUS_OVERRIDE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === "object" && parsed !== null) {
+        Object.assign(memoryStatusOverrides, parsed);
+      }
+    }
+  } catch {}
+}
 
 /**
  * Normalisasi string untuk pencocokan toleran
@@ -89,6 +101,9 @@ export function setCmsItemStatus(
     }
 
     if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(CMS_STATUS_OVERRIDE_KEY, JSON.stringify(memoryStatusOverrides));
+      } catch {}
       window.dispatchEvent(new CustomEvent(CMS_STATUS_UPDATED_EVENT, { detail: { item, status } }));
     }
   } catch (err) {
@@ -143,4 +158,9 @@ export function getCmsItemStatus(
 
 export function clearCmsStatusStorage(): void {
   Object.keys(memoryStatusOverrides).forEach((k) => delete memoryStatusOverrides[k]);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(CMS_STATUS_OVERRIDE_KEY);
+    } catch {}
+  }
 }

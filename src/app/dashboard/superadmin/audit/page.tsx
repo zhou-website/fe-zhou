@@ -953,7 +953,7 @@ export default function SuperadminAuditPage() {
 
         {/* Audit Table: 6 Kolom yang Disarankan */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-left text-xs border-collapse min-w-[750px]">
             <thead className="bg-surface/70 border-b border-primary-light text-[11px] font-bold text-text-secondary uppercase tracking-wider">
               <tr>
                 <th className="py-3.5 px-4 text-left whitespace-nowrap">Waktu</th>

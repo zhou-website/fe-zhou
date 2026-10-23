@@ -65,7 +65,7 @@ function RegisterFormContent() {
       return;
     }
     if (!formData.companyName.trim()) {
-      setErrorMessage("Nama perusahaan atau entitas usaha wajib diisi.");
+      setErrorMessage("Nama badan atau perusahaan wajib diisi.");
       return;
     }
     if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -260,7 +260,7 @@ function RegisterFormContent() {
               Daftar Akun Layanan
             </h1>
             <p className="text-xs text-text-secondary leading-relaxed max-w-md mx-auto">
-              Lengkapi informasi entitas bisnis Anda untuk mengakses konsultasi, kepatuhan perpajakan, dan lembar kerja.
+              Lengkapi informasi badan usaha Anda untuk mengakses konsultasi, kepatuhan perpajakan, dan lembar kerja.
             </p>
           </div>
 
@@ -354,7 +354,7 @@ function RegisterFormContent() {
                   {/* Company Name */}
                   <div className="space-y-1.5">
                     <Label htmlFor="reg-company" className="font-semibold text-primary">
-                      Nama Entitas / PT / CV *
+                      Nama Badan / PT / CV *
                     </Label>
                     <div className="relative">
                       <Input
@@ -363,7 +363,7 @@ function RegisterFormContent() {
                         type="text"
                         value={formData.companyName}
                         onChange={handleChange}
-                        placeholder="Nama Perusahaan"
+                        placeholder="Nama Perusahaan / Badan"
                         required
                         className="pl-9 h-10 bg-surface border-primary-light focus:bg-white text-xs"
                       />

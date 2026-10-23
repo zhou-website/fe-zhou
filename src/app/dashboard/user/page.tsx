@@ -546,7 +546,7 @@ export default function UserDashboardPage() {
 
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-text-primary">
+            <table className="w-full text-left text-xs text-text-primary min-w-[650px]">
               <thead className="bg-surface/80 border-b border-navy-light text-[10px] uppercase font-bold text-text-secondary tracking-wider">
                 <tr>
                   <th scope="col" className="py-3 px-4 sm:px-6 text-center">ID Konsultasi</th>
@@ -716,7 +716,7 @@ export default function UserDashboardPage() {
 
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[650px]">
               <thead className="bg-surface/80 text-text-secondary font-bold uppercase tracking-wider text-[10px] border-b border-navy-light">
                 <tr>
                   <th className="py-3 px-4 sm:px-6">Nama Dokumen</th>

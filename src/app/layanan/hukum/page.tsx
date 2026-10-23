@@ -36,35 +36,81 @@ interface LegalModuleItem {
   waTemplate: string;
 }
 
+const DEFAULT_LEGAL_MODULES: LegalModuleItem[] = [
+  {
+    id: "SRV-LAW-CTR",
+    code: "LAW-CTR",
+    title: "Drafting & Review Kontrak Komersial",
+    badge: "KONTRAK & PERJANJIAN BISNIS",
+    subtitle: "Penyusunan dan penelaahan perjanjian kerjasama, NDA, MoU, perjanjian pemegang saham, dan kontrak vendor.",
+    scopes: [
+      "Penyusunan klausul mitigasi risiko sengketa perdata & force majeure",
+      "Klausul ganti rugi (indemnification), batasan tanggung jawab, & dispute settlement",
+      "Review kepatuhan terhadap Kitab Undang-Undang Hukum Perdata (KUHPerdata)",
+      "Penyelarasan hak kekayaan intelektual (HAKI) dan kerahasiaan data komersial",
+    ],
+    deliverable: "Final Draft Kontrak Bahasa Indonesia / Bilingual & Legal Opinion Ringkas.",
+    topicParam: "kontrak-komersial",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai pembuatan dan penelaahan Kontrak Bisnis / Komersial.",
+  },
+  {
+    id: "SRV-LAW-OSS",
+    code: "LAW-OSS",
+    title: "Perizinan Usaha Berbasis Risiko OSS-RBA",
+    badge: "PERIZINAN BERUSAHA & KBLI",
+    subtitle: "Pendampingan penerbitan NIB, Sertifikat Standar, dan izin operasional komersial melalui sistem OSS terintegrasi.",
+    scopes: [
+      "Pemetaan Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) 2020 yang tepat",
+      "Penerbitan Nomor Induk Berusaha (NIB) dan pemenuhan persyaratan komitmen",
+      "Pengurusan Kesesuaian Kegiatan Pemanfaatan Ruang (KKPR) dan Persetujuan Lingkungan",
+      "Migrasi data profil perizinan dan updating penanggung jawab usaha",
+    ],
+    deliverable: "NIB Terverifikasi, Sertifikat Standar / Izin Operasional Resmi OSS.",
+    topicParam: "perizinan-oss",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perizinan usaha OSS-RBA dan penyesuaian KBLI perusahaan.",
+  },
+  {
+    id: "SRV-LAW-CORP",
+    code: "LAW-CORP",
+    title: "Restrukturisasi Legalitas & Anggaran Dasar PT",
+    badge: "HUKUM PERSEROAN TERBATAS",
+    subtitle: "Penyesuaian anggaran dasar, peralihan saham, perubahan susunan direksi/komisaris, dan penerbitan akta notaris Kemenkumham.",
+    scopes: [
+      "Penyelenggaraan Rapat Umum Pemegang Saham (RUPS) fisik maupun sirkuler",
+      "Penyusunan risalah RUPS untuk peningkatan modal disetor dan jual beli saham",
+      "Pendampingan penerbitan Surat Keputusan (SK) Pengesahan AHU Kemenkumham",
+      "Due diligence legalitas perizinan perseroan dan kelengkapan dokumen pendirian",
+    ],
+    deliverable: "Risalah RUPS Resmi, Akta Notaris Perubahan, & SK AHU Kemenkumham.",
+    topicParam: "restrukturisasi-pt",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai perubahan anggaran dasar PT, RUPS, dan legalitas perseroan.",
+  },
+  {
+    id: "SRV-LEGAL-TAX",
+    code: "LEGAL_TAX",
+    title: "Legal & Tax Dispute Advisory",
+    badge: "ADVOKASI & SENGKETA HUKUM",
+    subtitle: "Pendampingan pemeriksaan pajak, klarifikasi SP2DK, pengajuan keberatan, dan mitigasi risiko regulasi.",
+    scopes: [
+      "Pendampingan Pemeriksaan Pajak (Audit Assistance)",
+      "Penyusunan Tanggapan Resmi Surat Klarifikasi SP2DK",
+      "Pengajuan Permohonan Keberatan Pajak",
+      "Advokasi & Banding di Pengadilan Pajak",
+    ],
+    deliverable: "Risalah Tanggapan Hukum & SPHP, Surat Keberatan / Memori Banding, & Legal Opinion Resmi.",
+    topicParam: "sengketa-hukum-pajak",
+    waTemplate: "Halo Zhou Consulting, saya ingin konsultasi mengenai Legal & Tax Dispute Advisory dan pendampingan sengketa hukum.",
+  },
+];
+
 export default function KonsultasiHukumPage() {
   const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
-  const [modules, setModules] = useState<LegalModuleItem[]>([]);
+  const [modules, setModules] = useState<LegalModuleItem[]>(DEFAULT_LEGAL_MODULES);
 
   useEffect(() => {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
-      if (apiItems !== undefined) {
-        setModules(
-          apiItems.map((c) => ({
-            id: `LAW-${c.id}`,
-            code: c.service_code || `LAW-${c.id}`,
-            title: c.service_name,
-            badge: c.category?.toUpperCase() || "LAW & LEGAL SERVICES",
-            subtitle: c.description || "Layanan hukum bisnis dan kepatuhan regulasi korporasi",
-            scopes: c.features && c.features.length > 0 ? c.features : [
-              "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
-              "Mitigasi risiko hukum dan telaah perjanjian bisnis",
-            ],
-            deliverable: "Dokumen Legal Opinion & Dokumen Kepatuhan Regulasi",
-            topicParam: "hukum",
-            waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-          }))
-        );
-        return;
-      }
-
-      // Fallback hanya saat backend API offline
       const stored = getStoredServices();
       const lawItems = stored.filter(
         (s) =>
@@ -73,36 +119,81 @@ export default function KonsultasiHukumPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      if (lawItems.length > 0) {
-        setModules(
-          lawItems.map((c) => {
-            const rawScopes =
-              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
-              (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p: any) => p.title || p.description)
-                : undefined) || [
-                "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
-                "Mitigasi risiko hukum dan telaah perjanjian bisnis",
-              ];
-
-            return {
-              id: c.id,
-              code: c.code || c.id,
-              title: c.name,
-              badge: c.badge || "LAW SERVICES",
-              subtitle: c.subtitle || "Layanan pendampingan hukum dan kepatuhan regulasi bisnis Zhou Consulting.",
-              scopes: rawScopes,
-              deliverable: c.deliverable || "Dokumen Legal Opinion & Panduan Kepatuhan Regulasi",
-              topicParam: c.topicParam || "hukum",
-              waTemplate:
-                c.waTemplate ||
-                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-            };
-          })
+      // Selalu pastikan 4 Modul Utama Law Services ada
+      const baseMerged = DEFAULT_LEGAL_MODULES.map((base) => {
+        const storedItem = lawItems.find(
+          (c) =>
+            c.id === base.id ||
+            c.code === base.code ||
+            (c.name && c.name.toLowerCase() === base.title.toLowerCase())
         );
-      } else {
-        setModules([]);
-      }
+
+        const apiItem = apiItems?.find(
+          (a) =>
+            (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+            (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+        );
+
+        const rawScopes =
+          (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
+          (storedItem?.pillars && storedItem.pillars.length > 0
+            ? storedItem.pillars.map((p: any) => p.title || p.description)
+            : undefined) ||
+          (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
+          base.scopes;
+
+        const rawDeliverable =
+          (storedItem?.deliverable && storedItem.deliverable.trim()) ||
+          (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
+          base.deliverable;
+
+        return {
+          id: base.id,
+          code: base.code,
+          title: storedItem?.name || apiItem?.service_name || base.title,
+          badge: storedItem?.badge || base.badge,
+          subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
+          scopes: rawScopes,
+          deliverable: rawDeliverable,
+          topicParam: storedItem?.topicParam || base.topicParam,
+          waTemplate:
+            storedItem?.waTemplate ||
+            base.waTemplate ||
+            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
+        };
+      });
+
+      // Modul tambahan dari backend jika ada
+      const extraApi = (apiItems || [])
+        .filter(
+          (a) =>
+            !DEFAULT_LEGAL_MODULES.some(
+              (base) =>
+                (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+                (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+            )
+        )
+        .map((c) => ({
+          id: `LAW-${c.id}`,
+          code: c.service_code || `LAW-${c.id}`,
+          title: c.service_name,
+          badge: c.category?.toUpperCase() || "LAW & LEGAL SERVICES",
+          subtitle: c.description || "Layanan hukum bisnis dan kepatuhan regulasi korporasi",
+          scopes: c.features && c.features.length > 0 ? c.features : [
+            "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
+            "Mitigasi risiko hukum dan telaah perjanjian bisnis",
+          ],
+          deliverable: "Dokumen Legal Opinion & Dokumen Kepatuhan Regulasi",
+          topicParam: "hukum",
+          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+        }));
+
+      const allMerged = [...baseMerged, ...extraApi].filter((m) => {
+        if (isCmsItemDeleted(m.id, m.title, undefined, m.code)) return false;
+        const status = getCmsItemStatus(m.id, m.title, "Published", [m.code]);
+        return status === "Published";
+      });
+      setModules(allMerged);
     };
 
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
@@ -115,10 +206,12 @@ export default function KonsultasiHukumPage() {
             const cat = (item.category || "").toLowerCase();
             const code = (item.service_code || "").toLowerCase();
             const name = (item.service_name || "").toLowerCase();
+            if (item.is_active === false) return false;
+            if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
+            const status = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
+            if (status !== "Published") return false;
             return (
-              item.is_active !== false &&
-              (cat.includes("hukum") || cat.includes("legal") || code.includes("law") || code.includes("legal") || name.includes("hukum") || name.includes("legal") || cat.includes("sengketa")) &&
-              !isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)
+              (cat.includes("hukum") || cat.includes("legal") || code.includes("law") || code.includes("legal") || name.includes("hukum") || name.includes("legal") || cat.includes("sengketa"))
             );
           });
 
@@ -173,11 +266,6 @@ export default function KonsultasiHukumPage() {
                   className="scroll-mt-24 rounded-2xl border-primary-light hover:border-primary hover:shadow-lg transition-all duration-200 bg-white flex flex-col justify-between"
                 >
                   <CardHeader className="space-y-2.5 pb-3">
-                    <div className="flex items-center justify-end">
-                      <span className="text-[10px] font-mono font-semibold text-text-muted">
-                        {item.code}
-                      </span>
-                    </div>
                     <CardTitle className="text-lg font-bold text-primary leading-snug">
                       {item.title}
                     </CardTitle>

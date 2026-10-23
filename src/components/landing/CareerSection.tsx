@@ -47,6 +47,7 @@ import {
 } from "@/data/karirStorage";
 import { publicApi, CareerItem } from "@/lib/api";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 
 export function CareerSection() {
   const { t } = useLanguage();
@@ -90,7 +91,12 @@ export function CareerSection() {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
           const apiJobs: JobPosition[] = res.data
-            .filter((c: CareerItem) => !isCmsItemDeleted(c.id, c.position_title, c.id, c.position_code))
+            .filter((c: CareerItem) => {
+              if (c.is_active === false) return false;
+              if (isCmsItemDeleted(c.id, c.position_title, c.id, c.position_code)) return false;
+              const status = getCmsItemStatus(c.position_code || String(c.id), c.position_title, c.is_active ? "Published" : "Draft", [c.id]);
+              return status === "Published";
+            })
             .map((c: CareerItem) => {
             const titleLower = (c.position_title || "").toLowerCase();
             const deptKey = (titleLower.includes("tax") || titleLower.includes("pajak")
@@ -139,9 +145,12 @@ export function CareerSection() {
         }
       });
 
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
+
     return () => {
       isMounted = false;
       window.removeEventListener(CAREER_SETTINGS_EVENT, handleUpdate);
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
   }, []);

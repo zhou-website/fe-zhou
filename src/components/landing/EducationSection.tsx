@@ -38,6 +38,8 @@ import {
   extractEducationImageAndBody,
   getSafeEducationCover,
 } from "@/data/edukasiStorage";
+import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
+import { getCmsItemStatus, CMS_STATUS_UPDATED_EVENT } from "@/data/cmsStatusStorage";
 import { publicApi, EducationItem } from "@/lib/api";
 
 export function EducationSection() {
@@ -69,7 +71,9 @@ export function EducationSection() {
         .then((res) => {
           if (!isMounted) return;
           if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-            const apiArticles: ZhouArticle[] = res.data.map((item: EducationItem) => {
+            const apiArticles: ZhouArticle[] = res.data
+              .filter((item: EducationItem) => !isCmsItemDeleted(item.id, item.title))
+              .map((item: EducationItem) => {
               const itemAny = item as unknown as { image?: string; image_url?: string; cover_image?: string; photo_url?: string; imageUrl?: string };
               const { image: extractedImg, cleanBody } = extractEducationImageAndBody(
                 item.body,
@@ -77,6 +81,7 @@ export function EducationSection() {
                 item.image || item.image_url || itemAny.cover_image || itemAny.photo_url || itemAny.imageUrl
               );
               const finalImage = extractedImg || item.image_url || itemAny.cover_image || item.image || getSafeEducationCover(item.category, item.id);
+              const pubStatus = getCmsItemStatus(`be-${item.id}`, item.title, "Published", [item.id]);
               return {
                 id: `be-${item.id}`,
                 title: item.title,
@@ -99,7 +104,7 @@ export function EducationSection() {
                   "Penyelarasan bukti potong dan rekonsiliasi data fiskal berkala.",
                 ],
                 content: [cleanBody],
-                status: "Published",
+                status: pubStatus,
                 isFeatured: true,
                 image: finalImage,
               };
@@ -121,9 +126,11 @@ export function EducationSection() {
     };
 
     fetchArticles();
+    window.addEventListener(CMS_STATUS_UPDATED_EVENT, fetchArticles);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(CMS_STATUS_UPDATED_EVENT, fetchArticles);
     };
   }, []);
 
