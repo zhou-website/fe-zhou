@@ -15,7 +15,7 @@ import {
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white">
+    <div className="min-h-screen flex flex-col bg-background text-text selection:bg-primary selection:text-white overflow-x-hidden">
       <LandingAuthInterceptor>
         {/* 1. Header / Navigation */}
         <Navbar />

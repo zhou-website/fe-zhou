@@ -44,34 +44,7 @@ export default function KonsultasiBisnisPage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
-      if (apiItems !== undefined) {
-        setModules(
-          apiItems
-            .filter((c: PublicServiceItem) => {
-              if (c.is_active === false) return false;
-              if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
-              const status = getCmsItemStatus(`FIN-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
-              return status === "Published";
-            })
-            .map((c: PublicServiceItem) => ({
-            id: `FIN-${c.id}`,
-            code: c.service_code || `FIN-${c.id}`,
-            title: c.service_name,
-            badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
-            subtitle: c.description || "Konsultasi restrukturisasi bisnis dan manajemen arus kas perusahaan",
-            scopes: c.features && c.features.length > 0 ? c.features : [
-              "Konsultasi perencanaan keuangan dan strategi bisnis",
-              "Evaluasi kinerja dan manajemen risiko korporasi",
-            ],
-            deliverable: "Laporan Studi Kelayakan Bisnis & Analisis Finansial",
-            topicParam: "studi-kelayakan",
-            waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-          }))
-        );
-        return;
-      }
-
-      // Fallback hanya saat backend API offline
+      // 1. Ambil layanan dari persistent stored (CMS Superadmin)
       const stored = getStoredServices();
       const bizItems = stored.filter(
         (s) =>
@@ -81,42 +54,78 @@ export default function KonsultasiBisnisPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      if (bizItems.length > 0) {
-        setModules(
-          bizItems.map((c) => {
-            const rawScopes =
-              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
-              (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p: any) => p.title || p.description)
-                : undefined) || [
-                "Konsultasi perencanaan keuangan dan strategi bisnis",
-                "Evaluasi kinerja dan manajemen risiko korporasi",
-              ];
+      const storedModules: BusinessModuleItem[] = bizItems.map((c) => {
+        const rawScopes =
+          (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
+          (c.pillars && c.pillars.length > 0
+            ? c.pillars.map((p: any) => p.title || p.description)
+            : undefined) || [
+            "Konsultasi perencanaan keuangan dan strategi bisnis",
+            "Evaluasi kinerja dan manajemen risiko korporasi",
+          ];
 
-            const rawDeliverable =
-              (c.deliverable && c.deliverable.trim()) ||
-              (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
-              "Laporan Analisis Bisnis & Finansial";
+        const rawDeliverable =
+          (c.deliverable && c.deliverable.trim()) ||
+          (c.deliverables && c.deliverables.length > 0 ? c.deliverables[0] : undefined) ||
+          "Laporan Analisis Bisnis & Finansial";
 
-            return {
-              id: c.id,
-              code: c.code || c.id,
-              title: c.name,
-              badge: c.badge || "BUSINESS & FINANCIAL",
-              subtitle: c.subtitle || "Konsultasi bisnis dan strategi finansial korporasi",
-              scopes: rawScopes,
-              deliverable: rawDeliverable,
-              topicParam: c.topicParam || "studi-kelayakan",
-              waTemplate:
-                c.waTemplate ||
-                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-            };
-          })
-        );
-      } else {
-        setModules([]);
+        return {
+          id: c.id,
+          code: c.code || c.id,
+          title: c.name,
+          badge: c.badge || "BUSINESS & FINANCIAL",
+          subtitle: c.subtitle || "Konsultasi bisnis dan strategi finansial korporasi",
+          scopes: rawScopes,
+          deliverable: rawDeliverable,
+          topicParam: c.topicParam || "studi-kelayakan",
+          waTemplate:
+            c.waTemplate ||
+            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+        };
+      });
+
+      // 2. Ambil layanan dari API backend jika ada
+      const apiModules: BusinessModuleItem[] = (apiItems || [])
+        .filter((c: PublicServiceItem) => {
+          if (c.is_active === false) return false;
+          if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
+          const status = getCmsItemStatus(`FIN-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
+          return status === "Published";
+        })
+        .map((c: PublicServiceItem) => ({
+          id: `FIN-${c.id}`,
+          code: c.service_code || `FIN-${c.id}`,
+          title: c.service_name,
+          badge: c.category?.toUpperCase() || "BUSINESS & FINANCIAL",
+          subtitle: c.description || "Konsultasi restrukturisasi bisnis dan manajemen arus kas perusahaan",
+          scopes: c.features && c.features.length > 0 ? c.features : [
+            "Konsultasi perencanaan keuangan dan strategi bisnis",
+            "Evaluasi kinerja dan manajemen risiko korporasi",
+          ],
+          deliverable: "Laporan Studi Kelayakan Bisnis & Analisis Finansial",
+          topicParam: "studi-kelayakan",
+          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+        }));
+
+      // 3. Gabungkan hasil dari stored dan API
+      const combined: BusinessModuleItem[] = [];
+      const seen = new Set<string>();
+
+      for (const item of [...storedModules, ...apiModules]) {
+        const titleKey = item.title.trim().toLowerCase();
+        const codeKey = item.code.trim().toLowerCase();
+        if (seen.has(titleKey) || seen.has(codeKey)) continue;
+        if (isCmsItemDeleted(item.id, item.title, undefined, item.code)) continue;
+        seen.add(titleKey);
+        seen.add(codeKey);
+        combined.push(item);
       }
+
+      setModules(combined);
     };
+
+    // Sinkronisasi data instan pada render awal
+    syncModules();
 
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi

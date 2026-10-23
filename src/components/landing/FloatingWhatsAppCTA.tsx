@@ -68,10 +68,10 @@ export function FloatingWhatsAppCTA() {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end animate-in fade-in slide-in-from-bottom-5 duration-300">
+    <div className="fixed bottom-6 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end animate-in fade-in slide-in-from-bottom-5 duration-300 select-none pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)]">
       {/* Quick Greeting Popup */}
       {isOpen && (
-        <div className="mb-3 w-80 sm:w-88 rounded-xl bg-white border border-primary-light shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="mb-3 w-[calc(100vw-2rem)] max-w-[340px] sm:max-w-none sm:w-88 rounded-xl bg-white border border-primary-light shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           {/* Header */}
           <div className="bg-primary p-4 text-white flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -131,7 +131,7 @@ export function FloatingWhatsAppCTA() {
       {/* Floating Action Button */}
       <div className="flex items-center gap-2">
         {!isOpen && (
-          <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-sm border border-primary-light shadow-md text-xs font-semibold text-primary animate-in fade-in">
+          <span className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-sm border border-primary-light shadow-md text-xs font-semibold text-primary animate-in fade-in select-none">
             Chat WhatsApp CS
           </span>
         )}
@@ -140,12 +140,12 @@ export function FloatingWhatsAppCTA() {
           onClick={() => setIsOpen(!isOpen)}
           aria-label="Buka WhatsApp Customer Service"
           aria-expanded={isOpen}
-          className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-success text-white shadow-xl hover:bg-success/90 hover:scale-105 active:scale-95 transition-all flex items-center justify-center focus:outline-none focus:ring-4 focus:ring-success/30 cursor-pointer"
+          className="relative flex items-center justify-center shrink-0 w-12 h-12 sm:w-14 sm:h-14 aspect-square rounded-full bg-success text-white shadow-lg hover:shadow-xl hover:bg-success/90 hover:scale-105 active:scale-95 transition-all focus:outline-none focus:ring-4 focus:ring-success/30 cursor-pointer p-0 overflow-hidden"
         >
           {isOpen ? (
-            <CloseIcon className="text-xl" />
+            <CloseIcon className="text-lg sm:text-xl shrink-0" />
           ) : (
-            <WhatsappIcon className="text-2xl" />
+            <WhatsappIcon className="text-2xl sm:text-[26px] shrink-0" />
           )}
         </button>
       </div>

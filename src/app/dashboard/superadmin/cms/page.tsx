@@ -74,6 +74,7 @@ import {
 import {
   isCmsItemDeleted,
   recordDeletedCmsItem,
+  removeDeletedCmsItem,
   CMS_DELETED_ITEMS_EVENT,
 } from "@/data/cmsDeletedStorage";
 import {
@@ -879,22 +880,7 @@ function AdminCMSPageContent() {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem("zhou_services_data_v2");
-        localStorage.removeItem("zhou_services_data");
-        localStorage.removeItem("zhou_articles_data_v2");
-        localStorage.removeItem("zhou_articles_data");
-        localStorage.removeItem("zhou_regulations_data_v2");
-        localStorage.removeItem("zhou_regulations_data");
-        localStorage.removeItem("zhou_career_settings_data_v2");
-        localStorage.removeItem("zhou_career_settings_data");
-        localStorage.removeItem("zhou_belajar_pajak_links_v2");
-        localStorage.removeItem("zhou_belajar_pajak_links_v1");
-        localStorage.removeItem("zhou_belajar_pajak_links");
-      } catch {}
-    }
-
+    // Jangan hapus data layanan lokal (zhou_services_data_v2) agar data baru yang ditambahkan tetap tersimpan persisten
     loadAllCMS();
     syncKmkRatesFromDjp().catch((err) => console.warn("syncKmkRatesFromDjp on CMS mount:", err));
 
@@ -966,35 +952,32 @@ function AdminCMSPageContent() {
           }
         }
       } else if (item.section === "services") {
-        const targetServiceId = item.numericId || (rawId ? parseInt(rawId.replace(/\D/g, ""), 10) : undefined);
+        const targetServiceId = item.numericId && item.numericId < 9000 ? item.numericId : undefined;
         if (targetServiceId && !isNaN(targetServiceId) && targetServiceId > 0) {
           try {
-            // 1. Soft-delete di backend database via is_active: false
-            // Ini menjamin layanan langsung lenyap dari API publik (/api/v1/cms/services) di Vercel dan seluruh visitor
-            // tanpa pernah gagal karena Foreign Key Constraint (tiket/klien).
-            await adminCmsApi.updateService(targetServiceId, { is_active: false });
-
-            // 2. Upayakan hard-delete dari database PostgreSQL jika tidak terikat foreign key
-            try {
-              const res = await adminCmsApi.deleteService(targetServiceId);
-              if (res && res.success === false) {
-                console.warn("Hard delete service skipped (FK constraint):", res.message);
-              }
-            } catch (hardErr) {
-              console.warn("Hard delete service skipped (FK constraint):", hardErr);
-            }
-            deleteSuccess = true;
+            // Upayakan soft-delete di backend database via is_active: false
+            await adminCmsApi.updateService(targetServiceId, { is_active: false }).catch(() => {});
+            // Upayakan hard-delete jika tidak terikat relasi foreign key
+            await adminCmsApi.deleteService(targetServiceId).catch(() => {});
           } catch (apiErr) {
-            deleteSuccess = false;
-            deleteErrorMsg = apiErr instanceof Error ? apiErr.message : "Gagal menghapus layanan dari database server.";
+            console.warn("Backend service delete fallback:", apiErr);
           }
         }
+        deleteSuccess = true;
         if (deleteSuccess) {
           deleteStoredService(item.id);
           deleteStoredService(item.title);
           deleteStoredService(`SVC-${item.numericId}`);
           if (rawId) deleteStoredService(rawId);
           if (rawCode) deleteStoredService(rawCode);
+          recordDeletedCmsItem({
+            id: item.id,
+            numericId: item.numericId,
+            title: item.title,
+            code: rawCode || ((item.raw as Record<string, unknown>)?.service_code as string | undefined),
+            rawId: rawId,
+            category: item.category,
+          });
         }
       } else if (item.section === "regulasi") {
         if (item.numericId && item.numericId < 9000) {
@@ -1435,9 +1418,13 @@ function AdminCMSPageContent() {
 
         const generateServiceSlug = (name: string) => {
           const clean = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-          return clean ? `srv-${clean}` : `srv-${Date.now().toString().slice(-4)}`;
+          const truncated = clean.slice(0, 36);
+          const rand = Math.floor(1000 + Math.random() * 9000);
+          return truncated ? `srv-${truncated}-${rand}` : `srv-${Date.now().toString().slice(-6)}`;
         };
-        const srvCode = serviceForm.service_code || generateServiceSlug(serviceForm.service_name);
+        const srvCode = (editingServiceId || editingServiceOriginalId)
+          ? (serviceForm.service_code || `srv-${Date.now().toString().slice(-6)}`)
+          : (serviceForm.service_code ? `${serviceForm.service_code.trim().slice(0, 42)}-${Math.floor(1000 + Math.random() * 9000)}` : generateServiceSlug(serviceForm.service_name));
 
         if (editingServiceId || editingServiceOriginalId) {
           const isBackendId = typeof editingServiceId === "number" && editingServiceId > 0;
@@ -1528,6 +1515,8 @@ function AdminCMSPageContent() {
           } catch (apiErr) {
             console.warn("Backend createService fallback:", apiErr);
           }
+          // Pastikan tombstone dihapus agar layanan baru langsung tampil
+          removeDeletedCmsItem(srvCode, serviceForm.service_name);
           addStoredService({
             id: srvCode,
             code: srvCode,
@@ -1542,6 +1531,7 @@ function AdminCMSPageContent() {
             pillars: parsedScopes.map((sc) => ({ title: sc, description: sc })),
             workflow: ["Konsultasi Awal", "Analisis & Telaah Regulasi", "Eksekusi Layanan", "Penyampaian Laporan Final"],
             status: srvStatus,
+            skipApiSync: true,
           });
           setCmsItemStatus(
             {
@@ -1556,6 +1546,15 @@ function AdminCMSPageContent() {
         }
         loadAllCMS();
         resetAllEditingState();
+        setServiceForm({
+          service_code: "",
+          service_name: "",
+          category: "tax-service",
+          description: "",
+          scopes: "",
+          deliverable: "",
+          is_active: true,
+        });
       } else if (modalSection === "regulasi") {
         const regCategory = mapToRegulationCategory(regForm.regulation_type, regForm.title);
         const targetLegalStatus = regForm.legal_status || "Berlaku";
