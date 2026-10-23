@@ -288,55 +288,65 @@ function AdminDashboardContent() {
       </div>
 
       {/* METRIC CARDS TUGAS SAYA */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        <Card className="p-3 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Total Tugas Saya
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-primary font-mono">
             {computedStats.total}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Tugas ditugaskan kepada Anda</div>
+          <div className="text-[9px] sm:text-[10px] text-text-secondary mt-0.5 sm:mt-1 truncate">
+            Tugas ditugaskan kepada Anda
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
-          <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
             Dalam Proses
           </span>
-          <div className="mt-2 text-2xl font-bold text-amber-800 font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-amber-800 font-mono">
             {computedStats.inProgress}
           </div>
-          <div className="text-[10px] text-amber-700 mt-1">Dalam proses penyusunan</div>
+          <div className="text-[9px] sm:text-[10px] text-amber-700 mt-0.5 sm:mt-1 truncate">
+            Dalam proses penyusunan
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-blue-200 bg-blue-50/40 shadow-xs">
-          <span className="text-[10px] text-blue-900 font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-blue-200 bg-blue-50/40 shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-blue-900 font-bold uppercase tracking-wider block">
             Menunggu Klien
           </span>
-          <div className="mt-2 text-2xl font-bold text-blue-800 font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-blue-800 font-mono">
             {computedStats.waitingClient}
           </div>
-          <div className="text-[10px] text-blue-700 mt-1">Menunggu berkas / review klien</div>
+          <div className="text-[9px] sm:text-[10px] text-blue-700 mt-0.5 sm:mt-1 truncate">
+            Menunggu berkas / review klien
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
-          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
             Tugas Selesai
           </span>
-          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-emerald-800 font-mono">
             {computedStats.completed}
           </div>
-          <div className="text-[10px] text-emerald-700 mt-1">Laporan luaran final terbit</div>
+          <div className="text-[9px] sm:text-[10px] text-emerald-700 mt-0.5 sm:mt-1 truncate">
+            Laporan luaran final terbit
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs col-span-2 sm:col-span-1">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Dokumen Tugas
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-primary font-mono">
             {computedStats.totalDocs}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Berkas klien &amp; kertas kerja</div>
+          <div className="text-[9px] sm:text-[10px] text-text-secondary mt-0.5 sm:mt-1 truncate">
+            Berkas klien &amp; kertas kerja
+          </div>
         </Card>
       </div>
 
@@ -377,118 +387,123 @@ function AdminDashboardContent() {
         </div>
 
         {/* Table View (Secara Umum) */}
-        <div className="overflow-x-auto rounded-xl border border-primary-light">
-          <table className="w-full text-left text-xs min-w-[700px]">
-            <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
-              <tr>
-                <th className="py-3 px-3.5 text-center w-12">No</th>
-                <th className="py-3 px-4 text-center min-w-[190px]">Kode &amp; Judul Kebutuhan</th>
-                <th className="py-3 px-4 text-center w-48 min-w-[170px]">Uraian Detail Masalah</th>
-                <th className="py-3 px-4 text-center min-w-[230px]">Klien &amp; Entitas</th>
-                <th className="py-3 px-4 text-center">Kategori Layanan</th>
-                <th className="py-3 px-4 text-center">Status &amp; Progres</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-primary-light">
-              {filteredTickets.map((t, idx) => {
-                const cleanProblemDesc = formatTicketDescription(t.description);
+        <div>
+          <div className="overflow-x-auto rounded-xl border border-primary-light">
+            <table className="w-full text-left text-xs min-w-[700px]">
+              <thead className="bg-surface text-text-muted font-bold uppercase text-[10px] tracking-wider border-b border-primary-light">
+                <tr>
+                  <th className="py-3 px-3.5 text-center w-12">No</th>
+                  <th className="py-3 px-4 text-center min-w-[190px]">Kode &amp; Judul Kebutuhan</th>
+                  <th className="py-3 px-4 text-center w-48 min-w-[170px]">Uraian Detail Masalah</th>
+                  <th className="py-3 px-4 text-center min-w-[230px]">Klien &amp; Entitas</th>
+                  <th className="py-3 px-4 text-center">Kategori Layanan</th>
+                  <th className="py-3 px-4 text-center">Status &amp; Progres</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-primary-light">
+                {filteredTickets.map((t, idx) => {
+                  const cleanProblemDesc = formatTicketDescription(t.description);
 
-                return (
-                  <tr
-                    key={t.id}
-                    className="hover:bg-surface/60 transition-colors"
-                  >
-                    <td className="py-3.5 px-3.5 text-center text-text-muted font-mono text-[11px] align-top">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-primary align-top min-w-[190px]">
-                      <span className="font-mono text-[10px] text-text-muted block font-semibold">
-                        {t.id}
-                      </span>
-                      <span className="font-bold text-xs text-primary block mt-0.5 leading-snug">
-                        {t.title || "Konsultasi Kebutuhan Klien"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-text-secondary align-top w-48 min-w-[170px]">
-                      {cleanProblemDesc ? (
-                        <div className="bg-surface/60 border border-primary-light/70 rounded-lg p-2">
-                          <p className="text-xs text-text-primary leading-relaxed whitespace-pre-line line-clamp-2" title={cleanProblemDesc}>
-                            {cleanProblemDesc}
+                  return (
+                    <tr
+                      key={t.id}
+                      className="hover:bg-surface/60 transition-colors"
+                    >
+                      <td className="py-3.5 px-3.5 text-center text-text-muted font-mono text-[11px] align-top">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-primary align-top min-w-[190px]">
+                        <span className="font-mono text-[10px] text-text-muted block font-semibold">
+                          {t.id}
+                        </span>
+                        <span className="font-bold text-xs text-primary block mt-0.5 leading-snug">
+                          {t.title || "Konsultasi Kebutuhan Klien"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-text-secondary align-top w-48 min-w-[170px]">
+                        {cleanProblemDesc ? (
+                          <div className="bg-surface/60 border border-primary-light/70 rounded-lg p-2">
+                            <p className="text-xs text-text-primary leading-relaxed whitespace-pre-line line-clamp-2" title={cleanProblemDesc}>
+                              {cleanProblemDesc}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-text-muted italic">
+                            Belum ada uraian masalah
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 align-top min-w-[230px]">
+                        <span className="font-semibold text-primary block">
+                          {t.clientName || "Klien Terdaftar"}
+                        </span>
+                        <span className="text-[11px] text-text-secondary block">
+                          {t.clientCompany || t.clientEmail || "-"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-text-secondary align-top">
+                        <span className="block font-medium text-primary">
+                          {t.category || "Tax Service Core"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              t.status === "Selesai"
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                : t.status === "Dalam Proses"
+                                ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                                : t.status === "Ditugaskan"
+                                ? "bg-blue-100 text-blue-800 border-blue-300"
+                                : t.status === "Menunggu Penugasan"
+                                ? "bg-amber-100 text-amber-800 border-amber-300"
+                                : t.status === "Menunggu Klien"
+                                ? "bg-purple-100 text-purple-800 border-purple-300"
+                                : "bg-slate-100 text-slate-700 border-slate-300"
+                            }`}
+                          >
+                            {t.status === "Menunggu Penugasan" ? "Menunggu PIC" : t.status}
+                          </span>
+                          <div className="w-24 bg-surface rounded-full h-1.5 overflow-hidden border border-primary-light">
+                            <div
+                              className={`h-full rounded-full ${
+                                t.status === "Selesai"
+                                  ? "bg-emerald-500"
+                                  : "bg-primary"
+                              }`}
+                              style={{ width: `${t.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-[9px] text-text-muted font-mono">{t.progress || 0}% selesai</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredTickets.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-text-secondary text-xs">
+                      {isLoading ? (
+                        "Sedang memuat data tugas Anda..."
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-primary text-sm">Tidak ada tugas yang sesuai filter</p>
+                          <p className="text-text-muted text-xs">
+                            Seluruh tugas yang ditugaskan kepada Anda akan muncul di sini.
                           </p>
                         </div>
-                      ) : (
-                        <span className="text-[11px] text-text-muted italic">
-                          Belum ada uraian masalah
-                        </span>
                       )}
                     </td>
-                    <td className="py-3.5 px-4 align-top min-w-[230px]">
-                      <span className="font-semibold text-primary block">
-                        {t.clientName || "Klien Terdaftar"}
-                      </span>
-                      <span className="text-[11px] text-text-secondary block">
-                        {t.clientCompany || t.clientEmail || "-"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-text-secondary align-top">
-                      <span className="block font-medium text-primary">
-                        {t.category || "Tax Service Core"}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            t.status === "Selesai"
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                              : t.status === "Dalam Proses"
-                              ? "bg-indigo-100 text-indigo-800 border-indigo-300"
-                              : t.status === "Ditugaskan"
-                              ? "bg-blue-100 text-blue-800 border-blue-300"
-                              : t.status === "Menunggu Penugasan"
-                              ? "bg-amber-100 text-amber-800 border-amber-300"
-                              : t.status === "Menunggu Klien"
-                              ? "bg-purple-100 text-purple-800 border-purple-300"
-                              : "bg-slate-100 text-slate-700 border-slate-300"
-                          }`}
-                        >
-                          {t.status === "Menunggu Penugasan" ? "Menunggu PIC" : t.status}
-                        </span>
-                        <div className="w-24 bg-surface rounded-full h-1.5 overflow-hidden border border-primary-light">
-                          <div
-                            className={`h-full rounded-full ${
-                              t.status === "Selesai"
-                                ? "bg-emerald-500"
-                                : "bg-primary"
-                            }`}
-                            style={{ width: `${t.progress || 0}%` }}
-                          />
-                        </div>
-                        <span className="text-[9px] text-text-muted font-mono">{t.progress || 0}% selesai</span>
-                      </div>
-                    </td>
                   </tr>
-                );
-              })}
-
-              {filteredTickets.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-10 text-center text-text-secondary text-xs">
-                    {isLoading ? (
-                      "Sedang memuat data tugas Anda..."
-                    ) : (
-                      <div className="space-y-1">
-                        <p className="font-semibold text-primary text-sm">Tidak ada tugas yang sesuai filter</p>
-                        <p className="text-text-muted text-xs">
-                          Seluruh tugas yang ditugaskan kepada Anda akan muncul di sini.
-                        </p>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="sm:hidden text-[10px] text-text-muted italic mt-1.5 text-right">
+            &larr; Geser tabel untuk melihat rincian kolom &rarr;
+          </p>
         </div>
       </Card>
     </div>

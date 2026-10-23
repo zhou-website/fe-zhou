@@ -69,28 +69,39 @@ export function DashboardTopNav({
   const displayRoleLabel = role === "superadmin" ? "Superadmin" : role === "admin" ? "Staf Konsultan" : "Klien Terdaftar";
 
   return (
-    <header className="sticky top-0 z-30 bg-[#0B1533] px-4 sm:px-6 lg:px-8 py-4">
-      <div className="flex items-center justify-between gap-4 max-w-[1600px] mx-auto w-full">
+    <header className="sticky top-0 z-30 bg-[#0B1533] px-3.5 sm:px-6 lg:px-8 py-3 sm:py-4">
+      <div className="flex items-center justify-between gap-2.5 sm:gap-4 max-w-[1600px] mx-auto w-full">
         {/* Left Side: Mobile Menu Button & Personalized Greeting */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <button
             type="button"
             onClick={handleToggleMobileMenu}
-            className="lg:hidden p-2 rounded-xl text-white hover:bg-white/10 border border-white/20 transition-colors"
+            className="lg:hidden p-2 rounded-xl text-white hover:bg-white/10 border border-white/20 transition-colors shrink-0 cursor-pointer"
             aria-label="Buka menu navigasi"
           >
             <MenuIcon className="text-sm" />
           </button>
 
-          <div>
-            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-white tracking-tight truncate">
-              Welcome back, {displayName}
+          <div className="min-w-0 flex-1">
+            {/* Tampilan Ringkas & Rapi Khusus Mobile (< sm) */}
+            <div className="sm:hidden min-w-0">
+              <span className="text-[10px] text-blue-200/70 font-medium block leading-none truncate">
+                Selamat Datang,
+              </span>
+              <span className="text-xs font-bold text-white block leading-tight truncate mt-0.5">
+                {displayName}
+              </span>
+            </div>
+
+            {/* Tampilan Desktop & Tablet (>= sm) */}
+            <h1 className="hidden sm:block text-base sm:text-lg lg:text-xl font-bold text-white tracking-tight truncate">
+              Welcome back, <span className="text-white">{displayName}</span>
             </h1>
           </div>
         </div>
 
         {/* Right Side: Action Icons & Profile Card */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Help Button (?) - Hanya untuk portal User/Klien */}
           {role === "user" && (
             <div className="relative" ref={helpRef}>
@@ -203,18 +214,18 @@ export function DashboardTopNav({
                 setMessagesOpen(false);
                 setProfileDropdownOpen(false);
               }}
-              className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 shadow-2xs flex items-center justify-center text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer ${
+              className={`relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/10 border border-white/15 shadow-2xs flex items-center justify-center text-white hover:bg-white/20 hover:border-white/30 transition-all cursor-pointer ${
                 notificationsOpen ? "bg-white/20 ring-2 ring-white/30" : ""
               }`}
               title="Pemberitahuan Sistem"
               aria-label="Pemberitahuan Sistem"
             >
-              <BellIcon className="text-sm sm:text-base" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-error ring-2 ring-[#0B1533]" />
+              <BellIcon className="text-xs sm:text-base" />
+              <span className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 rounded-full bg-error ring-2 ring-[#0B1533]" />
             </button>
 
             {notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-4 text-xs z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                   <div className="font-bold text-slate-900 text-sm">Pemberitahuan Sistem</div>
                   <span className="text-[10px] font-bold text-success bg-success/15 px-2 py-0.5 rounded-md">
@@ -270,7 +281,7 @@ export function DashboardTopNav({
                 setNotificationsOpen(false);
                 setMessagesOpen(false);
               }}
-              className={`flex items-center gap-2 sm:gap-3 p-1 sm:pl-1.5 sm:pr-3 sm:py-1.5 rounded-2xl bg-white/10 border border-white/15 hover:border-white/30 hover:bg-white/15 transition-all cursor-pointer group ${
+              className={`flex items-center gap-1.5 sm:gap-3 p-1 sm:pl-1.5 sm:pr-3 sm:py-1.5 rounded-full sm:rounded-2xl bg-white/10 border border-white/15 hover:border-white/30 hover:bg-white/15 transition-all cursor-pointer group ${
                 profileDropdownOpen ? "bg-white/20 ring-2 ring-white/30" : ""
               }`}
               aria-label="Menu Profil Pengguna"
@@ -299,7 +310,7 @@ export function DashboardTopNav({
 
             {/* Profile Dropdown Menu */}
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 text-xs z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200 p-2 text-xs z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="p-3 border-b border-slate-100">
                   <div className="font-bold text-slate-900 text-sm truncate">{displayName}</div>
                   <div className="text-[11px] text-slate-500 truncate">{displayEmail}</div>

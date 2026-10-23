@@ -20,7 +20,7 @@ export default function SuperadminLayout({
         <SuperadminSidebar />
         <div className="lg:pl-64 flex flex-col flex-1 min-w-0 bg-[#0B1533]">
           <DashboardTopNav role="superadmin" />
-          <main className="flex-1 bg-[#F8FAFC] rounded-tl-[32px] p-4 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)]">
+          <main className="flex-1 bg-[#F8FAFC] rounded-t-[24px] lg:rounded-tr-none lg:rounded-tl-[32px] p-3.5 sm:p-6 lg:p-8 w-full min-h-[calc(100vh-76px)]">
             <div className="max-w-[1600px] w-full mx-auto">
               {children}
             </div>
