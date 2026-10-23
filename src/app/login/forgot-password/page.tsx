@@ -10,7 +10,7 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   QuestionCircleIcon,
-  PhoneIcon,
+  WhatsappIcon,
 } from "@/components/icons";
 
 import { authApi } from "@/lib/api";
@@ -26,7 +26,7 @@ export default function ForgotPasswordPage() {
     setErrorMessage("");
 
     if (!email.trim()) {
-      setErrorMessage("Alamat email atau ID pengguna wajib diisi.");
+      setErrorMessage("Email terdaftar wajib diisi.");
       return;
     }
 
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
             /* Reset Request Form */
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="space-y-1.5">
-                <Label htmlFor="reset-email">Alamat Email / ID Klien Terdaftar</Label>
+                <Label htmlFor="reset-email">Email terdaftar</Label>
                 <div className="relative">
                   <Input
                     id="reset-email"
@@ -188,14 +188,26 @@ export default function ForgotPasswordPage() {
             <p className="text-[11px] text-text-secondary leading-relaxed">
               Bagi klien korporat dengan kendala otentikasi akun atau pergantian penanggung jawab (PIC) fiskal, silakan hubungi kantor Zhou Consulting.
             </p>
-            <div className="flex items-center gap-4 text-[11px] text-primary font-semibold pt-1 border-t border-primary-light/60">
-              <div className="flex items-center gap-1.5">
-                <PhoneIcon className="text-silver text-[10px]" />
-                <span>(021) 2988-8888</span>
+            <div className="space-y-2 text-[11px] text-primary font-semibold pt-2 border-t border-primary-light/60">
+              <div className="flex items-center gap-2">
+                <WhatsappIcon className="text-emerald-600 text-xs shrink-0" />
+                <span className="text-text-muted font-normal">WhatsApp Business:</span>
+                <a
+                  href="https://wa.me/6285121286086"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                  +6285121286086
+                </a>
               </div>
-              <div className="flex items-center gap-1.5">
-                <EnvelopeIcon className="text-silver text-[10px]" />
-                <a href="mailto:consultingzhou@gmail.com" className="hover:underline">
+              <div className="flex items-center gap-2">
+                <EnvelopeIcon className="text-silver text-[11px] shrink-0" />
+                <span className="text-text-muted font-normal">Email:</span>
+                <a
+                  href="mailto:consultingzhou@gmail.com"
+                  className="hover:underline text-text-primary hover:text-primary"
+                >
                   consultingzhou@gmail.com
                 </a>
               </div>
