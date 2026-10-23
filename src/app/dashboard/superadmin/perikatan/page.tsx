@@ -733,55 +733,65 @@ function SuperadminPerikatanContent() {
       </div>
 
       {/* METRIC CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        <Card className="p-3 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Total Konsultasi
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-primary font-mono">
             {computedOverview.total_consultations}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Seluruh proyek terdaftar</div>
+          <div className="text-[9px] sm:text-[10px] text-text-secondary mt-0.5 sm:mt-1 truncate">
+            Seluruh proyek terdaftar
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
-          <span className="text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-amber-200 bg-amber-50/40 shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-amber-900 font-bold uppercase tracking-wider block">
             Sedang Berjalan
           </span>
-          <div className="mt-2 text-2xl font-bold text-amber-800 font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-amber-800 font-mono">
             {computedOverview.active_consultations}
           </div>
-          <div className="text-[10px] text-amber-700 mt-1">Perikatan aktif tim BKP</div>
+          <div className="text-[9px] sm:text-[10px] text-amber-700 mt-0.5 sm:mt-1 truncate">
+            Perikatan aktif tim BKP
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
-          <span className="text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-emerald-200 bg-emerald-50/40 shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-emerald-900 font-bold uppercase tracking-wider block">
             Konsultasi Selesai
           </span>
-          <div className="mt-2 text-2xl font-bold text-emerald-800 font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-emerald-800 font-mono">
             {computedOverview.completed_consultations}
           </div>
-          <div className="text-[10px] text-emerald-700 mt-1">Laporan luaran terbit</div>
+          <div className="text-[9px] sm:text-[10px] text-emerald-700 mt-0.5 sm:mt-1 truncate">
+            Laporan luaran terbit
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs">
+          <span className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Total Klien
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-primary font-mono">
             {computedOverview.total_clients}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Entitas korporasi &amp; pribadi</div>
+          <div className="text-[9px] sm:text-[10px] text-text-secondary mt-0.5 sm:mt-1 truncate">
+            Entitas korporasi &amp; pribadi
+          </div>
         </Card>
 
-        <Card className="p-4 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs col-span-2 sm:col-span-1">
-          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">
+        <Card className="p-3 sm:p-5 rounded-2xl border-primary-light bg-white shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[9px] sm:text-[10px] text-text-muted font-bold uppercase tracking-wider block">
             Total Dokumen
           </span>
-          <div className="mt-2 text-2xl font-bold text-primary font-mono">
+          <div className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-primary font-mono">
             {computedOverview.total_documents}
           </div>
-          <div className="text-[10px] text-text-secondary mt-1">Berkas &amp; kertas kerja</div>
+          <div className="text-[9px] sm:text-[10px] text-text-secondary mt-0.5 sm:mt-1 truncate">
+            Berkas &amp; kertas kerja
+          </div>
         </Card>
       </div>
 
@@ -1065,6 +1075,9 @@ function SuperadminPerikatanContent() {
             </tbody>
           </table>
         </div>
+        <p className="sm:hidden text-[10px] text-text-muted italic text-right mt-1.5">
+          &larr; Geser tabel untuk melihat rincian kolom &rarr;
+        </p>
       </Card>
 
       {/* MODAL DETAIL KONSULTASI & BERKAS (Murni Informasi Lengkap) */}
