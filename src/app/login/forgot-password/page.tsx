@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,12 +69,23 @@ export default function ForgotPasswordPage() {
       <header className="w-full bg-primary text-white py-4 px-6 border-b border-white/10 shadow-sm">
         <div className="container-custom flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-primary font-bold text-lg">
-              Z
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden border border-white/20 bg-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              <Image
+                src="/images/zhou-logo.png"
+                alt="Zhou Consulting Logo"
+                width={40}
+                height={40}
+                className="object-contain w-full h-full p-0.5"
+              />
             </div>
-            <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
-              ZHOU CONSULTING
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors leading-tight font-sans">
+                ZHOU CONSULTING
+              </span>
+              <span className="text-[10px] font-medium tracking-wider text-blue-200/70 uppercase">
+                Tax and Accounting Services
+              </span>
+            </div>
           </Link>
 
           <Link
