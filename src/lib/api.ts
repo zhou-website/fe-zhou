@@ -1019,12 +1019,14 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
 } {
   const corporateEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "consultingzhou@gmail.com";
   const corporateAddress = "MyRepublic Plaza (d/h Green Office Park 6), Wing A, Lantai Dasar Zona 6, Jalan Grand Boulevard, BSD Green Office Park, Desa Sampora, Kecamatan Cisauk, Kabupaten Tangerang, Banten 15345";
+  const corporateInstagram = "https://www.instagram.com/zhou_consulting?obrf=MWcybnllMHJnOTN1NA==";
   const map: Record<string, string> = {
     companyName: "Zhou Consulting",
     email: corporateEmail,
     phone: "",
     address: corporateAddress,
     whatsapp: process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086",
+    instagram: corporateInstagram,
   };
 
   if (Array.isArray(settings)) {
@@ -1048,6 +1050,9 @@ export function parseContactSettings(settings: PublicSiteSettingItem[] = []): {
         map.whatsapp = (!val || val.includes("1234567890") || val.includes("81298765432") || val.includes("9876-5432"))
           ? (process.env.NEXT_PUBLIC_WA_PHONE ? `+${process.env.NEXT_PUBLIC_WA_PHONE}` : "+62 851-2128-6086")
           : val;
+      }
+      if (s.setting_key === "company_instagram" || s.setting_key === "contact_instagram" || s.setting_key === "instagram") {
+        map.instagram = s.setting_value || corporateInstagram;
       }
     });
   }

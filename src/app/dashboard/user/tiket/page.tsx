@@ -37,6 +37,7 @@ import {
   mergeTicketsWithLocalOverrides,
   sortAndNormalizeMilestones,
   getMilestoneRank,
+  extractCorrespondencesFromDescription,
 } from "@/data/sharedTicketsStorage";
 import { downloadBlob, downloadRemoteFile, generateDocumentPdfBlob } from "@/lib/downloadHelper";
 import { savePersistentFileBlob } from "@/lib/fileStorageDB";
@@ -258,6 +259,7 @@ function ClientTicketMonitoringContent() {
 
           return {
             id: ticketCode,
+            numericId: c.id,
             title: c.title,
             category: resolveConsultationCategory(c) as Ticket["category"],
             priority: "Normal",
@@ -286,15 +288,7 @@ function ClientTicketMonitoringContent() {
                 ]
               : [],
             clientDocuments: matchingClientDocs,
-            correspondences: [
-              {
-                id: `msg-${c.id}`,
-                sender: "Tim Konsultan Zhou",
-                role: "Konsultan",
-                date: "Terbaru",
-                message: c.description || "Perikatan konsultasi sedang dalam proses penanganan oleh konsultan kami.",
-              },
-            ],
+            correspondences: extractCorrespondencesFromDescription(c.description, `c-msg-${c.id}`),
             isArchived: isTicketArchived(ticketCode),
           };
         });
@@ -1428,14 +1422,17 @@ function ClientTicketMonitoringContent() {
 
                 {/* 3. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
                 {(() => {
+                  const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
                   const cleanCorrespondences = sortedCorrespondences
                     .map((c) => ({
                       ...c,
                       cleanMsg: formatCorrespondenceMessage(c.message),
                     }))
-                    .filter((c) => c.cleanMsg && c.cleanMsg.length > 0);
-
-                  if (cleanCorrespondences.length === 0) return null;
+                    .filter((c) => {
+                      if (!c.cleanMsg || c.cleanMsg.trim().length === 0) return false;
+                      if (cleanProblem && c.cleanMsg.trim().toLowerCase() === cleanProblem) return false;
+                      return true;
+                    });
 
                   return (
                     <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
@@ -1446,22 +1443,28 @@ function ClientTicketMonitoringContent() {
                         <span className="text-[10px] text-text-muted">Resmi dari Penugasan</span>
                       </div>
 
-                      <div className="space-y-2">
-                        {cleanCorrespondences.map((c) => (
-                          <div
-                            key={c.id}
-                            className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
-                          >
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-bold text-primary">{c.sender}</span>
-                              <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                      {cleanCorrespondences.length === 0 ? (
+                        <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
+                          Belum ada catatan atau instruksi tambahan dari tim konsultan untuk perikatan ini.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {cleanCorrespondences.map((c) => (
+                            <div
+                              key={c.id}
+                              className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
+                            >
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="font-bold text-primary">{c.sender}</span>
+                                <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                              </div>
+                              <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
+                                {c.cleanMsg}
+                              </p>
                             </div>
-                            <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
-                              {c.cleanMsg}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
