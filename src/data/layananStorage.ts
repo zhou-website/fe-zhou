@@ -1,7 +1,7 @@
 "use client";
 
 import { ContentStatus } from "./publicContentData";
-import { isCmsItemDeleted, recordDeletedCmsItem } from "./cmsDeletedStorage";
+import { isCmsItemDeleted, recordDeletedCmsItem, removeDeletedCmsItem } from "./cmsDeletedStorage";
 import { adminCmsApi } from "@/lib/api";
 
 export interface ServicePillar {
@@ -168,29 +168,55 @@ export function inferDeliverableFromTitle(title?: string): string {
   return "Dokumen Laporan & Rekomendasi Resmi";
 }
 
-// In-memory runtime state berisi 4 layanan hukum standar Zhou (data layanan kini 100% tersinkronisasi langsung via backend REST API)
-let memoryServices: StoredServiceItem[] = [...DEFAULT_SERVICES];
-
-if (typeof window !== "undefined") {
-  try {
-    localStorage.removeItem(SERVICES_STORAGE_KEY);
-    localStorage.removeItem("zhou_services_data");
-  } catch {}
+// Persistent & In-memory runtime state untuk sinkronisasi layanan
+function loadInitialServices(): StoredServiceItem[] {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(SERVICES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn("Gagal membaca layanan dari localStorage:", e);
+    }
+  }
+  return [...DEFAULT_SERVICES];
 }
 
+let memoryServices: StoredServiceItem[] = loadInitialServices();
+
 /**
- * Mendapatkan daftar layanan (in-memory)
+ * Mendapatkan daftar layanan
  */
 export function getStoredServices(): StoredServiceItem[] {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(SERVICES_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          memoryServices = parsed;
+        }
+      }
+    } catch {}
+  }
   return memoryServices.filter((s) => !isCmsItemDeleted(s.id, s.name, undefined, s.code));
 }
 
 /**
- * Menyimpan daftar layanan ke in-memory dan memicu custom event untuk sinkronisasi antar-komponen
+ * Menyimpan daftar layanan ke persistent localStorage dan memicu custom event untuk sinkronisasi
  */
 export function saveStoredServices(services: StoredServiceItem[]): void {
   memoryServices = services;
   if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(SERVICES_STORAGE_KEY, JSON.stringify(services));
+    } catch (e) {
+      console.warn("Gagal menyimpan layanan ke localStorage:", e);
+    }
     window.dispatchEvent(new CustomEvent(SERVICES_EVENT, { detail: services }));
   }
 }
@@ -209,10 +235,13 @@ export function getStoredServiceByCategory(categoryKey: string): StoredServiceIt
  * Menambahkan layanan baru (CREATE)
  */
 export function addStoredService(
-  serviceData: Omit<StoredServiceItem, "id" | "lastUpdated"> & { id?: string }
+  serviceData: Omit<StoredServiceItem, "id" | "lastUpdated"> & { id?: string; skipApiSync?: boolean }
 ): StoredServiceItem {
   const current = getStoredServices();
   const id = serviceData.id || `SRV-${Date.now().toString(36).toUpperCase()}`;
+
+  // Pastikan tombstone dihapus agar layanan baru/re-published langsung tampil
+  removeDeletedCmsItem(id, serviceData.code, serviceData.name);
 
   const today = new Date().toLocaleDateString("id-ID", {
     day: "numeric",
@@ -220,8 +249,10 @@ export function addStoredService(
     year: "numeric",
   });
 
+  const { skipApiSync, ...rest } = serviceData;
+
   const newService: StoredServiceItem = {
-    ...serviceData,
+    ...rest,
     id,
     lastUpdated: today,
     status: serviceData.status || "Published",
@@ -230,17 +261,19 @@ export function addStoredService(
   const updated = [newService, ...current];
   saveStoredServices(updated);
 
-  adminCmsApi
-    .createService({
-      service_code: newService.id,
-      service_name: newService.name,
-      category: newService.categoryKey,
-      description: newService.subtitle,
-      is_active: true, // Selalu true di backend agar query prisma where: { is_active: true } tidak menyembunyikannya
-    })
-    .catch((err) => {
-      console.warn("adminCmsApi.createService sinkronisasi:", err);
-    });
+  if (!skipApiSync) {
+    adminCmsApi
+      .createService({
+        service_code: newService.code || newService.id,
+        service_name: newService.name,
+        category: newService.categoryKey,
+        description: newService.subtitle,
+        is_active: true, // Selalu true di backend agar query prisma where: { is_active: true } tidak menyembunyikannya
+      })
+      .catch((err) => {
+        console.warn("adminCmsApi.createService sinkronisasi:", err);
+      });
+  }
 
   return newService;
 }
@@ -325,10 +358,24 @@ export function updateStoredService(
  * Menghapus layanan (DELETE)
  */
 export function deleteStoredService(idOrTitle: string): boolean {
-  recordDeletedCmsItem({ id: idOrTitle, title: idOrTitle });
   const current = getStoredServices();
   const target = idOrTitle.trim().toLowerCase();
   const targetSlug = target.replace(/[^a-z0-9]+/g, "-");
+
+  const toDelete = current.find((s) => {
+    const sName = s.name.trim().toLowerCase();
+    const sId = s.id.trim().toLowerCase();
+    const sCode = (s.code || "").trim().toLowerCase();
+    return s.id === idOrTitle || sId === target || sId === targetSlug || sName === target || sCode === target;
+  });
+
+  recordDeletedCmsItem({
+    id: toDelete?.id || idOrTitle,
+    title: toDelete?.name || idOrTitle,
+    code: toDelete?.code || idOrTitle,
+    category: toDelete?.categoryKey,
+  });
+
   const filtered = current.filter((s) => {
     if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return false;
     const sName = s.name.trim().toLowerCase();

@@ -326,16 +326,16 @@ export function RegulationsSection() {
               )}
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-2">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 sm:gap-2">
               <Button
                 variant="primary"
                 size="sm"
                 asChild
-                className="flex-1 text-xs font-semibold justify-center gap-2"
+                className="w-full sm:flex-1 h-11 sm:h-9 px-4 sm:px-3 text-sm sm:text-xs font-semibold justify-center gap-2 rounded-lg"
               >
                 <Link
                   href={getAuthHref("/peraturan")}
-                  className="inline-flex items-center justify-center gap-2"
+                  className="inline-flex items-center justify-center gap-2 w-full h-full"
                 >
                   <span>{t.regulations.btnAll}</span>
                 </Link>
@@ -344,11 +344,11 @@ export function RegulationsSection() {
                 variant="outline"
                 size="sm"
                 asChild
-                className="flex-1 text-xs font-semibold hover:border-primary justify-center gap-2 cursor-pointer shadow-xs"
+                className="w-full sm:flex-1 h-11 sm:h-9 px-4 sm:px-3 text-sm sm:text-xs font-semibold hover:border-primary justify-center gap-2 cursor-pointer shadow-xs rounded-lg"
               >
                 <Link
                   href={getAuthHref("/peraturan#kurs-pajak")}
-                  className="inline-flex items-center justify-center gap-2"
+                  className="inline-flex items-center justify-center gap-2 w-full h-full"
                   title="Lihat Tabel & Unduh KMK Kurs Pajak Mingguan"
                 >
                   <span>Unduh</span>

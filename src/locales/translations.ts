@@ -28,7 +28,7 @@ export const translations = {
       title: "Solusi Terintegrasi Akuntansi, Pajak & Tata Kelola Finansial",
       subtitle1: "Tax and accounting, finance and law services",
       subtitle2:
-        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
+        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum secara tepat. Kami berfokus memberikan solusi praktis agar Anda dapat berfokus pada pertumbuhan bisnis tanpa mengkhawatirkan kepatuhan regulasi",
       ctaConsult: "Mulai Konsultasi",
       ctaServices: "Lihat Layanan",
     },
@@ -105,7 +105,7 @@ export const translations = {
     footer: {
       tagline1: "Tax and accounting, finance and law services",
       tagline2:
-        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum dengan tepat. Kami berfokus memberikan solusi praktis agar Anda bisa fokus pada pertumbuhan bisnis tanpa khawatir soal kepatuhan regulasi.",
+        "Sebagai mitra strategis, kami memastikan perusahaan Anda memenuhi kewajiban perpajakan, akuntansi, dan hukum secara tepat. Kami berfokus memberikan solusi praktis agar Anda dapat berfokus pada pertumbuhan bisnis tanpa mengkhawatirkan kepatuhan regulasi",
       desc:
         "Kami hadir untuk memastikan ekspansi bisnis Anda berjalan tanpa hambatan regulasi. Dengan memadukan analisis pajak, presisi akuntansi, dan perlindungan hukum, kami membangun benteng pertahanan bisnis yang kokoh sekaligus membuka peluang pertumbuhan baru bagi perusahaan Anda.",
       navTitle: "Navigasi Website",

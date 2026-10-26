@@ -105,7 +105,9 @@ const DEFAULT_LEGAL_MODULES: LegalModuleItem[] = [
 
 export default function KonsultasiHukumPage() {
   const waPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
-  const [modules, setModules] = useState<LegalModuleItem[]>(DEFAULT_LEGAL_MODULES);
+  const [modules, setModules] = useState<LegalModuleItem[]>(() =>
+    DEFAULT_LEGAL_MODULES.filter((base) => !isCmsItemDeleted(base.id, base.title, undefined, base.code))
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -119,54 +121,86 @@ export default function KonsultasiHukumPage() {
           !isCmsItemDeleted(s.id, s.name, undefined, s.code)
       );
 
-      // Selalu pastikan 4 Modul Utama Law Services ada
-      const baseMerged = DEFAULT_LEGAL_MODULES.map((base) => {
-        const storedItem = lawItems.find(
-          (c) =>
-            c.id === base.id ||
-            c.code === base.code ||
-            (c.name && c.name.toLowerCase() === base.title.toLowerCase())
-        );
+      // Modul Utama Law Services (hanya yang belum dihapus oleh admin)
+      const baseMerged = DEFAULT_LEGAL_MODULES
+        .filter((base) => !isCmsItemDeleted(base.id, base.title, undefined, base.code))
+        .map((base) => {
+          const storedItem = lawItems.find(
+            (c) =>
+              c.id === base.id ||
+              c.code === base.code ||
+              (c.name && c.name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const apiItem = apiItems?.find(
-          (a) =>
-            (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
-            (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
-        );
+          const apiItem = apiItems?.find(
+            (a) =>
+              (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
+              (a.service_name && a.service_name.toLowerCase() === base.title.toLowerCase())
+          );
 
-        const rawScopes =
-          (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
-          (storedItem?.pillars && storedItem.pillars.length > 0
-            ? storedItem.pillars.map((p: any) => p.title || p.description)
-            : undefined) ||
-          (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
-          base.scopes;
+          const rawScopes =
+            (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
+            (storedItem?.pillars && storedItem.pillars.length > 0
+              ? storedItem.pillars.map((p: any) => p.title || p.description)
+              : undefined) ||
+            (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
+            base.scopes;
 
-        const rawDeliverable =
-          (storedItem?.deliverable && storedItem.deliverable.trim()) ||
-          (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
-          base.deliverable;
+          const rawDeliverable =
+            (storedItem?.deliverable && storedItem.deliverable.trim()) ||
+            (storedItem?.deliverables && storedItem.deliverables.length > 0 ? storedItem.deliverables[0] : undefined) ||
+            base.deliverable;
 
-        return {
-          id: base.id,
-          code: base.code,
-          title: storedItem?.name || apiItem?.service_name || base.title,
-          badge: storedItem?.badge || base.badge,
-          subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
-          scopes: rawScopes,
-          deliverable: rawDeliverable,
-          topicParam: storedItem?.topicParam || base.topicParam,
-          waTemplate:
-            storedItem?.waTemplate ||
-            base.waTemplate ||
-            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
-        };
-      });
+          return {
+            id: base.id,
+            code: base.code,
+            title: storedItem?.name || apiItem?.service_name || base.title,
+            badge: storedItem?.badge || base.badge,
+            subtitle: storedItem?.subtitle || apiItem?.description || base.subtitle,
+            scopes: rawScopes,
+            deliverable: rawDeliverable,
+            topicParam: storedItem?.topicParam || base.topicParam,
+            waTemplate:
+              storedItem?.waTemplate ||
+              base.waTemplate ||
+              `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${base.title}.`,
+          };
+        });
+
+      // Modul tambahan dari CMS local storage jika ada
+      const extraStored = lawItems
+        .filter(
+          (s) =>
+            !DEFAULT_LEGAL_MODULES.some(
+              (base) =>
+                (s.code && s.code.toLowerCase() === base.code.toLowerCase()) ||
+                (s.name && s.name.toLowerCase() === base.title.toLowerCase()) ||
+                s.id.toLowerCase() === base.id.toLowerCase()
+            )
+        )
+        .map((c) => ({
+          id: c.id,
+          code: c.code || c.id,
+          title: c.name,
+          badge: c.badge || "LAW & LEGAL SERVICES",
+          subtitle: c.subtitle || "Layanan hukum bisnis dan kepatuhan regulasi korporasi",
+          scopes:
+            c.scopes && c.scopes.length > 0
+              ? c.scopes
+              : c.pillars?.map((p: any) => p.title || p.description) || [
+                  "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
+                  "Mitigasi risiko hukum dan telaah perjanjian bisnis",
+                ],
+          deliverable: c.deliverable || "Dokumen Legal Opinion & Dokumen Kepatuhan Regulasi",
+          topicParam: c.topicParam || "hukum",
+          waTemplate: c.waTemplate || `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+        }));
 
       // Modul tambahan dari backend jika ada
       const extraApi = (apiItems || [])
         .filter(
           (a) =>
+            !isCmsItemDeleted(a.id, a.service_name, a.id, a.service_code) &&
             !DEFAULT_LEGAL_MODULES.some(
               (base) =>
                 (a.service_code && a.service_code.toLowerCase() === base.code.toLowerCase()) ||
@@ -179,22 +213,38 @@ export default function KonsultasiHukumPage() {
           title: c.service_name,
           badge: c.category?.toUpperCase() || "LAW & LEGAL SERVICES",
           subtitle: c.description || "Layanan hukum bisnis dan kepatuhan regulasi korporasi",
-          scopes: c.features && c.features.length > 0 ? c.features : [
-            "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
-            "Mitigasi risiko hukum dan telaah perjanjian bisnis",
-          ],
+          scopes:
+            c.features && c.features.length > 0
+              ? c.features
+              : [
+                  "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
+                  "Mitigasi risiko hukum dan telaah perjanjian bisnis",
+                ],
           deliverable: "Dokumen Legal Opinion & Dokumen Kepatuhan Regulasi",
           topicParam: "hukum",
           waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
         }));
 
-      const allMerged = [...baseMerged, ...extraApi].filter((m) => {
-        if (isCmsItemDeleted(m.id, m.title, undefined, m.code)) return false;
-        const status = getCmsItemStatus(m.id, m.title, "Published", [m.code]);
-        return status === "Published";
-      });
-      setModules(allMerged);
+      const combined: LegalModuleItem[] = [];
+      const seen = new Set<string>();
+
+      for (const item of [...baseMerged, ...extraStored, ...extraApi]) {
+        const titleKey = item.title.trim().toLowerCase();
+        const codeKey = item.code.trim().toLowerCase();
+        if (seen.has(titleKey) || seen.has(codeKey)) continue;
+        if (isCmsItemDeleted(item.id, item.title, undefined, item.code)) continue;
+        const status = getCmsItemStatus(item.id, item.title, "Published", [item.code]);
+        if (status !== "Published") continue;
+        seen.add(titleKey);
+        seen.add(codeKey);
+        combined.push(item);
+      }
+
+      setModules(combined);
     };
+
+    // Sinkronisasi render seketika tanpa delay
+    syncModules();
 
     // 1. Ambil langsung dari live endpoint backend (zero-cache)
     publicApi

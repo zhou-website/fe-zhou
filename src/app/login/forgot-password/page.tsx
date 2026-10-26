@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,7 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   QuestionCircleIcon,
-  PhoneIcon,
+  WhatsappIcon,
 } from "@/components/icons";
 
 import { authApi } from "@/lib/api";
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
     setErrorMessage("");
 
     if (!email.trim()) {
-      setErrorMessage("Alamat email atau ID pengguna wajib diisi.");
+      setErrorMessage("Email terdaftar wajib diisi.");
       return;
     }
 
@@ -68,12 +69,23 @@ export default function ForgotPasswordPage() {
       <header className="w-full bg-primary text-white py-4 px-6 border-b border-white/10 shadow-sm">
         <div className="container-custom flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white text-primary font-bold text-lg">
-              Z
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl overflow-hidden border border-white/20 bg-white shadow-sm group-hover:scale-105 transition-transform shrink-0">
+              <Image
+                src="/images/zhou-logo.png"
+                alt="Zhou Consulting Logo"
+                width={40}
+                height={40}
+                className="object-contain w-full h-full p-0.5"
+              />
             </div>
-            <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors">
-              ZHOU CONSULTING
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold tracking-tight text-white group-hover:text-primary-light transition-colors leading-tight font-sans">
+                ZHOU CONSULTING
+              </span>
+              <span className="text-[10px] font-medium tracking-wider text-blue-200/70 uppercase">
+                Tax and Accounting Services
+              </span>
+            </div>
           </Link>
 
           <Link
@@ -103,7 +115,7 @@ export default function ForgotPasswordPage() {
             /* Reset Request Form */
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="space-y-1.5">
-                <Label htmlFor="reset-email">Alamat Email / ID Klien Terdaftar</Label>
+                <Label htmlFor="reset-email">Email terdaftar</Label>
                 <div className="relative">
                   <Input
                     id="reset-email"
@@ -176,14 +188,26 @@ export default function ForgotPasswordPage() {
             <p className="text-[11px] text-text-secondary leading-relaxed">
               Bagi klien korporat dengan kendala otentikasi akun atau pergantian penanggung jawab (PIC) fiskal, silakan hubungi kantor Zhou Consulting.
             </p>
-            <div className="flex items-center gap-4 text-[11px] text-primary font-semibold pt-1 border-t border-primary-light/60">
-              <div className="flex items-center gap-1.5">
-                <PhoneIcon className="text-silver text-[10px]" />
-                <span>(021) 2988-8888</span>
+            <div className="space-y-2 text-[11px] text-primary font-semibold pt-2 border-t border-primary-light/60">
+              <div className="flex items-center gap-2">
+                <WhatsappIcon className="text-emerald-600 text-xs shrink-0" />
+                <span className="text-text-muted font-normal">WhatsApp Business:</span>
+                <a
+                  href="https://wa.me/6285121286086"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                  +6285121286086
+                </a>
               </div>
-              <div className="flex items-center gap-1.5">
-                <EnvelopeIcon className="text-silver text-[10px]" />
-                <a href="mailto:consultingzhou@gmail.com" className="hover:underline">
+              <div className="flex items-center gap-2">
+                <EnvelopeIcon className="text-silver text-[11px] shrink-0" />
+                <span className="text-text-muted font-normal">Email:</span>
+                <a
+                  href="mailto:consultingzhou@gmail.com"
+                  className="hover:underline text-text-primary hover:text-primary"
+                >
                   consultingzhou@gmail.com
                 </a>
               </div>

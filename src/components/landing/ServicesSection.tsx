@@ -121,7 +121,21 @@ export function ServicesSection() {
             };
           });
 
-          setServices(apiServices);
+          const currentStored = getStoredServices();
+          const combined: StoredServiceItem[] = [];
+          const seen = new Set<string>();
+
+          for (const item of [...currentStored, ...apiServices]) {
+            const titleKey = item.name.trim().toLowerCase();
+            const codeKey = (item.code || item.id).trim().toLowerCase();
+            if (seen.has(titleKey) || seen.has(codeKey)) continue;
+            if (isCmsItemDeleted(item.id, item.name, undefined, item.code)) continue;
+            seen.add(titleKey);
+            seen.add(codeKey);
+            combined.push(item);
+          }
+
+          setServices(combined);
         }
       })
       .catch((err) => {

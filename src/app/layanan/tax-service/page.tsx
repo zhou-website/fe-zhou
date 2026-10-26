@@ -46,81 +46,112 @@ export default function TaxServicePage() {
     let isMounted = true;
 
     const syncModules = (apiItems?: PublicServiceItem[]) => {
-      if (apiItems !== undefined) {
-        setModules(
-          apiItems
-            .filter((c) => {
-              if (c.is_active === false) return false;
-              if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
-              const pubStatus = getCmsItemStatus(`SVC-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
-              return pubStatus === "Published";
-            })
-            .map((c) => ({
-            id: `TAX-${c.id}`,
-            code: c.service_code || `TAX-${c.id}`,
-            title: c.service_name,
-            badge: c.category?.toUpperCase() || "TAX SERVICES",
-            subtitle: c.description || "Layanan kepatuhan perpajakan korporasi terintegrasi",
-            scopes: c.features && c.features.length > 0 ? c.features : [
-              "Konsultasi dan kepatuhan perpajakan terpadu",
-              "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
-            ],
-            deliverable: "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
-            topicParam: "tax-service",
-            waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
-          }))
-        );
-        return;
-      }
-
-      // Fallback hanya saat backend API offline
+      // 1. Ambil layanan dari persistent stored (CMS Superadmin)
       const stored = getStoredServices();
-      const taxStored = stored.filter(
-        (s) =>
-          (s.categoryKey?.toLowerCase() === "tax-service" || s.categoryKey?.toLowerCase() === "tax") &&
-          getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]) === "Published" &&
-          s.id !== "e-billing" &&
-          s.id !== "SRV-TAX-EBL" &&
-          s.id !== "pelaporan-spt" &&
-          s.id !== "SRV-TAX-SPT" &&
-          s.code !== "TAX-EBL" &&
-          s.code !== "SRV-TAX-EBL" &&
-          s.code !== "TAX-SPT" &&
-          s.code !== "SRV-TAX-SPT" &&
-          !isCmsItemDeleted(s.id, s.name, undefined, s.code)
-      );
+      const taxStored = stored.filter((s) => {
+        const cat = (s.categoryKey || "").toLowerCase();
+        // Cegah layanan Hukum/Law, Bisnis, Akuntansi masuk ke Tax Services
+        if (
+          cat.includes("hukum") ||
+          cat.includes("legal") ||
+          cat.includes("sengketa") ||
+          cat.includes("law") ||
+          cat.includes("akun") ||
+          cat.includes("bisnis") ||
+          cat.includes("business")
+        ) {
+          return false;
+        }
 
-      if (taxStored.length > 0) {
-        setModules(
-          taxStored.map((c) => {
-            const rawScopes =
-              (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
-              (c.pillars && c.pillars.length > 0
-                ? c.pillars.map((p: any) => p.title || p.description)
-                : undefined) || [
-                "Konsultasi dan kepatuhan perpajakan terpadu",
-                "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
-              ];
+        const normName = (s.name || "").toLowerCase();
+        const isTax =
+          cat === "tax-service" ||
+          cat === "tax" ||
+          cat === "perpajakan" ||
+          cat === "pajak" ||
+          cat.includes("tax") ||
+          cat.includes("pajak") ||
+          normName.includes("bupot") ||
+          normName.includes("bukti potong") ||
+          normName.includes("billing") ||
+          normName.includes("spt");
 
-            return {
-              id: c.id,
-              code: c.code || c.id,
-              title: c.name,
-              badge: c.badge || "TAX SERVICES",
-              subtitle: c.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
-              scopes: rawScopes,
-              deliverable: c.deliverable || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
-              topicParam: c.topicParam || "tax-service",
-              waTemplate:
-                c.waTemplate ||
-                `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
-            };
-          })
-        );
-      } else {
-        setModules([]);
+        if (!isTax) return false;
+
+        const isPub =
+          getCmsItemStatus(s.id, s.name, s.status === "Draft" ? "Draft" : "Published", [s.code]) === "Published";
+        if (!isPub) return false;
+
+        return !isCmsItemDeleted(s.id, s.name, undefined, s.code);
+      });
+
+      const storedModules: TaxModuleItem[] = taxStored.map((c) => {
+        const rawScopes =
+          (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
+          (c.pillars && c.pillars.length > 0
+            ? c.pillars.map((p: any) => p.title || p.description)
+            : undefined) || [
+            "Konsultasi dan kepatuhan perpajakan terpadu",
+            "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
+          ];
+
+        return {
+          id: c.id,
+          code: c.code || c.id,
+          title: c.name,
+          badge: c.badge || "TAX SERVICES",
+          subtitle: c.subtitle || "Layanan kepatuhan perpajakan korporat Zhou Consulting.",
+          scopes: rawScopes,
+          deliverable: c.deliverable || "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
+          topicParam: c.topicParam || "tax-service",
+          waTemplate:
+            c.waTemplate ||
+            `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.name}.`,
+        };
+      });
+
+      // 2. Ambil layanan dari live API backend jika ada
+      const apiModules: TaxModuleItem[] = (apiItems || [])
+        .filter((c) => {
+          if (c.is_active === false) return false;
+          if (isCmsItemDeleted(c.id, c.service_name, c.id, c.service_code)) return false;
+          const pubStatus = getCmsItemStatus(`SVC-${c.id}`, c.service_name, c.is_active ? "Published" : "Draft", [c.id, c.service_code]);
+          return pubStatus === "Published";
+        })
+        .map((c) => ({
+          id: `TAX-${c.id}`,
+          code: c.service_code || `TAX-${c.id}`,
+          title: c.service_name,
+          badge: c.category?.toUpperCase() || "TAX SERVICES",
+          subtitle: c.description || "Layanan kepatuhan perpajakan korporasi terintegrasi",
+          scopes: c.features && c.features.length > 0 ? c.features : [
+            "Konsultasi dan kepatuhan perpajakan terpadu",
+            "Mitigasi risiko fiskal dan ekualisasi pelaporan DJP",
+          ],
+          deliverable: "Kertas Kerja Kepatuhan Fiskal & Bukti Penerimaan Elektronik (BPE)",
+          topicParam: "tax-service",
+          waTemplate: `Halo Zhou Consulting, saya ingin konsultasi mengenai layanan ${c.service_name}.`,
+        }));
+
+      // 3. Gabungkan storedModules dan apiModules (storedModules diutamakan agar penambahan CMS superadmin langsung tampil)
+      const combined: TaxModuleItem[] = [];
+      const seen = new Set<string>();
+
+      for (const item of [...storedModules, ...apiModules]) {
+        const titleKey = item.title.trim().toLowerCase();
+        const codeKey = item.code.trim().toLowerCase();
+        if (seen.has(titleKey) || seen.has(codeKey)) continue;
+        if (isCmsItemDeleted(item.id, item.title, undefined, item.code)) continue;
+        seen.add(titleKey);
+        seen.add(codeKey);
+        combined.push(item);
       }
+
+      setModules(combined);
     };
+
+    // Sinkronisasi data langsung pada render pertama
+    syncModules();
 
     // 1. Ambil data langsung dari live endpoint backend (zero-cache)
     publicApi
@@ -137,13 +168,36 @@ export default function TaxServicePage() {
             const pubStatus = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
             if (pubStatus !== "Published") return false;
 
-            return (
-              (cat.includes("tax") || cat.includes("pajak") || code.includes("tax") || name.includes("tax") || name.includes("pajak")) &&
-              code !== "tax-ebl" &&
-              code !== "srv-tax-ebl" &&
-              code !== "tax-spt" &&
-              code !== "srv-tax-spt"
-            );
+            // Pastikan secara mutlak: Kategori hukum/legal/sengketa/law/akuntansi/bisnis TIDAK BOLEH masuk ke Tax Services!
+            if (
+              cat.includes("hukum") ||
+              cat.includes("legal") ||
+              cat.includes("sengketa") ||
+              cat.includes("law") ||
+              cat.includes("akun") ||
+              cat.includes("bisnis") ||
+              cat.includes("business")
+            ) {
+              return false;
+            }
+
+            const isTax =
+              cat === "tax-service" ||
+              cat === "tax" ||
+              cat === "perpajakan" ||
+              cat === "pajak" ||
+              cat.includes("tax") ||
+              cat.includes("pajak") ||
+              code.startsWith("tax") ||
+              code.startsWith("srv-tax") ||
+              name.includes("bupot") ||
+              name.includes("bukti potong") ||
+              name.includes("billing") ||
+              name.includes("spt");
+
+            if (!isTax) return false;
+
+            return true;
           });
 
           syncModules(taxFromApi);
