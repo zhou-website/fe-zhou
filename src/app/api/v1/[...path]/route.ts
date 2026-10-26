@@ -78,7 +78,7 @@ function forwardHttpRequest(
 async function handleProxy(request: NextRequest, { params }: { params: { path: string[] } }) {
   const pathSegment = params.path ? params.path.join("/") : "";
   const search = request.nextUrl.search;
-  let targetPath = `/api/v1/${pathSegment}${search}`;
+  const targetPath = `/api/v1/${pathSegment}${search}`;
 
   const inHeaders: Record<string, string | string[] | undefined> = {};
   request.headers.forEach((value, key) => {

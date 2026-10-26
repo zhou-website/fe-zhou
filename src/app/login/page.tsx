@@ -107,6 +107,15 @@ function LoginFormContent() {
     [login, redirectParam, router]
   );
 
+  // Guard refs to prevent multiple GSI initialization
+  const isGoogleInitialized = useRef(false);
+  const handleCredentialResponseRef = useRef(handleGoogleCredentialResponse);
+
+  // Keep ref up-to-date without causing re-runs
+  useEffect(() => {
+    handleCredentialResponseRef.current = handleGoogleCredentialResponse;
+  }, [handleGoogleCredentialResponse]);
+
   useEffect(() => {
     const initGoogle = () => {
       if (typeof window === "undefined" || !window.google?.accounts?.id) return;
@@ -114,11 +123,14 @@ function LoginFormContent() {
         process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
         "437117810752-udkb6njkiujm5md6b5v1o145celqes9m.apps.googleusercontent.com";
 
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredentialResponse,
-        cancel_on_tap_outside: true,
-      });
+      if (!isGoogleInitialized.current) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (res) => handleCredentialResponseRef.current(res),
+          cancel_on_tap_outside: true,
+        });
+        isGoogleInitialized.current = true;
+      }
 
       if (googleBtnRef.current) {
         window.google.accounts.id.renderButton(googleBtnRef.current, {
@@ -141,7 +153,7 @@ function LoginFormContent() {
       }, 200);
       return () => clearInterval(timer);
     }
-  }, [handleGoogleCredentialResponse]);
+  }, []);
 
   const handleGoogleLogin = () => {
     if (typeof window !== "undefined" && window.google?.accounts?.id) {

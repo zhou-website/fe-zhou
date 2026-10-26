@@ -177,7 +177,7 @@ export const REGULATIONS_EVENT = "zhou_regulations_updated";
 
 // In-memory runtime state, tanpa localStorage
 let memoryRegulations: StoredRegulationItem[] = [];
-let memoryRegulationLegalMeta: Record<string, RegulationLegalMeta> = {};
+const memoryRegulationLegalMeta: Record<string, RegulationLegalMeta> = {};
 
 /**
  * Mendapatkan daftar regulasi (in-memory)
