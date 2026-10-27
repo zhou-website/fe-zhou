@@ -57,7 +57,10 @@ function AdminTugasSayaContent() {
   const { user } = useAuth();
   const normalizedUserRole = normalizeRole(user?.role, user?.email);
 
-  const [staffList, setStaffList] = useState<StaffAdminProfile[]>([]);
+  // Inisialisasi daftar staf admin lokal hanya satu kali saat mount (mencegah loop re-render)
+  const [staffList, setStaffList] = useState<StaffAdminProfile[]>(() =>
+    typeof window !== "undefined" ? getStoredStaffAdmins() : []
+  );
   // Profil Admin aktif (default: user login; atau admin terpilih jika superadmin sedang menguji)
   const [activeAdminEmail, setActiveAdminEmail] = useState<string>(user?.email || "admin@zhou.id");
 
@@ -125,12 +128,9 @@ function AdminTugasSayaContent() {
     );
   }, [staffList, activeAdminEmail, user?.name]);
 
-  // Muat data staf admin & tiket
   // Muat data penugasan langsung dari backend API
   const loadData = React.useCallback(async () => {
     setIsLoading(true);
-    const staff = getStoredStaffAdmins();
-    setStaffList(staff);
 
     try {
       const res = await adminApi.getConsultations();
@@ -177,11 +177,6 @@ function AdminTugasSayaContent() {
                 const isPicTask = getMilestoneRank(task.task_name) === 2 || task.task_name.toLowerCase().includes("pic");
                 // Syarat penting: Task no 2 penetapan PIC otomatis checklist selesai jika PIC sudah ditugaskan
                 const isTaskDone = Boolean(task.is_completed || (isPicTask && hasAssignedPic));
-
-                // Otomatis sinkronkan status selesai ke backend database jika belum tercatat
-                if (isPicTask && hasAssignedPic && !task.is_completed && c.id) {
-                  adminApi.updateTask(c.id, task.id, true).catch(() => {});
-                }
 
                 return {
                   taskId: task.id,
@@ -359,11 +354,17 @@ function AdminTugasSayaContent() {
     const handleSync = () => {
       loadData();
     };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "zhou_staff_admins_roster") {
+        setStaffList(getStoredStaffAdmins());
+      }
+      loadData();
+    };
     window.addEventListener("zhou_tickets_updated", handleSync);
-    window.addEventListener("storage", handleSync);
+    window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("zhou_tickets_updated", handleSync);
-      window.removeEventListener("storage", handleSync);
+      window.removeEventListener("storage", handleStorage);
     };
   }, [loadData]);
 
