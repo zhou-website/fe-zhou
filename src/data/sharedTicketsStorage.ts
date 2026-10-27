@@ -276,6 +276,129 @@ export interface SuperadminInstructionItem {
   sender: string;
   date: string;
   message: string;
+  attachmentName?: string;
+  attachmentSize?: string;
+  attachmentType?: string;
+}
+
+export interface StoredSuperadminInstruction {
+  id: string;
+  ticketId: string;
+  numericId?: number;
+  sender: string;
+  date: string;
+  message: string;
+  attachmentName?: string;
+  attachmentSize?: string;
+  attachmentType?: string;
+  createdAt?: string;
+}
+
+export const SUPERADMIN_INSTRUCTIONS_KEY = "zhou_superadmin_instructions_store";
+
+/**
+ * Helper komparasi referensi tiket serbaguna (mendukung ID kode seperti TCK-975969,
+ * variasi spasi/strip, numeric ID 76, maupun ekstrak digit angka 975969).
+ */
+export function matchTicketRef(ticket: { id?: string; numericId?: number }, ref: string | number): boolean {
+  if (!ref) return false;
+  const refStr = String(ref).toLowerCase().trim();
+  const refClean = refStr.replace(/[-\s]/g, "");
+  const refDigits = refStr.replace(/\D/g, "");
+
+  const tId = (ticket.id || "").toLowerCase().trim();
+  const tClean = tId.replace(/[-\s]/g, "");
+  const tDigits = tId.replace(/\D/g, "");
+
+  if (tId === refStr) return true;
+  if (tClean && tClean === refClean) return true;
+  if (typeof ref === "number" && ticket.numericId === ref) return true;
+  if (ticket.numericId && String(ticket.numericId) === refStr) return true;
+  if (ticket.numericId && refDigits && String(ticket.numericId) === refDigits) return true;
+  if (tDigits && refDigits && tDigits === refDigits && tDigits.length >= 4) return true;
+  return false;
+}
+
+/**
+ * Membaca instruksi penugasan Superadmin dari persistent storage browser
+ */
+export function getSuperadminInstructionsFromStore(ticketRef?: string | number): StoredSuperadminInstruction[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SUPERADMIN_INSTRUCTIONS_KEY);
+    if (!raw) return [];
+    const list: StoredSuperadminInstruction[] = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    if (!ticketRef) return list;
+
+    return list.filter((item) =>
+      matchTicketRef({ id: item.ticketId, numericId: item.numericId }, ticketRef)
+    );
+  } catch (e) {
+    console.error("Gagal membaca zhou_superadmin_instructions_store:", e);
+    return [];
+  }
+}
+
+/**
+ * Menyimpan instruksi penugasan Superadmin secara persisten & terakumulasi bertahap
+ */
+export function saveSuperadminInstructionToStore(
+  ticketId: string,
+  numericId: number | undefined,
+  instruction: {
+    message: string;
+    sender?: string;
+    date?: string;
+    attachment?: { name: string; size?: string; type?: string };
+  }
+): StoredSuperadminInstruction {
+  const now = new Date();
+  const dateFormatted =
+    instruction.date ||
+    now.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+  const newItem: StoredSuperadminInstruction = {
+    id: `superadmin-inst-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    ticketId,
+    numericId,
+    sender: instruction.sender || "Superadmin (Instruksi Superadmin)",
+    date: dateFormatted,
+    message: instruction.message.trim(),
+    attachmentName: instruction.attachment?.name,
+    attachmentSize: instruction.attachment?.size,
+    attachmentType: instruction.attachment?.type,
+    createdAt: now.toISOString(),
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      const current = getSuperadminInstructionsFromStore();
+      const exists = current.some(
+        (c) =>
+          matchTicketRef({ id: c.ticketId, numericId: c.numericId }, ticketId) &&
+          c.message.trim().toLowerCase() === newItem.message.toLowerCase() &&
+          (!newItem.attachmentName || c.attachmentName === newItem.attachmentName)
+      );
+      if (!exists) {
+        current.push(newItem);
+        localStorage.setItem(SUPERADMIN_INSTRUCTIONS_KEY, JSON.stringify(current));
+        window.dispatchEvent(new Event("zhou_superadmin_instructions_updated"));
+        window.dispatchEvent(new Event(TICKETS_UPDATED_EVENT));
+        window.dispatchEvent(new Event("storage"));
+      }
+    } catch (e) {
+      console.error("Gagal menyimpan ke zhou_superadmin_instructions_store:", e);
+    }
+  }
+
+  return newItem;
 }
 
 /**
@@ -283,6 +406,8 @@ export interface SuperadminInstructionItem {
  * secara lengkap dan kronologis, tanpa ada yang hilang atau tertimpa.
  */
 export function extractSuperadminInstructions(ticket?: {
+  id?: string;
+  numericId?: number;
   description?: string;
   assignmentNotes?: string;
   correspondences?: Correspondence[];
@@ -291,7 +416,28 @@ export function extractSuperadminInstructions(ticket?: {
   const items: SuperadminInstructionItem[] = [];
   const seenMessages = new Set<string>();
 
-  // 1. Ekstrak dari description backend (format resmi [CATATAN KONSULTAN - ... (Instruksi Superadmin)])
+  // 1. Ekstrak dari persistent store jika ada ticket id / numericId
+  if (ticket.id || ticket.numericId) {
+    const fromStore = getSuperadminInstructionsFromStore(ticket.id || ticket.numericId);
+    fromStore.forEach((s) => {
+      const clean = s.message.trim();
+      const norm = clean.toLowerCase();
+      if (clean && !seenMessages.has(norm)) {
+        seenMessages.add(norm);
+        items.push({
+          id: s.id,
+          sender: s.sender,
+          date: s.date,
+          message: clean,
+          attachmentName: s.attachmentName,
+          attachmentSize: s.attachmentSize,
+          attachmentType: s.attachmentType,
+        });
+      }
+    });
+  }
+
+  // 2. Ekstrak dari description backend (format resmi [CATATAN KONSULTAN - ... (Instruksi Superadmin)])
   const extracted = extractCorrespondencesFromDescription(ticket.description);
   extracted
     .filter((c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin") || c.sender.toLowerCase().includes("instruksi"))
@@ -309,7 +455,7 @@ export function extractSuperadminInstructions(ticket?: {
       }
     });
 
-  // 2. Ekstrak dari correspondences yang tersimpan
+  // 3. Ekstrak dari correspondences yang tersimpan
   (ticket.correspondences || [])
     .filter((c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin") || c.sender.toLowerCase().includes("instruksi"))
     .forEach((c) => {
@@ -326,7 +472,7 @@ export function extractSuperadminInstructions(ticket?: {
       }
     });
 
-  // 3. Fallback jika ada assignmentNotes yang belum terangkum
+  // 4. Fallback jika ada assignmentNotes yang belum terangkum
   if (ticket.assignmentNotes && ticket.assignmentNotes.trim()) {
     const splitNotes = ticket.assignmentNotes.split("\n\n---\n\n");
     splitNotes.forEach((note, idx) => {
@@ -369,6 +515,39 @@ export function formatConsultantNoteForStorage(
 }
 
 /**
+ * Format catatan resmi klien untuk disimpan ke deskripsi database backend
+ */
+export function formatClientNoteForStorage(
+  noteText: string,
+  clientName = "Klien",
+  dateString?: string
+): string {
+  const dateFormatted =
+    dateString ||
+    new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) + " WIB";
+
+  return `[CATATAN KLIEN - ${dateFormatted} - ${clientName}]\n${noteText.trim()}`;
+}
+
+/**
+ * Menggabungkan catatan baru klien ke deskripsi perikatan secara aman
+ */
+export function appendClientNoteToDescription(
+  existingDesc?: string,
+  formattedNote?: string
+): string {
+  if (!formattedNote || !formattedNote.trim()) return existingDesc || "";
+  if (!existingDesc || !existingDesc.trim()) return formattedNote.trim();
+  return `${existingDesc.trim()}\n\n${formattedNote.trim()}`;
+}
+
+/**
  * Menggabungkan catatan baru konsultan ke deskripsi perikatan secara aman
  */
 export function appendConsultantNoteToDescription(
@@ -389,7 +568,8 @@ export function extractCorrespondencesFromDescription(
 ): Correspondence[] {
   if (!desc || !desc.trim()) return [];
 
-  const notesRegex = /\[(?:CATATAN|TANGGAPAN|INSTRUKSI)\s*(?:KONSULTAN|PENUGASAN|SUPERADMIN)?\s*-\s*([^\]\r\n]+?)(?:\s*-\s*([^\]\r\n]+?))?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI))|$)/gi;
+  const notesRegex =
+    /\[(?:CATATAN|TANGGAPAN|INSTRUKSI|PESAN)\s*(?:KONSULTAN|PENUGASAN|SUPERADMIN|KLIEN)?\s*-\s*([^\]\r\n]+?)(?:\s*-\s*([^\]\r\n]+?))?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI|PESAN))|$)/gi;
   const correspondences: Correspondence[] = [];
   let match: RegExpExecArray | null;
   let idx = 0;
@@ -402,7 +582,9 @@ export function extractCorrespondencesFromDescription(
 
     if (!message) continue;
 
-    const isDate = (str: string) => /\d{1,4}/.test(str) && (str.includes("WIB") || str.includes("202") || str.includes("Okt") || str.includes("/"));
+    const isDate = (str: string) =>
+      /\d{1,4}/.test(str) &&
+      (str.includes("WIB") || str.includes("202") || str.includes("Okt") || str.includes("/"));
     let sender = "Tim Konsultan Zhou";
     let date = "Terbaru";
 
@@ -422,14 +604,23 @@ export function extractCorrespondencesFromDescription(
       }
     }
 
+    const headerTag = (match[0] || "").toUpperCase();
     const isSuperadmin =
       sender.toLowerCase().includes("superadmin") ||
-      sender.toLowerCase().includes("instruksi");
+      sender.toLowerCase().includes("instruksi") ||
+      headerTag.includes("SUPERADMIN") ||
+      headerTag.includes("INSTRUKSI");
+    const isClient =
+      sender.toLowerCase().includes("klien") ||
+      headerTag.includes("CATATAN KLIEN") ||
+      headerTag.includes("TANGGAPAN KLIEN");
+
+    const role = isSuperadmin ? "Superadmin" : isClient ? "Klien" : "Konsultan";
 
     correspondences.unshift({
       id: `${fallbackIdPrefix}-${idx}-${Date.now()}`,
       sender,
-      role: isSuperadmin ? "Superadmin" : "Konsultan",
+      role,
       date,
       message,
     });
@@ -587,11 +778,27 @@ export function getDisplayPicName(ticket?: {
  */
 let memoryTickets: ClientTicket[] = [];
 
+export const CLIENT_TICKETS_KEY = "zhou_client_tickets";
+
 /**
- * Membaca tiket kustom / booking yang dibuat pengguna (in-memory)
+ * Membaca tiket kustom / booking yang dibuat pengguna (in-memory & persistent localStorage)
  */
 export function getStoredClientTickets(): ClientTicket[] {
   try {
+    if (memoryTickets.length === 0 && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(CLIENT_TICKETS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            memoryTickets = parsed;
+          }
+        }
+      } catch (storageErr) {
+        console.warn("Gagal membaca zhou_client_tickets dari localStorage:", storageErr);
+      }
+    }
+
     return memoryTickets
       .filter((t) => !isDummyTicketRecord(t) && !isTicketDeleted(t.id) && (!t.numericId || !isTicketDeleted(t.numericId)))
       .map((t) => {
@@ -654,7 +861,7 @@ export function getStoredClientTickets(): ClientTicket[] {
 }
 
 /**
- * Menyimpan tiket ke in-memory dan mentrigger event agar dashboard admin dan user langsung tersinkron
+ * Menyimpan tiket ke in-memory & localStorage dan mentrigger event agar dashboard admin dan user langsung tersinkron
  */
 export function saveStoredClientTickets(tickets: ClientTicket[]): void {
   const sanitized = tickets.map((t) => {
@@ -669,7 +876,13 @@ export function saveStoredClientTickets(tickets: ClientTicket[]): void {
   });
   memoryTickets = sanitized;
   if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(CLIENT_TICKETS_KEY, JSON.stringify(sanitized));
+    } catch (e) {
+      console.warn("Gagal menyimpan ke localStorage zhou_client_tickets:", e);
+    }
     window.dispatchEvent(new Event(TICKETS_UPDATED_EVENT));
+    window.dispatchEvent(new Event("storage"));
   }
 }
 
@@ -714,31 +927,16 @@ export function mergeTicketsWithLocalOverrides(
 
   localTickets.forEach((lt) => {
     const existingIdx = merged.findIndex((mt) => {
-      // 1. Exact ID match (case-insensitive)
-      if (mt.id.toLowerCase() === lt.id.toLowerCase()) return true;
-
-      // 2. Exact Numeric ID match
+      if (matchTicketRef(mt, lt.id)) return true;
       if (lt.numericId && mt.numericId && lt.numericId === mt.numericId) return true;
-
-      // 3. Numeric ID matching project code digits
-      const mtNum = mt.id.replace(/\D/g, "");
-      const ltNum = lt.id.replace(/\D/g, "");
-      if (lt.numericId && mtNum && mtNum === String(lt.numericId)) return true;
-      if (mt.numericId && ltNum && ltNum === String(mt.numericId)) return true;
-      if (mtNum && ltNum && mtNum === ltNum && mtNum.length >= 4) return true;
-
-      // 4. Temporary ID matching by title only if one is a temporary ticket without real numeric ID
-      const isLtTemp = lt.id.startsWith("TK-") && !lt.numericId;
-      const isMtTemp = mt.id.startsWith("TK-") && !mt.numericId;
       if (
-        (isLtTemp || isMtTemp) &&
         lt.title &&
         mt.title &&
-        lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim()
+        lt.title.toLowerCase().trim() === mt.title.toLowerCase().trim() &&
+        (lt.id.startsWith("TK-") || mt.id.startsWith("TK-"))
       ) {
         return true;
       }
-
       return false;
     });
 
@@ -769,6 +967,27 @@ export function mergeTicketsWithLocalOverrides(
         }
       });
 
+      // Gabungkan lampiran instruksi dari store jika ada
+      const storeInstructions = getSuperadminInstructionsFromStore(bt.id || bt.numericId || lt.id || lt.numericId);
+      storeInstructions.forEach((si) => {
+        if (si.attachmentName && !deliverableNameSet.has(si.attachmentName.toLowerCase().trim())) {
+          const alreadyExists = combinedClientDocs.some(
+            (d) => d.name.toLowerCase().trim() === si.attachmentName?.toLowerCase().trim()
+          );
+          if (!alreadyExists) {
+            combinedClientDocs.unshift({
+              id: `DOC-STORE-${si.id}`,
+              name: si.attachmentName,
+              size: si.attachmentSize || "1.0 MB",
+              type: si.attachmentType || "BERKAS",
+              date: si.date.split(" ")[0] || formatConsultationDate(),
+              uploadedBy: "Superadmin (Instruksi)",
+              status: "Instruksi Superadmin",
+            });
+          }
+        }
+      });
+
       // Gabungkan korespondensi/catatan resmi konsultan
       const fromBackendDesc = extractCorrespondencesFromDescription(bt.description, `bt-note-${bt.id}`);
       const combinedCorrespondences = [...(bt.correspondences || [])];
@@ -780,6 +999,24 @@ export function mergeTicketsWithLocalOverrides(
       (lt.correspondences || []).forEach((lc) => {
         if (!combinedCorrespondences.some((c) => c.id === lc.id || (c.message.trim() === lc.message.trim() && c.date === lc.date))) {
           combinedCorrespondences.unshift(lc);
+        }
+      });
+
+      // Tambahkan instruksi dari persistent store ke korespondensi jika belum ada
+      storeInstructions.forEach((si) => {
+        const hasMsg = combinedCorrespondences.some((c) => {
+          const cMsg = c.message.toLowerCase().trim();
+          const sMsg = si.message.toLowerCase().trim();
+          return cMsg === sMsg || cMsg.includes(sMsg) || sMsg.includes(cMsg);
+        });
+        if (!hasMsg) {
+          combinedCorrespondences.unshift({
+            id: si.id,
+            sender: si.sender,
+            role: "Superadmin",
+            date: si.date,
+            message: si.message,
+          });
         }
       });
 
@@ -802,8 +1039,10 @@ export function mergeTicketsWithLocalOverrides(
           ? lt.status
           : bt.status;
 
+      const storeNotes = storeInstructions.map((s) => s.message).join("\n\n---\n\n");
       const resolvedAssignmentNotes =
         lt.assignmentNotes ||
+        storeNotes ||
         bt.assignmentNotes ||
         extractAssignmentNotesFromDescription(bt.description) ||
         extractAssignmentNotesFromDescription(lt.description);
@@ -833,11 +1072,18 @@ export function mergeTicketsWithLocalOverrides(
         }
       }
 
+      // Pastikan deskripsi tidak menimpa catatan konsultan yang sudah ada
+      let resolvedDescription = bt.description || lt.description || "";
+      if (lt.description && lt.description.includes("[CATATAN KONSULTAN") && !resolvedDescription.includes("[CATATAN KONSULTAN")) {
+        resolvedDescription = appendConsultantNoteToDescription(resolvedDescription, lt.description);
+      }
+
       merged[existingIdx] = {
         ...lt,
         ...bt,
         id: bt.id || lt.id,
         numericId: bt.numericId || lt.numericId,
+        description: resolvedDescription,
         assignmentNotes: resolvedAssignmentNotes,
         deliverables: combinedDeliverables,
         clientDocuments: combinedClientDocs,
@@ -914,7 +1160,13 @@ export function assignTicketPic(
   }
 
   const tickets = getStoredClientTickets();
-  let index = tickets.findIndex((t) => t.id.toLowerCase() === ticketId.toLowerCase());
+  let index = tickets.findIndex((t) => {
+    if (matchTicketRef(t, ticketId)) return true;
+    if (fallbackTicket && matchTicketRef(t, fallbackTicket.id)) return true;
+    if (fallbackTicket?.numericId && t.numericId && fallbackTicket.numericId === t.numericId) return true;
+    return false;
+  });
+
   if (index === -1) {
     if (fallbackTicket) {
       tickets.unshift(fallbackTicket);
@@ -960,6 +1212,19 @@ export function assignTicketPic(
     hour: "2-digit",
     minute: "2-digit",
   }) + " WIB";
+
+  // Simpan instruksi penugasan ke dedicated instruction persistent store agar selalu terakumulasi
+  if (notes && notes.trim()) {
+    saveSuperadminInstructionToStore(
+      ticketId,
+      target.numericId || fallbackTicket?.numericId,
+      {
+        message: notes.trim(),
+        sender: "Superadmin (Instruksi Superadmin)",
+        date: nowFormatted,
+      }
+    );
+  }
 
   // Milestone tracking: pastikan milestones terurut dan task penetapan PIC otomatis completed
   const sortedTargetMilestones = sortAndNormalizeMilestones(target.milestones || []);
@@ -1044,8 +1309,19 @@ export function assignTicketPic(
     }
   }
 
+  let updatedDescription = target.description || "";
+  if (notes && notes.trim()) {
+    const formattedNote = formatConsultantNoteForStorage(
+      notes.trim(),
+      "Superadmin (Instruksi Superadmin)",
+      nowFormatted
+    );
+    updatedDescription = appendConsultantNoteToDescription(target.description, formattedNote);
+  }
+
   const updatedTicket: ClientTicket = {
     ...target,
+    description: updatedDescription,
     assignedAdminId: admin.id,
     assignedAdminName: admin.name,
     assignedAdminEmail: admin.email,
@@ -1128,7 +1404,7 @@ export function getTicketByIdForStaff(
   staffUser?: { email?: string; id?: string | number; name?: string; role?: string } | null
 ): { success: boolean; error?: string; ticket?: ClientTicket } {
   const tickets = getStoredClientTickets();
-  const found = tickets.find((t) => t.id.toLowerCase() === ticketId.toLowerCase());
+  const found = tickets.find((t) => matchTicketRef(t, ticketId));
   if (!found) {
     return { success: false, error: `Tiket dengan referensi ${ticketId} tidak ditemukan.` };
   }
@@ -1483,6 +1759,106 @@ export function addSupportingDocumentsToTicket(
   return {
     success: true,
     message: `${preparedDocs.length} dokumen berhasil diunggah ke konsultasi ${target.id}.`,
+    ticket: target,
+  };
+}
+
+/**
+ * Klien mengirimkan catatan atau tanggapan balasan kepada tim konsultan / PIC
+ */
+export function addClientNoteToTicket(
+  ticketId: string,
+  noteText: string,
+  clientProfile?: { name?: string; email?: string } | null,
+  fallbackTicket?: ClientTicket
+): { success: boolean; message: string; ticket?: ClientTicket } {
+  if (!noteText || !noteText.trim()) {
+    return { success: false, message: "Catatan tidak boleh kosong." };
+  }
+
+  const tickets = getStoredClientTickets();
+  let index = tickets.findIndex((t) => matchTicketRef(t, ticketId));
+
+  let target: ClientTicket;
+  if (index === -1) {
+    if (fallbackTicket) {
+      target = { ...fallbackTicket };
+    } else {
+      const numSearch = ticketId.replace(/\D/g, "");
+      target = {
+        id: ticketId,
+        numericId: parseInt(numSearch, 10) || undefined,
+        title: `Konsultasi ${ticketId}`,
+        category: "Tax Service Core",
+        description: "Konsultasi Klien",
+        clientName: clientProfile?.name || "Klien Terdaftar",
+        clientEmail: clientProfile?.email || undefined,
+        consultant: "Staf Konsultan Zhou",
+        milestones: [],
+        status: "Dalam Proses",
+        progress: 35,
+        createdAt: new Date().toISOString(),
+        estimatedCompletion: "14 Hari Kerja",
+        deliverables: [],
+        clientDocuments: [],
+        correspondences: [],
+      };
+    }
+    tickets.unshift(target);
+    index = 0;
+  } else {
+    target = tickets[index];
+  }
+
+  // Validasi Status: Pengiriman catatan hanya boleh jika konsultasi belum selesai / dibatalkan
+  const currentStatus = target.status;
+  if (currentStatus === "Selesai" || currentStatus === "Dibatalkan") {
+    return {
+      success: false,
+      message: `Konsultasi ini telah berstatus "${currentStatus}". Jalur korespondensi telah ditutup.`,
+    };
+  }
+
+  const clientName = clientProfile?.name || target.clientName || "Klien";
+  const nowFormatted = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) + " WIB";
+
+  const newCorrespondence: Correspondence = {
+    id: `client-note-${Date.now()}`,
+    sender: clientName,
+    role: "Klien",
+    date: nowFormatted,
+    message: noteText.trim(),
+  };
+
+  const formattedNote = formatClientNoteForStorage(noteText.trim(), clientName, nowFormatted);
+  const updatedDesc = appendClientNoteToDescription(target.description, formattedNote);
+
+  // Jika tiket sebelumnya berstatus "Menunggu Klien", saat klien merespons ubah kembali ke "Dalam Proses"
+  let newStatus = target.status;
+  if (newStatus === "Menunggu Klien") {
+    newStatus = "Dalam Proses";
+  }
+
+  target.status = newStatus;
+  target.description = updatedDesc;
+  target.correspondences = [newCorrespondence, ...(target.correspondences || [])];
+
+  tickets[index] = target;
+  saveStoredClientTickets(tickets);
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("zhou_tickets_updated", { detail: { ticketId: target.id } }));
+  }
+
+  return {
+    success: true,
+    message: "Catatan berhasil dikirimkan ke konsultan.",
     ticket: target,
   };
 }

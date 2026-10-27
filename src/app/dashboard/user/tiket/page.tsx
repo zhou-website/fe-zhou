@@ -34,6 +34,7 @@ import {
   getCachedFileBlobAsync,
   formatCorrespondenceMessage,
   addSupportingDocumentsToTicket,
+  addClientNoteToTicket,
   mergeTicketsWithLocalOverrides,
   sortAndNormalizeMilestones,
   getMilestoneRank,
@@ -857,6 +858,61 @@ function ClientTicketMonitoringContent() {
     e.target.value = "";
   };
 
+  // Kirim Catatan Balasan Klien ke Konsultan PIC
+  const [clientReplyNote, setClientReplyNote] = useState<string>("");
+  const [isSendingClientNote, setIsSendingClientNote] = useState<boolean>(false);
+
+  const handleSendClientNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket) return;
+
+    const trimmed = clientReplyNote.trim();
+    if (!trimmed) {
+      showToast("Silakan tulis catatan atau respon balasan terlebih dahulu.");
+      return;
+    }
+
+    setIsSendingClientNote(true);
+    try {
+      const clientName = user?.name || selectedTicket.clientName || "Klien";
+      const clientEmail = user?.email || selectedTicket.clientEmail;
+
+      const res = addClientNoteToTicket(
+        selectedTicket.id,
+        trimmed,
+        { name: clientName, email: clientEmail },
+        selectedTicket as unknown as ClientTicket
+      );
+
+      if (res.success && res.ticket) {
+        const updatedTicket: Ticket = {
+          ...selectedTicket,
+          description: res.ticket.description,
+          status: res.ticket.status,
+          correspondences: (res.ticket.correspondences || []).filter(
+            (c) =>
+              c.role !== "Superadmin" &&
+              !c.sender.toLowerCase().includes("superadmin") &&
+              !c.sender.toLowerCase().includes("instruksi")
+          ),
+        };
+
+        setTickets((prev) =>
+          prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? updatedTicket : t))
+        );
+        setClientReplyNote("");
+        showToast("Catatan dan tanggapan Anda berhasil dikirimkan ke tim konsultan.");
+      } else {
+        showToast(res.message || "Gagal mengirimkan catatan.");
+      }
+    } catch (err: unknown) {
+      console.error("Error sending client note:", err);
+      showToast("Terjadi kendala saat mengirimkan catatan.");
+    } finally {
+      setIsSendingClientNote(false);
+    }
+  };
+
   // Handle New Ticket Submit
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1488,7 +1544,7 @@ function ClientTicketMonitoringContent() {
                     });
 
                   return (
-                    <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
+                    <div className="p-4 rounded-xl border border-primary-light bg-white space-y-3">
                       <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
                           Catatan &amp; Komunikasi
@@ -1501,21 +1557,91 @@ function ClientTicketMonitoringContent() {
                           Belum ada catatan atau instruksi tambahan dari tim konsultan untuk perikatan ini.
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {cleanCorrespondences.map((c) => (
-                            <div
-                              key={c.id}
-                              className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
-                            >
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="font-bold text-primary">{c.sender}</span>
-                                <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                        <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
+                          {cleanCorrespondences.map((c) => {
+                            const isClientMsg =
+                              c.role === "Klien" ||
+                              c.sender === user?.name ||
+                              c.sender === selectedTicket.clientName ||
+                              c.sender.toLowerCase().includes("klien");
+                            return (
+                              <div
+                                key={c.id}
+                                className={`p-3 rounded-xl space-y-1 transition-colors border ${
+                                  isClientMsg
+                                    ? "bg-blue-50/50 border-blue-200/80 hover:bg-blue-50/80"
+                                    : "bg-surface/30 border-primary-light/60 hover:bg-surface/60"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`font-bold ${isClientMsg ? "text-blue-900" : "text-primary"}`}>
+                                      {c.sender}
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                                        isClientMsg
+                                          ? "bg-blue-100 text-blue-800 border-blue-200"
+                                          : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                      }`}
+                                    >
+                                      {isClientMsg ? "Klien (Anda)" : "Konsultan PIC"}
+                                    </span>
+                                  </div>
+                                  <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                                </div>
+                                <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
+                                  {c.cleanMsg}
+                                </p>
                               </div>
-                              <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
-                                {c.cleanMsg}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Form Kirim Catatan / Tanggapan Balasan ke Tim Konsultan */}
+                      {selectedTicket.status !== "Selesai" &&
+                      (selectedTicket.status as string) !== "Completed" &&
+                      selectedTicket.status !== "Dibatalkan" ? (
+                        <form
+                          onSubmit={handleSendClientNote}
+                          className="pt-3 border-t border-primary-light/60 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="client-reply-note" className="text-[11px] font-bold text-primary">
+                              Kirim Catatan / Tanggapan Balasan:
+                            </Label>
+                            <span className="text-[10px] text-text-muted">Langsung terhubung ke PIC</span>
+                          </div>
+                          <Textarea
+                            id="client-reply-note"
+                            rows={2}
+                            value={clientReplyNote}
+                            onChange={(e) => setClientReplyNote(e.target.value)}
+                            placeholder="Tuliskan catatan, respon balasan, atau informasi tambahan untuk tim konsultan..."
+                            className="w-full text-xs min-h-[64px] bg-surface/30 border-primary-light focus:bg-white resize-y"
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-text-muted truncate">
+                              Pengirim:{" "}
+                              <strong className="text-primary font-medium">
+                                {user?.name || selectedTicket.clientName || "Klien"}
+                              </strong>
+                            </span>
+                            <Button
+                              type="submit"
+                              variant="primary"
+                              size="sm"
+                              disabled={isSendingClientNote || !clientReplyNote.trim()}
+                              className="text-xs font-semibold px-3.5 py-1.5 h-8 shrink-0"
+                            >
+                              {isSendingClientNote ? "Mengirim..." : "Kirim Catatan"}
+                            </Button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="pt-2 border-t border-primary-light/60 text-center text-[11px] text-text-muted italic">
+                          Konsultasi ini telah berstatus &ldquo;{selectedTicket.status}&rdquo;. Jalur komunikasi telah ditutup.
                         </div>
                       )}
                     </div>

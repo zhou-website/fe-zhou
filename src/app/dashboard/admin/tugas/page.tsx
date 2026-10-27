@@ -48,6 +48,8 @@ import {
   extractCorrespondencesFromDescription,
   extractAssignmentNotesFromDescription,
   extractSuperadminInstructions,
+  matchTicketRef,
+  getSuperadminInstructionsFromStore,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -265,9 +267,28 @@ function AdminTugasSayaContent() {
                   downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
                 }));
             })(),
-            assignmentNotes: extractAssignmentNotesFromDescription(c.description),
+            assignmentNotes: (() => {
+              const fromDesc = extractAssignmentNotesFromDescription(c.description);
+              const fromStore = getSuperadminInstructionsFromStore(c.project_code || c.id)
+                .map((s) => s.message)
+                .join("\n\n---\n\n");
+              return fromStore || fromDesc || undefined;
+            })(),
             correspondences: (() => {
               const corrs = extractCorrespondencesFromDescription(c.description, `msg-${c.id}`);
+              const storeInstructions = getSuperadminInstructionsFromStore(c.project_code || c.id);
+              storeInstructions.forEach((si) => {
+                if (!corrs.some((cr) => cr.message.trim().toLowerCase() === si.message.trim().toLowerCase())) {
+                  corrs.unshift({
+                    id: si.id,
+                    sender: si.sender,
+                    role: "Superadmin",
+                    date: si.date,
+                    message: si.message,
+                  });
+                }
+              });
+
               if (corrs.length === 0) {
                 const note = extractAssignmentNotesFromDescription(c.description);
                 if (note) {
@@ -295,7 +316,7 @@ function AdminTugasSayaContent() {
               const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
               const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
 
-              return rawDocs
+              const resultDocs = rawDocs
                 .filter(
                   (d) =>
                     (isClientUpload(d) || isInstructionDoc(d)) &&
@@ -313,6 +334,31 @@ function AdminTugasSayaContent() {
                   status: isInstructionDoc(d) ? "Instruksi Superadmin" : "Diterima PIC",
                   downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
                 }));
+
+              // Sertakan lampiran instruksi penugasan Superadmin dari store jika ada
+              const storeInstructions = getSuperadminInstructionsFromStore(c.project_code || c.id);
+              storeInstructions.forEach((si) => {
+                if (si.attachmentName && !delivNames.has(si.attachmentName.toLowerCase().trim())) {
+                  const alreadyIn = resultDocs.some(
+                    (d) => d.name.toLowerCase().trim() === si.attachmentName?.toLowerCase().trim()
+                  );
+                  if (!alreadyIn) {
+                    resultDocs.unshift({
+                      id: `DOC-STORE-${si.id}`,
+                      numericId: 0,
+                      name: si.attachmentName,
+                      size: si.attachmentSize || "1.0 MB",
+                      type: si.attachmentType || "BERKAS",
+                      date: si.date.split(" ")[0] || formatConsultationDate(),
+                      uploadedBy: "Superadmin (Instruksi)",
+                      status: "Instruksi Superadmin",
+                      downloadUrl: "",
+                    });
+                  }
+                }
+              });
+
+              return resultDocs;
             })(),
           };
         });
@@ -328,7 +374,7 @@ function AdminTugasSayaContent() {
           if (!prev) return null;
           const updated = mergedTickets.find(
             (t) =>
-              t.id.toLowerCase() === prev.id.toLowerCase() ||
+              matchTicketRef(t, prev.id) ||
               (prev.numericId && t.numericId === prev.numericId)
           );
           if (!updated) return prev;
@@ -374,9 +420,11 @@ function AdminTugasSayaContent() {
       loadData();
     };
     window.addEventListener("zhou_tickets_updated", handleSync);
+    window.addEventListener("zhou_superadmin_instructions_updated", handleSync);
     window.addEventListener("storage", handleStorage);
     return () => {
       window.removeEventListener("zhou_tickets_updated", handleSync);
+      window.removeEventListener("zhou_superadmin_instructions_updated", handleSync);
       window.removeEventListener("storage", handleStorage);
     };
   }, [loadData]);
@@ -386,12 +434,7 @@ function AdminTugasSayaContent() {
     if (!urlTicketId) return;
 
     // Cari dari tickets state terlebih dahulu (yang sudah mencakup data live backend & lokal)
-    const matchTicket = tickets.find(
-      (t) =>
-        t.id.toLowerCase() === urlTicketId.toLowerCase() ||
-        (t.numericId && String(t.numericId) === urlTicketId) ||
-        (urlTicketId.startsWith("TK-") && t.id.includes(urlTicketId.replace("TK-", "")))
-    );
+    const matchTicket = tickets.find((t) => matchTicketRef(t, urlTicketId));
 
     if (matchTicket) {
       if (canAdminAccessTicket(matchTicket, activeStaffProfile)) {
@@ -1052,6 +1095,22 @@ function AdminTugasSayaContent() {
                                 <span className="font-mono text-text-muted">{inst.date}</span>
                               </div>
                               <p className="whitespace-pre-line leading-relaxed">{inst.message}</p>
+                              {inst.attachmentName && (
+                                <div className="mt-2 pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2 text-[11px] text-amber-950">
+                                  <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                    <span className="shrink-0">📎</span>
+                                    <span className="font-semibold truncate">{inst.attachmentName}</span>
+                                    {inst.attachmentSize && <span className="text-text-muted shrink-0">({inst.attachmentSize})</span>}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadClientDoc(inst.attachmentName!, "Superadmin (Instruksi)", selectedTicket.id)}
+                                    className="text-xs font-semibold text-primary hover:underline shrink-0 cursor-pointer bg-white/80 px-2 py-0.5 rounded border border-amber-300"
+                                  >
+                                    Unduh
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1450,28 +1509,37 @@ function AdminTugasSayaContent() {
                         <div className="space-y-2">
                           {cleanCorrespondences.map((c) => {
                             const isSuperadminNote = c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin");
+                            const isClientNote = c.role === "Klien" || c.sender.toLowerCase().includes("klien");
                             return (
                               <div
                                 key={c.id}
                                 className={`p-3 rounded-xl space-y-1.5 transition-colors border ${
                                   isSuperadminNote
                                     ? "bg-amber-50/70 border-amber-200/90 hover:bg-amber-50/90"
+                                    : isClientNote
+                                    ? "bg-blue-50/50 border-blue-200/80 hover:bg-blue-50/80"
                                     : "bg-surface/30 border-primary-light/60 hover:bg-surface/60"
                                 }`}
                               >
                                 <div className="flex items-center justify-between text-[10px]">
                                   <div className="flex items-center gap-1.5">
-                                    <span className={`font-bold ${isSuperadminNote ? "text-amber-900" : "text-primary"}`}>
+                                    <span
+                                      className={`font-bold ${
+                                        isSuperadminNote ? "text-amber-900" : isClientNote ? "text-blue-900" : "text-primary"
+                                      }`}
+                                    >
                                       {c.sender}
                                     </span>
                                     <span
                                       className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
                                         isSuperadminNote
                                           ? "bg-amber-100 text-amber-800 border-amber-300"
-                                          : "bg-surface text-text-muted border-primary-light"
+                                          : isClientNote
+                                          ? "bg-blue-100 text-blue-800 border-blue-200"
+                                          : "bg-emerald-50 text-emerald-800 border-emerald-200"
                                       }`}
                                     >
-                                      {c.role}
+                                      {isClientNote ? "Respon Klien" : isSuperadminNote ? "Instruksi Superadmin" : "Konsultan PIC"}
                                     </span>
                                   </div>
                                   <span className="text-text-muted font-mono">{c.date}</span>

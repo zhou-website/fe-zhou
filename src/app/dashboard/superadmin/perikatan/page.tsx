@@ -42,6 +42,8 @@ import {
   markTicketAsDeleted,
   markAllTicketsAsDeleted,
   assignTicketPic,
+  cacheFileBlob,
+  saveSuperadminInstructionToStore,
   extractCorrespondencesFromDescription,
   extractSuperadminInstructions,
   mergeTicketsWithLocalOverrides,
@@ -386,18 +388,27 @@ function SuperadminPerikatanContent() {
     setIsSavingPic(true);
 
     try {
-      // 1. Jika ada berkas lampiran instruksi penugasan, unggah ke backend terlebih dahulu
-      if (targetProjectId && instructionFile) {
-        try {
-          const formData = new FormData();
-          formData.append("file", instructionFile);
-          formData.append(
-            "description",
-            `[Instruksi Superadmin] ${cleanNotes || "Dokumen lampiran instruksi penugasan PIC"}`
-          );
-          await adminApi.uploadDocument(targetProjectId, formData);
-        } catch (fileErr) {
-          console.warn("Gagal mengunggah berkas instruksi ke server:", fileErr);
+      // 1. Jika ada berkas lampiran instruksi penugasan, simpan blob dan unggah ke backend jika didukung
+      if (instructionFile) {
+        cacheFileBlob(instructionFile.name, instructionFile);
+        cacheFileBlob(`${managingPicTicket.id}:${instructionFile.name}`, instructionFile);
+        if (managingPicTicket.numericId) {
+          cacheFileBlob(`TK-${managingPicTicket.numericId}:${instructionFile.name}`, instructionFile);
+          cacheFileBlob(`${managingPicTicket.numericId}:${instructionFile.name}`, instructionFile);
+        }
+
+        if (targetProjectId) {
+          try {
+            const formData = new FormData();
+            formData.append("file", instructionFile);
+            formData.append(
+              "description",
+              `[Instruksi Superadmin] ${cleanNotes || "Dokumen lampiran instruksi penugasan PIC"}`
+            );
+            await adminApi.uploadDocument(targetProjectId, formData);
+          } catch (fileErr) {
+            console.warn("Gagal mengunggah berkas instruksi ke server:", fileErr);
+          }
         }
       }
 
@@ -405,6 +416,25 @@ function SuperadminPerikatanContent() {
       const noteBody = cleanNotes
         ? (instructionFile ? `${cleanNotes}\n[Lampiran Berkas: ${instructionFile.name}]` : cleanNotes)
         : (instructionFile ? `[Lampiran Berkas: ${instructionFile.name}]` : "");
+
+      // 3. Simpan langsung ke dedicated persistent store agar instruksi penugasan selalu terakumulasi
+      if (cleanNotes || instructionFile) {
+        saveSuperadminInstructionToStore(
+          managingPicTicket.id,
+          managingPicTicket.numericId || targetProjectId,
+          {
+            message: cleanNotes || `Lampiran berkas instruksi: ${instructionFile?.name}`,
+            sender: "Superadmin (Instruksi Superadmin)",
+            attachment: instructionFile
+              ? {
+                  name: instructionFile.name,
+                  size: (instructionFile.size / 1024).toFixed(1) + " KB",
+                  type: instructionFile.name.split(".").pop()?.toUpperCase() || "BERKAS",
+                }
+              : undefined,
+          }
+        );
+      }
 
       if (targetProjectId && numAdminId) {
         try {
@@ -444,7 +474,7 @@ function SuperadminPerikatanContent() {
         }
       }
 
-      // 3. Sinkronisasi pembaruan PIC & instruksi ke penyimpanan tiket bersama lokal
+      // 4. Sinkronisasi pembaruan PIC & instruksi ke penyimpanan tiket bersama lokal
       assignTicketPic(
         managingPicTicket.id,
         {
@@ -473,6 +503,7 @@ function SuperadminPerikatanContent() {
       }
 
       if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("zhou_superadmin_instructions_updated"));
         window.dispatchEvent(new Event("zhou_tickets_updated"));
         window.dispatchEvent(new Event("storage"));
       }
