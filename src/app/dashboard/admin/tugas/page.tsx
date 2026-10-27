@@ -1398,9 +1398,10 @@ function AdminTugasSayaContent() {
                   </form>
                 </div>
 
-                {/* 4. Catatan & Komunikasi dengan Klien (Khusus Korespondensi Klien - Konsultan) */}
+                {/* 4. Catatan & Komunikasi Tim Penugasan (Termasuk Instruksi Superadmin & Korespondensi) */}
                 {(() => {
                   const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
+                  const superadminInstructions = extractSuperadminInstructions(selectedTicket);
 
                   const cleanCorrespondences = (selectedTicket.correspondences || [])
                     .map((c) => ({
@@ -1410,27 +1411,40 @@ function AdminTugasSayaContent() {
                     .filter((c) => {
                       if (!c.cleanMsg || c.cleanMsg.trim().length === 0) return false;
                       if (cleanProblem && c.cleanMsg.trim().toLowerCase() === cleanProblem) return false;
-                      // Saring instruksi internal Superadmin agar TIDAK tercampur ke riwayat korespondensi klien
-                      const isSuperadmin =
-                        c.role === "Superadmin" ||
-                        c.sender.toLowerCase().includes("superadmin") ||
-                        c.sender.toLowerCase().includes("instruksi");
-                      if (isSuperadmin) return false;
                       return true;
                     });
+
+                  // Pastikan semua instruksi penugasan Superadmin yang terakumulasi juga tampil di timeline korespondensi
+                  superadminInstructions.forEach((inst, idx) => {
+                    const alreadyInList = cleanCorrespondences.some((c) => {
+                      const cMsg = (c.cleanMsg || c.message || "").toLowerCase().trim();
+                      const instMsg = inst.message.toLowerCase().trim();
+                      return cMsg === instMsg || cMsg.includes(instMsg) || instMsg.includes(cMsg);
+                    });
+                    if (!alreadyInList) {
+                      cleanCorrespondences.unshift({
+                        id: `superadmin-timeline-${idx}-${inst.id}`,
+                        sender: inst.sender,
+                        role: "Superadmin",
+                        date: inst.date,
+                        message: inst.message,
+                        cleanMsg: inst.message,
+                      });
+                    }
+                  });
 
                   return (
                     <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
                       <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                          Catatan &amp; Komunikasi Klien
+                          Catatan &amp; Komunikasi
                         </h4>
-                        <span className="text-[10px] text-text-muted">Korespondensi Klien &bull; Konsultan</span>
+                        <span className="text-[10px] text-text-muted">Riwayat Korespondensi</span>
                       </div>
 
                       {cleanCorrespondences.length === 0 ? (
                         <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
-                          Belum ada catatan atau korespondensi dengan klien untuk perikatan ini.
+                          Belum ada catatan atau instruksi yang dikirimkan untuk perikatan ini.
                         </div>
                       ) : (
                         <div className="space-y-2">
