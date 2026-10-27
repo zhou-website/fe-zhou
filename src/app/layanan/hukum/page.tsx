@@ -141,7 +141,7 @@ export default function KonsultasiHukumPage() {
           const rawScopes =
             (storedItem?.scopes && storedItem.scopes.length > 0 ? storedItem.scopes : undefined) ||
             (storedItem?.pillars && storedItem.pillars.length > 0
-              ? storedItem.pillars.map((p: any) => p.title || p.description)
+              ? storedItem.pillars.map((p: { title?: string; description?: string }) => p.title || p.description || "")
               : undefined) ||
             (apiItem?.features && apiItem.features.length > 0 ? apiItem.features : undefined) ||
             base.scopes;
@@ -187,7 +187,7 @@ export default function KonsultasiHukumPage() {
           scopes:
             c.scopes && c.scopes.length > 0
               ? c.scopes
-              : c.pillars?.map((p: any) => p.title || p.description) || [
+              : c.pillars?.map((p: { title?: string; description?: string }) => p.title || p.description || "") || [
                   "Pendampingan aspek kepatuhan hukum dan regulasi korporasi",
                   "Mitigasi risiko hukum dan telaah perjanjian bisnis",
                 ],
@@ -228,7 +228,7 @@ export default function KonsultasiHukumPage() {
       const combined: LegalModuleItem[] = [];
       const seen = new Set<string>();
 
-      for (const item of [...baseMerged, ...extraStored, ...extraApi]) {
+      for (const item of [...baseMerged, ...extraApi, ...extraStored]) {
         const titleKey = item.title.trim().toLowerCase();
         const codeKey = item.code.trim().toLowerCase();
         if (seen.has(titleKey) || seen.has(codeKey)) continue;

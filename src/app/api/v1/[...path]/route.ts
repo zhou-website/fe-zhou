@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import http from "node:http";
 
-const BACKEND_HOST = process.env.BACKEND_HOST_IP || "139.190.103.80";
+const BACKEND_HOST = process.env.BACKEND_HOST_IP || "43.173.2.162";
 const BACKEND_PORT = Number(process.env.BACKEND_PORT || 80);
 const BACKEND_VHOST = process.env.BACKEND_VHOST || "api.zhouconsulting.id";
 
