@@ -246,8 +246,13 @@ function AdminTugasSayaContent() {
               const rawDocs = c.documents || [];
               const isClientUpload = (d: { uploaded_by?: number }) =>
                 Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
+              const isInstructionDoc = (d: { description?: string; file_name?: string }) =>
+                Boolean(
+                  (d.description && (d.description.toLowerCase().includes("instruksi") || d.description.toLowerCase().includes("superadmin"))) ||
+                  (d.file_name && (d.file_name.toLowerCase().includes("instruksi") || d.file_name.toLowerCase().includes("superadmin")))
+                );
               return rawDocs
-                .filter((d) => !isClientUpload(d))
+                .filter((d) => !isClientUpload(d) && !isInstructionDoc(d))
                 .map((d) => ({
                   id: `DOC-${d.id}`,
                   numericId: d.id,
@@ -262,15 +267,17 @@ function AdminTugasSayaContent() {
             assignmentNotes: extractAssignmentNotesFromDescription(c.description),
             correspondences: (() => {
               const corrs = extractCorrespondencesFromDescription(c.description, `msg-${c.id}`);
-              const note = extractAssignmentNotesFromDescription(c.description);
-              if (note && !corrs.some((cr) => cr.message.includes(note) || note.includes(cr.message.trim()))) {
-                corrs.unshift({
-                  id: `instr-superadmin-${c.id}`,
-                  sender: "Superadmin (Instruksi Penugasan)",
-                  role: "Superadmin",
-                  date: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " WIB" : "Saat Penugasan",
-                  message: note,
-                });
+              if (corrs.length === 0) {
+                const note = extractAssignmentNotesFromDescription(c.description);
+                if (note) {
+                  corrs.unshift({
+                    id: `instr-superadmin-${c.id}`,
+                    sender: "Superadmin (Instruksi Penugasan)",
+                    role: "Superadmin",
+                    date: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " WIB" : "Saat Penugasan",
+                    message: note,
+                  });
+                }
               }
               return corrs;
             })(),
@@ -278,14 +285,19 @@ function AdminTugasSayaContent() {
               const rawDocs = c.documents || [];
               const isClientUpload = (d: { uploaded_by?: number }) =>
                 Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
-              const adminDeliverables = rawDocs.filter((d) => !isClientUpload(d));
+              const isInstructionDoc = (d: { description?: string; file_name?: string }) =>
+                Boolean(
+                  (d.description && (d.description.toLowerCase().includes("instruksi") || d.description.toLowerCase().includes("superadmin"))) ||
+                  (d.file_name && (d.file_name.toLowerCase().includes("instruksi") || d.file_name.toLowerCase().includes("superadmin")))
+                );
+              const adminDeliverables = rawDocs.filter((d) => !isClientUpload(d) && !isInstructionDoc(d));
               const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
               const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
 
               return rawDocs
                 .filter(
                   (d) =>
-                    isClientUpload(d) &&
+                    (isClientUpload(d) || isInstructionDoc(d)) &&
                     !delivNames.has(d.file_name.toLowerCase().trim()) &&
                     !delivIds.has(String(d.id))
                 )
@@ -296,8 +308,8 @@ function AdminTugasSayaContent() {
                   size: d.file_size || "1.5 MB",
                   type: d.file_type || "PDF",
                   date: new Date(d.created_at).toLocaleDateString("id-ID"),
-                  uploadedBy: c.client?.name || "Klien",
-                  status: "Diterima PIC",
+                  uploadedBy: isInstructionDoc(d) ? "Superadmin (Instruksi)" : (c.client?.name || "Klien"),
+                  status: isInstructionDoc(d) ? "Instruksi Superadmin" : "Diterima PIC",
                   downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
                 }));
             })(),
@@ -1013,29 +1025,6 @@ function AdminTugasSayaContent() {
                       </p>
                     );
                   })()}
-
-                  {/* Catatan Instruksi Khusus Penugasan dari Superadmin */}
-                  {(() => {
-                    const instruction =
-                      selectedTicket.assignmentNotes ||
-                      extractAssignmentNotesFromDescription(selectedTicket.description);
-                    if (!instruction || !instruction.trim()) return null;
-                    return (
-                      <div className="mt-3 pt-3 border-t border-primary-light/60 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
-                            Instruksi Penugasan Superadmin
-                          </span>
-                          <span className="text-[9px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                            Catatan Khusus PIC
-                          </span>
-                        </div>
-                        <div className="p-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-xs text-amber-950 font-medium leading-relaxed whitespace-pre-line shadow-2xs">
-                          {instruction.trim()}
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
 
                 {/* 2. Alur Pengerjaan Kertas Kerja (Interactive Minimal Stepper untuk Admin) */}
@@ -1176,43 +1165,66 @@ function AdminTugasSayaContent() {
                   <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                     <div className="flex items-center gap-2">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                        Dokumen Pendukung Klien
+                        Dokumen Pendukung &amp; Berkas Instruksi
                       </h4>
                       <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-surface text-primary border border-primary-light">
                         {cleanClientDocuments.length}
                       </span>
                     </div>
-                    <span className="text-[10px] text-text-muted">Berkas Unggahan Klien</span>
+                    <span className="text-[10px] text-text-muted">Berkas Unggahan &amp; Arahan Tim</span>
                   </div>
 
                   {cleanClientDocuments.length === 0 ? (
                     <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
-                      Belum ada dokumen pendukung yang dilampirkan oleh klien.
+                      Belum ada dokumen pendukung atau instruksi penugasan yang dilampirkan.
                     </div>
                   ) : (
                     <div className="divide-y divide-primary-light/60 border border-primary-light rounded-xl overflow-hidden bg-white">
-                      {cleanClientDocuments.map((doc, docIdx) => (
-                        <div key={docIdx} className="p-2.5 flex items-center justify-between gap-3 hover:bg-surface/30 transition-colors">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-md bg-surface text-primary flex items-center justify-center text-[10px] shrink-0 font-bold border border-primary-light">
-                              <DocumentIcon className="text-xs" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-primary text-xs truncate">{doc.name}</p>
-                              <p className="text-[10px] text-text-muted mt-0.5">{doc.size}</p>
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl, doc.numericId || doc.id)}
-                            className="text-xs h-7 px-2.5 font-medium shrink-0"
+                      {cleanClientDocuments.map((doc, docIdx) => {
+                        const isInstrDoc = doc.status === "Instruksi Superadmin" || doc.uploadedBy?.toLowerCase().includes("superadmin");
+                        return (
+                          <div
+                            key={docIdx}
+                            className={`p-2.5 flex items-center justify-between gap-3 transition-colors ${
+                              isInstrDoc ? "bg-amber-50/50 hover:bg-amber-50/80" : "hover:bg-surface/30"
+                            }`}
                           >
-                            Unduh
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className={`w-7 h-7 rounded-md flex items-center justify-center text-[10px] shrink-0 font-bold border ${
+                                  isInstrDoc
+                                    ? "bg-amber-100 text-amber-900 border-amber-300"
+                                    : "bg-surface text-primary border-primary-light"
+                                }`}
+                              >
+                                <DocumentIcon className="text-xs" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="font-semibold text-primary text-xs truncate">{doc.name}</p>
+                                  {isInstrDoc && (
+                                    <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                      Instruksi Superadmin
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-text-muted mt-0.5">
+                                  {doc.size} {doc.date ? `• ${doc.date}` : ""} {doc.uploadedBy ? `• Oleh: ${doc.uploadedBy}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadClientDoc(doc.name, doc.uploadedBy, selectedTicket.id, doc.downloadUrl, doc.numericId || doc.id)}
+                              className="text-xs h-7 px-2.5 font-medium shrink-0"
+                            >
+                              Unduh
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1372,14 +1384,11 @@ function AdminTugasSayaContent() {
                       return true;
                     });
 
-                  // Jika ada catatan instruksi penugasan dari superadmin dan belum ada di riwayat korespondensi, sisipkan di awal
-                  if (
-                    rawAssignmentNote &&
-                    !cleanCorrespondences.some((c) =>
-                      c.cleanMsg.toLowerCase().includes(rawAssignmentNote.toLowerCase()) ||
-                      rawAssignmentNote.toLowerCase().includes(c.cleanMsg.toLowerCase())
-                    )
-                  ) {
+                  // Hanya jika belum ada catatan instruksi dari superadmin di riwayat korespondensi, sisipkan fallback di awal
+                  const hasSuperadminNote = cleanCorrespondences.some(
+                    (c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin")
+                  );
+                  if (!hasSuperadminNote && rawAssignmentNote) {
                     cleanCorrespondences.unshift({
                       id: `superadmin-note-${selectedTicket.id}`,
                       sender: "Superadmin (Instruksi Penugasan)",

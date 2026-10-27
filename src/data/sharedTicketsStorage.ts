@@ -247,19 +247,28 @@ export function formatTicketDescription(desc?: string): string {
 }
 
 /**
+ * Mengekstrak semua catatan instruksi penugasan khusus Superadmin dari deskripsi tiket jika ada
+ */
+export function extractAllAssignmentNotesFromDescription(desc?: string): string[] {
+  if (!desc || !desc.trim()) return [];
+  const regex = /\[(?:CATATAN|TANGGAPAN|INSTRUKSI)[^\]\r\n]*?(?:Superadmin|Instruksi|Penugasan)[^\]\r\n]*?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI))|$)/gi;
+  let match: RegExpExecArray | null;
+  const notes: string[] = [];
+  while ((match = regex.exec(desc)) !== null) {
+    if (match[1]?.trim()) {
+      notes.push(match[1].trim());
+    }
+  }
+  return notes;
+}
+
+/**
  * Mengekstrak catatan instruksi penugasan khusus Superadmin dari deskripsi tiket jika ada
  */
 export function extractAssignmentNotesFromDescription(desc?: string): string | undefined {
-  if (!desc || !desc.trim()) return undefined;
-  const regex = /\[(?:CATATAN|TANGGAPAN|INSTRUKSI)[^\]\r\n]*?(?:Superadmin|Instruksi|Penugasan)[^\]\r\n]*?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI))|$)/gi;
-  let match: RegExpExecArray | null;
-  let lastNote: string | undefined;
-  while ((match = regex.exec(desc)) !== null) {
-    if (match[1]?.trim()) {
-      lastNote = match[1].trim();
-    }
-  }
-  return lastNote;
+  const allNotes = extractAllAssignmentNotesFromDescription(desc);
+  if (allNotes.length === 0) return undefined;
+  return allNotes.join("\n\n---\n\n");
 }
 
 /**
@@ -928,15 +937,36 @@ export function assignTicketPic(
       ];
 
   // Catatan audit resmi korespondensi
-  const newCorrespondence: Correspondence = {
-    id: `assign-${Date.now()}`,
-    sender: "Superadmin (Sistem Audit Penugasan)",
-    role: "Superadmin",
-    date: nowFormatted,
-    message: isReassignment
-      ? `[AUDIT REASSIGNMENT] Penugasan dialihkan oleh Superadmin dari ${prevAdminName} (${prevAdminDivision}) kepada ${admin.name} (${divisionStr}). Waktu Pengalihan: ${nowFormatted}.${notes ? ` Catatan Pengalihan: "${notes}"` : ""}`
-      : `[PENUGASAN RESMI] Konsultasi berhasil ditugaskan oleh Superadmin kepada ${admin.name} (${divisionStr}). Waktu Penugasan: ${nowFormatted}.${notes ? ` Catatan Penugasan: "${notes}"` : ""}`,
-  };
+  const newCorrespondences: Correspondence[] = [
+    {
+      id: `assign-${Date.now()}`,
+      sender: "Superadmin (Sistem Audit Penugasan)",
+      role: "Superadmin",
+      date: nowFormatted,
+      message: isReassignment
+        ? `[AUDIT REASSIGNMENT] Penugasan dialihkan oleh Superadmin dari ${prevAdminName} (${prevAdminDivision}) kepada ${admin.name} (${divisionStr}). Waktu Pengalihan: ${nowFormatted}.${notes ? ` Catatan Pengalihan: "${notes}"` : ""}`
+        : `[PENUGASAN RESMI] Konsultasi berhasil ditugaskan oleh Superadmin kepada ${admin.name} (${divisionStr}). Waktu Penugasan: ${nowFormatted}.${notes ? ` Catatan Penugasan: "${notes}"` : ""}`,
+    },
+  ];
+
+  if (notes && notes.trim()) {
+    newCorrespondences.unshift({
+      id: `instr-superadmin-${Date.now()}`,
+      sender: "Superadmin (Instruksi Superadmin)",
+      role: "Superadmin",
+      date: nowFormatted,
+      message: notes.trim(),
+    });
+  }
+
+  let mergedAssignmentNotes = target.assignmentNotes || "";
+  if (notes && notes.trim()) {
+    if (!mergedAssignmentNotes) {
+      mergedAssignmentNotes = notes.trim();
+    } else if (!mergedAssignmentNotes.includes(notes.trim())) {
+      mergedAssignmentNotes = `${mergedAssignmentNotes}\n\n---\n\n${notes.trim()}`;
+    }
+  }
 
   const updatedTicket: ClientTicket = {
     ...target,
@@ -949,12 +979,12 @@ export function assignTicketPic(
     previousAdminName: isReassignment ? prevAdminName : target.previousAdminName,
     previousAdminEmail: isReassignment ? prevAdminEmail : target.previousAdminEmail,
     previousAdminDivision: isReassignment ? prevAdminDivision : target.previousAdminDivision,
-    assignmentNotes: notes || target.assignmentNotes,
+    assignmentNotes: mergedAssignmentNotes,
     consultant: admin.name,
     status: newStatus,
     progress: newProgress,
     milestones: updatedMilestones,
-    correspondences: [newCorrespondence, ...(target.correspondences || [])],
+    correspondences: [...newCorrespondences, ...(target.correspondences || [])],
   };
 
   tickets[index] = updatedTicket;

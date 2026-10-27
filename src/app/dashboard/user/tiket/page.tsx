@@ -168,7 +168,12 @@ function ClientTicketMonitoringContent() {
           );
           const isClientUpload = (d: { uploaded_by?: number }) =>
             Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
-          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d));
+          const isInstructionDoc = (d: { description?: string; file_name?: string }) =>
+            Boolean(
+              (d.description && (d.description.toLowerCase().includes("instruksi") || d.description.toLowerCase().includes("superadmin"))) ||
+              (d.file_name && (d.file_name.toLowerCase().includes("instruksi") || d.file_name.toLowerCase().includes("superadmin")))
+            );
+          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d) && !isInstructionDoc(d));
           const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
           const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
 
