@@ -22,6 +22,7 @@ import {
   isTicketArchived,
   addStoredClientTicket,
   getStoredClientTickets,
+  ClientTicket,
   ClientUploadedFile,
   ConsultationStatus,
   getDisplayPicName,
@@ -30,7 +31,6 @@ import {
   resolveConsultationCategory,
   markTicketAsDeleted,
   cacheFileBlob,
-  getCachedFileBlob,
   getCachedFileBlobAsync,
   formatCorrespondenceMessage,
   addSupportingDocumentsToTicket,
@@ -290,7 +290,12 @@ function ClientTicketMonitoringContent() {
                 ]
               : [],
             clientDocuments: matchingClientDocs,
-            correspondences: extractCorrespondencesFromDescription(c.description, `c-msg-${c.id}`),
+            correspondences: extractCorrespondencesFromDescription(c.description, `c-msg-${c.id}`).filter(
+              (corr) =>
+                corr.role !== "Superadmin" &&
+                !corr.sender.toLowerCase().includes("superadmin") &&
+                !corr.sender.toLowerCase().includes("instruksi")
+            ),
             isArchived: isTicketArchived(ticketCode),
           };
         });
@@ -298,7 +303,7 @@ function ClientTicketMonitoringContent() {
 
       // Gabungkan juga dengan tiket lokal yang disimpan (editan lokal selalu diprioritaskan)
       const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
-      const rawMerged = mergeTicketsWithLocalOverrides(backendTickets as any, localTickets);
+      const rawMerged = mergeTicketsWithLocalOverrides(backendTickets as unknown as ClientTicket[], localTickets);
       const mergedTickets: Ticket[] = rawMerged.map((t) => ({
         ...t,
         category: t.category as Ticket["category"],
@@ -306,6 +311,12 @@ function ClientTicketMonitoringContent() {
           ...d,
           format: (d as { format?: string; type?: string }).format || d.type || "PDF",
         })),
+        correspondences: (t.correspondences || []).filter(
+          (corr) =>
+            corr.role !== "Superadmin" &&
+            !corr.sender.toLowerCase().includes("superadmin") &&
+            !corr.sender.toLowerCase().includes("instruksi")
+        ),
       })) as unknown as Ticket[];
 
       setTickets(mergedTickets);
@@ -340,7 +351,12 @@ function ClientTicketMonitoringContent() {
             date: d.date,
             downloadUrl: d.downloadUrl,
           })),
-          correspondences: lt.correspondences || [],
+          correspondences: (lt.correspondences || []).filter(
+            (corr) =>
+              corr.role !== "Superadmin" &&
+              !corr.sender.toLowerCase().includes("superadmin") &&
+              !corr.sender.toLowerCase().includes("instruksi")
+          ),
           clientDocuments: lt.clientDocuments || [],
           isArchived: Boolean(lt.isArchived),
         }));
@@ -765,16 +781,16 @@ function ClientTicketMonitoringContent() {
       // 1. Simpan langsung ke penyimpanan tersinkronisasi
       const fallbackTicketData = {
         ...selectedTicket,
-        category: selectedTicket.category as any,
+        category: selectedTicket.category as ClientTicket["category"],
         priority: (selectedTicket.priority === "Tinggi" || selectedTicket.priority === "Mendesak" ? selectedTicket.priority : "Normal") as "Normal" | "Tinggi" | "Mendesak",
-        status: (selectedTicket.status as any) || "Dalam Proses",
+        status: (selectedTicket.status as ClientTicket["status"]) || "Dalam Proses",
         deliverables: (selectedTicket.deliverables || []).map((d, i) => ({
           ...d,
           id: String(d.id || `deliv-${Date.now()}-${i}`),
           type: d.format || d.type || "PDF",
           status: "Tersedia",
         })),
-        milestones: selectedTicket.milestones as any,
+        milestones: selectedTicket.milestones as ClientTicket["milestones"],
       };
 
       const saveRes = addSupportingDocumentsToTicket(
@@ -791,7 +807,12 @@ function ClientTicketMonitoringContent() {
               ? {
                   ...t,
                   clientDocuments: saveRes.ticket?.clientDocuments || t.clientDocuments,
-                  correspondences: saveRes.ticket?.correspondences || t.correspondences,
+                  correspondences: (saveRes.ticket?.correspondences || t.correspondences || []).filter(
+                    (corr) =>
+                      corr.role !== "Superadmin" &&
+                      !corr.sender.toLowerCase().includes("superadmin") &&
+                      !corr.sender.toLowerCase().includes("instruksi")
+                  ),
                 }
               : t
           )
@@ -1438,7 +1459,19 @@ function ClientTicketMonitoringContent() {
                 {/* 3. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
                 {(() => {
                   const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
+                  const isInternalSuperadmin = (c: { role?: string; sender?: string }) => {
+                    const roleLower = (c.role || "").toLowerCase();
+                    const senderLower = (c.sender || "").toLowerCase();
+                    return (
+                      roleLower === "superadmin" ||
+                      senderLower.includes("superadmin") ||
+                      senderLower.includes("instruksi") ||
+                      senderLower.includes("penugasan")
+                    );
+                  };
+
                   const cleanCorrespondences = sortedCorrespondences
+                    .filter((c) => !isInternalSuperadmin(c))
                     .map((c) => ({
                       ...c,
                       cleanMsg: formatCorrespondenceMessage(c.message),
