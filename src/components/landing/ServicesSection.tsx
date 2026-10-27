@@ -13,14 +13,7 @@ import {
 import { CheckCircleIcon, WhatsappIcon } from "@/components/icons";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import {
-  StoredServiceItem,
-  getStoredServices,
-  SERVICES_EVENT,
-} from "@/data/layananStorage";
 import { publicApi, PublicServiceItem, parseContactSettings } from "@/lib/api";
-import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
-import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 
 export interface CoreLandingService {
   id: string;
@@ -143,24 +136,11 @@ export function ServicesSection() {
       })
       .catch(() => {});
 
-    // Sync descriptions from local CMS storage or backend API while keeping canonical 4 services intact
-    const syncCanonicalServices = (apiItems?: PublicServiceItem[]) => {
-      const stored = getStoredServices();
-
+    // Sinkronisasi data layanan langsung dari REST API Backend
+    const syncCanonicalServices = (apiItems: PublicServiceItem[] = []) => {
       const updatedCards = CANONICAL_SERVICES.map((canon) => {
-        // Find matching stored or api item for this category, ignoring technical tax sub-services
-        const storedMatch = stored.find((s: StoredServiceItem) => {
-          if (!s || s.status === "Draft" || s.status === "Archived") return false;
-          if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return false;
-          if (getCmsItemStatus(s.id, s.name, s.status, [s.code]) === "Draft") return false;
-          if (isTechnicalTaxService(s.name, s.code)) return false;
-          return s.categoryKey?.toLowerCase() === canon.categoryKey.toLowerCase();
-        });
-
-        const apiMatch = (apiItems || []).find((a: PublicServiceItem) => {
+        const apiMatch = apiItems.find((a: PublicServiceItem) => {
           if (a.is_active === false) return false;
-          if (isCmsItemDeleted(a.id, a.service_name, a.id, a.service_code)) return false;
-          if (getCmsItemStatus(`SVC-${a.id}`, a.service_name, "Published", [a.id, a.service_code]) === "Draft") return false;
           if (isTechnicalTaxService(a.service_name, a.service_code)) return false;
           const catLower = (a.category || "").toLowerCase();
           const codeUpper = (a.service_code || "").toUpperCase();
@@ -171,8 +151,11 @@ export function ServicesSection() {
             return catLower.includes("bisnis") || codeUpper.includes("FIN");
           }
           if (canon.categoryKey === "tax-service") {
-            return (catLower.includes("tax") || catLower.includes("pajak") || codeUpper.includes("TAX")) &&
-              !catLower.includes("hukum") && !catLower.includes("legal");
+            return (
+              (catLower.includes("tax") || catLower.includes("pajak") || codeUpper.includes("TAX")) &&
+              !catLower.includes("hukum") &&
+              !catLower.includes("legal")
+            );
           }
           if (canon.categoryKey === "hukum") {
             return catLower.includes("hukum") || codeUpper.includes("LAW") || codeUpper.includes("LEGAL");
@@ -180,15 +163,9 @@ export function ServicesSection() {
           return false;
         });
 
-        const subtitle =
-          storedMatch?.subtitle ||
-          apiMatch?.description ||
-          canon.subtitle;
-
+        const subtitle = apiMatch?.description || canon.subtitle;
         const pillars =
-          storedMatch?.pillars && storedMatch.pillars.length > 0
-            ? storedMatch.pillars.map((p) => ({ title: p.title }))
-            : apiMatch?.features && apiMatch.features.length > 0
+          apiMatch?.features && apiMatch.features.length > 0
             ? apiMatch.features.slice(0, 3).map((f) => ({ title: f }))
             : canon.pillars;
 
@@ -204,8 +181,6 @@ export function ServicesSection() {
       }
     };
 
-    syncCanonicalServices();
-
     publicApi
       .getServices()
       .then((res) => {
@@ -218,17 +193,8 @@ export function ServicesSection() {
         console.warn("publicApi.getServices in ServicesSection:", err);
       });
 
-    const handleStorageUpdate = () => syncCanonicalServices();
-
-    window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
-    window.addEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
-    window.addEventListener("zhou_cms_status_updated", handleStorageUpdate);
-
     return () => {
       isMounted = false;
-      window.removeEventListener(SERVICES_EVENT, handleStorageUpdate);
-      window.removeEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
-      window.removeEventListener("zhou_cms_status_updated", handleStorageUpdate);
     };
   }, []);
 

@@ -58,7 +58,7 @@ export default function KonsultasiBisnisPage() {
         const rawScopes =
           (c.scopes && c.scopes.length > 0 ? c.scopes : undefined) ||
           (c.pillars && c.pillars.length > 0
-            ? c.pillars.map((p: any) => p.title || p.description)
+            ? c.pillars.map((p: { title?: string; description?: string }) => p.title || p.description || "")
             : undefined) || [
             "Konsultasi perencanaan keuangan dan strategi bisnis",
             "Evaluasi kinerja dan manajemen risiko korporasi",
@@ -111,7 +111,8 @@ export default function KonsultasiBisnisPage() {
       const combined: BusinessModuleItem[] = [];
       const seen = new Set<string>();
 
-      for (const item of [...storedModules, ...apiModules]) {
+      const sourceList = apiModules.length > 0 ? apiModules : storedModules;
+      for (const item of sourceList) {
         const titleKey = item.title.trim().toLowerCase();
         const codeKey = item.code.trim().toLowerCase();
         if (seen.has(titleKey) || seen.has(codeKey)) continue;
