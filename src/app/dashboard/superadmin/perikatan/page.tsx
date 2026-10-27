@@ -8,8 +8,9 @@ import {
   ConsultationItem,
   AdminUserItem,
 } from "@/lib/api";
-import { isDummyTicket, useAuth } from "@/context/AuthContext";
+import { isDummyTicket } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,10 @@ import {
   markTicketAsDeleted,
   markAllTicketsAsDeleted,
   assignTicketPic,
-  appendConsultantNoteToDescription,
+  cacheFileBlob,
+  saveSuperadminInstructionToStore,
+  extractCorrespondencesFromDescription,
+  extractSuperadminInstructions,
   mergeTicketsWithLocalOverrides,
   ClientTicket,
   StaffAdminProfile,
@@ -69,7 +73,6 @@ const isDummyAdmin = (a: { email?: string; name?: string }): boolean => {
 };
 
 function SuperadminPerikatanContent() {
-  const { user } = useAuth();
   const [tickets, setTickets] = useState<ClientTicket[]>([]);
   const [staffAdmins, setStaffAdmins] = useState<StaffAdminProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +85,8 @@ function SuperadminPerikatanContent() {
   const [selectedStaffId, setSelectedStaffId] = useState<string>("");
   const [typedStaffName, setTypedStaffName] = useState<string>("");
   const [assignmentNotes, setAssignmentNotes] = useState<string>("");
+  const [instructionFile, setInstructionFile] = useState<File | null>(null);
+  const [isSavingPic, setIsSavingPic] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
 
@@ -205,15 +210,7 @@ function SuperadminPerikatanContent() {
                 }));
             })(),
             description: b.description || "",
-            correspondences: b.description ? [
-              {
-                id: `msg-${b.id}`,
-                sender: "Klien",
-                role: "Klien",
-                date: "Awal",
-                message: b.description,
-              }
-            ] : [],
+            correspondences: extractCorrespondencesFromDescription(b.description, `msg-${b.id}`),
             clientDocuments: (() => {
               const rawDocs = b.documents || [];
               const isClientUpload = (d: { uploaded_by?: number }) =>
@@ -341,10 +338,11 @@ function SuperadminPerikatanContent() {
     const defaultStaff = matched || activeAssignableStaff[0];
     setSelectedStaffId(defaultStaff ? defaultStaff.id : "");
     setTypedStaffName(defaultStaff ? defaultStaff.name : "");
-    setAssignmentNotes(item.assignmentNotes || "");
+    setAssignmentNotes(""); // Selalu kosongkan agar siap menerima instruksi baru/tambahan
+    setInstructionFile(null);
   };
 
-  // Simpan/Tetapkan PIC dari modal kelola PIC
+  // Simpan/Tetapkan PIC dan instruksi dari modal
   const handleSavePicAssignment = async () => {
     if (!managingPicTicket) return;
 
@@ -387,78 +385,98 @@ function SuperadminPerikatanContent() {
     }
 
     const cleanNotes = assignmentNotes.trim();
+    setIsSavingPic(true);
 
-    if (targetProjectId && numAdminId) {
-      try {
-        const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId, cleanNotes || undefined);
-        if (assignRes.success) {
-          // Otomatis tandai task nomor 2 (Penetapan PIC) menjadi selesai dan naikkan progres menjadi min 50%
-          try {
-            const tasksRes = await adminApi.getTasks(targetProjectId);
-            if (tasksRes.success && Array.isArray(tasksRes.data)) {
-              const picTask = tasksRes.data.find(
-                (t) =>
-                  t.task_name.toLowerCase().includes("pic") ||
-                  t.task_name.toLowerCase().includes("penetapan")
-              ) || tasksRes.data[1];
-              if (picTask && !picTask.is_completed) {
-                await adminApi.updateTask(targetProjectId, picTask.id, true);
-              }
-            }
-
-            // Jika ada catatan instruksi penugasan, sematkan ke deskripsi database agar PIC langsung dapat membacanya
-            let updatedDesc = managingPicTicket.description || "";
-            if (cleanNotes) {
-              const nowFormatted =
-                new Date().toLocaleDateString("id-ID", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }) + " WIB";
-              const noteHeader = `[CATATAN KONSULTAN - ${nowFormatted} - ${user?.name ? `${user.name} (Superadmin)` : "Superadmin"} (Instruksi Superadmin)]`;
-              updatedDesc = appendConsultantNoteToDescription(updatedDesc, `${noteHeader}\n${cleanNotes}`);
-            }
-
-            await adminApi.updateConsultation(targetProjectId, {
-              progress_percent: Math.max(managingPicTicket.progress || 0, 50),
-              ...(cleanNotes ? { description: updatedDesc } : {}),
-            });
-          } catch (taskErr) {
-            console.warn("Auto-complete PIC task notice:", taskErr);
-          }
-
-          showToast(
-            isReassign
-              ? `Penugasan tiket ${managingPicTicket.id} berhasil dialihkan dari ${prevName} kepada ${targetAdmin.name}.`
-              : `Tiket ${managingPicTicket.id} berhasil ditugaskan kepada ${targetAdmin.name}.`
-          );
-        } else {
-          showToast(assignRes.message || "Gagal memperbarui penugasan PIC di backend.");
+    try {
+      // 1. Jika ada berkas lampiran instruksi penugasan, simpan blob dan unggah ke backend jika didukung
+      if (instructionFile) {
+        cacheFileBlob(instructionFile.name, instructionFile);
+        cacheFileBlob(`${managingPicTicket.id}:${instructionFile.name}`, instructionFile);
+        if (managingPicTicket.numericId) {
+          cacheFileBlob(`TK-${managingPicTicket.numericId}:${instructionFile.name}`, instructionFile);
+          cacheFileBlob(`${managingPicTicket.numericId}:${instructionFile.name}`, instructionFile);
         }
-      } catch {
-        showToast("Terjadi kendala koneksi ke server saat menetapkan PIC.");
+
+        if (targetProjectId) {
+          try {
+            const formData = new FormData();
+            formData.append("file", instructionFile);
+            formData.append(
+              "description",
+              `[Instruksi Superadmin] ${cleanNotes || "Dokumen lampiran instruksi penugasan PIC"}`
+            );
+            await adminApi.uploadDocument(targetProjectId, formData);
+          } catch (fileErr) {
+            console.warn("Gagal mengunggah berkas instruksi ke server:", fileErr);
+          }
+        }
       }
-    }
 
-    // Sinkronisasi pembaruan PIC ke penyimpanan tiket bersama lokal
-    assignTicketPic(
-      managingPicTicket.id,
-      {
-        id: targetAdmin.id,
-        name: targetAdmin.name,
-        email: targetAdmin.email,
-        division: targetAdmin.divisions?.[0] || "Tax Service Core",
-        isActive: targetAdmin.isActive,
-      },
-      cleanNotes,
-      managingPicTicket
-    );
+      // 2. Format catatan instruksi lengkap (sertakan nama file lampiran jika ada)
+      const noteBody = cleanNotes
+        ? (instructionFile ? `${cleanNotes}\n[Lampiran Berkas: ${instructionFile.name}]` : cleanNotes)
+        : (instructionFile ? `[Lampiran Berkas: ${instructionFile.name}]` : "");
 
-    if (managingPicTicket.numericId) {
+      // 3. Simpan langsung ke dedicated persistent store agar instruksi penugasan selalu terakumulasi
+      if (cleanNotes || instructionFile) {
+        saveSuperadminInstructionToStore(
+          managingPicTicket.id,
+          managingPicTicket.numericId || targetProjectId,
+          {
+            message: cleanNotes || `Lampiran berkas instruksi: ${instructionFile?.name}`,
+            sender: "Superadmin (Instruksi Superadmin)",
+            attachment: instructionFile
+              ? {
+                  name: instructionFile.name,
+                  size: (instructionFile.size / 1024).toFixed(1) + " KB",
+                  type: instructionFile.name.split(".").pop()?.toUpperCase() || "BERKAS",
+                }
+              : undefined,
+          }
+        );
+      }
+
+      if (targetProjectId && numAdminId) {
+        try {
+          const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId, noteBody || undefined);
+          if (assignRes.success) {
+            // Otomatis tandai task nomor 2 (Penetapan PIC) menjadi selesai dan naikkan progres minimal 50%
+            try {
+              const tasksRes = await adminApi.getTasks(targetProjectId);
+              if (tasksRes.success && Array.isArray(tasksRes.data)) {
+                const picTask = tasksRes.data.find(
+                  (t) =>
+                    t.task_name.toLowerCase().includes("pic") ||
+                    t.task_name.toLowerCase().includes("penetapan")
+                ) || tasksRes.data[1];
+                if (picTask && !picTask.is_completed) {
+                  await adminApi.updateTask(targetProjectId, picTask.id, true);
+                }
+              }
+
+              await adminApi.updateConsultation(targetProjectId, {
+                progress_percent: Math.max(managingPicTicket.progress || 0, 50),
+              });
+            } catch (taskErr) {
+              console.warn("Auto-complete PIC task notice:", taskErr);
+            }
+
+            showToast(
+              isReassign
+                ? `Penugasan tiket ${managingPicTicket.id} berhasil dialihkan dari ${prevName} kepada ${targetAdmin.name}.${noteBody ? " Instruksi tambahan berhasil ditambahkan." : ""}`
+                : `Tiket ${managingPicTicket.id} berhasil ditugaskan kepada ${targetAdmin.name}.${noteBody ? " Instruksi penugasan berhasil ditambahkan." : ""}`
+            );
+          } else {
+            showToast(assignRes.message || "Gagal memperbarui penugasan PIC di backend.");
+          }
+        } catch {
+          showToast("Terjadi kendala koneksi ke server saat menetapkan PIC.");
+        }
+      }
+
+      // 4. Sinkronisasi pembaruan PIC & instruksi ke penyimpanan tiket bersama lokal
       assignTicketPic(
-        `TK-${managingPicTicket.numericId}`,
+        managingPicTicket.id,
         {
           id: targetAdmin.id,
           name: targetAdmin.name,
@@ -466,17 +484,37 @@ function SuperadminPerikatanContent() {
           division: targetAdmin.divisions?.[0] || "Tax Service Core",
           isActive: targetAdmin.isActive,
         },
-        cleanNotes
+        noteBody || undefined,
+        managingPicTicket
       );
-    }
 
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("zhou_tickets_updated"));
-      window.dispatchEvent(new Event("storage"));
-    }
+      if (managingPicTicket.numericId) {
+        assignTicketPic(
+          `TK-${managingPicTicket.numericId}`,
+          {
+            id: targetAdmin.id,
+            name: targetAdmin.name,
+            email: targetAdmin.email,
+            division: targetAdmin.divisions?.[0] || "Tax Service Core",
+            isActive: targetAdmin.isActive,
+          },
+          noteBody || undefined
+        );
+      }
 
-    setManagingPicTicket(null);
-    await loadData(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("zhou_superadmin_instructions_updated"));
+        window.dispatchEvent(new Event("zhou_tickets_updated"));
+        window.dispatchEvent(new Event("storage"));
+      }
+
+      setManagingPicTicket(null);
+      setInstructionFile(null);
+      setAssignmentNotes("");
+      await loadData(false);
+    } finally {
+      setIsSavingPic(false);
+    }
   };
 
   // Helper unduh lampiran berkas klien secara valid (XLSX, PDF, atau file server asli)
@@ -1417,18 +1455,81 @@ function SuperadminPerikatanContent() {
                   })()}
                 </div>
 
-                <div className="pt-2 border-t border-primary-light/60">
-                  <Label htmlFor="manage-pic-notes" className="text-[11px] font-semibold text-text-secondary block mb-1">
-                    Catatan Instruksi Penugasan (Opsional):
+                {/* Riwayat Instruksi Sebelumnya */}
+                {(() => {
+                  const pastInstructions = extractSuperadminInstructions(managingPicTicket);
+                  if (pastInstructions.length === 0) return null;
+                  return (
+                    <div className="pt-2 border-t border-primary-light/60 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-900">
+                          Riwayat Catatan &amp; Instruksi Sebelumnya ({pastInstructions.length}):
+                        </span>
+                        <span className="text-[9px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                          Tersimpan
+                        </span>
+                      </div>
+                      <div className="max-h-36 overflow-y-auto space-y-2 pr-1 divide-y divide-amber-200/60">
+                        {pastInstructions.map((inst, idx) => (
+                          <div key={idx} className="pt-1.5 first:pt-0 space-y-1">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-bold text-amber-900">{inst.sender}</span>
+                              <span className="font-mono text-text-muted">{inst.date}</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-950 font-medium whitespace-pre-line leading-relaxed">
+                              {inst.message}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Input Catatan / Instruksi Baru */}
+                <div className="pt-2 border-t border-primary-light/60 space-y-1.5">
+                  <Label htmlFor="manage-pic-notes" className="text-[11px] font-bold text-primary block">
+                    Tambah Instruksi Tambahan untuk PIC / Admin (Opsional):
                   </Label>
-                  <Input
+                  <Textarea
                     id="manage-pic-notes"
-                    type="text"
-                    placeholder="Contoh: Tolong segera follow-up klien untuk dokumen kelengkapan..."
+                    rows={2}
+                    placeholder="Tuliskan arahan tugas atau instruksi tambahan untuk PIC..."
                     value={assignmentNotes}
                     onChange={(e) => setAssignmentNotes(e.target.value)}
-                    className="w-full text-xs h-8 bg-white border-primary-light"
+                    className="w-full text-xs min-h-[64px] bg-white border-primary-light font-normal text-text-primary"
                   />
+                </div>
+
+                {/* Lampiran Berkas Instruksi */}
+                <div className="pt-2 border-t border-primary-light/60 space-y-1.5">
+                  <Label htmlFor="manage-pic-file" className="text-[11px] font-bold text-primary block">
+                    Lampirkan Berkas / Dokumen untuk Admin PIC (Opsional):
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="manage-pic-file"
+                      type="file"
+                      accept=".pdf,.xlsx,.xls,.docx,.doc,.zip,.rar"
+                      onChange={(e) => setInstructionFile(e.target.files?.[0] || null)}
+                      className="text-xs h-9 bg-white border-primary-light file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[11px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                    />
+                    {instructionFile && (
+                      <button
+                        type="button"
+                        onClick={() => setInstructionFile(null)}
+                        className="text-text-muted hover:text-danger text-xs px-2 py-1 font-semibold cursor-pointer shrink-0"
+                        title="Batal pilih berkas"
+                      >
+                        Batal
+                      </button>
+                    )}
+                  </div>
+                  {instructionFile && (
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      ✓ Berkas terpilih: {instructionFile.name} ({(instructionFile.size / 1024).toFixed(1)} KB)
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1439,6 +1540,7 @@ function SuperadminPerikatanContent() {
                 type="button"
                 variant="outline"
                 size="sm"
+                disabled={isSavingPic}
                 onClick={() => setManagingPicTicket(null)}
                 className="border-primary-light font-semibold text-xs px-4 py-2"
               >
@@ -1448,10 +1550,11 @@ function SuperadminPerikatanContent() {
                 type="button"
                 variant="primary"
                 size="sm"
+                disabled={isSavingPic}
                 onClick={handleSavePicAssignment}
-                className="font-semibold text-xs px-4 py-2 bg-[#0B1533] hover:bg-[#0B1533]/90 text-white rounded-lg shadow-2xs"
+                className="font-semibold text-xs px-4 py-2 bg-[#0B1533] hover:bg-[#0B1533]/90 text-white rounded-lg shadow-2xs cursor-pointer"
               >
-                Tetapkan PIC
+                {isSavingPic ? "Menyimpan..." : "Tetapkan PIC"}
               </Button>
             </div>
           </div>

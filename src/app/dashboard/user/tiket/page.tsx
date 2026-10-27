@@ -22,6 +22,7 @@ import {
   isTicketArchived,
   addStoredClientTicket,
   getStoredClientTickets,
+  ClientTicket,
   ClientUploadedFile,
   ConsultationStatus,
   getDisplayPicName,
@@ -30,10 +31,10 @@ import {
   resolveConsultationCategory,
   markTicketAsDeleted,
   cacheFileBlob,
-  getCachedFileBlob,
   getCachedFileBlobAsync,
   formatCorrespondenceMessage,
   addSupportingDocumentsToTicket,
+  addClientNoteToTicket,
   mergeTicketsWithLocalOverrides,
   sortAndNormalizeMilestones,
   getMilestoneRank,
@@ -168,7 +169,12 @@ function ClientTicketMonitoringContent() {
           );
           const isClientUpload = (d: { uploaded_by?: number }) =>
             Boolean(d.uploaded_by && c.client_id && Number(d.uploaded_by) === Number(c.client_id));
-          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d));
+          const isInstructionDoc = (d: { description?: string; file_name?: string }) =>
+            Boolean(
+              (d.description && (d.description.toLowerCase().includes("instruksi") || d.description.toLowerCase().includes("superadmin"))) ||
+              (d.file_name && (d.file_name.toLowerCase().includes("instruksi") || d.file_name.toLowerCase().includes("superadmin")))
+            );
+          const adminDeliverables = projectDocs.filter((d) => !isClientUpload(d) && !isInstructionDoc(d));
           const delivNames = new Set(adminDeliverables.map((d) => d.file_name.toLowerCase().trim()));
           const delivIds = new Set(adminDeliverables.map((d) => String(d.id)));
 
@@ -290,7 +296,12 @@ function ClientTicketMonitoringContent() {
                 ]
               : [],
             clientDocuments: matchingClientDocs,
-            correspondences: extractCorrespondencesFromDescription(c.description, `c-msg-${c.id}`),
+            correspondences: extractCorrespondencesFromDescription(c.description, `c-msg-${c.id}`).filter(
+              (corr) =>
+                corr.role !== "Superadmin" &&
+                !corr.sender.toLowerCase().includes("superadmin") &&
+                !corr.sender.toLowerCase().includes("instruksi")
+            ),
             isArchived: isTicketArchived(ticketCode),
           };
         });
@@ -298,7 +309,7 @@ function ClientTicketMonitoringContent() {
 
       // Gabungkan juga dengan tiket lokal yang disimpan (editan lokal selalu diprioritaskan)
       const localTickets = typeof window !== "undefined" ? getStoredClientTickets() : [];
-      const rawMerged = mergeTicketsWithLocalOverrides(backendTickets as any, localTickets);
+      const rawMerged = mergeTicketsWithLocalOverrides(backendTickets as unknown as ClientTicket[], localTickets);
       const mergedTickets: Ticket[] = rawMerged.map((t) => ({
         ...t,
         category: t.category as Ticket["category"],
@@ -306,6 +317,12 @@ function ClientTicketMonitoringContent() {
           ...d,
           format: (d as { format?: string; type?: string }).format || d.type || "PDF",
         })),
+        correspondences: (t.correspondences || []).filter(
+          (corr) =>
+            corr.role !== "Superadmin" &&
+            !corr.sender.toLowerCase().includes("superadmin") &&
+            !corr.sender.toLowerCase().includes("instruksi")
+        ),
       })) as unknown as Ticket[];
 
       setTickets(mergedTickets);
@@ -340,7 +357,12 @@ function ClientTicketMonitoringContent() {
             date: d.date,
             downloadUrl: d.downloadUrl,
           })),
-          correspondences: lt.correspondences || [],
+          correspondences: (lt.correspondences || []).filter(
+            (corr) =>
+              corr.role !== "Superadmin" &&
+              !corr.sender.toLowerCase().includes("superadmin") &&
+              !corr.sender.toLowerCase().includes("instruksi")
+          ),
           clientDocuments: lt.clientDocuments || [],
           isArchived: Boolean(lt.isArchived),
         }));
@@ -765,16 +787,16 @@ function ClientTicketMonitoringContent() {
       // 1. Simpan langsung ke penyimpanan tersinkronisasi
       const fallbackTicketData = {
         ...selectedTicket,
-        category: selectedTicket.category as any,
+        category: selectedTicket.category as ClientTicket["category"],
         priority: (selectedTicket.priority === "Tinggi" || selectedTicket.priority === "Mendesak" ? selectedTicket.priority : "Normal") as "Normal" | "Tinggi" | "Mendesak",
-        status: (selectedTicket.status as any) || "Dalam Proses",
+        status: (selectedTicket.status as ClientTicket["status"]) || "Dalam Proses",
         deliverables: (selectedTicket.deliverables || []).map((d, i) => ({
           ...d,
           id: String(d.id || `deliv-${Date.now()}-${i}`),
           type: d.format || d.type || "PDF",
           status: "Tersedia",
         })),
-        milestones: selectedTicket.milestones as any,
+        milestones: selectedTicket.milestones as ClientTicket["milestones"],
       };
 
       const saveRes = addSupportingDocumentsToTicket(
@@ -791,7 +813,12 @@ function ClientTicketMonitoringContent() {
               ? {
                   ...t,
                   clientDocuments: saveRes.ticket?.clientDocuments || t.clientDocuments,
-                  correspondences: saveRes.ticket?.correspondences || t.correspondences,
+                  correspondences: (saveRes.ticket?.correspondences || t.correspondences || []).filter(
+                    (corr) =>
+                      corr.role !== "Superadmin" &&
+                      !corr.sender.toLowerCase().includes("superadmin") &&
+                      !corr.sender.toLowerCase().includes("instruksi")
+                  ),
                 }
               : t
           )
@@ -829,6 +856,61 @@ function ClientTicketMonitoringContent() {
       uploadFiles(Array.from(selected));
     }
     e.target.value = "";
+  };
+
+  // Kirim Catatan Balasan Klien ke Konsultan PIC
+  const [clientReplyNote, setClientReplyNote] = useState<string>("");
+  const [isSendingClientNote, setIsSendingClientNote] = useState<boolean>(false);
+
+  const handleSendClientNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTicket) return;
+
+    const trimmed = clientReplyNote.trim();
+    if (!trimmed) {
+      showToast("Silakan tulis catatan atau respon balasan terlebih dahulu.");
+      return;
+    }
+
+    setIsSendingClientNote(true);
+    try {
+      const clientName = user?.name || selectedTicket.clientName || "Klien";
+      const clientEmail = user?.email || selectedTicket.clientEmail;
+
+      const res = addClientNoteToTicket(
+        selectedTicket.id,
+        trimmed,
+        { name: clientName, email: clientEmail },
+        selectedTicket as unknown as ClientTicket
+      );
+
+      if (res.success && res.ticket) {
+        const updatedTicket: Ticket = {
+          ...selectedTicket,
+          description: res.ticket.description,
+          status: res.ticket.status,
+          correspondences: (res.ticket.correspondences || []).filter(
+            (c) =>
+              c.role !== "Superadmin" &&
+              !c.sender.toLowerCase().includes("superadmin") &&
+              !c.sender.toLowerCase().includes("instruksi")
+          ),
+        };
+
+        setTickets((prev) =>
+          prev.map((t) => (t.id.toLowerCase() === selectedTicket.id.toLowerCase() ? updatedTicket : t))
+        );
+        setClientReplyNote("");
+        showToast("Catatan dan tanggapan Anda berhasil dikirimkan ke tim konsultan.");
+      } else {
+        showToast(res.message || "Gagal mengirimkan catatan.");
+      }
+    } catch (err: unknown) {
+      console.error("Error sending client note:", err);
+      showToast("Terjadi kendala saat mengirimkan catatan.");
+    } finally {
+      setIsSendingClientNote(false);
+    }
   };
 
   // Handle New Ticket Submit
@@ -1438,7 +1520,19 @@ function ClientTicketMonitoringContent() {
                 {/* 3. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
                 {(() => {
                   const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
+                  const isInternalSuperadmin = (c: { role?: string; sender?: string }) => {
+                    const roleLower = (c.role || "").toLowerCase();
+                    const senderLower = (c.sender || "").toLowerCase();
+                    return (
+                      roleLower === "superadmin" ||
+                      senderLower.includes("superadmin") ||
+                      senderLower.includes("instruksi") ||
+                      senderLower.includes("penugasan")
+                    );
+                  };
+
                   const cleanCorrespondences = sortedCorrespondences
+                    .filter((c) => !isInternalSuperadmin(c))
                     .map((c) => ({
                       ...c,
                       cleanMsg: formatCorrespondenceMessage(c.message),
@@ -1450,7 +1544,7 @@ function ClientTicketMonitoringContent() {
                     });
 
                   return (
-                    <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
+                    <div className="p-4 rounded-xl border border-primary-light bg-white space-y-3">
                       <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
                           Catatan &amp; Komunikasi
@@ -1463,21 +1557,91 @@ function ClientTicketMonitoringContent() {
                           Belum ada catatan atau instruksi tambahan dari tim konsultan untuk perikatan ini.
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          {cleanCorrespondences.map((c) => (
-                            <div
-                              key={c.id}
-                              className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
-                            >
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="font-bold text-primary">{c.sender}</span>
-                                <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                        <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
+                          {cleanCorrespondences.map((c) => {
+                            const isClientMsg =
+                              c.role === "Klien" ||
+                              c.sender === user?.name ||
+                              c.sender === selectedTicket.clientName ||
+                              c.sender.toLowerCase().includes("klien");
+                            return (
+                              <div
+                                key={c.id}
+                                className={`p-3 rounded-xl space-y-1 transition-colors border ${
+                                  isClientMsg
+                                    ? "bg-blue-50/50 border-blue-200/80 hover:bg-blue-50/80"
+                                    : "bg-surface/30 border-primary-light/60 hover:bg-surface/60"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`font-bold ${isClientMsg ? "text-blue-900" : "text-primary"}`}>
+                                      {c.sender}
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                                        isClientMsg
+                                          ? "bg-blue-100 text-blue-800 border-blue-200"
+                                          : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                      }`}
+                                    >
+                                      {isClientMsg ? "Klien (Anda)" : "Konsultan PIC"}
+                                    </span>
+                                  </div>
+                                  <span className="text-text-muted font-mono">{c.date.replace(/&bull;/g, "•")}</span>
+                                </div>
+                                <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
+                                  {c.cleanMsg}
+                                </p>
                               </div>
-                              <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
-                                {c.cleanMsg}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Form Kirim Catatan / Tanggapan Balasan ke Tim Konsultan */}
+                      {selectedTicket.status !== "Selesai" &&
+                      (selectedTicket.status as string) !== "Completed" &&
+                      selectedTicket.status !== "Dibatalkan" ? (
+                        <form
+                          onSubmit={handleSendClientNote}
+                          className="pt-3 border-t border-primary-light/60 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="client-reply-note" className="text-[11px] font-bold text-primary">
+                              Kirim Catatan / Tanggapan Balasan:
+                            </Label>
+                            <span className="text-[10px] text-text-muted">Langsung terhubung ke PIC</span>
+                          </div>
+                          <Textarea
+                            id="client-reply-note"
+                            rows={2}
+                            value={clientReplyNote}
+                            onChange={(e) => setClientReplyNote(e.target.value)}
+                            placeholder="Tuliskan catatan, respon balasan, atau informasi tambahan untuk tim konsultan..."
+                            className="w-full text-xs min-h-[64px] bg-surface/30 border-primary-light focus:bg-white resize-y"
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-text-muted truncate">
+                              Pengirim:{" "}
+                              <strong className="text-primary font-medium">
+                                {user?.name || selectedTicket.clientName || "Klien"}
+                              </strong>
+                            </span>
+                            <Button
+                              type="submit"
+                              variant="primary"
+                              size="sm"
+                              disabled={isSendingClientNote || !clientReplyNote.trim()}
+                              className="text-xs font-semibold px-3.5 py-1.5 h-8 shrink-0"
+                            >
+                              {isSendingClientNote ? "Mengirim..." : "Kirim Catatan"}
+                            </Button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div className="pt-2 border-t border-primary-light/60 text-center text-[11px] text-text-muted italic">
+                          Konsultasi ini telah berstatus &ldquo;{selectedTicket.status}&rdquo;. Jalur komunikasi telah ditutup.
                         </div>
                       )}
                     </div>
