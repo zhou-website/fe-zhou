@@ -8,7 +8,7 @@ import {
   ConsultationItem,
   AdminUserItem,
 } from "@/lib/api";
-import { isDummyTicket } from "@/context/AuthContext";
+import { isDummyTicket, useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -28,8 +28,6 @@ import {
 import {
   downloadBlob,
   downloadRemoteFile,
-  exportToExcel,
-  generateDocumentPdfBlob,
 } from "@/lib/downloadHelper";
 
 import {
@@ -42,8 +40,8 @@ import {
   getCachedFileBlobAsync,
   markTicketAsDeleted,
   markAllTicketsAsDeleted,
-  isTicketDeleted,
   assignTicketPic,
+  appendConsultantNoteToDescription,
   mergeTicketsWithLocalOverrides,
   ClientTicket,
   StaffAdminProfile,
@@ -71,6 +69,7 @@ const isDummyAdmin = (a: { email?: string; name?: string }): boolean => {
 };
 
 function SuperadminPerikatanContent() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<ClientTicket[]>([]);
   const [staffAdmins, setStaffAdmins] = useState<StaffAdminProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -387,9 +386,11 @@ function SuperadminPerikatanContent() {
       if (!isNaN(parsed)) targetProjectId = parsed;
     }
 
+    const cleanNotes = assignmentNotes.trim();
+
     if (targetProjectId && numAdminId) {
       try {
-        const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId);
+        const assignRes = await adminApi.assignConsultation(targetProjectId, numAdminId, cleanNotes || undefined);
         if (assignRes.success) {
           // Otomatis tandai task nomor 2 (Penetapan PIC) menjadi selesai dan naikkan progres menjadi min 50%
           try {
@@ -404,8 +405,25 @@ function SuperadminPerikatanContent() {
                 await adminApi.updateTask(targetProjectId, picTask.id, true);
               }
             }
+
+            // Jika ada catatan instruksi penugasan, sematkan ke deskripsi database agar PIC langsung dapat membacanya
+            let updatedDesc = managingPicTicket.description || "";
+            if (cleanNotes) {
+              const nowFormatted =
+                new Date().toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }) + " WIB";
+              const noteHeader = `[CATATAN KONSULTAN - ${nowFormatted} - ${user?.name ? `${user.name} (Superadmin)` : "Superadmin"} (Instruksi Superadmin)]`;
+              updatedDesc = appendConsultantNoteToDescription(updatedDesc, `${noteHeader}\n${cleanNotes}`);
+            }
+
             await adminApi.updateConsultation(targetProjectId, {
               progress_percent: Math.max(managingPicTicket.progress || 0, 50),
+              ...(cleanNotes ? { description: updatedDesc } : {}),
             });
           } catch (taskErr) {
             console.warn("Auto-complete PIC task notice:", taskErr);
@@ -434,7 +452,7 @@ function SuperadminPerikatanContent() {
         division: targetAdmin.divisions?.[0] || "Tax Service Core",
         isActive: targetAdmin.isActive,
       },
-      assignmentNotes,
+      cleanNotes,
       managingPicTicket
     );
 
@@ -448,8 +466,13 @@ function SuperadminPerikatanContent() {
           division: targetAdmin.divisions?.[0] || "Tax Service Core",
           isActive: targetAdmin.isActive,
         },
-        assignmentNotes
+        cleanNotes
       );
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("zhou_tickets_updated"));
+      window.dispatchEvent(new Event("storage"));
     }
 
     setManagingPicTicket(null);

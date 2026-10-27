@@ -15,21 +15,108 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   StoredServiceItem,
-  DEFAULT_SERVICES,
   getStoredServices,
   SERVICES_EVENT,
 } from "@/data/layananStorage";
-import { publicApi, PublicServiceItem } from "@/lib/api";
+import { publicApi, PublicServiceItem, parseContactSettings } from "@/lib/api";
 import { isCmsItemDeleted } from "@/data/cmsDeletedStorage";
 import { getCmsItemStatus } from "@/data/cmsStatusStorage";
 
+export interface CoreLandingService {
+  id: string;
+  categoryKey: "akuntansi" | "bisnis" | "tax-service" | "hukum";
+  name: string;
+  subtitle: string;
+  route: string;
+  pillars: { title: string }[];
+  waTemplate: string;
+}
+
+const CANONICAL_SERVICES: CoreLandingService[] = [
+  {
+    id: "core-accounting",
+    categoryKey: "akuntansi",
+    name: "Accounting Services",
+    subtitle:
+      "Penyusunan laporan keuangan berstandar SAK/PSAK, pembukuan komprehensif, neraca, laba rugi, dan rekonsiliasi profesional.",
+    route: "/layanan/akuntansi",
+    pillars: [
+      { title: "Laporan Posisi Keuangan (Neraca) & Laba Rugi" },
+      { title: "Pencatatan Jurnal & Buku Besar Terstandar PSAK" },
+      { title: "Rekonsiliasi Bank & Manajemen Kas Berkala" },
+    ],
+    waTemplate:
+      "Halo Zhou Consulting, saya ingin konsultasi mengenai Accounting Services.",
+  },
+  {
+    id: "core-business",
+    categoryKey: "bisnis",
+    name: "Business & Financial Services",
+    subtitle:
+      "Advisori strategi finansial korporasi, studi kelayakan investasi bisnis, optimalisasi arus kas, dan perencanaan anggaran.",
+    route: "/layanan/bisnis",
+    pillars: [
+      { title: "Analisis Kesehatan & Kinerja Finansial Korporasi" },
+      { title: "Perencanaan Anggaran & Optimalisasi Arus Kas" },
+      { title: "Evaluasi Kelayakan Investasi & Studi Finansial" },
+    ],
+    waTemplate:
+      "Halo Zhou Consulting, saya ingin konsultasi mengenai Business & Financial Services.",
+  },
+  {
+    id: "core-tax",
+    categoryKey: "tax-service",
+    name: "Tax Services",
+    subtitle:
+      "Pendampingan kepatuhan perpajakan korporasi, transisi Coretax DJP, pelaporan SPT Masa & Tahunan, serta mitigasi risiko fiskal.",
+    route: "/layanan/tax-service",
+    pillars: [
+      { title: "Pendampingan Transisi & Kesiapan Coretax DJP" },
+      { title: "Pelaporan SPT Masa PPh & PPN Tepat Waktu" },
+      { title: "Rekonsiliasi Fiskal & SPT Tahunan Badan 1771" },
+    ],
+    waTemplate:
+      "Halo Zhou Consulting, saya ingin konsultasi mengenai Tax Services.",
+  },
+  {
+    id: "core-law",
+    categoryKey: "hukum",
+    name: "Law Services",
+    subtitle:
+      "Pendampingan aspek hukum bisnis, drafting dan review kontrak komersial, perizinan OSS-RBA, serta advokasi sengketa regulasi.",
+    route: "/layanan/hukum",
+    pillars: [
+      { title: "Drafting & Review Kontrak Komersial" },
+      { title: "Perizinan Usaha Berbasis Risiko OSS-RBA" },
+      { title: "Pendampingan Pemeriksaan & Sengketa Pajak" },
+    ],
+    waTemplate:
+      "Halo Zhou Consulting, saya ingin konsultasi mengenai Law Services.",
+  },
+];
+
+function isTechnicalTaxService(name?: string, code?: string): boolean {
+  const n = (name || "").toLowerCase();
+  const c = (code || "").toLowerCase();
+  return (
+    n.includes("e-faktur") ||
+    n.includes("e-bupot") ||
+    n.includes("e-billing") ||
+    n.includes("pelaporan spt") ||
+    c.includes("faktur") ||
+    c.includes("bupot") ||
+    c.includes("billing")
+  );
+}
+
 export function ServicesSection() {
-  const [services, setServices] = useState<StoredServiceItem[]>(DEFAULT_SERVICES);
+  const [cards, setCards] = useState<CoreLandingService[]>(CANONICAL_SERVICES);
+  const [waPhone, setWaPhone] = useState<string>(() => {
+    const raw = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
+    return raw.replace(/[^0-9]/g, "") || "6285121286086";
+  });
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
-
-  const rawPhone = process.env.NEXT_PUBLIC_WA_PHONE || "6285121286086";
-  const cleanPhone = rawPhone.replace(/[^0-9]/g, "") || "6285121286086";
 
   const getAuthHref = (target: string) => {
     if (target.startsWith("/dashboard") && !isAuthenticated) {
@@ -41,106 +128,97 @@ export function ServicesSection() {
   useEffect(() => {
     let isMounted = true;
 
-    // Load initial services from local storage or default official services
-    const localServices = getStoredServices();
-    if (localServices.length > 0) {
-      setServices(localServices);
-    }
+    // Load contact settings for official WhatsApp phone number
+    publicApi
+      .getContactSettings()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          const cfg = parseContactSettings(res.data);
+          if (cfg.whatsapp) {
+            const clean = cfg.whatsapp.replace(/[^0-9]/g, "");
+            if (clean) setWaPhone(clean);
+          }
+        }
+      })
+      .catch(() => {});
 
-    const handleStorageUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<StoredServiceItem[]>;
-      if (customEvent.detail && Array.isArray(customEvent.detail)) {
-        setServices(customEvent.detail);
-      } else {
-        setServices(getStoredServices());
+    // Sync descriptions from local CMS storage or backend API while keeping canonical 4 services intact
+    const syncCanonicalServices = (apiItems?: PublicServiceItem[]) => {
+      const stored = getStoredServices();
+
+      const updatedCards = CANONICAL_SERVICES.map((canon) => {
+        // Find matching stored or api item for this category, ignoring technical tax sub-services
+        const storedMatch = stored.find((s: StoredServiceItem) => {
+          if (!s || s.status === "Draft" || s.status === "Archived") return false;
+          if (isCmsItemDeleted(s.id, s.name, undefined, s.code)) return false;
+          if (getCmsItemStatus(s.id, s.name, s.status, [s.code]) === "Draft") return false;
+          if (isTechnicalTaxService(s.name, s.code)) return false;
+          return s.categoryKey?.toLowerCase() === canon.categoryKey.toLowerCase();
+        });
+
+        const apiMatch = (apiItems || []).find((a: PublicServiceItem) => {
+          if (a.is_active === false) return false;
+          if (isCmsItemDeleted(a.id, a.service_name, a.id, a.service_code)) return false;
+          if (getCmsItemStatus(`SVC-${a.id}`, a.service_name, "Published", [a.id, a.service_code]) === "Draft") return false;
+          if (isTechnicalTaxService(a.service_name, a.service_code)) return false;
+          const catLower = (a.category || "").toLowerCase();
+          const codeUpper = (a.service_code || "").toUpperCase();
+          if (canon.categoryKey === "akuntansi") {
+            return catLower.includes("akuntansi") || codeUpper.includes("ACC");
+          }
+          if (canon.categoryKey === "bisnis") {
+            return catLower.includes("bisnis") || codeUpper.includes("FIN");
+          }
+          if (canon.categoryKey === "tax-service") {
+            return (catLower.includes("tax") || catLower.includes("pajak") || codeUpper.includes("TAX")) &&
+              !catLower.includes("hukum") && !catLower.includes("legal");
+          }
+          if (canon.categoryKey === "hukum") {
+            return catLower.includes("hukum") || codeUpper.includes("LAW") || codeUpper.includes("LEGAL");
+          }
+          return false;
+        });
+
+        const subtitle =
+          storedMatch?.subtitle ||
+          apiMatch?.description ||
+          canon.subtitle;
+
+        const pillars =
+          storedMatch?.pillars && storedMatch.pillars.length > 0
+            ? storedMatch.pillars.map((p) => ({ title: p.title }))
+            : apiMatch?.features && apiMatch.features.length > 0
+            ? apiMatch.features.slice(0, 3).map((f) => ({ title: f }))
+            : canon.pillars;
+
+        return {
+          ...canon,
+          subtitle,
+          pillars,
+        };
+      });
+
+      if (isMounted) {
+        setCards(updatedCards);
       }
     };
 
-    window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
+    syncCanonicalServices();
 
-    // Sync directly from live backend API as primary source of truth
     publicApi
       .getServices()
       .then((res) => {
         if (!isMounted) return;
         if (res?.data && Array.isArray(res.data)) {
-          const apiServices: StoredServiceItem[] = res.data
-            .filter((item: PublicServiceItem) => {
-              if (item.is_active === false) return false;
-              if (isCmsItemDeleted(item.id, item.service_name, item.id, item.service_code)) return false;
-              const pubStatus = getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]);
-              return pubStatus === "Published";
-            })
-            .map((item: PublicServiceItem) => {
-            const catLower = (item.category || "").toLowerCase();
-            const codeUpper = (item.service_code || "").toUpperCase();
-            const catKey =
-              catLower.includes("akuntansi") || codeUpper.includes("ACC")
-                ? "akuntansi"
-                : catLower.includes("bisnis") || codeUpper.includes("FIN") || catLower.includes("konsultasi")
-                ? "bisnis"
-                : catLower.includes("hukum") || codeUpper.includes("LEGAL") || catLower.includes("sengketa")
-                ? "hukum"
-                : "tax-service";
-
-            const route =
-              catKey === "akuntansi"
-                ? "/layanan/akuntansi"
-                : catKey === "bisnis"
-                ? "/layanan/bisnis"
-                : catKey === "hukum"
-                ? "/layanan/hukum"
-                : "/layanan/tax-service";
-
-            return {
-              id: `BE-${item.id}`,
-              code: item.service_code,
-              categoryKey: catKey,
-              name: item.service_name,
-              subtitle: item.description || "Layanan profesional terintegrasi Zhou Consulting.",
-              badge: item.category?.toUpperCase() || "LAYANAN",
-              route,
-              leadConsultant: "Tim Konsultan Spesialis Zhou Consulting",
-              pillars: [
-                {
-                  title: item.service_name,
-                  description: item.description || "Asistensi kepatuhan dan pelaporan profesional terintegrasi.",
-                },
-              ],
-              workflow: [
-                "Konsultasi Kebutuhan Awal",
-                "Analisis Teknis & Regulasi",
-                "Eksekusi Penugasan",
-                "Penyampaian Laporan Final",
-              ],
-              deliverables: ["Laporan Hasil Kerja & Risalah Penugasan Resmi"],
-              status: getCmsItemStatus(`SVC-${item.id}`, item.service_name, item.is_active ? "Published" : "Draft", [item.id, item.service_code]),
-              lastUpdated: item.created_at
-                ? new Date(item.created_at).toLocaleDateString("id-ID", { month: "short", year: "numeric" })
-                : "Oktober 2026",
-            };
-          });
-
-          const currentStored = getStoredServices();
-          const combined: StoredServiceItem[] = [];
-          const seen = new Set<string>();
-
-          for (const item of [...currentStored, ...apiServices]) {
-            const titleKey = item.name.trim().toLowerCase();
-            const codeKey = (item.code || item.id).trim().toLowerCase();
-            if (seen.has(titleKey) || seen.has(codeKey)) continue;
-            if (isCmsItemDeleted(item.id, item.name, undefined, item.code)) continue;
-            seen.add(titleKey);
-            seen.add(codeKey);
-            combined.push(item);
-          }
-
-          setServices(combined);
+          syncCanonicalServices(res.data);
         }
       })
       .catch((err) => {
         console.warn("publicApi.getServices in ServicesSection:", err);
       });
+
+    const handleStorageUpdate = () => syncCanonicalServices();
 
     window.addEventListener(SERVICES_EVENT, handleStorageUpdate);
     window.addEventListener("zhou_deleted_cms_items_updated", handleStorageUpdate);
@@ -154,10 +232,6 @@ export function ServicesSection() {
     };
   }, []);
 
-  const displayServices = services.filter(
-    (s) => s && s.name && s.status !== "Draft" && s.status !== "Archived"
-  );
-
   return (
     <section
       id="layanan"
@@ -168,73 +242,64 @@ export function ServicesSection() {
         {/* Section Header */}
         <div className="max-w-3xl space-y-3">
           <h2 className="text-[22px] leading-[30px] sm:text-[26px] sm:leading-[34px] lg:text-[32px] lg:leading-[40px] font-bold text-primary tracking-tight text-balance">
-            {t.services.headline || "Layanan Konsultasi Profesional Terpadu"}
+            {t.services.headline || "Layanan Konsultasi & Tax Services Profesional"}
           </h2>
           <p className="text-[14px] leading-[22px] sm:text-[15px] sm:leading-[24px] text-text-secondary leading-relaxed">
             {t.services.subheading ||
-              "Solusi terintegrasi perpajakan korporat, akuntansi berstandar SAK, pengelolaan keuangan strategis, dan kepatuhan hukum bisnis terpercaya."}
+              "Layanan utama Zhou: Solusi konsultasi strategis multi-disiplin dan administrasi perpajakan digital berstandar regulasi Coretax DJP."}
           </p>
         </div>
 
         {/* 4 Core Services Grid */}
-        {displayServices.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-64 rounded-2xl bg-slate-100/80 animate-pulse border border-slate-200/60 p-5 flex flex-col justify-between" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {displayServices.slice(0, 4).map((service) => (
-              <Card
-                key={service.id || service.route}
-                className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-2xl bg-white border-primary-light p-5 space-y-5"
-              >
-                <div className="space-y-3">
-                  <CardHeader className="p-0 space-y-2">
-                    <Link
-                      href={getAuthHref(service.route || `/layanan/${service.categoryKey}`)}
-                      className="hover:underline"
-                    >
-                      <CardTitle className="text-base font-bold text-primary leading-snug">
-                        {service.name}
-                      </CardTitle>
-                    </Link>
-                    <CardDescription className="text-xs text-text-secondary line-clamp-2 leading-relaxed">
-                      {service.subtitle}
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="p-0 pt-2 space-y-2 text-xs text-text-primary">
-                    {service.pillars?.slice(0, 3).map((pillar: any, idx: number) => (
-                      <div key={idx} className="flex items-start gap-2">
-                        <CheckCircleIcon className="text-emerald-600 text-xs shrink-0 mt-0.5" />
-                        <span className="line-clamp-1 text-[11px] font-medium text-text-secondary">
-                          {pillar.title}
-                        </span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </div>
-
-                <CardFooter className="p-0 pt-4 border-t border-primary-light/80">
-                  <a
-                    href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
-                      `Halo Zhou Consulting, saya ingin konsultasi mengenai ${service.name}.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-[#060D22] hover:bg-[#111e42] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {cards.map((service) => (
+            <Card
+              key={service.id}
+              className="hover:border-primary hover:shadow-md transition-all duration-200 flex flex-col justify-between w-full rounded-2xl bg-white border-primary-light p-5 space-y-5"
+            >
+              <div className="space-y-3">
+                <CardHeader className="p-0 space-y-2">
+                  <Link
+                    href={getAuthHref(service.route)}
+                    className="hover:underline"
                   >
-                    <WhatsappIcon className="text-xs text-emerald-400" />
-                    <span>Konsultasi</span>
-                  </a>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
+                    <CardTitle className="text-base font-bold text-primary leading-snug">
+                      {service.name}
+                    </CardTitle>
+                  </Link>
+                  <CardDescription className="text-xs text-text-secondary line-clamp-3 leading-relaxed min-h-[3rem]">
+                    {service.subtitle}
+                  </CardDescription>
+                </CardHeader>
 
+                <CardContent className="p-0 pt-2 space-y-2 text-xs text-text-primary">
+                  {service.pillars.slice(0, 3).map((pillar, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <CheckCircleIcon className="text-emerald-600 text-xs shrink-0 mt-0.5" />
+                      <span className="line-clamp-1 text-[11px] font-medium text-text-secondary">
+                        {pillar.title}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </div>
+
+              <CardFooter className="p-0 pt-4 border-t border-primary-light/80">
+                <a
+                  href={`https://wa.me/${waPhone}?text=${encodeURIComponent(
+                    service.waTemplate
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-lg bg-[#060D22] hover:bg-[#111e42] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                >
+                  <WhatsappIcon className="text-xs text-emerald-400" />
+                  <span>Konsultasi</span>
+                </a>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
     </section>
   );

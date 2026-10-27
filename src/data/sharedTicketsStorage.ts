@@ -235,7 +235,7 @@ export function formatConsultationDate(rawDate?: string): string {
 export function formatTicketDescription(desc?: string): string {
   if (!desc || !desc.trim()) return "";
   let clientText = desc;
-  const splitIdx = clientText.search(/(?:\r?\n\r?\n?|\s*)\[(?:CATATAN|TANGGAPAN) KONSULTAN/i);
+  const splitIdx = clientText.search(/(?:\r?\n\r?\n?|\s*)\[(?:CATATAN|TANGGAPAN|INSTRUKSI)\s*(?:KONSULTAN|PENUGASAN|SUPERADMIN)?/i);
   if (splitIdx !== -1) {
     clientText = clientText.substring(0, splitIdx);
   }
@@ -244,6 +244,22 @@ export function formatTicketDescription(desc?: string): string {
     return clientMatch[1].trim();
   }
   return clientText.trim();
+}
+
+/**
+ * Mengekstrak catatan instruksi penugasan khusus Superadmin dari deskripsi tiket jika ada
+ */
+export function extractAssignmentNotesFromDescription(desc?: string): string | undefined {
+  if (!desc || !desc.trim()) return undefined;
+  const regex = /\[(?:CATATAN|TANGGAPAN|INSTRUKSI)[^\]\r\n]*?(?:Superadmin|Instruksi|Penugasan)[^\]\r\n]*?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI))|$)/gi;
+  let match: RegExpExecArray | null;
+  let lastNote: string | undefined;
+  while ((match = regex.exec(desc)) !== null) {
+    if (match[1]?.trim()) {
+      lastNote = match[1].trim();
+    }
+  }
+  return lastNote;
 }
 
 /**
@@ -280,7 +296,7 @@ export function appendConsultantNoteToDescription(
 }
 
 /**
- * Mengekstrak seluruh catatan korespondensi resmi konsultan dari deskripsi perikatan backend
+ * Mengekstrak seluruh catatan korespondensi resmi konsultan & superadmin dari deskripsi perikatan backend
  */
 export function extractCorrespondencesFromDescription(
   desc?: string,
@@ -288,7 +304,7 @@ export function extractCorrespondencesFromDescription(
 ): Correspondence[] {
   if (!desc || !desc.trim()) return [];
 
-  const notesRegex = /\[(?:CATATAN|TANGGAPAN) KONSULTAN\s*-\s*([^\]\r\n]+?)(?:\s*-\s*([^\]\r\n]+?))?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN) KONSULTAN)|$)/gi;
+  const notesRegex = /\[(?:CATATAN|TANGGAPAN|INSTRUKSI)\s*(?:KONSULTAN|PENUGASAN|SUPERADMIN)?\s*-\s*([^\]\r\n]+?)(?:\s*-\s*([^\]\r\n]+?))?\]\r?\n([\s\S]*?)(?=(?:\r?\n\[(?:CATATAN|TANGGAPAN|INSTRUKSI))|$)/gi;
   const correspondences: Correspondence[] = [];
   let match: RegExpExecArray | null;
   let idx = 0;
@@ -321,10 +337,14 @@ export function extractCorrespondencesFromDescription(
       }
     }
 
+    const isSuperadmin =
+      sender.toLowerCase().includes("superadmin") ||
+      sender.toLowerCase().includes("instruksi");
+
     correspondences.unshift({
       id: `${fallbackIdPrefix}-${idx}-${Date.now()}`,
       sender,
-      role: "Konsultan",
+      role: isSuperadmin ? "Superadmin" : "Konsultan",
       date,
       message,
     });
@@ -697,11 +717,43 @@ export function mergeTicketsWithLocalOverrides(
           ? lt.status
           : bt.status;
 
+      const resolvedAssignmentNotes =
+        lt.assignmentNotes ||
+        bt.assignmentNotes ||
+        extractAssignmentNotesFromDescription(bt.description) ||
+        extractAssignmentNotesFromDescription(lt.description);
+
+      // Pastikan assignmentNotes juga tercatat di combinedCorrespondences jika belum ada
+      if (resolvedAssignmentNotes && resolvedAssignmentNotes.trim()) {
+        const noteClean = resolvedAssignmentNotes.trim();
+        const hasNoteInCorr = combinedCorrespondences.some((c) =>
+          c.message.includes(noteClean) || noteClean.includes(c.message.trim())
+        );
+        if (!hasNoteInCorr) {
+          combinedCorrespondences.unshift({
+            id: `assign-note-${bt.id || lt.id}-${Date.now()}`,
+            sender: "Superadmin (Instruksi Penugasan)",
+            role: "Superadmin",
+            date: bt.assignedAt || lt.assignedAt
+              ? new Date(bt.assignedAt || lt.assignedAt || Date.now()).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }) + " WIB"
+              : "Saat Penugasan",
+            message: noteClean,
+          });
+        }
+      }
+
       merged[existingIdx] = {
         ...lt,
         ...bt,
         id: bt.id || lt.id,
         numericId: bt.numericId || lt.numericId,
+        assignmentNotes: resolvedAssignmentNotes,
         deliverables: combinedDeliverables,
         clientDocuments: combinedClientDocs,
         correspondences: combinedCorrespondences,
@@ -1446,7 +1498,7 @@ export function addAdminDeliverableToTicket(
     fileName: deliverable.name,
     fileSize: deliverable.size,
     fileType: docType,
-    category: (target.category as any) || "Tax Service Core",
+    category: (target.category as AdminUploadedDocument["category"]) || "Tax Service Core",
     invoiceNumber: "-",
     amount: "-",
     billingStatus: "Lunas",
