@@ -37,7 +37,6 @@ import {
   Milestone,
   addAdminDeliverableToTicket,
   cacheFileBlob,
-  getCachedFileBlob,
   getCachedFileBlobAsync,
   formatCorrespondenceMessage,
   updateStoredClientTicketProgress,
@@ -47,6 +46,7 @@ import {
   formatConsultantNoteForStorage,
   appendConsultantNoteToDescription,
   extractCorrespondencesFromDescription,
+  extractAssignmentNotesFromDescription,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -108,6 +108,22 @@ function AdminTugasSayaContent() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  // Admin aktif saat ini
+  const activeStaffProfile = useMemo(() => {
+    return (
+      staffList.find((s) => s.email.toLowerCase() === activeAdminEmail.toLowerCase()) || {
+        id: "ADM-001",
+        name: user?.name || "Linda David, S.Ak., BKP",
+        email: activeAdminEmail,
+        nip: "ADM-001",
+        phone: "+62 812-9876-1201",
+        role: "admin" as const,
+        divisions: ["Tax Service Core", "Accounting Service"],
+        isActive: true,
+      }
+    );
+  }, [staffList, activeAdminEmail, user?.name]);
 
   // Muat data staf admin & tiket
   // Muat data penugasan langsung dari backend API
@@ -248,7 +264,21 @@ function AdminTugasSayaContent() {
                   downloadUrl: (d as unknown as { download_url?: string }).download_url || d.file_path,
                 }));
             })(),
-            correspondences: extractCorrespondencesFromDescription(c.description, `msg-${c.id}`),
+            assignmentNotes: extractAssignmentNotesFromDescription(c.description),
+            correspondences: (() => {
+              const corrs = extractCorrespondencesFromDescription(c.description, `msg-${c.id}`);
+              const note = extractAssignmentNotesFromDescription(c.description);
+              if (note && !corrs.some((cr) => cr.message.includes(note) || note.includes(cr.message.trim()))) {
+                corrs.unshift({
+                  id: `instr-superadmin-${c.id}`,
+                  sender: "Superadmin (Instruksi Penugasan)",
+                  role: "Superadmin",
+                  date: c.created_at ? new Date(c.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) + " WIB" : "Saat Penugasan",
+                  message: note,
+                });
+              }
+              return corrs;
+            })(),
             clientDocuments: (() => {
               const rawDocs = c.documents || [];
               const isClientUpload = (d: { uploaded_by?: number }) =>
@@ -298,6 +328,7 @@ function AdminTugasSayaContent() {
           const updatedCompleted = (updated.milestones || []).filter((m) => m.status === "completed").length;
           return {
             ...updated,
+            assignmentNotes: updated.assignmentNotes || prev.assignmentNotes || extractAssignmentNotesFromDescription(updated.description) || extractAssignmentNotesFromDescription(prev.description),
             milestones: prevCompleted > updatedCompleted ? prev.milestones : updated.milestones,
             progress: Math.max(updated.progress || 0, prev.progress || 0),
           };
@@ -317,7 +348,7 @@ function AdminTugasSayaContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeAdminEmail, user?.name, normalizedUserRole]);
+  }, [activeAdminEmail, user?.name, normalizedUserRole, activeStaffProfile]);
 
   useEffect(() => {
     loadData();
@@ -335,22 +366,6 @@ function AdminTugasSayaContent() {
       window.removeEventListener("storage", handleSync);
     };
   }, [loadData]);
-
-  // Admin aktif saat ini
-  const activeStaffProfile = useMemo(() => {
-    return (
-      staffList.find((s) => s.email.toLowerCase() === activeAdminEmail.toLowerCase()) || {
-        id: "ADM-001",
-        name: user?.name || "Linda David, S.Ak., BKP",
-        email: activeAdminEmail,
-        nip: "ADM-001",
-        phone: "+62 812-9876-1201",
-        role: "admin" as const,
-        divisions: ["Tax Service Core", "Accounting Service"],
-        isActive: true,
-      }
-    );
-  }, [staffList, activeAdminEmail, user?.name]);
 
   // Validasi URL Parameter ?id=... (Strict Authorization Enforcement)
   useEffect(() => {
@@ -997,6 +1012,29 @@ function AdminTugasSayaContent() {
                       </p>
                     );
                   })()}
+
+                  {/* Catatan Instruksi Khusus Penugasan dari Superadmin */}
+                  {(() => {
+                    const instruction =
+                      selectedTicket.assignmentNotes ||
+                      extractAssignmentNotesFromDescription(selectedTicket.description);
+                    if (!instruction || !instruction.trim()) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-primary-light/60 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                            Instruksi Penugasan Superadmin
+                          </span>
+                          <span className="text-[9px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            Catatan Khusus PIC
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-lg bg-amber-50/90 border border-amber-200/90 text-xs text-amber-950 font-medium leading-relaxed whitespace-pre-line shadow-2xs">
+                          {instruction.trim()}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. Alur Pengerjaan Kertas Kerja (Interactive Minimal Stepper untuk Admin) */}
@@ -1317,6 +1355,11 @@ function AdminTugasSayaContent() {
                 {/* 4. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
                 {(() => {
                   const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
+                  const rawAssignmentNote =
+                    (selectedTicket.assignmentNotes ||
+                    extractAssignmentNotesFromDescription(selectedTicket.description) ||
+                    "").trim();
+
                   const cleanCorrespondences = (selectedTicket.correspondences || [])
                     .map((c) => ({
                       ...c,
@@ -1327,6 +1370,24 @@ function AdminTugasSayaContent() {
                       if (cleanProblem && c.cleanMsg.trim().toLowerCase() === cleanProblem) return false;
                       return true;
                     });
+
+                  // Jika ada catatan instruksi penugasan dari superadmin dan belum ada di riwayat korespondensi, sisipkan di awal
+                  if (
+                    rawAssignmentNote &&
+                    !cleanCorrespondences.some((c) =>
+                      c.cleanMsg.toLowerCase().includes(rawAssignmentNote.toLowerCase()) ||
+                      rawAssignmentNote.toLowerCase().includes(c.cleanMsg.toLowerCase())
+                    )
+                  ) {
+                    cleanCorrespondences.unshift({
+                      id: `superadmin-note-${selectedTicket.id}`,
+                      sender: "Superadmin (Instruksi Penugasan)",
+                      role: "Superadmin",
+                      date: selectedTicket.createdAt || "Saat Penugasan",
+                      message: rawAssignmentNote,
+                      cleanMsg: rawAssignmentNote,
+                    });
+                  }
 
                   return (
                     <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
@@ -1343,22 +1404,44 @@ function AdminTugasSayaContent() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {cleanCorrespondences.map((c) => (
-                            <div
-                              key={c.id}
-                              className="p-3 bg-surface/30 border border-primary-light/60 rounded-xl space-y-1 hover:bg-surface/60 transition-colors"
-                            >
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="font-bold text-primary">
-                                  {c.sender} <span className="font-normal text-text-muted">({c.role})</span>
-                                </span>
-                                <span className="text-text-muted font-mono">{c.date}</span>
+                          {cleanCorrespondences.map((c) => {
+                            const isSuperadminNote = c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin");
+                            return (
+                              <div
+                                key={c.id}
+                                className={`p-3 rounded-xl space-y-1.5 transition-colors border ${
+                                  isSuperadminNote
+                                    ? "bg-amber-50/70 border-amber-200/90 hover:bg-amber-50/90"
+                                    : "bg-surface/30 border-primary-light/60 hover:bg-surface/60"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`font-bold ${isSuperadminNote ? "text-amber-900" : "text-primary"}`}>
+                                      {c.sender}
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                                        isSuperadminNote
+                                          ? "bg-amber-100 text-amber-800 border-amber-300"
+                                          : "bg-surface text-text-muted border-primary-light"
+                                      }`}
+                                    >
+                                      {c.role}
+                                    </span>
+                                  </div>
+                                  <span className="text-text-muted font-mono">{c.date}</span>
+                                </div>
+                                <p
+                                  className={`text-xs leading-relaxed whitespace-pre-line ${
+                                    isSuperadminNote ? "text-amber-950 font-medium" : "text-text-secondary"
+                                  }`}
+                                >
+                                  {c.cleanMsg}
+                                </p>
                               </div>
-                              <p className="text-text-secondary text-xs leading-relaxed whitespace-pre-line">
-                                {c.cleanMsg}
-                              </p>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1511,6 +1594,11 @@ function AdminTugasSayaContent() {
                           <span className="font-bold text-xs text-primary block mt-0.5 leading-snug">
                             {ticket.title || "Konsultasi Kebutuhan Klien"}
                           </span>
+                          {(ticket.assignmentNotes || extractAssignmentNotesFromDescription(ticket.description)) && (
+                            <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                              Instruksi Superadmin
+                            </span>
+                          )}
                         </td>
 
                         <td className="py-3.5 px-4 text-text-secondary align-top w-48 min-w-[170px]">

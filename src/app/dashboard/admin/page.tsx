@@ -21,6 +21,8 @@ import {
   resolveConsultationCategory,
   canAdminAccessTicket,
   mergeTicketsWithLocalOverrides,
+  extractAssignmentNotesFromDescription,
+  extractCorrespondencesFromDescription,
 } from "@/data/sharedTicketsStorage";
 
 function AdminDashboardContent() {
@@ -108,7 +110,8 @@ function AdminDashboardContent() {
             date: new Date(d.created_at).toLocaleDateString("id-ID"),
             status: "Terkirim",
           })),
-          correspondences: [],
+          assignmentNotes: extractAssignmentNotesFromDescription(c.description),
+          correspondences: extractCorrespondencesFromDescription(c.description),
           clientDocuments: [],
         }));
 
