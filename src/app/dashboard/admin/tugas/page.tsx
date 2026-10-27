@@ -47,6 +47,7 @@ import {
   appendConsultantNoteToDescription,
   extractCorrespondencesFromDescription,
   extractAssignmentNotesFromDescription,
+  extractSuperadminInstructions,
 } from "@/data/sharedTicketsStorage";
 
 function AdminTugasSayaContent() {
@@ -1025,6 +1026,38 @@ function AdminTugasSayaContent() {
                       </p>
                     );
                   })()}
+
+                  {/* Catatan Instruksi Khusus Penugasan dari Superadmin (Internal PIC) */}
+                  {(() => {
+                    const instructions = extractSuperadminInstructions(selectedTicket);
+                    if (instructions.length === 0) return null;
+                    return (
+                      <div className="mt-3 pt-3 border-t border-primary-light/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                            Instruksi Penugasan Superadmin ({instructions.length})
+                          </span>
+                          <span className="text-[9px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            Khusus Internal PIC
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {instructions.map((inst, idx) => (
+                            <div
+                              key={inst.id || idx}
+                              className="p-3 rounded-xl bg-amber-50/95 border border-amber-200 text-xs text-amber-950 font-medium leading-relaxed space-y-1.5 shadow-2xs"
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-amber-800 font-semibold border-b border-amber-200/60 pb-1">
+                                <span>{inst.sender}</span>
+                                <span className="font-mono text-text-muted">{inst.date}</span>
+                              </div>
+                              <p className="whitespace-pre-line leading-relaxed">{inst.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. Alur Pengerjaan Kertas Kerja (Interactive Minimal Stepper untuk Admin) */}
@@ -1365,13 +1398,9 @@ function AdminTugasSayaContent() {
                   </form>
                 </div>
 
-                {/* 4. Catatan & Komunikasi Tim Penugasan (Clean, No Raw Robotic Dump) */}
+                {/* 4. Catatan & Komunikasi dengan Klien (Khusus Korespondensi Klien - Konsultan) */}
                 {(() => {
                   const cleanProblem = formatTicketDescription(selectedTicket.description).trim().toLowerCase();
-                  const rawAssignmentNote =
-                    (selectedTicket.assignmentNotes ||
-                    extractAssignmentNotesFromDescription(selectedTicket.description) ||
-                    "").trim();
 
                   const cleanCorrespondences = (selectedTicket.correspondences || [])
                     .map((c) => ({
@@ -1381,36 +1410,27 @@ function AdminTugasSayaContent() {
                     .filter((c) => {
                       if (!c.cleanMsg || c.cleanMsg.trim().length === 0) return false;
                       if (cleanProblem && c.cleanMsg.trim().toLowerCase() === cleanProblem) return false;
+                      // Saring instruksi internal Superadmin agar TIDAK tercampur ke riwayat korespondensi klien
+                      const isSuperadmin =
+                        c.role === "Superadmin" ||
+                        c.sender.toLowerCase().includes("superadmin") ||
+                        c.sender.toLowerCase().includes("instruksi");
+                      if (isSuperadmin) return false;
                       return true;
                     });
-
-                  // Hanya jika belum ada catatan instruksi dari superadmin di riwayat korespondensi, sisipkan fallback di awal
-                  const hasSuperadminNote = cleanCorrespondences.some(
-                    (c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin")
-                  );
-                  if (!hasSuperadminNote && rawAssignmentNote) {
-                    cleanCorrespondences.unshift({
-                      id: `superadmin-note-${selectedTicket.id}`,
-                      sender: "Superadmin (Instruksi Penugasan)",
-                      role: "Superadmin",
-                      date: selectedTicket.createdAt || "Saat Penugasan",
-                      message: rawAssignmentNote,
-                      cleanMsg: rawAssignmentNote,
-                    });
-                  }
 
                   return (
                     <div className="p-4 rounded-xl border border-primary-light bg-white space-y-2.5">
                       <div className="flex items-center justify-between pb-2 border-b border-primary-light/60">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
-                          Catatan &amp; Komunikasi
+                          Catatan &amp; Komunikasi Klien
                         </h4>
-                        <span className="text-[10px] text-text-muted">Riwayat Korespondensi</span>
+                        <span className="text-[10px] text-text-muted">Korespondensi Klien &bull; Konsultan</span>
                       </div>
 
                       {cleanCorrespondences.length === 0 ? (
                         <div className="p-3 bg-surface/30 rounded-lg text-center text-xs text-text-muted border border-dashed border-primary-light/60">
-                          Belum ada catatan atau instruksi yang dikirimkan untuk perikatan ini.
+                          Belum ada catatan atau korespondensi dengan klien untuk perikatan ini.
                         </div>
                       ) : (
                         <div className="space-y-2">

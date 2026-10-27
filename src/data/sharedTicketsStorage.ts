@@ -271,6 +271,82 @@ export function extractAssignmentNotesFromDescription(desc?: string): string | u
   return allNotes.join("\n\n---\n\n");
 }
 
+export interface SuperadminInstructionItem {
+  id: string;
+  sender: string;
+  date: string;
+  message: string;
+}
+
+/**
+ * Mengekstrak seluruh daftar instruksi penugasan dari Superadmin untuk PIC/Admin
+ * secara lengkap dan kronologis, tanpa ada yang hilang atau tertimpa.
+ */
+export function extractSuperadminInstructions(ticket?: {
+  description?: string;
+  assignmentNotes?: string;
+  correspondences?: Correspondence[];
+}): SuperadminInstructionItem[] {
+  if (!ticket) return [];
+  const items: SuperadminInstructionItem[] = [];
+  const seenMessages = new Set<string>();
+
+  // 1. Ekstrak dari description backend (format resmi [CATATAN KONSULTAN - ... (Instruksi Superadmin)])
+  const extracted = extractCorrespondencesFromDescription(ticket.description);
+  extracted
+    .filter((c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin") || c.sender.toLowerCase().includes("instruksi"))
+    .forEach((c) => {
+      const clean = c.message.trim();
+      const norm = clean.toLowerCase();
+      if (clean && !seenMessages.has(norm)) {
+        seenMessages.add(norm);
+        items.push({
+          id: c.id,
+          sender: c.sender,
+          date: c.date,
+          message: clean,
+        });
+      }
+    });
+
+  // 2. Ekstrak dari correspondences yang tersimpan
+  (ticket.correspondences || [])
+    .filter((c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin") || c.sender.toLowerCase().includes("instruksi"))
+    .forEach((c) => {
+      const clean = c.message.trim();
+      const norm = clean.toLowerCase();
+      if (clean && !seenMessages.has(norm)) {
+        seenMessages.add(norm);
+        items.push({
+          id: c.id,
+          sender: c.sender,
+          date: c.date,
+          message: clean,
+        });
+      }
+    });
+
+  // 3. Fallback jika ada assignmentNotes yang belum terangkum
+  if (ticket.assignmentNotes && ticket.assignmentNotes.trim()) {
+    const splitNotes = ticket.assignmentNotes.split("\n\n---\n\n");
+    splitNotes.forEach((note, idx) => {
+      const clean = note.trim();
+      const norm = clean.toLowerCase();
+      if (clean && !seenMessages.has(norm)) {
+        seenMessages.add(norm);
+        items.push({
+          id: `fallback-superadmin-note-${idx}`,
+          sender: "Superadmin (Instruksi Penugasan)",
+          date: "Saat Penugasan",
+          message: clean,
+        });
+      }
+    });
+  }
+
+  return items;
+}
+
 /**
  * Format catatan resmi konsultan untuk disimpan ke deskripsi database backend
  */

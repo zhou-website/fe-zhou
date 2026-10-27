@@ -43,6 +43,7 @@ import {
   markAllTicketsAsDeleted,
   assignTicketPic,
   extractCorrespondencesFromDescription,
+  extractSuperadminInstructions,
   mergeTicketsWithLocalOverrides,
   ClientTicket,
   StaffAdminProfile,
@@ -1425,8 +1426,7 @@ function SuperadminPerikatanContent() {
 
                 {/* Riwayat Instruksi Sebelumnya */}
                 {(() => {
-                  const pastInstructions = extractCorrespondencesFromDescription(managingPicTicket.description)
-                    .filter((c) => c.role === "Superadmin" || c.sender.toLowerCase().includes("superadmin"));
+                  const pastInstructions = extractSuperadminInstructions(managingPicTicket);
                   if (pastInstructions.length === 0) return null;
                   return (
                     <div className="pt-2 border-t border-primary-light/60 space-y-2">
